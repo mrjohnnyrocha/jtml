@@ -1,0 +1,214 @@
+jtml 2
+
+use "./studio_logic.jtml"
+
+style
+  body
+    min-height: 100vh
+    font-family: Inter, system-ui, sans-serif
+    background: #f4f2ec
+    color: #182027
+    overflow-x: hidden
+  main
+    max-width: 1040px
+    margin: 0 auto
+    padding: 16px
+    display: grid
+    gap: 14px
+    box-sizing: border-box
+  header
+    background: #172027
+    color: white
+    border-radius: 8px
+    padding: 16px
+    display: grid
+    gap: 14px
+  .header-top
+    display: grid
+    gap: 6px
+  h1
+    font-size: 28px
+    line-height: 1.05
+    margin: 0
+  .subtitle
+    margin: 0
+    color: #c8d0d6
+    font-size: 15px
+    line-height: 1.4
+  .file-bar
+    display: flex
+    gap: 8px
+    flex-wrap: wrap
+  .file-btn
+    padding: 9px 11px
+    border: 1px solid #46535e
+    background: #24313b
+    color: white
+    border-radius: 6px
+    font-weight: 800
+    cursor: pointer
+  .toolbar
+    background: #fffdf8
+    border: 1px solid #d8d4c9
+    border-radius: 8px
+    padding: 12px
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+    flex-wrap: wrap
+  .file-info
+    display: grid
+    gap: 3px
+    min-width: 220px
+  h2
+    font-size: 22px
+    line-height: 1.1
+    margin: 0
+    overflow-wrap: anywhere
+  .status
+    margin: 0
+    color: #64707a
+    font-size: 14px
+  .action-bar
+    display: flex
+    gap: 8px
+    flex-wrap: wrap
+  .btn-run
+    padding: 9px 12px
+    border: 0
+    background: #0f766e
+    color: white
+    border-radius: 6px
+    font-weight: 800
+    cursor: pointer
+  .btn-secondary
+    padding: 9px 12px
+    border: 1px solid #a9b0b6
+    background: white
+    color: #182027
+    border-radius: 6px
+    font-weight: 800
+    cursor: pointer
+  .editor-panel
+    display: grid
+    grid-template-rows: auto 1fr auto
+    min-height: 340px
+    background: #101820
+    color: #e8f0ed
+    border-radius: 8px
+    overflow: hidden
+    border: 1px solid #27333d
+    min-width: 0
+  .editor-header
+    display: grid
+    gap: 4px
+    padding: 10px 12px
+    border-bottom: 1px solid #27333d
+    color: #b8c6ce
+    font-size: 13px
+    line-height: 1.35
+  textarea
+    width: 100%
+    min-height: 100%
+    resize: vertical
+    border: 0
+    outline: none
+    padding: 14px
+    background: #101820
+    color: #e8f0ed
+    font: 13px SFMono-Regular, Consolas, monospace
+    line-height: 1.55
+    box-sizing: border-box
+  .editor-footer
+    display: flex
+    justify-content: space-between
+    gap: 12px
+    padding: 10px 12px
+    border-top: 1px solid #27333d
+    color: #b8c6ce
+    font-size: 13px
+    flex-wrap: wrap
+  .info-grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))
+    gap: 12px
+  article
+    background: #fffdf8
+    border: 1px solid #d8d4c9
+    border-radius: 8px
+    padding: 16px
+    min-width: 0
+  .label
+    margin: 0 0 8px
+    color: #64707a
+    font-size: 12px
+    font-weight: 800
+    text-transform: uppercase
+  h3
+    margin: 0 0 8px
+    font-size: 20px
+    line-height: 1.15
+    overflow-wrap: anywhere
+  p
+    margin: 0 0 10px
+    color: #182027
+    line-height: 1.4
+    overflow-wrap: anywhere
+  .hint
+    margin: 0
+    color: #64707a
+    line-height: 1.4
+    overflow-wrap: anywhere
+
+page
+  header
+    div class "header-top"
+      h1 "JTML Studio"
+      p class "subtitle" "Interactive playground for the Friendly JTML language."
+    div class "file-bar"
+      button "counter.jtml" class "file-btn" click openCounter
+      button "form.jtml" class "file-btn" click openForm
+      button "fetch.jtml" class "file-btn" click openFetch
+      button "store.jtml" class "file-btn" click openStore
+
+  div class "toolbar"
+    div class "file-info"
+      h2 "{activeFile}"
+      p class "status" "{statusLine}"
+    div class "action-bar"
+      button "Run" class "btn-run" click runStudio
+      button "Format" class "btn-secondary" click formatSource
+      button "Save" class "btn-secondary" click saveStudio
+      button "Reference" class "btn-secondary" click showReference
+
+  div class "editor-panel"
+    div class "editor-header"
+      show "Editor"
+      show "{sourceSize}"
+    textarea placeholder "Write JTML here" into sourceText
+    div class "editor-footer"
+      show "Live state editor"
+      show "{diagnostics}"
+
+  div class "info-grid"
+    article
+      p class "label" "Output"
+      h3 "{outputTitle}"
+      p "{outputBody}"
+      p class "hint" "{outputDetail}"
+
+    article
+      h3 "Runtime state"
+      show "{diagnostics}"
+      show "Panel: {selectedPanel}"
+      show "{statusLine}"
+
+    article
+      h3 "Quick reference"
+      text "jtml 2 — enable Friendly syntax"
+      text "let x = expr — reactive variable"
+      text "when action — event handler"
+      text "fetch url — async data"
+      text "store name — shared state"
+      text "route path as Component — SPA routing"

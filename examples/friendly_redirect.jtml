@@ -1,0 +1,25 @@
+jtml 2
+
+route "/" as Home
+route "/dashboard" as Dashboard
+route "*" as NotFound
+
+make Home
+  page style "font-family: system-ui; max-width: 600px; margin: 48px auto; padding: 0 20px; display: grid; gap: 12px"
+    h1 "Welcome"
+    p "Log in to continue."
+    button "Go to Dashboard" click goDashboard
+
+when goDashboard
+  redirect "/dashboard"
+
+make Dashboard
+  page style "font-family: system-ui; max-width: 600px; margin: 48px auto; padding: 0 20px; display: grid; gap: 12px"
+    h1 "Dashboard"
+    p "You navigated here programmatically."
+    link "← Back" to "/"
+
+make NotFound
+  page style "font-family: system-ui; max-width: 600px; margin: 48px auto; padding: 0 20px; display: grid; gap: 12px"
+    h1 "Not Found"
+    link "Home" to "/"

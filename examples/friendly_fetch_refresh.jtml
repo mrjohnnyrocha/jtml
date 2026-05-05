@@ -1,0 +1,30 @@
+jtml 2
+
+let posts = fetch "/api/posts" refresh reloadPosts
+
+style
+  .refresh-demo
+    max-width: 680px
+    margin: 48px auto
+    padding: 28px
+    font-family: Arial, sans-serif
+    display: grid
+    gap: 16px
+
+  .post-card
+    border: 1px solid #d8d4c9
+    border-radius: 8px
+    padding: 14px
+    background: white
+
+page class "refresh-demo"
+  h1 "Posts (with refresh)"
+  button "Reload" click reloadPosts
+  if posts.loading
+    text "Loading posts..."
+  else
+    for post in posts.data
+      box class "post-card"
+        strong "{post.title}"
+  if posts.error
+    text "Error: {posts.error}"

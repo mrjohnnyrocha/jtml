@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="JTML is a local-first CLI and reactive HTML language for teams that need small, auditable interfaces without a heavy frontend stack.">
+    <meta name="theme-color" content="#172026">
+    <title>JTML - local-first reactive HTML for serious teams</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="JTML home">
+        <span class="brand-mark" aria-hidden="true">J</span>
+        <span>JTML</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#syntax">Syntax</a>
+        <a href="#try">Try</a>
+        <a href="./tools.html">Tools</a>
+        <a href="./examples.html">Examples</a>
+        <a href="./reference.html">Reference</a>
+        <a href="./security.html">Security</a>
+        <a href="./deploy.html">Deploy</a>
+        <a href="#roadmap">Roadmap</a>
+      </nav>
+      <a class="header-action" href="#try">Get started</a>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-scene" aria-hidden="true">
+          <pre class="scene-code scene-code-a"><code>jtml 2
+
+let users = fetch "/api/users"
+
+page
+  if users.loading
+    text "Loading…"
+  else
+    for user in users.data
+      text "{user.name}"</code></pre>
+          <pre class="scene-code scene-code-b"><code>jtml 2
+
+let count = 0
+get doubled = count * 2
+
+when add
+  count += 1
+
+page
+  h1 "Count: {count}"
+  p "Doubled: {doubled}"
+  button "+ Add" click add</code></pre>
+          <div class="scene-preview">
+            <span class="preview-bar"></span>
+            <span class="preview-title">Rendered page</span>
+            <span class="preview-heading">Simplified HTML</span>
+            <span class="preview-line"></span>
+            <span class="preview-button">Count: 1</span>
+          </div>
+        </div>
+
+        <div class="hero-content">
+          <p class="eyebrow">Local-first reactive HTML for serious teams</p>
+          <h1 id="hero-title">JTML</h1>
+          <p class="hero-copy">
+            Build small internal tools, prototypes, demos, and teaching apps with a
+            C++ CLI, readable source files, deterministic local builds, and browser
+            runtime behavior that stays close to HTML.
+          </p>
+          <div class="hero-actions" aria-label="Primary actions">
+            <a class="button primary" href="#try">Run locally</a>
+            <a class="button secondary" href="./tools.html">See toolchain</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="trust-section" aria-labelledby="trust-title">
+        <div class="metric-grid" aria-label="JTML product guarantees">
+          <article>
+            <strong>0 cloud services</strong>
+            <span>CLI, Studio, tutorial, examples, site artifact, and release package run locally.</span>
+          </article>
+          <article>
+            <strong>1 binary</strong>
+            <span>Serve, build, lint, format, smoke-test, launch Studio, and package from one command surface.</span>
+          </article>
+          <article>
+            <strong>HTML-native</strong>
+            <span>Normal attributes, custom elements, boolean attrs, events, and static HTML output.</span>
+          </article>
+          <article>
+            <strong>Predeploy verified</strong>
+            <span><code>scripts/verify_all.sh</code> builds tests, examples, site, and release artifacts.</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="syntax-strip" id="syntax" aria-labelledby="syntax-title">
+        <div class="section-heading">
+          <p class="eyebrow">Syntax</p>
+          <h2 id="syntax-title">Shorter than HTML, still HTML-shaped.</h2>
+          <p>
+            JTML keeps tags, attributes, nesting, events, state, and derived values.
+            It removes closing-tag repetition and framework ceremony.
+          </p>
+        </div>
+
+        <div class="syntax-lab">
+          <div class="segmented-control" role="tablist" aria-label="Syntax comparison">
+            <button class="segment is-active" type="button" role="tab" aria-selected="true" data-snippet="jtml">JTML</button>
+            <button class="segment" type="button" role="tab" aria-selected="false" data-snippet="html">HTML</button>
+            <button class="segment" type="button" role="tab" aria-selected="false" data-snippet="react">React</button>
+          </div>
+          <div class="code-stage">
+            <pre aria-live="polite"><code id="snippet-code"></code></pre>
+          </div>
+          <div class="syntax-notes" aria-label="Syntax notes">
+            <span><strong>@tag</strong> opens an element</span>
+            <span><strong>#</strong> closes the current element</span>
+            <span><strong>\\</strong> ends a statement</span>
+            <span><strong>derive</strong> keeps values reactive</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="enterprise-section" aria-labelledby="enterprise-title">
+        <div class="section-heading">
+          <p class="eyebrow">Enterprise posture</p>
+          <h2 id="enterprise-title">Small enough to audit, complete enough to operate.</h2>
+          <p>
+            JTML is not trying to replace your design system or deployment platform.
+            It gives teams a focused local toolchain for HTML-shaped reactive pages,
+            with clear build artifacts and predictable operational boundaries.
+          </p>
+        </div>
+
+        <div class="enterprise-grid">
+          <article>
+            <h3>Auditable Source</h3>
+            <p>Readable <code>.jtml</code> files compile to regular HTML, and the CLI commands are scriptable in CI.</p>
+          </article>
+          <article>
+            <h3>Local Studio</h3>
+            <p><code>jtml demo</code> opens a real editor with Run, Lint, Format, Export HTML, diagnostics, versioned local Save/history, snippets, and live preview.</p>
+          </article>
+          <article>
+            <h3>Two Deployment Modes</h3>
+            <p>Emit static HTML for simple pages or run the tiny live runtime for server-backed events.</p>
+          </article>
+          <article>
+            <h3>Verification Loop</h3>
+            <p>Doctor checks toolkit shape; tests cover lexer, parser, friendly syntax, formatter, linter, and examples.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="try-section" id="try" aria-labelledby="try-title">
+        <div class="section-heading">
+          <p class="eyebrow">Try it locally</p>
+          <h2 id="try-title">A five-minute language loop.</h2>
+          <p>
+            Build the CLI, generate a starter page, serve it, edit it, and reload.
+            The language stays close to the browser instead of hiding it.
+          </p>
+        </div>
+
+        <div class="steps">
+          <article class="step">
+            <span class="step-number">1</span>
+            <h3>Open Studio</h3>
+            <pre><code>./build/jtml demo --port 8000</code></pre>
+          </article>
+          <article class="step">
+            <span class="step-number">2</span>
+            <h3>Create And Check</h3>
+            <pre><code>./build/jtml new my_page.jtml
+./build/jtml check my_page.jtml
+./build/jtml lint my_page.jtml</code></pre>
+          </article>
+          <article class="step">
+            <span class="step-number">3</span>
+            <h3>Serve</h3>
+            <pre><code>./build/jtml serve my_page.jtml --port 8000 --watch</code></pre>
+          </article>
+        </div>
+      </section>
+
+      <section class="examples-section" id="examples" aria-labelledby="examples-title">
+        <div class="section-heading">
+          <p class="eyebrow">What it is good for</p>
+          <h2 id="examples-title">Small pages that should not need a framework.</h2>
+        </div>
+
+        <div class="example-grid">
+          <article class="example-card">
+            <h3>Interactive prototypes</h3>
+            <p>State, derived values, and event handlers for pages that need behavior quickly.</p>
+            <code>jtml demo --port 8000</code>
+          </article>
+          <article class="example-card">
+            <h3>Teaching HTML and state</h3>
+            <p>Readable blocks, obvious data flow, and a tutorial that runs in the browser.</p>
+            <code>jtml tutorial --port 8000</code>
+          </article>
+          <article class="example-card">
+            <h3>Server-backed UI</h3>
+            <p>Keep a tiny runtime on the server and stream updates to regular DOM nodes.</p>
+            <code>examples/user_interactions.jtml</code>
+          </article>
+        </div>
+      </section>
+
+      <section class="roadmap-section" id="roadmap" aria-labelledby="roadmap-title">
+        <div class="section-heading">
+          <p class="eyebrow">Roadmap</p>
+          <h2 id="roadmap-title">Simple syntax first, reliable runtime next.</h2>
+        </div>
+
+        <ol class="roadmap-list">
+          <li>
+            <strong>Try it in five minutes</strong>
+            <span>Demo, starter generator, syntax checker, tutorial, examples, and `@tag` syntax.</span>
+          </li>
+          <li>
+            <strong>Reliable reactivity</strong>
+            <span>Make `define`, `derive`, arrays, dictionaries, objects, and subscriptions predictable.</span>
+          </li>
+          <li>
+            <strong>HTML parity</strong>
+            <span>Boolean attributes, custom elements, SVG-friendly names, and void-element ergonomics.</span>
+          </li>
+          <li>
+            <strong>Enterprise polish</strong>
+            <span>Production website, local Studio, packaging manifest, security posture, and predeploy verification.</span>
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>JTML</span>
+      <span>Simple syntax. Real HTML. Tiny runtime.</span>
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

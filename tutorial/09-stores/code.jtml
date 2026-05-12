@@ -1,0 +1,22 @@
+jtml 2
+
+store auth
+  let user: string = "Ada"
+  let token = "demo-token"
+
+  when login
+    let user = "Ada"
+    let token = "demo-token"
+
+  when logout
+    let user = ""
+    let token = ""
+
+page style "max-width: 620px; margin: 48px auto; font-family: system-ui, sans-serif; display: grid; gap: 12px"
+  h1 "Store state"
+  if auth.user
+    text "Signed in as {auth.user}"
+    button "Logout" click auth.logout
+  else
+    text "Signed out"
+    button "Sign in" click auth.login

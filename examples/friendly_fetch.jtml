@@ -1,0 +1,30 @@
+jtml 2
+
+style
+  .fetch-demo
+    max-width: 720px
+    margin: 48px auto
+    padding: 28px
+    font-family: Arial, sans-serif
+    display: grid
+    gap: 16px
+
+  .user-card
+    border: 1px solid #d8d4c9
+    border-radius: 8px
+    padding: 14px
+    background: white
+
+let users = fetch "/api/users"
+
+page class "fetch-demo"
+  h1 "Async users"
+  if users.loading
+    text "Loading users..."
+  else
+    for user in users.data
+      box class "user-card"
+        strong "{user.name}"
+        text "{user.email}"
+  if users.error
+    text "Could not load users: {users.error}"

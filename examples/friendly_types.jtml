@@ -1,0 +1,19 @@
+jtml 2
+
+let count: number = 0
+const label: string = "Typed counter"
+get status: string = "Count is {count}"
+
+when add step: number
+  let count: number = count + step
+
+make Stat title: string value: number
+  box class "stat-card" style "border: 1px solid #d8d4c9; border-radius: 8px; padding: 14px; display: grid; gap: 6px"
+    text title
+    strong value
+
+page class "typed-demo" style "max-width: 680px; margin: 48px auto; padding: 28px; font-family: Arial, sans-serif; display: grid; gap: 14px"
+  h1 label
+  Stat "Current value" count
+  text status
+  button "Add one" click add(1)

@@ -1,0 +1,797 @@
+jtml 2
+
+// JTML Enterprise Operations Suite
+// A deliberately broad demo app for the current JTML language surface:
+// routes, route guards, layouts, stores, components, isolated state, fetch,
+// POST fetch, invalidation, effects, typed declarations, forms, media,
+// charts, SVG graphics, 3D host integration, and external host actions.
+
+extern notify from "host.notify"
+
+const appName: string = "JTML Enterprise Operations Suite"
+const release: string = "2026.05"
+
+let sessionToken = "demo-token"
+let loginEmail = "ada@example.com"
+let searchQuery = ""
+let activeIncident = "Payment queue latency"
+let incidentsOpen: number = 3
+let deploymentRisk: number = 18
+let auditTrail = "Ready for review."
+let commanderNote = "Executive command center loaded."
+let selectedMedia = ""
+let evidenceFiles = []
+let priority = "High"
+let acceptedPolicy = false
+let sceneState = {}
+
+let revenue = [{ "month": "Jan", "total": 128 }, { "month": "Feb", "total": 142 }, { "month": "Mar", "total": 166 }, { "month": "Apr", "total": 158 }, { "month": "May", "total": 194 }]
+
+let incidents = [{ "title": "Payment queue latency", "owner": "SRE", "severity": "High", "status": "Mitigating" }, { "title": "Onboarding form drop-off", "owner": "Growth", "severity": "Medium", "status": "Investigating" }, { "title": "Partner export backlog", "owner": "Platform", "severity": "Low", "status": "Queued" }]
+
+let automationQueue = [{ "name": "Refresh data contracts", "state": "Ready" }, { "name": "Regenerate partner exports", "state": "Waiting" }, { "name": "Publish release notes", "state": "Ready" }]
+
+let users = fetch "/api/users" timeout 2500 retry 2 stale keep
+let posts = fetch "/api/posts" lazy stale keep refresh reloadPosts
+let runtime = fetch "/api/runtime" lazy stale keep
+let sessionProbe = fetch "/api/login" method "POST" body { email: loginEmail } cache "no-store" credentials "include"
+
+store workspace
+  let region = "Lisbon"
+  let tier = "Enterprise"
+  let theme = "Executive"
+  let approvals = 2
+
+  when switchRegion
+    let region = "New York"
+
+  when approve
+    approvals += 1
+
+  when resetApprovals
+    let approvals = 0
+
+get operationalHealth: string = incidentsOpen == 0 ? "Green" : "Needs attention"
+get riskLabel: string = deploymentRisk > 40 ? "High risk" : "Controlled risk"
+get commandSummary: string = "{incidentsOpen} open incidents, {deploymentRisk}% deployment risk, {workspace.approvals} approvals"
+
+effect incidentsOpen
+  let auditTrail = "Incident count changed to {incidentsOpen}."
+
+effect searchQuery
+  let commanderNote = searchQuery != "" ? "Filtering workspace by {searchQuery}." : "Executive command center loaded."
+
+guard "/command" require sessionToken else "/login"
+guard "/data" require sessionToken else "/login"
+guard "/media" require sessionToken else "/login"
+guard "/runtime" require sessionToken else "/login"
+
+when signIn
+  let sessionToken = loginEmail
+  let auditTrail = "Signed in as {loginEmail}."
+  redirect "/command"
+
+when signOut
+  let sessionToken = ""
+  let auditTrail = "Signed out."
+  redirect "/login"
+
+when acknowledgeIncident
+  let incidentsOpen = incidentsOpen - 1
+  let activeIncident = "One incident acknowledged"
+
+when raiseIncident
+  let incidentsOpen = incidentsOpen + 1
+  let activeIncident = "Manual escalation"
+
+when lowerRisk
+  let deploymentRisk = deploymentRisk - 3
+
+when raiseRisk
+  let deploymentRisk = deploymentRisk + 5
+
+when captureNote
+  let auditTrail = commanderNote
+
+when refreshData
+  invalidate users posts runtime
+  let auditTrail = "Data contracts invalidated and refreshed."
+
+when submitWorkflow
+  let commanderNote = "Workflow submitted at priority {priority}."
+  let auditTrail = "Workflow submitted. Policy accepted: {acceptedPolicy}."
+
+when resetWorkspace
+  let searchQuery = ""
+  let priority = "High"
+  let acceptedPolicy = false
+  let commanderNote = "Workspace reset locally."
+
+make AppLayout
+  page class "app-shell"
+    header class "hero"
+      box class "hero-copy"
+        p class "eyebrow" "Native JTML demo app"
+        h1 appName
+        p "A single Friendly JTML file showing production app structure, live state, runtime APIs, media, graphics, routing, stores, effects, and host integrations."
+      box class "hero-panel"
+        text "Release {release}"
+        strong operationalHealth
+        text commandSummary
+
+    nav class "top-nav"
+      link "Overview" to "/" active-class "active"
+      link "Command" to "/command" active-class "active"
+      link "Data" to "/data" active-class "active"
+      link "Media" to "/media" active-class "active"
+      link "Runtime" to "/runtime" active-class "active"
+      link "Login" to "/login" active-class "active"
+
+    slot
+
+    footer class "footer"
+      text "JTML can author applications as readable documents without handing the user a JavaScript framework first."
+
+make MetricCard title value detail tone
+  article class "metric {tone}"
+    p title
+    h2 value
+    text detail
+
+make LocalCounter label
+  let count = 0
+
+  when add
+    count += 1
+
+  when remove
+    count -= 1
+
+  article class "tool-card"
+    h3 label
+    text "Isolated count: {count}"
+    box class "button-row"
+      button "-1" click remove
+      button "+1" click add
+
+make IncidentCard title owner severity status
+  article class "incident-card"
+    box
+      strong title
+      p "Owner: {owner}"
+    box class "pill-row"
+      span class "pill danger"
+        show severity
+      span class "pill"
+        show status
+
+make Home
+  main class "page-grid"
+    section class "intro-panel"
+      p class "eyebrow" "Why this demo exists"
+      h2 "One JTML file, many production patterns"
+      p "This demo is intentionally dense. It is a working reference for teams evaluating whether JTML can describe real application surfaces, not only toy pages."
+      box class "button-row"
+        link "Open command center" to "/command" class "button primary"
+        link "Inspect runtime APIs" to "/runtime" class "button"
+
+    section class "metric-grid"
+      MetricCard "Operations" operationalHealth commandSummary "green"
+      MetricCard "Deployment" riskLabel "{deploymentRisk}% calculated release risk" "blue"
+      MetricCard "Workspace" workspace.region "{workspace.tier} tier, {workspace.theme} theme" "gold"
+
+    section class "wide-panel"
+      h2 "Feature coverage"
+      box class "feature-grid"
+        text "Routes and route guards"
+        text "Layout components and slots"
+        text "Stores and namespaced actions"
+        text "Effects and derived values"
+        text "GET and POST fetch"
+        text "Form controls and submit handlers"
+        text "Media, graphics, charts, and 3D hosts"
+        text "External actions for host apps"
+
+make Command
+  main class "page-grid"
+    section class "wide-panel"
+      box class "section-head"
+        box
+          p class "eyebrow" "Command center"
+          h2 "Live operations workspace"
+          p commanderNote
+        box class "button-row"
+          button "Notify host" click notify("JTML command center notification")
+          button "Refresh data" click refreshData
+          button "Sign out" click signOut
+
+      box class "metric-grid"
+        MetricCard "Open incidents" incidentsOpen activeIncident "green"
+        MetricCard "Risk" riskLabel "{deploymentRisk}% current score" "blue"
+        MetricCard "Approvals" workspace.approvals "Approvals in {workspace.region}" "gold"
+
+    section class "two-column"
+      article class "panel"
+        h3 "Incident controls"
+        p "Handlers mutate state, effects update the audit trail, and the UI re-renders from reactive values."
+        box class "button-row"
+          button "Acknowledge" click acknowledgeIncident
+          button "Escalate" click raiseIncident
+        box class "button-row"
+          button "Risk -3" click lowerRisk
+          button "Risk +5" click raiseRisk
+        text "Audit: {auditTrail}"
+
+      article class "panel"
+        h3 "Store controls"
+        p "The workspace store is globally addressable and keeps shared application state."
+        text "Region: {workspace.region}"
+        text "Tier: {workspace.tier}"
+        box class "button-row"
+          button "Switch region" click workspace.switchRegion
+          button "Approve" click workspace.approve
+          button "Reset approvals" click workspace.resetApprovals
+
+    section class "two-column"
+      article class "panel"
+        h3 "Workflow form"
+        form submit submitWorkflow class "form-grid"
+          input "Search workspace" into searchQuery
+          textarea "Commander note" into commanderNote rows "4"
+          select into priority
+            option "High" value "High"
+            option "Medium" value "Medium"
+            option "Low" value "Low"
+          checkbox "Policy reviewed" into acceptedPolicy
+          box class "button-row"
+            button "Submit workflow" type "submit"
+            button "Reset local form" type "button" click resetWorkspace
+        text "Priority: {priority}"
+        text "Policy accepted: {acceptedPolicy}"
+
+      article class "panel"
+        h3 "Component isolation"
+        p "Each counter owns its own state even though both are created from the same component."
+        LocalCounter "Deploy approvals"
+        LocalCounter "Rollback readiness"
+
+    section class "wide-panel"
+      h2 "Incident portfolio"
+      box class "card-grid"
+        for incident in incidents
+          IncidentCard incident.title incident.owner incident.severity incident.status
+
+make Data
+  main class "page-grid"
+    section class "wide-panel"
+      box class "section-head"
+        box
+          p class "eyebrow" "Runtime data"
+          h2 "GET, POST, lazy load, refresh, and invalidation"
+          p "This page uses the local JTML runtime demo API. In production these URLs become your application contracts."
+        box class "button-row"
+          button "Reload posts" click reloadPosts
+          button "Invalidate all" click refreshData
+
+    section class "two-column"
+      article class "panel"
+        h3 "Users"
+        if users.loading
+          text "Loading users..."
+        if users.error
+          text "Could not load users: {users.error}"
+        for user in users.data
+          box class "data-row"
+            strong user.name
+            text user.email
+
+      article class "panel"
+        h3 "POST login probe"
+        input "Email for POST body" into loginEmail type "email"
+        if sessionProbe.loading
+          text "Sending POST request..."
+        if sessionProbe.error
+          text "Login probe error: {sessionProbe.error}"
+        if sessionProbe.data.user
+          text "POST response user: {sessionProbe.data.user.name}"
+          text "Token: {sessionProbe.data.token}"
+
+    section class "wide-panel"
+      h3 "Posts"
+      if posts.loading
+        text "Loading posts..."
+      if posts.error
+        text "Could not load posts: {posts.error}"
+      box class "card-grid"
+        for post in posts.data
+          article class "post-card"
+            strong post.title
+            text post.body
+
+    section class "wide-panel"
+      h3 "Revenue chart"
+      chart bar data revenue by month value total label "Revenue by month" color "#2563eb"
+
+make Media
+  main class "page-grid"
+    section class "wide-panel"
+      p class "eyebrow" "Media and interaction"
+      h2 "Images, audio, video, files, dropzones, charts, SVG, canvas, and 3D"
+      p "JTML media primitives map to platform elements and expose state through into bindings where the runtime can safely report it."
+
+    section class "media-grid"
+      article class "panel"
+        h3 "Image"
+        image src "/assets/product-suite.jpg" alt "Enterprise product workspace" loading "lazy" decoding "async"
+        text "Images remain normal web assets with accessible alt text."
+
+      article class "panel"
+        h3 "Video"
+        video src "/assets/briefing.mp4" controls poster "/assets/briefing.jpg" preload "metadata" into briefingVideo
+        text "Paused: {briefingVideo.paused} | Time: {briefingVideo.currentTime}"
+        box class "button-row"
+          button "Play" click briefingVideo.play
+          button "Pause" click briefingVideo.pause
+          button "Restart" click briefingVideo.seek(0)
+
+      article class "panel"
+        h3 "Audio"
+        audio src "/assets/release-note.mp3" controls preload "metadata" into releaseAudio
+        text "Audio paused: {releaseAudio.paused}"
+
+      article class "panel"
+        h3 "Files"
+        file "Choose evidence" accept "image/*,video/*,audio/*,.pdf" into selectedMedia
+        if selectedMedia
+          text "Selected: {selectedMedia.name}"
+          image src selectedMedia.preview alt selectedMedia.name
+
+      article class "panel"
+        h3 "Dropzone"
+        dropzone "Drop launch assets here" accept "image/*,video/*,audio/*,.pdf" into evidenceFiles
+        text "Dropped files: {evidenceFiles.length}"
+
+      article class "panel"
+        h3 "Canvas bridge"
+        canvas id "ops-canvas" aria-label "Canvas surface for host rendering" width "640" height "260"
+        text "Canvas is available for host libraries or future JTML drawing APIs."
+
+    section class "two-column"
+      article class "panel"
+        h3 "Vector graphic"
+        graphic aria-label "Launch path graphic" width "360" height "180" viewBox "0 0 360 180"
+          bar x "24" y "92" width "42" height "64" fill "#0f766e"
+          bar x "92" y "64" width "42" height "92" fill "#2563eb"
+          bar x "160" y "38" width "42" height "118" fill "#7c3aed"
+          bar x "228" y "74" width "42" height "82" fill "#f59e0b"
+          line x1 "20" y1 "158" x2 "330" y2 "158" stroke "#475569" stroke-width "2"
+          path d "M24 112 C80 38 145 92 198 44 C240 12 276 58 326 28" fill "none" stroke "#0f766e" stroke-width "4"
+          dot cx "326" cy "28" r "8" fill "#111827"
+          polygon points "304,116 330,132 304,148" fill "#2563eb"
+
+      article class "panel"
+        h3 "3D host"
+        scene3d "Interactive launch room" scene launchRoom camera orbit controls orbit renderer "three" into sceneState width "720" height "420"
+        text "Renderer status: {sceneState.status}"
+        text "Canvas: {sceneState.width} x {sceneState.height}"
+
+make Runtime
+  main class "page-grid"
+    section class "wide-panel"
+      box class "section-head"
+        box
+          p class "eyebrow" "Full-stack surface"
+          h2 "Server contract and runtime introspection"
+          p "The current JTML runtime already exposes local HTTP APIs for development. This page demonstrates how a single file can bind UI directly to those contracts."
+        button "Reload runtime" click refreshData
+
+    section class "two-column"
+      article class "panel"
+        h3 "Runtime"
+        if runtime.loading
+          text "Loading runtime metadata..."
+        if runtime.error
+          text "Runtime error: {runtime.error}"
+        if runtime.data
+          text "Status: {runtime.data.status}"
+          text "Version: {runtime.data.version}"
+
+      article class "panel"
+        h3 "Automation queue"
+        for item in automationQueue
+          box class "data-row"
+            strong item.name
+            text item.state
+
+    section class "wide-panel"
+      h3 "What becomes full-stack next"
+      p "The roadmap layers server blocks, API declarations, database bindings, SSR, and native packaging onto this same readable document model."
+      box class "feature-grid"
+        text "server blocks"
+        text "api route declarations"
+        text "database connectors"
+        text "SSR and streaming"
+        text "native binary packaging"
+        text "typed contracts"
+
+make Login
+  main class "login-page"
+    section class "login-card"
+      p class "eyebrow" "Protected demo"
+      h2 "Sign in"
+      p "Route guards protect command, data, media, and runtime pages. Use any email to create a local token."
+      input "Email" into loginEmail required type "email"
+      box class "button-row"
+        button "Sign in" click signIn
+        link "Back home" to "/" class "button"
+      if sessionToken
+        text "Current session token: {sessionToken}"
+
+make Profile id
+  main class "page-grid"
+    section class "wide-panel"
+      h2 "Route parameter"
+      p "This page was opened with id: {id}"
+      link "Back to data" to "/data" class "button"
+
+make NotFound
+  main class "page-grid"
+    section class "wide-panel"
+      h2 "Route not found"
+      p "The requested JTML route does not exist in this demo."
+      link "Go home" to "/" class "button primary"
+
+route "/" as Home layout AppLayout
+route "/command" as Command layout AppLayout
+route "/data" as Data layout AppLayout load posts
+route "/media" as Media layout AppLayout
+route "/runtime" as Runtime layout AppLayout load runtime
+route "/login" as Login layout AppLayout
+route "/profile/:id" as Profile layout AppLayout
+route "*" as NotFound layout AppLayout
+
+style
+  body
+    margin: 0
+    background: #f7f5ef
+    color: #172026
+    font-family: Inter, system-ui, sans-serif
+
+  .app-shell
+    min-height: 100vh
+    display: grid
+    gap: 22px
+    padding: 24px
+
+  .hero
+    display: grid
+    grid-template-columns: minmax(0, 1fr) 320px
+    gap: 24px
+    align-items: end
+    background: #162128
+    color: white
+    border-radius: 8px
+    padding: 34px
+
+  .hero h1
+    margin: 0
+    font-size: 42px
+    line-height: 1.05
+
+  .hero p
+    margin: 0
+    color: #d9e2e5
+
+  .hero-copy
+    display: grid
+    gap: 14px
+
+  .hero-panel
+    display: grid
+    gap: 10px
+    padding: 18px
+    border: 1px solid #52636d
+    border-radius: 8px
+    background: #22323b
+
+  .eyebrow
+    margin: 0
+    color: #0f766e
+    text-transform: uppercase
+    font-size: 12px
+    font-weight: 800
+    letter-spacing: .08em
+
+  .top-nav
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+    align-items: center
+
+  .top-nav a
+    color: #26323a
+    text-decoration: none
+    border: 1px solid #d8d2c4
+    background: white
+    border-radius: 8px
+    padding: 10px 12px
+    font-weight: 800
+
+  .top-nav a.active
+    background: #0f766e
+    border-color: #0f766e
+    color: white
+
+  .page-grid
+    display: grid
+    gap: 18px
+
+  .intro-panel
+    background: white
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    padding: 24px
+    display: grid
+    gap: 12px
+
+  .wide-panel
+    background: white
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    padding: 22px
+    display: grid
+    gap: 14px
+
+  .section-head
+    display: flex
+    justify-content: space-between
+    gap: 16px
+    align-items: start
+
+  .metric-grid
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 14px
+
+  .metric
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    padding: 18px
+    display: grid
+    gap: 8px
+    background: white
+
+  .metric p
+    margin: 0
+    color: #66737c
+    font-weight: 700
+
+  .metric h2
+    margin: 0
+    font-size: 28px
+
+  .metric.green
+    border-top: 4px solid #0f766e
+
+  .metric.blue
+    border-top: 4px solid #2563eb
+
+  .metric.gold
+    border-top: 4px solid #f59e0b
+
+  .two-column
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 18px
+
+  .panel
+    background: white
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    padding: 18px
+    display: grid
+    gap: 12px
+
+  .panel h3
+    margin: 0
+    font-size: 20px
+
+  .panel p
+    margin: 0
+    color: #5b6670
+
+  .button-row
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+    align-items: center
+
+  button
+    border: 1px solid #aab5bd
+    background: white
+    color: #172026
+    border-radius: 8px
+    padding: 10px 12px
+    font-weight: 800
+
+  button:hover
+    border-color: #0f766e
+
+  .button
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    text-decoration: none
+    color: #172026
+    border: 1px solid #aab5bd
+    background: white
+    border-radius: 8px
+    padding: 10px 12px
+    font-weight: 800
+
+  .primary
+    background: #0f766e
+    border-color: #0f766e
+    color: white
+
+  .form-grid
+    display: grid
+    gap: 10px
+
+  input
+    border: 1px solid #bbc5ca
+    border-radius: 8px
+    padding: 11px 12px
+    font: inherit
+
+  textarea
+    border: 1px solid #bbc5ca
+    border-radius: 8px
+    padding: 11px 12px
+    font: inherit
+
+  select
+    border: 1px solid #bbc5ca
+    border-radius: 8px
+    padding: 11px 12px
+    font: inherit
+    background: white
+
+  .card-grid
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 12px
+
+  .incident-card
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    padding: 14px
+    display: grid
+    gap: 12px
+    background: #fbfaf7
+
+  .pill-row
+    display: flex
+    gap: 8px
+    flex-wrap: wrap
+
+  .pill
+    display: inline-flex
+    border-radius: 999px
+    background: #eef2f4
+    color: #26323a
+    padding: 4px 8px
+    font-size: 12px
+    font-weight: 800
+
+  .pill.danger
+    background: #fef2f2
+    color: #991b1b
+
+  .data-row
+    display: grid
+    gap: 3px
+    border-bottom: 1px solid #eee9df
+    padding: 9px 0
+
+  .data-row:last-child
+    border-bottom: 0
+
+  .post-card
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    padding: 14px
+    background: #fbfaf7
+    display: grid
+    gap: 8px
+
+  .media-grid
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 16px
+
+  image
+    max-width: 100%
+    border-radius: 8px
+    border: 1px solid #ddd7ca
+
+  video
+    width: 100%
+    border-radius: 8px
+    background: #111827
+
+  audio
+    width: 100%
+
+  input[data-jtml-drag="over"]
+    border-color: #0f766e
+    background: #ecfdf5
+
+  canvas
+    width: 100%
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    background: #f8fafc
+
+  svg
+    width: 100%
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    background: #f8fafc
+
+  .tool-card
+    border: 1px solid #ddd7ca
+    background: #fbfaf7
+    border-radius: 8px
+    padding: 14px
+    display: grid
+    gap: 10px
+
+  .feature-grid
+    display: grid
+    grid-template-columns: repeat(4, minmax(0, 1fr))
+    gap: 10px
+
+  .feature-grid text
+    border: 1px solid #ddd7ca
+    background: #fbfaf7
+    padding: 12px
+    border-radius: 8px
+    font-weight: 700
+
+  .login-page
+    display: grid
+    justify-content: center
+
+  .login-card
+    width: min(520px, 100%)
+    background: white
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    padding: 24px
+    display: grid
+    gap: 14px
+
+  .footer
+    color: #66737c
+    font-size: 14px
+    padding: 12px 0 24px
+
+  @media (max-width: 900px)
+    .hero
+      grid-template-columns: 1fr
+
+    .metric-grid
+      grid-template-columns: 1fr
+
+    .two-column
+      grid-template-columns: 1fr
+
+    .card-grid
+      grid-template-columns: 1fr
+
+    .media-grid
+      grid-template-columns: 1fr
+
+    .feature-grid
+      grid-template-columns: repeat(2, minmax(0, 1fr))

@@ -1,0 +1,19 @@
+jtml 2
+
+let count = 0
+
+when add
+  count += 1
+
+when reset
+  count = 0
+
+page class "friendly-counter" style "max-width: 680px; margin: 48px auto; padding: 28px; font-family: Arial, sans-serif; display: grid; gap: 16px"
+  h1 "Friendly JTML Counter"
+  p "This file uses canonical Friendly JTML and the shared reactive runtime."
+
+  section style "display: grid; gap: 10px"
+    strong "Count: {count}"
+    box style "display: flex; gap: 8px; flex-wrap: wrap"
+      button "Add one" click add
+      button "Reset" click reset

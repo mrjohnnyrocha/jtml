@@ -1,0 +1,26 @@
+jtml 2
+
+let draft = ""
+let entries = ""
+let counter = 0
+get summary = "You have {counter} entries."
+
+when addNote
+  if draft != ""
+    entries += "- " + draft + "\n"
+    counter += 1
+    draft = ""
+
+when clearAll
+  entries = ""
+  counter = 0
+  draft = ""
+
+page style "max-width: 600px; margin: 48px auto; font-family: system-ui, sans-serif"
+  h1 "Quick notes"
+  p summary
+  input placeholder "Write a note" into draft
+  box
+    button "Add" click addNote
+    button "Clear" click clearAll
+  pre style "background:#f5f5f7;padding:12px;border-radius:6px" entries

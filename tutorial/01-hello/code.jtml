@@ -1,0 +1,7 @@
+jtml 2
+
+let name = "world"
+
+page style "max-width: 600px; margin: 48px auto; font-family: system-ui, sans-serif"
+  h1 "Hello, {name}!"
+  p "This page was rendered by JTML."

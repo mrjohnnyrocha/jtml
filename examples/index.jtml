@@ -1,17 +1,13 @@
-#html
-  #head
-    define siteTitle="Jtml Example"\\
-    show "Head content here. Title: Jtml Example"\\
-  \#head
+jtml 2
+let siteTitle = "JTML Example"
+let mainColor = "blue"
 
-  #body style:"background: #fafafa", class:"rootBody"
-    show "Hello from the body"\\
-
-    #section style:"margin: 20px; padding: 10px; border: 1px solid #fafafa;"
-      define mainColor="blue"\\
-      show "Inside a section with color: bkjsachvsd"\\
-    \#section
-
-    show "End of main content."\\
-  \#body
-\#html
+html
+  head
+    title
+      show siteTitle
+  body style "background: #fafafa" class "rootBody"
+    show "Hello from the body"
+    section style "margin: 20px; padding: 10px; border: 1px solid #dadada"
+      show "Inside a section with color: " + mainColor
+    show "End of main content."

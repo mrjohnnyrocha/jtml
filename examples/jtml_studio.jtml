@@ -163,35 +163,35 @@ style
 
 page
   header
-    div class "header-top"
+    box class "header-top"
       h1 "JTML Studio"
       p class "subtitle" "Interactive playground for the Friendly JTML language."
-    div class "file-bar"
+    box class "file-bar"
       button "counter.jtml" class "file-btn" click openCounter
       button "form.jtml" class "file-btn" click openForm
       button "fetch.jtml" class "file-btn" click openFetch
       button "store.jtml" class "file-btn" click openStore
 
-  div class "toolbar"
-    div class "file-info"
+  box class "toolbar"
+    box class "file-info"
       h2 "{activeFile}"
       p class "status" "{statusLine}"
-    div class "action-bar"
+    box class "action-bar"
       button "Run" class "btn-run" click runStudio
       button "Format" class "btn-secondary" click formatSource
       button "Save" class "btn-secondary" click saveStudio
       button "Reference" class "btn-secondary" click showReference
 
-  div class "editor-panel"
-    div class "editor-header"
+  box class "editor-panel"
+    box class "editor-header"
       show "Editor"
       show "{sourceSize}"
     textarea placeholder "Write JTML here" into sourceText
-    div class "editor-footer"
+    box class "editor-footer"
       show "Live state editor"
       show "{diagnostics}"
 
-  div class "info-grid"
+  box class "info-grid"
     article
       p class "label" "Output"
       h3 "{outputTitle}"

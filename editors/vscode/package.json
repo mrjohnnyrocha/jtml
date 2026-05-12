@@ -1,0 +1,85 @@
+{
+  "name": "jtml",
+  "displayName": "JTML",
+  "description": "Language support for JTML — a tiny reactive HTML-oriented language.",
+  "version": "0.2.0",
+  "publisher": "jtml",
+  "license": "MIT",
+  "main": "./extension.js",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "activationEvents": [
+    "onLanguage:jtml",
+    "onCommand:jtml.fixDocument",
+    "onCommand:jtml.restartLanguageServer"
+  ],
+  "categories": [
+    "Programming Languages"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mrjohnnyrocha/jtml-v1"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "jtml",
+        "aliases": ["JTML", "jtml"],
+        "extensions": [".jtml"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "jtml",
+        "scopeName": "source.jtml",
+        "path": "./syntaxes/jtml.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "jtml",
+        "path": "./snippets/jtml.code-snippets"
+      }
+    ],
+    "commands": [
+      {
+        "command": "jtml.fixDocument",
+        "title": "JTML: Apply Safe Fixes"
+      },
+      {
+        "command": "jtml.restartLanguageServer",
+        "title": "JTML: Restart Language Server"
+      }
+    ],
+    "configuration": {
+      "title": "JTML",
+      "properties": {
+        "jtml.executablePath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the JTML CLI. Leave empty to use ./build/jtml from the workspace/repo or jtml from PATH."
+        },
+        "jtml.diagnostics.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run jtml check/lint for .jtml diagnostics."
+        },
+        "jtml.diagnostics.onType": {
+          "type": "boolean",
+          "default": true,
+          "description": "Refresh diagnostics while editing, using a temporary sibling file. Only used when the language server is disabled."
+        },
+        "jtml.languageServer.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use the native `jtml lsp` Language Server for diagnostics, formatting, completion, hover, definition, references, rename, code actions, signature help, and document highlights. Disable to fall back to the legacy CLI-shell path."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}

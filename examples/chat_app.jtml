@@ -1,0 +1,24 @@
+jtml 2
+let currentUser = "Alice"
+let chatMessages = []
+let newMessage = ""
+
+when postMessage msg
+  chatMessages += [{ "user": currentUser, "text": msg }]
+
+when handleInput value
+  newMessage = value
+
+when sendMessage
+  postMessage(newMessage)
+  newMessage = ""
+
+box class "chat-app"
+  box id "chat_area" class "chat-area"
+    for m in chatMessages
+      box class "chat-message"
+        show (m.user + ": " + m.text)
+  box class "chat-input"
+    input "Type your message..." id "msg_input" input handleInput
+    button id "send_btn" click sendMessage
+      show "Send"

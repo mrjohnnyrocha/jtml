@@ -1,0 +1,155 @@
+{
+  "name": "JTML",
+  "scopeName": "source.jtml",
+  "fileTypes": ["jtml"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#friendly-version" },
+    { "include": "#friendly-component-decl" },
+    { "include": "#friendly-action-decl" },
+    { "include": "#friendly-route-decl" },
+    { "include": "#friendly-extern-decl" },
+    { "include": "#element-open" },
+    { "include": "#element-close" },
+    { "include": "#statement-terminator" },
+    { "include": "#function-decl" },
+    { "include": "#object-decl" },
+    { "include": "#keywords" },
+    { "include": "#constants" },
+    { "include": "#numbers" },
+    { "include": "#operators" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.jtml",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.jtml",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "name": "constant.character.escape.jtml", "match": "\\\\." }
+          ]
+        },
+        {
+          "name": "string.quoted.single.jtml",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            { "name": "constant.character.escape.jtml", "match": "\\\\." }
+          ]
+        }
+      ]
+    },
+    "friendly-version": {
+      "match": "^\\s*(jtml)\\s+(2)\\b",
+      "captures": {
+        "1": { "name": "keyword.other.version.jtml" },
+        "2": { "name": "constant.numeric.version.jtml" }
+      }
+    },
+    "friendly-component-decl": {
+      "match": "\\b(make)\\s+([A-Z][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "storage.type.component.jtml" },
+        "2": { "name": "entity.name.type.component.jtml" }
+      }
+    },
+    "friendly-action-decl": {
+      "match": "\\b(when)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "storage.type.function.jtml" },
+        "2": { "name": "entity.name.function.jtml" }
+      }
+    },
+    "friendly-route-decl": {
+      "match": "\\b(route)\\s+(\"[^\"]*\"|'[^']*')\\s+(as)\\s+([A-Z][A-Za-z0-9_]*)(?:\\s+(layout)\\s+([A-Z][A-Za-z0-9_]*))?",
+      "captures": {
+        "1": { "name": "keyword.control.route.jtml" },
+        "2": { "name": "string.quoted.route.jtml" },
+        "3": { "name": "keyword.other.jtml" },
+        "4": { "name": "entity.name.type.component.jtml" },
+        "5": { "name": "keyword.other.layout.jtml" },
+        "6": { "name": "entity.name.type.component.jtml" }
+      }
+    },
+    "friendly-extern-decl": {
+      "match": "\\b(extern)\\s+([A-Za-z_][A-Za-z0-9_]*)(?:\\s+(from)\\s+(\"[^\"]*\"|'[^']*'))?",
+      "captures": {
+        "1": { "name": "storage.modifier.extern.jtml" },
+        "2": { "name": "entity.name.function.external.jtml" },
+        "3": { "name": "keyword.other.jtml" },
+        "4": { "name": "string.quoted.external.jtml" }
+      }
+    },
+    "element-open": {
+      "match": "\\b(element)\\s+([A-Za-z_][A-Za-z0-9_\\-]*)",
+      "captures": {
+        "1": { "name": "keyword.control.element.jtml" },
+        "2": { "name": "entity.name.tag.jtml" }
+      }
+    },
+    "element-close": {
+      "name": "punctuation.definition.tag.close.jtml",
+      "match": "(?:^|\\s)#(?:\\s|$)"
+    },
+    "statement-terminator": {
+      "name": "punctuation.terminator.statement.jtml",
+      "match": "\\\\\\\\"
+    },
+    "function-decl": {
+      "match": "\\b(function)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "storage.type.function.jtml" },
+        "2": { "name": "entity.name.function.jtml" }
+      }
+    },
+    "object-decl": {
+      "match": "\\b(object)\\s+([A-Za-z_][A-Za-z0-9_]*)(?:\\s+(derives)\\s+(from)\\s+([A-Za-z_][A-Za-z0-9_]*))?",
+      "captures": {
+        "1": { "name": "storage.type.class.jtml" },
+        "2": { "name": "entity.name.type.jtml" },
+        "3": { "name": "keyword.other.jtml" },
+        "4": { "name": "keyword.other.jtml" },
+        "5": { "name": "entity.other.inherited-class.jtml" }
+      }
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.jtml",
+          "match": "\\b(if|else|while|for|in|break|continue|try|except|then|return|throw)\\b"
+        },
+        {
+          "name": "storage.type.jtml",
+          "match": "\\b(define|const|derive|unbind|store|show|function|async|subscribe|unsubscribe|to|from|object|derives|import|main|let|get|when|make|page|route|layout|slot|fetch|use|export|effect|redirect|refresh|guard|extern|into|link|text|box|image|item|list|ordered)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "name": "constant.language.jtml",
+      "match": "\\b(true|false)\\b"
+    },
+    "numbers": {
+      "name": "constant.numeric.jtml",
+      "match": "\\b\\d+(\\.\\d+)?\\b"
+    },
+    "operators": {
+      "name": "keyword.operator.jtml",
+      "match": "(==|!=|<=|>=|&&|\\|\\||\\+=|-=|\\*=|/=|%=|\\^=|[+\\-*/%^=<>!])"
+    },
+    "identifiers": {
+      "name": "variable.other.jtml",
+      "match": "[A-Za-z_][A-Za-z0-9_]*"
+    }
+  }
+}

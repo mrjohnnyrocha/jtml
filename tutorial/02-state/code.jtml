@@ -1,0 +1,9 @@
+jtml 2
+
+let count = 0
+get doubled = count * 2
+get message = "count is {count}, doubled is {doubled}"
+
+page style "max-width: 600px; margin: 48px auto; font-family: system-ui, sans-serif"
+  h1 "Reactive values"
+  p message

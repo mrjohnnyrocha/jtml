@@ -1,0 +1,20 @@
+jtml 2
+
+let count = 0
+let last = "No changes yet."
+
+effect count
+  let last = "Count changed to {count}"
+
+when increment
+  count += 1
+
+when decrement
+  count -= 1
+
+page class "effect-demo" style "max-width: 680px; margin: 48px auto; padding: 28px; font-family: Arial, sans-serif; display: grid; gap: 14px"
+  h1 "Effects"
+  text "Count: {count}"
+  text "Last: {last}"
+  button "+ Increment" click increment
+  button "- Decrement" click decrement

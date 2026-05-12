@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC -shared  -o jtml_engine.so CMakeFiles/jtml_engine.dir/jtml_bindings.cpp.o 

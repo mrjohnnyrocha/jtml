@@ -1,0 +1,28 @@
+jtml 2
+
+let users = fetch "/api/users" timeout 2500 retry 1 stale keep
+
+style
+  .app
+    max-width: 680px
+    margin: 48px auto
+    font-family: system-ui, sans-serif
+    display: grid
+    gap: 14px
+  .card
+    border: 1px solid #d8d4c9
+    border-radius: 8px
+    padding: 14px
+    background: white
+
+page class "app"
+  h1 "Async users"
+  if users.loading
+    text "Loading users..."
+  else
+    for user in users.data
+      box class "card"
+        strong "{user.name}"
+        text "{user.email}"
+  if users.error
+    text "Could not load users: {users.error}"

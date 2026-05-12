@@ -1,0 +1,3 @@
+jtml 2
+
+let importedMessage = "Loaded from a relative friendly import"

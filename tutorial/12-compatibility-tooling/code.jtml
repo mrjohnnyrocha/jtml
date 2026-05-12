@@ -1,0 +1,14 @@
+jtml 2
+
+let syntax = "Friendly JTML 2"
+let classicUse = "Compatibility, migration, artifacts, and embedding"
+let tools = ["Run", "Lint", "Fix", "Format", "Artifacts", "Export"]
+
+page style "max-width: 680px; margin: 48px auto; font-family: system-ui, sans-serif; display: grid; gap: 14px"
+  h1 "Choose Friendly JTML 2 for new code"
+  text "Current dialect: {syntax}"
+  text "Classic is for: {classicUse}"
+  h2 "Studio workflow"
+  list
+    for tool in tools
+      item tool

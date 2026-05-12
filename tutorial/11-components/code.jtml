@@ -1,0 +1,30 @@
+jtml 2
+
+make Counter label
+  let count = 0
+
+  when add
+    count += 1
+
+  box class "card"
+    h2 label
+    text "Count: {count}"
+    button "+" click add
+
+style
+  .app
+    max-width: 680px
+    margin: 48px auto
+    font-family: system-ui, sans-serif
+    display: grid
+    gap: 14px
+  .card
+    border: 1px solid #d8d4c9
+    border-radius: 8px
+    padding: 14px
+    background: white
+
+page class "app"
+  h1 "Component isolation"
+  Counter "First counter"
+  Counter "Second counter"

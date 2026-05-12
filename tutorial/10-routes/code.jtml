@@ -1,0 +1,41 @@
+jtml 2
+
+style
+  .shell
+    max-width: 720px
+    margin: 48px auto
+    font-family: system-ui, sans-serif
+    display: grid
+    gap: 14px
+  nav
+    display: flex
+    gap: 10px
+  .active
+    font-weight: 700
+
+make Layout
+  box class "shell"
+    nav
+      link "Home" to "/" active-class "active"
+      link "Ada" to "/user/ada" active-class "active"
+      link "Grace" to "/user/grace" active-class "active"
+    slot
+
+make Home
+  section
+    h1 "Routes"
+    text "Choose a profile."
+
+make UserProfile id
+  section
+    h1 "Profile"
+    text "Selected id: {id}"
+
+make NotFound
+  section
+    h1 "Not found"
+    link "Back home" to "/"
+
+route "/" as Home layout Layout
+route "/user/:id" as UserProfile layout Layout
+route "*" as NotFound layout Layout

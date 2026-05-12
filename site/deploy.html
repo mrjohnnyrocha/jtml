@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Deploy JTML as static HTML or a live runtime.">
+    <title>Deploy JTML</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./index.html" aria-label="JTML home">
+        <span class="brand-mark" aria-hidden="true">J</span>
+        <span>JTML</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="./index.html#syntax">Syntax</a>
+        <a href="./tools.html">Tools</a>
+        <a href="./examples.html">Examples</a>
+        <a href="./reference.html">Reference</a>
+        <a href="./security.html">Security</a>
+        <a href="./deploy.html">Deploy</a>
+      </nav>
+      <a class="header-action" href="./index.html#try">Get started</a>
+    </header>
+
+    <main>
+      <section class="page-hero" aria-labelledby="deploy-title">
+        <p class="eyebrow">Deploy</p>
+        <h1 id="deploy-title">Static page, live runtime, or verified local package.</h1>
+        <p>JTML can emit plain HTML for static hosting, run a tiny server for reactive event handling, and produce a local release artifact for controlled environments.</p>
+      </section>
+
+      <section class="reference-layout">
+        <article>
+          <h2>Static</h2>
+          <pre><code>jtml transpile examples/html_syntax.jtml -o dist/index.html</code></pre>
+          <p>Host the output anywhere that serves static files.</p>
+        </article>
+        <article>
+          <h2>Live</h2>
+          <pre><code>jtml serve examples/starter_counter.jtml --port 8000 --watch</code></pre>
+          <p>The server provides HTTP, WebSocket updates, and an HTTP event fallback.</p>
+        </article>
+        <article>
+          <h2>Studio</h2>
+          <pre><code>jtml demo --port 8000</code></pre>
+          <p>Open the local authoring surface with Run, Lint, Format, Export HTML, diagnostics, versioned local Save/history, snippets, and preview.</p>
+        </article>
+        <article>
+          <h2>Install</h2>
+          <pre><code>cmake -S . -B build -DJTML_BUILD_PYTHON=OFF
+cmake --build build --target jtml_cli
+cmake --install build --prefix ~/.local</code></pre>
+          <p>Put `~/.local/bin` on your `PATH`, then run `jtml --version`.</p>
+        </article>
+        <article>
+          <h2>Package</h2>
+          <pre><code>scripts/package_cli.sh dist/release</code></pre>
+          <p>The release bundle includes docs, examples, tutorial, editor assets, website source, manifest, and checksums.</p>
+        </article>
+        <article>
+          <h2>Predeploy Verify</h2>
+          <pre><code>scripts/verify_all.sh</code></pre>
+          <p>Build tests, smoke examples, generate the static site, and produce the release archive before publication.</p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>JTML</span>
+      <span>See docs/deployment.md for the full deployment guide.</span>
+    </footer>
+  </body>
+</html>

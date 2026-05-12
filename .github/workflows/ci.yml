@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Cancel in-progress runs when a new commit lands on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.os }} / ${{ matrix.build_type }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        build_type: [Release]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------------------
+      # System dependencies
+      #
+      # Boost.System and WebSocket++ are required from the OS. httplib.h and
+      # nlohmann/json are vendored under `third_party/`, and GoogleTest is
+      # fetched at configure time.
+      # --------------------------------------------------------------
+      - name: Install deps (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libboost-system-dev libwebsocketpp-dev
+
+      - name: Install deps (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install cmake ninja boost websocketpp
+
+      # --------------------------------------------------------------
+      # Configure, build, test
+      # --------------------------------------------------------------
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DJTML_BUILD_PYTHON=OFF
+          -DJTML_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Unit tests
+        working-directory: build
+        run: ctest --output-on-failure --parallel
+
+      - name: JTML smoke tests
+        run: ./build/jtml test
+
+      - name: Predeploy site and package artifacts
+        run: |
+          scripts/build_site.sh dist/site
+          scripts/package_cli.sh dist/release
+          test -f dist/site/tools.html
+          test -f dist/release/bin/jtml
+
+      # --------------------------------------------------------------
+      # Integration: every bundled example must pass `jtml lint`.
+      # This catches regressions in the linter or parser that
+      # unit tests might miss.
+      # --------------------------------------------------------------
+      - name: Lint all bundled examples
+        run: |
+          set -e
+          fail=0
+          for f in examples/*.jtml; do
+            # The current linter intentionally does not resolve cross-file
+            # `use` / `import` dependencies, so bundled import-heavy examples
+            # are excluded from this gate until dependency tracking lands.
+            case "$f" in
+              examples/keywords.jtml|
+              examples/jtml_studio.jtml|
+              examples/friendly_import_page.jtml|
+              examples/friendly_advanced_form.jtml) continue ;;
+            esac
+            if ! ./build/jtml lint "$f"; then
+              echo "::error file=$f::lint failed"
+              fail=1
+            fi
+          done
+          exit $fail
+
+      - name: Formatter idempotence on all examples
+        run: |
+          set -e
+          for f in examples/*.jtml; do
+            ./build/jtml fmt "$f" 2>/dev/null > /tmp/pass1.jtml
+            ./build/jtml fmt /tmp/pass1.jtml 2>/dev/null > /tmp/pass2.jtml
+            if ! diff -q /tmp/pass1.jtml /tmp/pass2.jtml > /dev/null; then
+              echo "::error file=$f::formatter not idempotent"
+              diff /tmp/pass1.jtml /tmp/pass2.jtml || true
+              exit 1
+            fi
+          done

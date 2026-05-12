@@ -1,0 +1,8 @@
+jtml 2
+
+store app
+  let user = ""
+  let ready = true
+
+  when reset
+    let user = ""

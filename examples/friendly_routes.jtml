@@ -1,0 +1,38 @@
+jtml 2
+
+style
+  .route-demo
+    max-width: 720px
+    margin: 48px auto
+    padding: 28px
+    font-family: Arial, sans-serif
+    display: grid
+    gap: 16px
+
+  nav
+    display: flex
+    gap: 10px
+    flex-wrap: wrap
+
+route "/" as Home
+route "/user/:id" as UserProfile
+route "*" as NotFound
+
+make Home
+  page class "route-demo"
+    h1 "JTML routes"
+    nav
+      link "Ada" to "/user/ada"
+      link "Grace" to "/user/grace"
+    text "Choose a profile."
+
+make UserProfile id
+  page class "route-demo"
+    h1 "Profile"
+    show id
+    link "Back home" to "/"
+
+make NotFound
+  page class "route-demo"
+    h1 "Route not found"
+    link "Back home" to "/"

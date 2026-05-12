@@ -1,16 +1,14 @@
-#html
-  #head
-    define pageTitle="Dynamic Example"\\
-    show "Title: #(pageTitle)"\\
-  \#head
+jtml 2
+let pageTitle = "Dynamic Example"
+let username = "Alice"
+get welcomeMsg = ("Welcome, " + username + "!")
 
-  #body
-    define username="Alice"\\
-    derive welcomeMsg="Welcome, #(username)!"\\
-    show "#(welcomeMsg)"\\
-
-    unbind username\\
-    show "After unbinding: #(username)"\\
-  \#body
-\#html
-cd ..
+html
+  head
+    title
+      show pageTitle
+  body
+    show "Title: " + pageTitle
+    show welcomeMsg
+    // unbind username
+    show "After unbinding: " + username

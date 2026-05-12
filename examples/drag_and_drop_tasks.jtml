@@ -1,32 +1,14 @@
-define tasks = [
-    { "title": "Buy groceries", "done": false },
-    { "title": "Pay bills", "done": false },
-    { "title": "Feed cat", "done": true }
-]\\
+jtml 2
+let tasks = [{ "title": "Buy groceries", "done": false }, { "title": "Pay bills", "done": false }, { "title": "Feed cat", "done": true }]
 
-function startDrag(taskIndex)\\
-    show "Started dragging task index: " + taskIndex\\
-\\
+when markDone taskIndex
+  let tasks[taskIndex]["done"] = true
 
-function dropTask(taskIndex)\\
-    tasks[taskIndex]["done"] = true\\
-    show "Dropped - Marked done => " + tasks[taskIndex]["title"]\\
-\\
-
-element div class="tasks-container"\\
-    show "Tasks"\\
-    
-    for (i in 0..(tasks.size()-1))\\
-        show "inside for"\\
-        element div class="task-item" draggable="true" ondragstart=startDrag(i) ondrop=dropTask(i)\\
-            show "HI"\\
-        #
-
-        if (tasks[i]["done"] == true)\\
-            show "[DONE] " + tasks[i]["title"]\\
-        \\
-        else \\
-            show "[TODO] " + tasks[i]["title"]\\
-        \\           
-    \\
-#
+box class "tasks-container"
+  show "Tasks"
+  for i in 0..tasks.size() - 1
+    box class "task-item" click markDone(i)
+      if tasks[i]["done"] == true
+        show "[DONE] " + tasks[i]["title"]
+      else
+        show "[TODO] " + tasks[i]["title"]

@@ -1,13 +1,13 @@
 // jtml_bindings.cpp
 #include <pybind11/pybind11.h>
-#include "include/jtml_parser.h"       
-#include "include/jtml_interpreter.h"  
-#include "include/transpiler.h" 
+#include "jtml/parser.h"
+#include "jtml/interpreter.h"
+#include "jtml/transpiler.h"
 
 namespace py = pybind11;
 
 void interpret_string(const std::string& code) {
-    JtmlTranspiler transpiler;  
+    JtmlTranspiler transpiler;
     Interpreter interp(transpiler);
     interp.interpret(code);
 }

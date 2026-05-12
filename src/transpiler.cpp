@@ -21,7 +21,9 @@ bool isSupportedEventAttribute(const std::string& attrName) {
            attrName == "onKeyUp" ||
            attrName == "onMouseOver" ||
            attrName == "onScroll" ||
-           attrName == "onSubmit";
+           attrName == "onSubmit" ||
+           attrName == "onDragOver" ||
+           attrName == "onDrop";
 }
 
 bool eventCarriesElementValue(const std::string& attrName) {
@@ -68,7 +70,7 @@ void JtmlTranspiler::setWebSocketPort(int port) {
 std::string JtmlTranspiler::transpile(const std::vector<std::unique_ptr<ASTNode>>& program) {
     uniqueElemId = 0;
     uniqueVarId  = 0;
-    nodeID = 0; 
+    nodeID = 0;
     nodeDerivedMap.clear();
     nodeBindings.clear();
     attributeBindings.clear();
@@ -123,13 +125,13 @@ std::string JtmlTranspiler::transpileNode(const ASTNode& node, bool insideElemen
 
     case ASTNodeType::IfStatement: {
         const auto& ifNode = static_cast<const IfStatementNode&>(node);
-        return insideElement ? 
+        return insideElement ?
             transpileIfInsideElement(ifNode) :
             transpileIfTopLevel(ifNode);
     }
     case ASTNodeType::ForStatement: {
         const auto& forNode = static_cast<const ForStatementNode&>(node);
-        return insideElement ? 
+        return insideElement ?
             transpileForInsideElement(forNode) :
             transpileForTopLevel(forNode);
     }
@@ -185,7 +187,7 @@ std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
     // Transpile attributes, adding reactivity for expressions
     for (auto& attr : elem.attributes) {
         std::string valStr = attr.value->toString();
-            
+
        if (isSupportedEventAttribute(attr.key)) {
             ++uniqueVarId;
             std::string derivedVarName = "attr_" + std::to_string(uniqueVarId);
@@ -199,7 +201,7 @@ std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
             // Handle browser events that provide a useful value to JTML.
             std::ostringstream args;
             if (eventCarriesElementValue(attr.key)) {
-                args << ", event.target.value"; // Pass the input value as an argument
+                args << ", window.jtmlEventValue(event)";
             } else if (attr.key == "onScroll") {
                 args << ", String(window.scrollY)"; // Pass the scroll position as an argument
             }
@@ -212,7 +214,7 @@ std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
             // Generate the event handler. JTML uses readable names such as
             // onInput, while HTML event attributes are most reliable lower-case.
             out << " " << htmlEventName << "=\"sendEvent('" << derivedVarName << "', '" << attr.key << "', ['" << functionCall << "'" << args.str() << "])\"";
-        
+
         } else {
             std::string staticValue;
             if (staticAttributeValue(attr.value.get(), staticValue)) {
@@ -412,15 +414,13 @@ std::string JtmlTranspiler::generateScriptBlock() {
     //      server before this script tag. Applied on DOMContentLoaded so the
     //      page renders with correct initial values even if no network is
     //      available.
-    //   2. WebSocket — full reactivity. Used when the page is
-    //      loaded directly from the running interpreter (e.g. `jtml serve`).
-    //   3. HTTP fallback — `fetch('/api/event', ...)`. Used when the page is
-    //      embedded in an iframe served by `jtml tutorial` and the WebSocket
-    //      can't be reached (for example through an IDE's browser-preview
-    //      proxy which forwards HTTP but not ws://.
+    //   2. WebSocket — watch-mode reloads and future streaming updates.
+    //   3. HTTP event dispatch — `fetch('/api/event', ...)`. This is the
+    //      authoritative path for user events because it returns a complete
+    //      bindings snapshot immediately.
     //
-    // Events (`sendEvent`) try the WebSocket first and transparently fall
-    // back to HTTP. Both paths end by applying a fresh bindings snapshot.
+    // Events (`sendEvent`) use HTTP so local state, stores, component
+    // instances, and conditionals are deterministic in every browser.
     std::ostringstream out;
     out << R"(
   <script>
@@ -431,14 +431,144 @@ std::string JtmlTranspiler::generateScriptBlock() {
         document.documentElement.dataset.jtmlStatus = state;
         if (message) document.documentElement.dataset.jtmlMessage = message;
         if (state === 'error') console.error('[jtml] ' + (message || 'runtime error'));
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({
+              type: 'jtml:runtime-status',
+              state: state,
+              message: message || ''
+            }, '*');
+          }
+        } catch (_) {}
       }
 
       const clientState = {};
+      const __jtml_extern_fns = {};
+      const __jtml_media_actions = {};
+      let componentInstances = [];
+      let componentDefinitions = [];
+
+      window.jtmlEventValue = function (event) {
+        const target = event && event.target;
+        if (!target) return '';
+        const type = String(target.type || '').toLowerCase();
+        if (type === 'checkbox') return !!target.checked;
+        if (type === 'file') {
+          const files = Array.prototype.slice.call(target.files || []).map(function (file) {
+            const preview = (file && typeof URL !== 'undefined' && URL.createObjectURL)
+              ? URL.createObjectURL(file)
+              : '';
+            return {
+              name: file.name || '',
+              type: file.type || '',
+              size: file.size || 0,
+              lastModified: file.lastModified || 0,
+              preview: preview,
+              url: preview
+            };
+          });
+          if (target.multiple) return files;
+          return files[0] || null;
+        }
+        return target.value;
+      };
+
+      function parseComponentMap(value) {
+        const map = {};
+        String(value || '').split(';').forEach(function (entry) {
+          if (!entry) return;
+          const pos = entry.indexOf('=');
+          if (pos === -1) {
+            map[entry] = '';
+            return;
+          }
+          map[entry.slice(0, pos)] = entry.slice(pos + 1);
+        });
+        return map;
+      }
+
+      function scanComponentInstances() {
+        componentInstances = Array.prototype.slice.call(
+          document.querySelectorAll('[data-jtml-instance]')
+        ).map(function (el) {
+          return {
+            id: el.getAttribute('data-jtml-instance') || '',
+            component: el.getAttribute('data-jtml-component') || '',
+            instanceId: Number(el.getAttribute('data-jtml-instance-id') || 0),
+            role: el.getAttribute('data-jtml-component-role') || 'component',
+            params: parseComponentMap(el.getAttribute('data-jtml-component-params') || ''),
+            locals: parseComponentMap(el.getAttribute('data-jtml-component-locals') || ''),
+            sourceLine: Number(el.getAttribute('data-jtml-source-line') || 0),
+            element: el
+          };
+        });
+        componentDefinitions = Array.prototype.slice.call(
+          document.querySelectorAll('[data-jtml-component-def]')
+        ).map(function (el) {
+          return {
+            name: el.getAttribute('data-jtml-component-def') || '',
+            params: String(el.getAttribute('data-jtml-component-def-params') || '').split(';').filter(Boolean),
+            sourceLine: Number(el.getAttribute('data-jtml-source-line') || 0),
+            body: decodeHex(el.getAttribute('data-jtml-component-body-hex') || ''),
+            element: el
+          };
+        });
+        window.__jtml_components = componentInstances;
+        window.__jtml_component_definitions = componentDefinitions;
+        window.jtml = Object.assign(window.jtml || {}, {
+          components: componentInstances,
+          componentDefinitions: componentDefinitions,
+          getComponentInstances: function () { return componentInstances.slice(); },
+          getComponentDefinitions: function () { return componentDefinitions.slice(); },
+          findComponentInstance: function (id) {
+            return componentInstances.find(function (item) { return item.id === id; }) || null;
+          },
+          findComponentDefinition: function (name) {
+            return componentDefinitions.find(function (item) { return item.name === name; }) || null;
+          }
+        });
+        document.dispatchEvent(new CustomEvent('jtml:components-ready', {
+          detail: { components: componentInstances, componentDefinitions: componentDefinitions }
+        }));
+      }
+
+      function decodeHex(hex) {
+        hex = String(hex || '');
+        if (hex.length % 2 !== 0) return '';
+        let out = '';
+        for (let i = 0; i < hex.length; i += 2) {
+          const code = parseInt(hex.slice(i, i + 2), 16);
+          if (!Number.isFinite(code)) return '';
+          out += String.fromCharCode(code);
+        }
+        return out;
+      }
 
       function normalizeClientExpr(expr) {
         expr = String(expr || '').trim();
-        while (expr.length > 1 && expr[0] === '(' && expr[expr.length - 1] === ')') {
+        const unwrapPaths = function (value) {
+          let previous = '';
+          while (previous !== value) {
+            previous = value;
+            value = value.replace(/\(([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\)/g, '$1');
+          }
+          return value;
+        };
+        const hasWrappingParens = function (value) {
+          if (value.length < 3 || value[0] !== '(' || value[value.length - 1] !== ')') return false;
+          let depth = 0;
+          for (let i = 0; i < value.length; i += 1) {
+            const ch = value[i];
+            if (ch === '(') depth += 1;
+            else if (ch === ')') depth -= 1;
+            if (depth === 0 && i < value.length - 1) return false;
+          }
+          return depth === 0 && value.slice(1, -1).trim().length > 0;
+        };
+        expr = unwrapPaths(expr);
+        while (hasWrappingParens(expr)) {
           expr = expr.slice(1, -1).trim();
+          expr = unwrapPaths(expr);
         }
         return expr;
       }
@@ -461,6 +591,18 @@ std::string JtmlTranspiler::generateScriptBlock() {
       function evaluateClientExpression(expr) {
         expr = normalizeClientExpr(expr);
         if (!expr) return { found: false, value: undefined };
+        const plusParts = splitTopLevelOperator(expr, '+');
+        if (plusParts.length > 1) {
+          let out = '';
+          for (let i = 0; i < plusParts.length; i += 1) {
+            const part = evaluateClientExpression(plusParts[i]);
+            if (!part.found) {
+              return { found: false, value: undefined };
+            }
+            out += renderTemplateValue(part.value);
+          }
+          return { found: true, value: out };
+        }
         if (expr === 'true') return { found: true, value: true };
         if (expr === 'false') return { found: true, value: false };
         if ((expr[0] === '"' && expr[expr.length - 1] === '"') ||
@@ -470,7 +612,41 @@ std::string JtmlTranspiler::generateScriptBlock() {
         if (/^-?\d+(?:\.\d+)?$/.test(expr)) {
           return { found: true, value: Number(expr) };
         }
-        return deepGet(clientState, expr);
+        if (/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(expr)) {
+          return deepGet(clientState, expr);
+        }
+        return { found: true, value: expr };
+      }
+
+      function splitTopLevelOperator(source, op) {
+        const parts = [];
+        let current = '';
+        let quote = '';
+        let depth = 0;
+        for (let i = 0; i < source.length; i += 1) {
+          const ch = source[i];
+          if (quote) {
+            current += ch;
+            if (ch === '\\' && i + 1 < source.length) current += source[++i];
+            else if (ch === quote) quote = '';
+            continue;
+          }
+          if (ch === '"' || ch === "'") {
+            quote = ch;
+            current += ch;
+            continue;
+          }
+          if (ch === '{' || ch === '[' || ch === '(') depth += 1;
+          if (ch === '}' || ch === ']' || ch === ')') depth -= 1;
+          if (ch === op && depth === 0) {
+            parts.push(current.trim());
+            current = '';
+          } else {
+            current += ch;
+          }
+        }
+        if (parts.length) parts.push(current.trim());
+        return parts.filter(function (part) { return part.length > 0; });
       }
 
       function splitTopLevelList(source) {
@@ -525,63 +701,106 @@ std::string JtmlTranspiler::generateScriptBlock() {
       }
 
       function applyClientState() {
+        applyClientExpressions();
+
+        for (let pass = 0; pass < 5; pass += 1) {
+          let changed = false;
+
+          document.querySelectorAll('[data-jtml-cond-expr]').forEach(function (el) {
+            const result = evaluateClientExpression(el.getAttribute('data-jtml-cond-expr'));
+            if (!result.found) return;
+            const source = result.value ? el.getAttribute('data-then') || el.getAttribute('data-body') || '' : el.getAttribute('data-else') || '';
+            if (el.dataset.jtmlRendered !== source) {
+              el.innerHTML = source;
+              el.dataset.jtmlRendered = source;
+              changed = true;
+            }
+          });
+
+          document.querySelectorAll('[data-jtml-for-expr]').forEach(function (el) {
+            const result = evaluateClientExpression(el.getAttribute('data-jtml-for-expr'));
+            if (!result.found) return;
+            const iterator = el.getAttribute('data-jtml-iterator') || 'item';
+            const body = el.getAttribute('data-body') || '';
+            let values = result.value;
+            if (values == null) values = [];
+            if (!Array.isArray(values)) {
+              if (typeof values === 'string') values = values.split('');
+              else if (typeof values === 'object') values = Object.values(values);
+              else values = [values];
+            }
+            const html = values.map(function (item) { return renderLoopBody(body, iterator, item); }).join('');
+            if (el.dataset.jtmlRendered !== html) {
+              el.innerHTML = html;
+              el.dataset.jtmlRendered = html;
+              changed = true;
+            }
+          });
+
+          applyClientExpressions();
+          if (!changed) break;
+        }
+        renderCharts();
+      }
+
+      function applyClientExpressions() {
         document.querySelectorAll('[data-jtml-expr]').forEach(function (el) {
           const result = evaluateClientExpression(el.getAttribute('data-jtml-expr'));
           if (result.found) el.textContent = renderTemplateValue(result.value);
         });
-
-        document.querySelectorAll('[data-jtml-cond-expr]').forEach(function (el) {
-          const result = evaluateClientExpression(el.getAttribute('data-jtml-cond-expr'));
-          if (!result.found) return;
-          const source = result.value ? el.getAttribute('data-then') || el.getAttribute('data-body') || '' : el.getAttribute('data-else') || '';
-          if (el.dataset.jtmlRendered !== source) {
-            el.innerHTML = source;
-            el.dataset.jtmlRendered = source;
-          }
-        });
-
-        document.querySelectorAll('[data-jtml-for-expr]').forEach(function (el) {
-          const result = evaluateClientExpression(el.getAttribute('data-jtml-for-expr'));
-          if (!result.found) return;
-          const iterator = el.getAttribute('data-jtml-iterator') || 'item';
-          const body = el.getAttribute('data-body') || '';
-          let values = result.value;
-          if (values == null) values = [];
-          if (!Array.isArray(values)) {
-            if (typeof values === 'string') values = values.split('');
-            else if (typeof values === 'object') values = Object.values(values);
-            else values = [values];
-          }
-          const html = values.map(function (item) { return renderLoopBody(body, iterator, item); }).join('');
-          if (el.dataset.jtmlRendered !== html) {
-            el.innerHTML = html;
-            el.dataset.jtmlRendered = html;
-          }
-        });
       }
 
       const __jtml_refresh_fns = {};
+      const __jtml_fetch_fns = {};
+      const __jtml_invalidate_fns = {};
 
-      async function executeFetch(name, url, method, bodyExpr) {
-        clientState[name] = { loading: true, data: [], error: '' };
+      async function executeFetch(name, url, method, bodyExpr, cachePolicy, credentialsPolicy, timeoutMs, retryCount, stalePolicy) {
+        const previous = clientState[name] || { data: [] };
+        const keepStale = stalePolicy === 'keep';
+        clientState[name] = { loading: true, data: keepStale ? previous.data : [], error: '', stale: keepStale };
         applyClientState();
-        try {
+        let lastError = null;
+        const maxRetries = Math.max(0, Number(retryCount || 0) || 0);
+        for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
           const options = { method: method };
-          if (bodyExpr) {
-            const body = evaluateClientBodyExpression(bodyExpr);
-            options.headers = Object.assign({ 'content-type': 'application/json' }, options.headers || {});
-            options.body = JSON.stringify(body.found ? body.value : bodyExpr);
+          let controller = null;
+          let timeoutId = null;
+          try {
+            if (cachePolicy) options.cache = cachePolicy;
+            if (credentialsPolicy) options.credentials = credentialsPolicy;
+            if (timeoutMs) {
+              controller = new AbortController();
+              options.signal = controller.signal;
+              timeoutId = setTimeout(function () { controller.abort(); }, Math.max(1, Number(timeoutMs) || 1));
+            }
+            if (bodyExpr) {
+              const body = evaluateClientBodyExpression(bodyExpr);
+              options.headers = Object.assign({ 'content-type': 'application/json' }, options.headers || {});
+              options.body = JSON.stringify(body.found ? body.value : bodyExpr);
+            }
+            const response = await fetch(url, options);
+            if (timeoutId) clearTimeout(timeoutId);
+            const type = response.headers.get('content-type') || '';
+            const payload = type.indexOf('application/json') !== -1 ? await response.json() : await response.text();
+            if (!response.ok) throw new Error(response.status + ' ' + response.statusText);
+            clientState[name] = { loading: false, data: payload, error: '', stale: false, attempts: attempt + 1 };
+            lastError = null;
+            break;
+          } catch (err) {
+            if (timeoutId) clearTimeout(timeoutId);
+            lastError = err;
+            if (attempt < maxRetries) continue;
           }
-          const response = await fetch(url, options);
-          const type = response.headers.get('content-type') || '';
-          const payload = type.indexOf('application/json') !== -1 ? await response.json() : await response.text();
-          if (!response.ok) throw new Error(response.status + ' ' + response.statusText);
-          clientState[name] = { loading: false, data: payload, error: '' };
-        } catch (err) {
+        }
+        if (lastError) {
           clientState[name] = {
             loading: false,
-            data: [],
-            error: err && err.message ? err.message : String(err)
+            data: keepStale ? previous.data : [],
+            error: lastError && lastError.name === 'AbortError'
+              ? 'Fetch timed out'
+              : (lastError && lastError.message ? lastError.message : String(lastError)),
+            stale: keepStale,
+            attempts: maxRetries + 1
           };
         }
         applyClientState();
@@ -594,13 +813,22 @@ std::string JtmlTranspiler::generateScriptBlock() {
           const method = marker.getAttribute('data-method') || 'GET';
           const bodyExpr = marker.getAttribute('data-body-expr') || '';
           const refreshAction = marker.getAttribute('data-refresh-action') || '';
+          const cachePolicy = marker.getAttribute('data-cache') || '';
+          const credentialsPolicy = marker.getAttribute('data-credentials') || '';
+          const timeoutMs = marker.getAttribute('data-timeout-ms') || '';
+          const retryCount = marker.getAttribute('data-retry') || '';
+          const stalePolicy = marker.getAttribute('data-stale') || 'clear';
+          const lazy = marker.getAttribute('data-lazy') === 'true';
           if (!name || !url) return;
+          __jtml_fetch_fns[name] = function () {
+            return executeFetch(name, url, method, bodyExpr, cachePolicy, credentialsPolicy, timeoutMs, retryCount, stalePolicy);
+          };
           if (refreshAction) {
             __jtml_refresh_fns[refreshAction] = function () {
-              return executeFetch(name, url, method, bodyExpr);
+              return __jtml_fetch_fns[name]();
             };
           }
-          executeFetch(name, url, method, bodyExpr);
+          if (!lazy) __jtml_fetch_fns[name]();
         });
       }
 
@@ -612,6 +840,11 @@ std::string JtmlTranspiler::generateScriptBlock() {
 
       function applyBindings(b) {
         if (!b) return;
+        if (b.state) {
+          for (const name in b.state) {
+            clientState[name] = b.state[name];
+          }
+        }
         applyTemplates(b);
         if (b.content) {
           for (const id in b.content) {
@@ -628,6 +861,8 @@ std::string JtmlTranspiler::generateScriptBlock() {
             }
           }
         }
+        applyClientExpressions();
+        renderCharts();
         applyRoutes();
       }
 
@@ -642,6 +877,68 @@ std::string JtmlTranspiler::generateScriptBlock() {
         if (value == null) return '';
         if (typeof value === 'object') return JSON.stringify(value);
         return String(value);
+      }
+
+      function escapeSvgText(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function normalizeChartRows(value) {
+        if (value && typeof value === 'object' && Array.isArray(value.data)) {
+          value = value.data;
+        }
+        if (Array.isArray(value)) return value;
+        if (value && typeof value === 'object') return Object.values(value);
+        return [];
+      }
+
+      function renderCharts() {
+        document.querySelectorAll('svg[data-jtml-chart]').forEach(function (svg) {
+          const type = svg.getAttribute('data-jtml-chart') || 'bar';
+          if (type !== 'bar') return;
+          const dataExpr = svg.getAttribute('data-jtml-chart-data') || '';
+          const byField = svg.getAttribute('data-jtml-chart-by') || 'label';
+          const valueField = svg.getAttribute('data-jtml-chart-value') || 'value';
+          const data = evaluateClientExpression(dataExpr);
+          if (!data.found) return;
+          const rows = normalizeChartRows(data.value);
+          const width = Math.max(160, Number(svg.getAttribute('width') || 640) || 640);
+          const height = Math.max(120, Number(svg.getAttribute('height') || 320) || 320);
+          const pad = { left: 44, right: 18, top: 20, bottom: 44 };
+          const innerW = Math.max(1, width - pad.left - pad.right);
+          const innerH = Math.max(1, height - pad.top - pad.bottom);
+          const values = rows.map(function (row) {
+            return Math.max(0, Number(row && row[valueField]) || 0);
+          });
+          const maxValue = Math.max(1, Math.max.apply(null, values.length ? values : [1]));
+          const gap = rows.length > 1 ? 8 : 0;
+          const barW = rows.length ? Math.max(2, (innerW - gap * (rows.length - 1)) / rows.length) : innerW;
+          const color = svg.getAttribute('data-jtml-chart-color') || '#0f766e';
+          let html = '';
+          html += '<line x1="' + pad.left + '" y1="' + (height - pad.bottom) + '" x2="' + (width - pad.right) + '" y2="' + (height - pad.bottom) + '" stroke="#94a3b8" stroke-width="1"/>';
+          html += '<line x1="' + pad.left + '" y1="' + pad.top + '" x2="' + pad.left + '" y2="' + (height - pad.bottom) + '" stroke="#94a3b8" stroke-width="1"/>';
+          if (!rows.length) {
+            html += '<text x="' + (width / 2) + '" y="' + (height / 2) + '" text-anchor="middle" fill="#64748b" font-size="14">No chart data</text>';
+          }
+          rows.forEach(function (row, index) {
+            const value = values[index];
+            const barH = Math.round((value / maxValue) * innerH);
+            const x = pad.left + index * (barW + gap);
+            const y = height - pad.bottom - barH;
+            const label = row && row[byField] != null ? row[byField] : String(index + 1);
+            html += '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + barH.toFixed(2) + '" fill="' + escapeSvgText(color) + '" rx="3"/>';
+            html += '<text x="' + (x + barW / 2).toFixed(2) + '" y="' + (height - 18) + '" text-anchor="middle" fill="#334155" font-size="12">' + escapeSvgText(label) + '</text>';
+            html += '<text x="' + (x + barW / 2).toFixed(2) + '" y="' + Math.max(14, y - 6).toFixed(2) + '" text-anchor="middle" fill="#334155" font-size="12">' + escapeSvgText(value) + '</text>';
+          });
+          if (svg.dataset.jtmlChartRendered !== html) {
+            svg.innerHTML = html;
+            svg.dataset.jtmlChartRendered = html;
+          }
+        });
       }
 
       function lookupTemplatePath(scope, path) {
@@ -713,11 +1010,310 @@ std::string JtmlTranspiler::generateScriptBlock() {
         });
       }
 
+      function startInvalidationBindings() {
+        document.querySelectorAll('[data-jtml-invalidate-action]').forEach(function (meta) {
+          const actionName = meta.getAttribute('data-jtml-invalidate-action');
+          const fetches = String(meta.getAttribute('data-jtml-invalidate-fetches') || '')
+            .split(',')
+            .map(function (name) { return name.trim(); })
+            .filter(Boolean);
+          if (actionName && fetches.length) __jtml_invalidate_fns[actionName] = fetches;
+        });
+      }
+
+      async function runInvalidations(actionName) {
+        const fetches = __jtml_invalidate_fns[actionName] || [];
+        for (const name of fetches) {
+          if (__jtml_fetch_fns[name]) await __jtml_fetch_fns[name]();
+        }
+      }
+
+      function runRouteLoads(route) {
+        const fetches = String(route.getAttribute('data-jtml-route-load') || '')
+          .split(',')
+          .map(function (name) { return name.trim(); })
+          .filter(Boolean);
+        fetches.forEach(function (name) {
+          if (__jtml_fetch_fns[name]) __jtml_fetch_fns[name]();
+        });
+      }
+
+      function getWindowPath(path) {
+        return String(path || '').split('.').filter(Boolean).reduce(function (value, part) {
+          return value == null ? undefined : value[part];
+        }, window);
+      }
+
+      function parseActionCall(callSource) {
+        const raw = String(callSource || '').trim();
+        const match = raw.match(/^([A-Za-z_][A-Za-z0-9_.]*)(?:\((.*)\))?$/);
+        if (!match) return { name: raw.replace(/\(.*$/, ''), args: [] };
+        const args = [];
+        const inner = (match[2] || '').trim();
+        if (inner) {
+          splitTopLevelList(inner).forEach(function (part) {
+            const value = evaluateClientBodyExpression(part);
+            args.push(value.found ? value.value : part.replace(/^['"]|['"]$/g, ''));
+          });
+        }
+        return { name: match[1], args: args };
+      }
+
+      function startExternBindings() {
+        document.querySelectorAll('[data-jtml-extern-action]').forEach(function (meta) {
+          const action = meta.getAttribute('data-jtml-extern-action');
+          const target = meta.getAttribute('data-window') || action;
+          if (!action) return;
+          __jtml_extern_fns[action] = function (args) {
+            const fn = getWindowPath(target);
+            if (typeof fn !== 'function') {
+              reportStatus('error', 'External host function not found: ' + target);
+              return;
+            }
+            return fn.apply(window, args || []);
+          };
+        });
+      }
+
+      // Intercept clicks on Friendly route links (`link "Label" to "/path"` →
+      // an inert anchor carrying `data-jtml-href="#/path"`.
+      // Older output used plain hash links, which could resolve against the
+      // parent Studio URL inside `srcdoc` previews if the default navigation
+      // ran before the router. Setting `location.hash` here mutates the
+      // iframe's own Location and keeps the preview on the rendered JTML app.
+      function startLinkBindings() {
+        document.addEventListener('click', function (event) {
+          if (event.defaultPrevented) return;
+          if (event.button !== 0) return;
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+          const anchor = event.target && event.target.closest && event.target.closest('a[data-jtml-link]');
+          if (!anchor) return;
+          if (anchor.target && anchor.target !== '' && anchor.target !== '_self') return;
+          const href = anchor.getAttribute('data-jtml-href') || anchor.getAttribute('href') || '';
+          if (!href || href[0] !== '#') return;
+          event.preventDefault();
+          const next = href.length > 1 ? href : '#/';
+          if (location.hash === next) {
+            // Same-hash click still has to re-run route bindings so users
+            // can re-trigger active-link feedback or load handlers.
+            applyRoutes();
+          } else {
+            location.hash = next;
+          }
+        });
+      }
+
+      function startDropzoneBindings() {
+        document.querySelectorAll('input[type="file"][data-jtml-dropzone]').forEach(function (input) {
+          if (input.dataset.jtmlDropzoneReady === 'true') return;
+          input.dataset.jtmlDropzoneReady = 'true';
+          input.addEventListener('dragover', function (event) {
+            event.preventDefault();
+            input.dataset.jtmlDrag = 'over';
+          });
+          input.addEventListener('dragleave', function () {
+            delete input.dataset.jtmlDrag;
+          });
+          input.addEventListener('drop', function (event) {
+            event.preventDefault();
+            delete input.dataset.jtmlDrag;
+            const files = event.dataTransfer && event.dataTransfer.files;
+            if (!files || !files.length) return;
+            try {
+              input.files = files;
+            } catch (_) {}
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          });
+        });
+      }
+
+      function mediaStateFor(el) {
+        return {
+          currentTime: Number.isFinite(el.currentTime) ? el.currentTime : 0,
+          duration: Number.isFinite(el.duration) ? el.duration : 0,
+          paused: !!el.paused,
+          ended: !!el.ended,
+          muted: !!el.muted,
+          volume: Number.isFinite(el.volume) ? el.volume : 1,
+          playbackRate: Number.isFinite(el.playbackRate) ? el.playbackRate : 1,
+          readyState: Number(el.readyState || 0),
+          src: el.currentSrc || el.getAttribute('src') || ''
+        };
+      }
+
+      function startMediaControllerBindings() {
+        document.querySelectorAll('video[data-jtml-media-controller], audio[data-jtml-media-controller]').forEach(function (el) {
+          const name = el.getAttribute('data-jtml-media-controller');
+          if (!name) return;
+          const update = function () {
+            clientState[name] = mediaStateFor(el);
+            applyClientState();
+          };
+          if (el.dataset.jtmlMediaReady !== 'true') {
+            el.dataset.jtmlMediaReady = 'true';
+            ['loadedmetadata', 'durationchange', 'timeupdate', 'play', 'pause', 'ended', 'volumechange', 'ratechange', 'emptied'].forEach(function (eventName) {
+              el.addEventListener(eventName, update);
+            });
+          }
+          __jtml_media_actions[name + '.play'] = function () {
+            const result = el.play && el.play();
+            if (result && typeof result.catch === 'function') {
+              result.catch(function (err) { reportStatus('error', err && err.message ? err.message : 'media play failed'); });
+            }
+            update();
+          };
+          __jtml_media_actions[name + '.pause'] = function () {
+            if (el.pause) el.pause();
+            update();
+          };
+          __jtml_media_actions[name + '.toggle'] = function () {
+            if (el.paused) __jtml_media_actions[name + '.play']();
+            else __jtml_media_actions[name + '.pause']();
+          };
+          __jtml_media_actions[name + '.seek'] = function (args) {
+            const value = Number(args && args.length ? args[0] : 0);
+            if (Number.isFinite(value)) el.currentTime = value;
+            update();
+          };
+          __jtml_media_actions[name + '.setVolume'] = function (args) {
+            const value = Number(args && args.length ? args[0] : el.volume);
+            if (Number.isFinite(value)) el.volume = Math.max(0, Math.min(1, value));
+            update();
+          };
+          update();
+        });
+      }
+
+      function drawScene3DFallback(canvas, spec) {
+        const ctx = canvas.getContext && canvas.getContext('2d');
+        if (!ctx) return;
+        const width = Math.max(240, Number(canvas.getAttribute('width') || canvas.clientWidth || 640) || 640);
+        const height = Math.max(160, Number(canvas.getAttribute('height') || canvas.clientHeight || 360) || 360);
+        canvas.width = width;
+        canvas.height = height;
+        ctx.clearRect(0, 0, width, height);
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, '#0f172a');
+        gradient.addColorStop(1, '#134e4a');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+        const size = Math.min(width, height) * 0.28;
+        const cx = width / 2;
+        const cy = height / 2;
+        const dx = size * 0.42;
+        const dy = -size * 0.32;
+        const front = [
+          [cx - size / 2, cy - size / 2],
+          [cx + size / 2, cy - size / 2],
+          [cx + size / 2, cy + size / 2],
+          [cx - size / 2, cy + size / 2]
+        ];
+        const back = front.map(function (p) { return [p[0] + dx, p[1] + dy]; });
+        ctx.strokeStyle = '#7dd3fc';
+        ctx.lineWidth = 2;
+        const line = function (a, b) {
+          ctx.beginPath();
+          ctx.moveTo(a[0], a[1]);
+          ctx.lineTo(b[0], b[1]);
+          ctx.stroke();
+        };
+        for (let i = 0; i < 4; i += 1) {
+          line(front[i], front[(i + 1) % 4]);
+          line(back[i], back[(i + 1) % 4]);
+          line(front[i], back[i]);
+        }
+        ctx.fillStyle = 'rgba(255,255,255,.92)';
+        ctx.font = '600 14px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(spec.scene ? '3D scene: ' + spec.scene : 'JTML 3D scene mount', cx, height - 42);
+        ctx.font = '12px system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(226,232,240,.82)';
+        ctx.fillText('Attach window.jtml3d.render(canvas, spec) for Three.js/WebGPU rendering', cx, height - 22);
+      }
+
+      function scene3DStateFor(canvas, spec, hostRendered, status, extra) {
+        return Object.assign({
+          scene: spec.scene || '',
+          camera: spec.camera || 'orbit',
+          controls: spec.controls || 'orbit',
+          renderer: spec.renderer || 'auto',
+          status: status || 'ready',
+          hostRendered: !!hostRendered,
+          width: Number(canvas.width || canvas.getAttribute('width') || canvas.clientWidth || 0),
+          height: Number(canvas.height || canvas.getAttribute('height') || canvas.clientHeight || 0)
+        }, extra && typeof extra === 'object' ? extra : {});
+      }
+
+      function startScene3DBindings() {
+        document.querySelectorAll('canvas[data-jtml-scene3d]').forEach(function (canvas) {
+          const controllerName = canvas.getAttribute('data-jtml-scene3d-controller') || '';
+          const spec = {
+            scene: canvas.getAttribute('data-jtml-scene') || '',
+            camera: canvas.getAttribute('data-jtml-camera') || 'orbit',
+            controls: canvas.getAttribute('data-jtml-controls') || 'orbit',
+            renderer: canvas.getAttribute('data-jtml-renderer') || 'auto',
+            controller: controllerName,
+            state: clientState
+          };
+          const publish = function (extra, status, hostRendered) {
+            if (!controllerName) return;
+            clientState[controllerName] = scene3DStateFor(canvas, spec, hostRendered, status, extra);
+            applyClientState();
+          };
+          spec.update = function (next) {
+            publish(next, 'host-updated', true);
+          };
+          window.jtml = Object.assign(window.jtml || {}, {
+            getScene3DSpec: function (el) {
+              el = el || canvas;
+              return {
+                scene: el.getAttribute('data-jtml-scene') || '',
+                camera: el.getAttribute('data-jtml-camera') || 'orbit',
+                controls: el.getAttribute('data-jtml-controls') || 'orbit',
+                renderer: el.getAttribute('data-jtml-renderer') || 'auto',
+                controller: el.getAttribute('data-jtml-scene3d-controller') || '',
+                state: clientState
+              };
+            }
+          });
+          const host = window.jtml3d && typeof window.jtml3d.render === 'function'
+            ? window.jtml3d
+            : null;
+          if (host) {
+            try {
+              const hostResult = host.render(canvas, spec);
+              canvas.dataset.jtmlScene3dStatus = 'host-rendered';
+              publish(hostResult, 'host-rendered', true);
+            } catch (err) {
+              canvas.dataset.jtmlScene3dStatus = 'fallback';
+              drawScene3DFallback(canvas, spec);
+              publish({ error: err && err.message ? err.message : '3D renderer failed' }, 'fallback', false);
+              reportStatus('error', err && err.message ? err.message : '3D renderer failed');
+            }
+          } else {
+            canvas.dataset.jtmlScene3dStatus = 'fallback';
+            drawScene3DFallback(canvas, spec);
+            publish({}, 'fallback', false);
+          }
+          document.dispatchEvent(new CustomEvent('jtml:scene3d-ready', {
+            detail: { canvas: canvas, spec: spec, controller: controllerName, hostRendered: !!host }
+          }));
+        });
+      }
+
       function applyInitial() {
         if (window.__jtml_bindings) applyBindings(window.__jtml_bindings);
-        applyRoutes();
+        scanComponentInstances();
         startFetchBindings();
+        startInvalidationBindings();
+        startExternBindings();
         startRedirectBindings();
+        startGuardBindings();
+        startLinkBindings();
+        startDropzoneBindings();
+        startMediaControllerBindings();
+        startScene3DBindings();
+        applyRoutes();
       }
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', applyInitial);
@@ -756,16 +1352,19 @@ std::string JtmlTranspiler::generateScriptBlock() {
       window.sendEvent = async function (elementId, eventType, args) {
         args = args || [];
         // Client-side intercept for refresh actions and redirect.
-        const fnName = args[0] ? String(args[0]).replace(/\(.*$/, '') : '';
+        const action = parseActionCall(args[0] || '');
+        const fnName = action.name;
         if (fnName && __jtml_refresh_fns[fnName]) {
           await __jtml_refresh_fns[fnName]();
           return;
         }
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          try {
-            ws.send(JSON.stringify({ type: 'event', elementId: elementId, eventType: eventType, args: args }));
-            return;
-          } catch (_) { /* fall through */ }
+        if (fnName && __jtml_extern_fns[fnName]) {
+          await __jtml_extern_fns[fnName](action.args.concat(args.slice(1)));
+          return;
+        }
+        if (fnName && __jtml_media_actions[fnName]) {
+          await __jtml_media_actions[fnName](action.args.concat(args.slice(1)));
+          return;
         }
         try {
           const res = await fetch('/api/event', {
@@ -776,6 +1375,7 @@ std::string JtmlTranspiler::generateScriptBlock() {
           const data = await res.json();
           if (data && data.bindings) applyBindings(data.bindings);
           if (data && data.error) reportStatus('error', data.error);
+          if (fnName) await runInvalidations(fnName);
         } catch (err) {
           reportStatus('error', err && err.message ? err.message : 'event dispatch failed');
           console.error('[jtml] event dispatch failed:', err);
@@ -807,10 +1407,49 @@ std::string JtmlTranspiler::generateScriptBlock() {
         return params;
       }
 
+      function applyActiveLinkClasses(path) {
+        document.querySelectorAll('[data-jtml-active-class]').forEach(function (el) {
+          const cls = el.getAttribute('data-jtml-active-class');
+          const href = el.getAttribute('data-jtml-href') || el.getAttribute('href') || '';
+          const linkPath = normalizeRoute(href[0] === '#' ? href.slice(1) : href);
+          if (cls) {
+            if (linkPath === path) el.classList.add(cls);
+            else el.classList.remove(cls);
+          }
+        });
+      }
+
+      const __jtml_guards = [];
+
+      function startGuardBindings() {
+        document.querySelectorAll('[data-jtml-route-guard]').forEach(function (meta) {
+          const routePath = normalizeRoute(meta.getAttribute('data-jtml-route-guard') || '');
+          const guardVar = meta.getAttribute('data-jtml-guard-var') || '';
+          const redirectTo = meta.getAttribute('data-jtml-guard-redirect') || '';
+          if (routePath && guardVar) {
+            __jtml_guards.push({ path: routePath, var: guardVar, redirect: redirectTo });
+          }
+        });
+      }
+
+      function checkGuards(path) {
+        for (var i = 0; i < __jtml_guards.length; i++) {
+          var g = __jtml_guards[i];
+          if (matchRouteParams(g.path, path) !== null && !clientState[g.var]) {
+            if (g.redirect) window.__jtml_redirect(g.redirect);
+            return false;
+          }
+        }
+        return true;
+      }
+
       function applyRoutes() {
         const routes = document.querySelectorAll('[data-jtml-route]');
         if (!routes.length) return;
         const path = normalizeRoute(location.hash || '/');
+        clientState['activeRoute'] = path;
+        applyActiveLinkClasses(path);
+        if (!checkGuards(path)) return;
         let matched = false;
         routes.forEach(function (route) {
           const params = !matched ? matchRouteParams(route.getAttribute('data-jtml-route'), path) : null;
@@ -823,6 +1462,7 @@ std::string JtmlTranspiler::generateScriptBlock() {
               clientState[name] = Object.prototype.hasOwnProperty.call(params, name) ? params[name] : '';
             });
             matched = true;
+            runRouteLoads(route);
             applyClientState();
           }
         });

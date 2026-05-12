@@ -1,9 +1,6 @@
-define tasks = [
-    { "title": "Buy groceries", "done": false },
-    { "title": "Pay bills", "done": false },
-    { "title": "Feed cat", "done": true }
-]\\
-show tasks.pop()\\
-tasks.push(1)\\
-show tasks.size()\\
-show tasks\\
+jtml 2
+let tasks = [{ "title": "Buy groceries", "done": false }, { "title": "Pay bills", "done": false }, { "title": "Feed cat", "done": true }]
+show tasks.pop()
+tasks.push(1)
+show tasks.size()
+show tasks

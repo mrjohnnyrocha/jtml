@@ -1,0 +1,46 @@
+jtml 2
+
+// Route guards + active-class demo
+// guard "/path" require varName else "/fallback"  blocks navigation when varName is falsy
+// link ... active-class "cls"  adds the class when the link path matches the current route
+
+let token = ""
+let loginEmail = ""
+
+guard "/dashboard" require token else "/login"
+
+when setToken
+  let token = loginEmail
+
+when logout
+  let token = ""
+
+make NavBar
+  nav
+    link "Home" to "/" active-class "active"
+    link "Dashboard" to "/dashboard" active-class "active"
+    link "Login" to "/login" active-class "active"
+
+make Home
+  page
+    NavBar
+    h1 "Home"
+    p "Welcome to the home page."
+
+make Dashboard
+  page
+    NavBar
+    h1 "Dashboard"
+    p "Protected content — only visible when logged in."
+    button "Logout" click logout
+
+make Login
+  page
+    NavBar
+    h1 "Login"
+    input "Email" into loginEmail
+    button "Sign in" click setToken
+
+route "/" as Home
+route "/dashboard" as Dashboard
+route "/login" as Login

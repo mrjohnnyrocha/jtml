@@ -1,32 +1,21 @@
-define user = { "name": "Alice", "hoverCount": 0 }\\
-define userInput = ""\\
+jtml 2
+let user = { "name": "Alice", "hoverCount": 0 }
+let userInput = ""
 
-function setUserName(newName)\\
-    user["name"] = newName\\
-\\
+when setUserName newName
+  let user["name"] = newName
 
-function applyName()\\
-    user["name"] = "j"\\
-\\
+when applyName
+  let user["name"] = "j"
 
-function incrementHover()\\
-    user["hoverCount"] = user["hoverCount"] + 1\\
-\\
+when incrementHover
+  let user["hoverCount"] = user["hoverCount"] + 1
+get userClicksSquare = user["hoverCount"] * 2
 
-derive userClicksSquare = user["hoverCount"]*2\\
-
-element div class="app-container"\\
-    show "Current user: " + user["name"]\\
-
-    element input id="nameInput" placeholder="Enter new name" onInput=setUserName()\\
-        
-    #
-
-    element button id="applyBtn" onClick=applyName()\\
-        show "Apply Name"\\
-    #
-
-    element div class="hover-area" id="hoverDiv" onMouseOver=incrementHover()\\
-        show "Hover over me! Hover count: " + user["hoverCount"] + " and square of it: " + userClicksSquare\\
-    #
-#
+box class "app-container"
+  show "Current user: " + user["name"]
+  input "Enter new name" id "nameInput" input setUserName
+  button id "applyBtn" click applyName
+    show "Apply Name"
+  box class "hover-area" id "hoverDiv" hover incrementHover
+    show (("Hover over me! Hover count: " + user["hoverCount"] + " and square of it: ") + userClicksSquare)

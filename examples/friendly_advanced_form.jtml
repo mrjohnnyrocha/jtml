@@ -1,0 +1,56 @@
+jtml 2
+
+// Advanced Form Demo using element dictionary aliases
+use "./imported_keywords.jtml"
+
+let username = ""
+let email = ""
+let password = ""
+let bio = ""
+let agreed = false
+let role = ""
+let message = "Fill in the form below."
+
+when handleSubmit
+  let message = "Form submitted by {username} ({email}) as {role}"
+
+when resetForm
+  let username = ""
+  let email = ""
+  let password = ""
+  let bio = ""
+  let agreed = false
+  let role = ""
+  let message = "Form has been reset."
+
+page class "advanced-form" style "max-width: 640px; margin: 48px auto; padding: 28px; font-family: Arial, sans-serif; display: grid; gap: 20px"
+  h1 "Advanced Form"
+  text "This form demonstrates input, textarea, checkbox, select, and form submit."
+
+  show message
+
+  form submit handleSubmit style "display: grid; gap: 14px"
+    input "Username" into username required
+    input "Email" into email required type "email"
+    input "Password" into password type "password"
+    textarea "Tell us about yourself..." into bio rows "4"
+
+    select into role
+      option "Choose a role..." value ""
+      option "Administrator" value "admin"
+      option "Editor" value "editor"
+      option "Viewer" value "viewer"
+
+    checkbox "I agree to the terms" into agreed
+
+    box style "display: flex; gap: 8px"
+      button "Submit" type "submit"
+      button "Reset" click resetForm type "button"
+
+  section style "padding: 16px; background: #f7f7f7; border-radius: 8px; display: grid; gap: 8px"
+    h3 "Live Preview"
+    show "Username: {username}"
+    show "Email: {email}"
+    show "Bio: {bio}"
+    show "Role: {role}"
+    show "Agreed: {agreed}"

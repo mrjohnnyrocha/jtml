@@ -1,0 +1,17 @@
+jtml 2
+
+make Counter label
+  let count = 0
+
+  when add
+    count += 1
+
+  box class "counter-card" style "border: 1px solid #d8d4c9; border-radius: 8px; padding: 14px; display: grid; gap: 10px"
+    h2 label
+    show count
+    button "+" click add
+
+page class "component-isolation-demo" style "max-width: 760px; margin: 48px auto; padding: 28px; font-family: Arial, sans-serif; display: grid; gap: 14px"
+  h1 "Isolated component state"
+  Counter "First counter"
+  Counter "Second counter"

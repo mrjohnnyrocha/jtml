@@ -1,0 +1,24 @@
+jtml 2
+
+use Card from "./modules/card.jtml"
+
+style
+  .app
+    max-width: 720px
+    margin: 48px auto
+    padding: 28px
+    font-family: system-ui, sans-serif
+    display: grid
+    gap: 16px
+  .card
+    border: 1px solid #3b6497
+    border-radius: 8px
+    padding: 18px
+    background: blue
+  .card h2
+    margin: 0 0 8px
+
+page class "app"
+  h1 "Imported component"
+  Card "Reusable module"
+    text "This Card component lives in examples/modules/card.jtml."

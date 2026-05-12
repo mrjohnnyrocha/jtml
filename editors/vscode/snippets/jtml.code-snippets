@@ -1,0 +1,168 @@
+{
+  "Friendly app": {
+    "prefix": "jtml2",
+    "body": [
+      "jtml 2",
+      "",
+      "let ${1:count} = ${2:0}",
+      "",
+      "when ${3:add}",
+      "  ${1:count} += 1",
+      "",
+      "page",
+      "  h1 \"${4:JTML app}\"",
+      "  button \"${5:Add}\" click ${3:add}"
+    ],
+    "description": "Start a canonical Friendly JTML app."
+  },
+  "Friendly component": {
+    "prefix": "make",
+    "body": [
+      "make ${1:Card} ${2:title}",
+      "  box class \"${3:card}\"",
+      "    h2 ${2:title}",
+      "    slot"
+    ],
+    "description": "Declare a Friendly component with a slot."
+  },
+  "Exported component": {
+    "prefix": "exportmake",
+    "body": [
+      "export make ${1:Card} ${2:title}",
+      "  box class \"${3:card}\"",
+      "    h2 ${2:title}",
+      "    slot"
+    ],
+    "description": "Declare a public component from a Friendly module."
+  },
+  "Friendly action": {
+    "prefix": "when",
+    "body": [
+      "when ${1:save}",
+      "  let ${2:message} = \"${3:Saved}\""
+    ],
+    "description": "Declare a Friendly action."
+  },
+  "Fetch state": {
+    "prefix": "fetch",
+    "body": [
+      "let ${1:items} = fetch \"${2:/api/items}\" refresh ${3:reloadItems}",
+      "",
+      "page",
+      "  button \"Reload\" click ${3:reloadItems}",
+      "  if ${1:items}.loading",
+      "    text \"Loading...\"",
+      "  else",
+      "    for ${4:item} in ${1:items}.data",
+      "      text \"{${4:item}.${5:name}}\"",
+      "  if ${1:items}.error",
+      "    text \"Could not load data: {${1:items}.error}\""
+    ],
+    "description": "Create a fetch-backed reactive value with loading and error states."
+  },
+  "POST fetch": {
+    "prefix": "fetchpost",
+    "body": [
+      "let ${1:email} = \"\"",
+      "let ${2:login} = fetch \"${3:/api/login}\" method \"POST\" body { email: ${1:email} } cache \"no-store\" credentials \"include\"",
+      "",
+      "page",
+      "  input \"Email\" into ${1:email}",
+      "  if ${2:login}.loading",
+      "    text \"Signing in...\""
+    ],
+    "description": "Create a production-oriented POST fetch with JSON body options."
+  },
+  "Route": {
+    "prefix": "route",
+    "body": [
+      "route \"${1:/}\" as ${2:Home}",
+      "",
+      "make ${2:Home}",
+      "  page",
+      "    h1 \"${3:Home}\""
+    ],
+    "description": "Declare a route and matching component."
+  },
+  "Route layout": {
+    "prefix": "routelayout",
+    "body": [
+      "make ${1:AppLayout}",
+      "  box class \"layout\"",
+      "    nav",
+      "      link \"Home\" to \"/\" active-class \"active\"",
+      "    slot",
+      "",
+      "route \"${2:/}\" as ${3:Home} layout ${1:AppLayout}"
+    ],
+    "description": "Declare a shared route layout with active navigation."
+  },
+  "Store": {
+    "prefix": "store",
+    "body": [
+      "store ${1:auth}",
+      "  let ${2:user}: string = \"\"",
+      "",
+      "  when ${3:logout}",
+      "    let ${2:user} = \"\"",
+      "",
+      "page",
+      "  show ${1}.${2:user}",
+      "  button \"Logout\" click ${1}.${3:logout}"
+    ],
+    "description": "Declare shared Friendly store state and an action."
+  },
+  "Effect": {
+    "prefix": "effect",
+    "body": [
+      "effect ${1:count}",
+      "  let ${2:message} = \"${3:Updated}\""
+    ],
+    "description": "Run an effect when a reactive value changes."
+  },
+  "Scoped style": {
+    "prefix": "style",
+    "body": [
+      "style",
+      "  .${1:card}",
+      "    background: white",
+      "    border-radius: 8px",
+      "    padding: 16px",
+      "",
+      "  .${1:card}:hover",
+      "    transform: translateY(-2px)"
+    ],
+    "description": "Add a scoped Friendly style block."
+  },
+  "Input binding": {
+    "prefix": "input",
+    "body": [
+      "let ${1:name} = \"\"",
+      "",
+      "page",
+      "  input \"${2:Name}\" into ${1:name}",
+      "  show \"Hello {${1:name}}\""
+    ],
+    "description": "Bind an input value into JTML state."
+  },
+  "Extern action": {
+    "prefix": "extern",
+    "body": [
+      "extern ${1:notify} from \"${2:host.notify}\"",
+      "",
+      "page",
+      "  button \"${3:Notify}\" click ${1}(\"${4:Saved}\")"
+    ],
+    "description": "Declare a browser-provided host action."
+  },
+  "Classic variable": {
+    "prefix": "define",
+    "body": ["define ${1:name} = ${2:value}\\\\"],
+    "description": "Declare a Classic JTML mutable reactive variable."
+  },
+  "Classic element": {
+    "prefix": "element",
+    "body": ["element ${1:tag}\\\\", "\t$0", "#"],
+    "description": "Open a Classic JTML element block."
+  }
+}

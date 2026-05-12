@@ -1,38 +1,24 @@
+jtml 2
+let pageTitle = "User Profile"
+let userLoggedIn = "Bob"
+let userAge = "30"
 
-#html
-  #head
-    define pageTitle="User Profile"\\
-    show "Loading page: User Profile"\\
-  \#head
-
-  #body style:"font-family: sans-serif;"
-    #header style:"background: #444; color: #fff; padding: 10px;"
-      show "User Profile"\\
-      define userLoggedIn="Bob"\\
-
-      #nav style:"margin-top: 5px;"
-        #a href:"#", style:"color: #fff; margin-right: 10px"
-          show "Home"\\
-        \#a
-
-        #a href:"#", style:"color: #fff; margin-right: 10px"
-          show "Messages"\\
-        \#a
-
-        #a href:"#", style:"color: #fff;"
-          show "Logout"\\
-        \#a
-      \#nav
-    \#header
-
-    #section style:"padding: 20px;"
-      show "Welcome, Bob!"\\
-      define userAge="30"\\
-      show "User age: 30"\\
-    \#section
-
-    #footer style:"background: #eee; text-align:center; padding:10px; margin-top:20px;"
-      show "© 2024 MySite Inc."\\
-    \#footer
-  \#body
-\#html
+html
+  head
+    title
+      show pageTitle
+  body style "font-family: sans-serif"
+    header style "background: #444; color: #fff; padding: 10px"
+      show pageTitle
+      nav style "margin-top: 5px"
+        link href "#" style "color: #fff; margin-right: 10px"
+          show "Home"
+        link href "#" style "color: #fff; margin-right: 10px"
+          show "Messages"
+        link href "#" style "color: #fff"
+          show "Logout"
+    section style "padding: 20px"
+      show ("Welcome, " + userLoggedIn + "!")
+      show "User age: " + userAge
+    footer style "background: #eee; text-align: center; padding: 10px; margin-top: 20px"
+      show "Copyright 2026 MySite Inc."

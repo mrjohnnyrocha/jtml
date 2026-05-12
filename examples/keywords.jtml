@@ -1,0 +1,40 @@
+import "./imported_keywords.jtml"\\
+
+const appName = "JTML Keywords"\\
+define counter = 0\\
+define latest = ""\\
+
+function remember(value)\\
+    latest = value\\
+\\
+
+async function bump()\\
+    counter = counter + 1\\
+\\
+
+subscribe remember to counter\\
+counter = 1\\
+unsubscribe remember from counter\\
+
+object Base\\
+    define title = "base"\\
+    function label()\\
+        return title\\
+    \\
+\\
+
+object Panel derives from Base\\
+    define count = counter\\
+    function summary()\\
+        return title + ": " + count\\
+    \\
+\\
+
+define panel = Panel()\\
+store(main) panel\\
+
+element main class="keyword-page"\\
+    show appName\\
+    show importedLabel\\
+    show panel.summary()\\
+#

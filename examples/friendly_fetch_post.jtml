@@ -1,0 +1,17 @@
+jtml 2
+
+let email = "ada@example.com"
+let login = fetch "/api/login" method "POST" body { email: email } cache "no-store" credentials "include"
+
+page class "fetch-post-demo" style "max-width: 680px; margin: 48px auto; padding: 28px; font-family: Arial, sans-serif; display: grid; gap: 12px"
+  h1 "POST fetch"
+  if login.loading
+    text "Sending login request..."
+  else
+    text "Request finished"
+    if login.data.user
+      text "Signed in"
+      text "{login.data.user.name}"
+      text "{login.data.user.email}"
+  if login.error
+    text "Could not log in: {login.error}"

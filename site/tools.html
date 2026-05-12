@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="JTML local tools: editor support, runner, tutorial, studio, tester, and release packaging.">
+    <title>JTML Tools</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./index.html" aria-label="JTML home">
+        <span class="brand-mark" aria-hidden="true">J</span>
+        <span>JTML</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="./index.html#syntax">Syntax</a>
+        <a href="./tools.html">Tools</a>
+        <a href="./examples.html">Examples</a>
+        <a href="./reference.html">Reference</a>
+        <a href="./security.html">Security</a>
+        <a href="./deploy.html">Deploy</a>
+      </nav>
+      <a class="header-action" href="./index.html#try">Get started</a>
+    </header>
+
+    <main>
+      <section class="page-hero" aria-labelledby="tools-title">
+        <p class="eyebrow">Local toolkit</p>
+        <h1 id="tools-title">A complete local product loop.</h1>
+        <p>
+          JTML ships as a local CLI with Studio, runner, tutorial IDE, checker,
+          formatter, linter, smoke tester, VS Code support, static site artifact
+          builder, release packager, and predeploy verification.
+        </p>
+      </section>
+
+      <section aria-labelledby="tools-grid-title">
+        <div class="section-heading">
+          <p class="eyebrow">Commands</p>
+          <h2 id="tools-grid-title">One binary, several loops.</h2>
+        </div>
+
+        <div class="example-grid tool-grid">
+          <article class="example-card">
+            <h3>Runner</h3>
+            <p>Serve a JTML file with HTTP, WebSocket updates, and event fallback.</p>
+            <code>jtml serve examples/friendly_counter.jtml --port 8000 --watch</code>
+          </article>
+          <article class="example-card">
+            <h3>Tutorial IDE</h3>
+            <p>Launch guided lessons with editable code and live preview.</p>
+            <code>jtml tutorial --port 8000</code>
+          </article>
+          <article class="example-card">
+            <h3>Studio</h3>
+            <p>Open the native Studio with Run, Lint, Fix, Format, Export HTML, diagnostics, compiler artifacts, command palette, autosaved drafts, versioned local Save/history, and live preview.</p>
+            <code>jtml demo --port 8000</code>
+          </article>
+          <article class="example-card">
+            <h3>Tester</h3>
+            <p>Parse, lint, transpile, and smoke-test every bundled example.</p>
+            <code>jtml test</code>
+          </article>
+          <article class="example-card">
+            <h3>Doctor</h3>
+            <p>Check the local toolkit folders, scripts, tutorial, site, editor assets, and emit JSON for CI.</p>
+            <code>jtml doctor --json</code>
+          </article>
+          <article class="example-card">
+            <h3>Static Build</h3>
+            <p>Compile a file or app folder to a distributable static HTML output.</p>
+            <code>jtml build examples/friendly_import_page.jtml --out dist/app</code>
+          </article>
+          <article class="example-card">
+            <h3>Release Kit</h3>
+            <p>Create the predeploy site artifact and local CLI release archive.</p>
+            <code>scripts/verify_all.sh</code>
+          </article>
+          <article class="example-card">
+            <h3>Install</h3>
+            <p>Install the CLI into a prefix for team machines or build images.</p>
+            <code>cmake --install build --prefix ~/.local</code>
+          </article>
+          <article class="example-card">
+            <h3>Package</h3>
+            <p>Generate a local release directory, archive, manifest, and checksums.</p>
+            <code>scripts/package_cli.sh dist/release</code>
+          </article>
+        </div>
+      </section>
+
+      <section class="try-section" aria-labelledby="predeploy-title">
+        <div class="section-heading">
+          <p class="eyebrow">Predeploy</p>
+          <h2 id="predeploy-title">Build everything locally.</h2>
+          <p>
+            These scripts stop one step before publishing a public domain. They
+            produce local artifacts under <code>dist/</code>.
+          </p>
+        </div>
+
+        <div class="steps">
+          <article class="step">
+            <span class="step-number">1</span>
+            <h3>Verify</h3>
+            <pre><code>scripts/verify_all.sh</code></pre>
+          </article>
+          <article class="step">
+            <span class="step-number">2</span>
+            <h3>Build Site</h3>
+            <pre><code>scripts/build_site.sh dist/site</code></pre>
+          </article>
+          <article class="step">
+            <span class="step-number">3</span>
+            <h3>Package CLI</h3>
+            <pre><code>scripts/package_cli.sh dist/release</code></pre>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>JTML</span>
+      <span>Local tools ready before public deployment.</span>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+jtml 2
+
+let count = 0
+let history = ""
+
+when bump
+  count += 1
+
+effect count
+  history += "[{count}] "
+
+page style "max-width: 600px; margin: 48px auto; font-family: system-ui, sans-serif"
+  h1 "Reactive side effects"
+  p "count = {count}"
+  p "history: {history}"
+  button "Bump" click bump

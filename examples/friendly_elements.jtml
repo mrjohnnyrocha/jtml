@@ -1,0 +1,107 @@
+jtml 2
+
+// JTML Friendly Element Dictionary Demo
+// This example showcases all the element aliases and features
+
+const APP_TITLE = "Element Dictionary Demo"
+let activeTab = "structural"
+let selectedImage = ""
+let mediaAssets = []
+let revenue = [{ "month": "Jan", "total": 12 }, { "month": "Feb", "total": 18 }, { "month": "Mar", "total": 9 }]
+
+when showStructural
+  let activeTab = "structural"
+
+when showTypography
+  let activeTab = "typography"
+
+when showInteractive
+  let activeTab = "interactive"
+
+when showMedia
+  let activeTab = "media"
+
+page class "element-dict-demo" style "max-width: 900px; margin: 48px auto; padding: 28px; font-family: Arial, sans-serif; display: grid; gap: 24px"
+  header style "display: grid; gap: 8px"
+    h1 APP_TITLE
+    text "This page demonstrates all JTML element dictionary aliases mapped to their HTML equivalents."
+
+  nav style "display: flex; gap: 8px; flex-wrap: wrap"
+    button "Structural" click showStructural
+    button "Typography" click showTypography
+    button "Interactive" click showInteractive
+    button "Media" click showMedia
+
+  // Structural Elements
+  section style "display: grid; gap: 12px; border: 1px solid #ddd; padding: 16px; border-radius: 8px"
+    h2 "Structural Elements"
+    text "page, section, nav, header, footer, box, article"
+
+    box class "demo-layout" style "display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+      box class "card" style "padding: 12px; background: #f7f7f7; border-radius: 4px"
+        h3 "box \u2192 div"
+        text "The 'box' element maps to a standard HTML div."
+
+      article style "padding: 12px; background: #f0f7ff; border-radius: 4px"
+        h3 "article"
+        text "Self-contained content like a blog post."
+
+    footer style "padding: 8px; border-top: 1px solid #eee; font-size: 14px"
+      text "This is a footer element."
+
+  // Typography & Lists
+  section style "display: grid; gap: 12px; border: 1px solid #ddd; padding: 16px; border-radius: 8px"
+    h2 "Typography & Lists"
+
+    text "text \u2192 p, strong, em, list \u2192 ul/ol, item \u2192 li"
+
+    strong "Important text"
+    em "Emphasized text"
+    code "let x = 42"
+
+    h3 "Unordered List"
+    list
+      item "First item"
+      item "Second item"
+      item "Third item"
+
+    h3 "Ordered List"
+    list ordered
+      item "Step one"
+      item "Step two"
+      item "Step three"
+
+  // Interactive Elements
+  section style "display: grid; gap: 12px; border: 1px solid #ddd; padding: 16px; border-radius: 8px"
+    h2 "Interactive Elements"
+    text "link \u2192 a, button, input, textarea, checkbox, select + option, form, file, dropzone"
+
+    link "Visit JTML Docs" href "#" style "color: #2563eb"
+    file "Choose image" accept "image/*" into selectedImage
+    dropzone "Drop media files" accept "image/*,video/*" into mediaAssets
+
+  // Media Elements
+  section style "display: grid; gap: 12px; border: 1px solid #ddd; padding: 16px; border-radius: 8px"
+    h2 "Media Elements"
+    text "image, video, audio, embed, canvas, graphic, and SVG-compatible tags use standards-based browser output."
+    image src "/assets/photo.jpg" alt "Example image"
+    video src "/assets/demo.mp4" controls poster "/assets/demo.jpg" into mediaPlayer
+    text "Video paused: {mediaPlayer.paused}"
+    button "Play video" click mediaPlayer.play
+    button "Pause video" click mediaPlayer.pause
+    audio src "/assets/intro.mp3" controls into audioPlayer
+    text "Audio paused: {audioPlayer.paused}"
+    embed src "about:blank" title "Embedded preview"
+    canvas aria-label "Demo drawing surface" width "320" height "120"
+    graphic aria-label "Small chart" width "220" height "80" viewBox "0 0 220 80"
+      bar x "20" y "30" width "40" height "35" fill "#0f766e"
+      bar x "90" y "15" width "40" height "50" fill "#2563eb"
+      dot cx "165" cy "34" r "12" fill "#111827"
+      line x1 "12" y1 "68" x2 "208" y2 "68" stroke "#475569" stroke-width "2"
+      path d "M12 60 C60 10 120 80 208 24" fill "none" stroke "#9333ea" stroke-width "2"
+    chart bar data revenue by month value total label "Revenue by month" color "#2563eb"
+    scene3d "Product scene" scene productScene camera orbit controls orbit renderer "three" into productSceneState width "640" height "360"
+    text "3D status: {productSceneState.status}"
+
+  footer
+    text "\u00A9 2026 JTML Project"

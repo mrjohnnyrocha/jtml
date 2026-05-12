@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/jtml.dir/main.cpp.o CMakeFiles/jtml.dir/src/jtml_ast.cpp.o CMakeFiles/jtml.dir/src/jtml_lexer.cpp.o CMakeFiles/jtml.dir/src/jtml_parser.cpp.o CMakeFiles/jtml.dir/src/jtml_interpreter.cpp.o CMakeFiles/jtml.dir/src/transpiler.cpp.o -o jtml 

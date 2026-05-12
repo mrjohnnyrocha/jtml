@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="JTML language reference.">
+    <title>JTML Reference</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./index.html" aria-label="JTML home">
+        <span class="brand-mark" aria-hidden="true">J</span>
+        <span>JTML</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="./index.html#syntax">Syntax</a>
+        <a href="./tools.html">Tools</a>
+        <a href="./examples.html">Examples</a>
+        <a href="./reference.html">Reference</a>
+        <a href="./security.html">Security</a>
+        <a href="./deploy.html">Deploy</a>
+      </nav>
+      <a class="header-action" href="./index.html#try">Get started</a>
+    </header>
+
+    <main>
+      <section class="page-hero" aria-labelledby="reference-title">
+        <p class="eyebrow">Reference</p>
+        <h1 id="reference-title">The language in one page.</h1>
+        <p>JTML keeps HTML's element model, then adds Friendly state, derived values, actions, components, modules, fetches, routes, stores, effects, and runtime tooling.</p>
+      </section>
+
+      <section class="reference-layout">
+        <article>
+          <h2>Elements</h2>
+          <pre><code>jtml 2
+
+page class "profile"
+  h1 "Hello"</code></pre>
+          <p>Friendly `jtml 2` is the canonical syntax. Classic `@tag` and `element` forms remain supported for compatibility.</p>
+        </article>
+        <article>
+          <h2>State</h2>
+          <pre><code>let count = 0
+const limit = 10
+get doubled = count * 2
+count += 1</code></pre>
+          <p>`let` is mutable, `const` is immutable, `get` tracks dependencies, and compound assignment is supported.</p>
+        </article>
+        <article>
+          <h2>Conditional Values</h2>
+          <pre><code>get label = saved ? "Saved" : "Unsaved"
+
+button disabled saved
+  show saved ? "Done" : "Save"</code></pre>
+          <p>Use `condition ? valueA : valueB` anywhere an expression is accepted.</p>
+        </article>
+        <article>
+          <h2>Events</h2>
+          <pre><code>when add
+  count += 1
+
+button "Add one" click add</code></pre>
+          <p>Friendly event sugar calls JTML actions without user JavaScript.</p>
+        </article>
+        <article>
+          <h2>HTML Parity</h2>
+          <pre><code>label for "email" aria-label "Email"
+  show "Email"
+
+input "Email" id "email" required
+
+my-widget data-mode "compact"
+  show "Custom element"</code></pre>
+          <p>Hyphenated attributes, keyword-shaped names, custom elements, and void elements are supported.</p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>JTML</span>
+      <span>See docs/language-reference.md for the full versioned reference.</span>
+    </footer>
+  </body>
+</html>

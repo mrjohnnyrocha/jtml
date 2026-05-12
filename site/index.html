@@ -103,7 +103,8 @@ page
           <h2 id="syntax-title">Shorter than HTML, still HTML-shaped.</h2>
           <p>
             JTML keeps tags, attributes, nesting, events, state, and derived values.
-            It removes closing-tag repetition and framework ceremony.
+            Friendly JTML 2 removes closing-tag repetition, statement terminators,
+            and framework ceremony.
           </p>
         </div>
 
@@ -117,10 +118,10 @@ page
             <pre aria-live="polite"><code id="snippet-code"></code></pre>
           </div>
           <div class="syntax-notes" aria-label="Syntax notes">
-            <span><strong>@tag</strong> opens an element</span>
-            <span><strong>#</strong> closes the current element</span>
-            <span><strong>\\</strong> ends a statement</span>
-            <span><strong>derive</strong> keeps values reactive</span>
+            <span><strong>jtml 2</strong> selects Friendly syntax</span>
+            <span><strong>page</strong> opens the app root</span>
+            <span><strong>click</strong> wires actions to events</span>
+            <span><strong>get</strong> keeps values reactive</span>
           </div>
         </div>
       </section>
@@ -143,7 +144,7 @@ page
           </article>
           <article>
             <h3>Local Studio</h3>
-            <p><code>jtml demo</code> opens a real editor with Run, Lint, Format, Export HTML, diagnostics, versioned local Save/history, snippets, and live preview.</p>
+            <p><code>jtml demo</code> opens Studio with Run, Lint, Fix, Format, Export HTML, diagnostics, compiler artifacts, autosaved drafts, versioned local Save/history, command palette, and live preview.</p>
           </article>
           <article>
             <h3>Two Deployment Modes</h3>
@@ -221,11 +222,11 @@ page
         <ol class="roadmap-list">
           <li>
             <strong>Try it in five minutes</strong>
-            <span>Demo, starter generator, syntax checker, tutorial, examples, and `@tag` syntax.</span>
+            <span>Studio, starter generator, syntax checker, tutorial, examples, and Friendly `jtml 2` syntax.</span>
           </li>
           <li>
             <strong>Reliable reactivity</strong>
-            <span>Make `define`, `derive`, arrays, dictionaries, objects, and subscriptions predictable.</span>
+            <span>Make `let`, `get`, arrays, dictionaries, stores, effects, fetches, and component instances predictable.</span>
           </li>
           <li>
             <strong>HTML parity</strong>

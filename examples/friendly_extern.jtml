@@ -1,0 +1,8 @@
+jtml 2
+
+extern notify from "host.notify"
+
+page style "max-width: 640px; margin: 48px auto; font-family: system-ui, sans-serif; display: grid; gap: 12px"
+  h1 "External action"
+  p "The button calls window.host.notify from the browser runtime."
+  button "Notify host" click notify("Saved from JTML")

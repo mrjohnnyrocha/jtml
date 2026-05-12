@@ -1,0 +1,99 @@
+jtml 2
+
+let selectedImage = ""
+let droppedAssets = []
+let revenue = [{ "month": "Jan", "total": 12 }, { "month": "Feb", "total": 18 }, { "month": "Mar", "total": 9 }]
+
+style
+  main
+    font-family: system-ui
+    max-width: 840px
+    margin: 40px auto
+    padding: 0 20px
+    display: grid
+    gap: 20px
+  .grid
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 16px
+  article
+    border: 1px solid #e4dfd4
+    border-radius: 10px
+    padding: 16px
+    display: grid
+    gap: 10px
+    background: white
+  image
+    max-width: 100%
+    border-radius: 8px
+  input
+    padding: 12px
+    border: 1px dashed #7a8b8b
+    border-radius: 8px
+  input[data-jtml-drag="over"]
+    border-color: #0f766e
+    background: #ecfdf5
+  canvas
+    width: 100%
+    border: 1px solid #d8d4c8
+    border-radius: 8px
+
+page
+  h1 "Media and graphics"
+  text "JTML uses standards-based media today, with file state and dropzone bindings ready for app previews."
+
+  box class "grid"
+    article
+      h2 "Image"
+      image src "/assets/photo.jpg" alt "Sample product photo" loading "lazy" decoding "async"
+
+    article
+      h2 "Video"
+      video src "/assets/demo.mp4" controls poster "/assets/demo.jpg" preload "metadata" into videoPlayer
+      text "Paused: {videoPlayer.paused} | Time: {videoPlayer.currentTime}"
+      box
+        button "Play" click videoPlayer.play
+        button "Pause" click videoPlayer.pause
+        button "Restart" click videoPlayer.seek(0)
+
+    article
+      h2 "Audio"
+      audio src "/assets/intro.mp3" controls preload "metadata" into audioPlayer
+      text "Audio paused: {audioPlayer.paused}"
+
+    article
+      h2 "File input"
+      file "Choose an image" accept "image/*" into selectedImage
+      if selectedImage
+        text "Selected: {selectedImage.name}"
+        image src selectedImage.preview alt selectedImage.name
+
+    article
+      h2 "Dropzone"
+      dropzone "Drop media files" accept "image/*,video/*,audio/*" into droppedAssets
+      text "Dropped files: {droppedAssets.length}"
+
+    article
+      h2 "Canvas bridge"
+      canvas id "chart" aria-label "Revenue chart drawing surface" width "640" height "240"
+      text "Use extern actions to draw on canvas or connect charting libraries."
+
+    article
+      h2 "Graphic"
+      graphic aria-label "Simple bar graphic" width "320" height "120" viewBox "0 0 320 120"
+        bar x "20" y "40" width "70" height "60" fill "#0f766e"
+        bar x "120" y "20" width "70" height "80" fill "#2563eb"
+        bar x "220" y "60" width "70" height "40" fill "#9333ea"
+        dot cx "255" cy "48" r "10" fill "#111827"
+        line x1 "20" y1 "104" x2 "300" y2 "104" stroke "#475569" stroke-width "2"
+        path d "M20 92 C90 20 180 120 300 40" fill "none" stroke "#9333ea" stroke-width "3"
+
+    article
+      h2 "Chart"
+      chart bar data revenue by month value total label "Revenue by month" color "#2563eb"
+
+    article
+      h2 "3D scene"
+      scene3d "Interactive product scene" scene productScene camera orbit controls orbit renderer "three" into sceneState width "640" height "360"
+      text "Renderer status: {sceneState.status}"
+      text "Hosts can attach Three.js/WebGPU through window.jtml3d.render(canvas, spec)."

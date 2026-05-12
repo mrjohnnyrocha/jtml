@@ -1,0 +1,43 @@
+jtml 2
+
+use Card from "./components/card.jtml"
+
+style
+  .app
+    max-width: 920px
+    margin: 48px auto
+    padding: 0 24px
+    font-family: system-ui, sans-serif
+    display: grid
+    gap: 18px
+  .hero
+    display: grid
+    gap: 8px
+  .grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))
+    gap: 14px
+  .card
+    border: 1px solid #d7dce2
+    border-radius: 8px
+    padding: 18px
+    background: white
+
+let count = 0
+
+when add
+  count += 1
+
+page class "app"
+  section class "hero"
+    h1 "JTML app"
+    text "A modular Friendly JTML starter with components, state, actions, styles, and zero config."
+  section class "grid"
+    Card "Interactive state"
+      text "Count: {count}"
+      button "Add one" click add
+    Card "Next steps"
+      list
+        item "Edit index.jtml"
+        item "Add components under components/"
+        item "Run jtml dev ."

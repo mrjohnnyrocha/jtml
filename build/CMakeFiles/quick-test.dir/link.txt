@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/quick-test.dir/quick-test.cpp.o CMakeFiles/quick-test.dir/src/jtml_ast.cpp.o CMakeFiles/quick-test.dir/src/jtml_lexer.cpp.o CMakeFiles/quick-test.dir/src/jtml_parser.cpp.o CMakeFiles/quick-test.dir/src/jtml_interpreter.cpp.o CMakeFiles/quick-test.dir/src/transpiler.cpp.o -o quick-test 

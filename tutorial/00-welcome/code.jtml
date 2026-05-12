@@ -1,0 +1,63 @@
+jtml 2
+
+let title = "Welcome to JTML"
+let tagline = "A tiny reactive language for HTML pages."
+
+let lessons = ["Hello", "State", "Events", "Input", "Collections", "Effects", "Putting it together", "Data fetch", "Stores", "Routes", "Components", "Compatibility"]
+let pillars = ["Friendly by default", "Classic-compatible", "AI-authorable", "Renders to plain HTML"]
+
+let edits = 0
+
+when bump
+  edits += 1
+
+style
+  body
+    font-family: Inter, system-ui, sans-serif
+    color: #182027
+    background: #f4f2ec
+  .home
+    max-width: 720px
+    margin: 48px auto
+    padding: 32px
+    background: #fffdf8
+    border: 1px solid #d8d4c9
+    border-radius: 8px
+    display: grid
+    gap: 14px
+  h1
+    margin: 0
+    font-size: 28px
+  .tagline
+    margin: 0
+    color: #64707a
+  h2
+    margin: 16px 0 4px
+    font-size: 18px
+  ul
+    margin: 0
+    padding-left: 20px
+    line-height: 1.6
+  .counter
+    margin-top: 8px
+    color: #0f766e
+    font-weight: 700
+
+page class "home"
+  h1 title
+  p class "tagline" tagline
+
+  h2 "What JTML gives you"
+  list
+    for pillar in pillars
+      item pillar
+
+  h2 "Lessons in this tutorial"
+  list ordered
+    for lesson in lessons
+      item lesson
+
+  h2 "Try the runtime"
+  p "Press the button below; the count is live state."
+  button "I'm reactive — click me" click bump
+  p class "counter" "Live edits: {edits}"

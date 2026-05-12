@@ -5,7 +5,7 @@ let selectedPanel = "ready"
 let runCount = 0
 let savedCount = 0
 let issueCount = 0
-let sourceText = "jtml 2\n\nlet count = 0\n\nwhen add\n  count += 1\n\npage\n  h1 \"Counter: {count}\"\n  button \"Add\" click add"
+let sourceText = "jtml 2\n\nlet count = 0\n\nwhen add\n  count += 1\n\npage\n  h1 \"Counter\"\n  show count\n  button \"Add\" click add"
 let outputTitle = "Counter example"
 let outputBody = "A reactive counter in Friendly syntax."
 let outputDetail = "Press Run to compile and preview."
@@ -15,68 +15,68 @@ get diagnostics = "{issueCount} issue open"
 get sourceSize = "{sourceText} chars"
 
 when openCounter
-  let activeFile = "counter.jtml"
-  let selectedPanel = "ready"
-  let outputTitle = "Counter example"
-  let outputBody = "A reactive counter in Friendly syntax."
-  let outputDetail = "Demonstrates let, when, and page."
-  let issueCount = 0
+  activeFile = "counter.jtml"
+  selectedPanel = "ready"
+  outputTitle = "Counter example"
+  outputBody = "A reactive counter in Friendly syntax."
+  outputDetail = "Demonstrates let, when, and page."
+  issueCount = 0
 
 when openForm
-  let activeFile = "form.jtml"
-  let selectedPanel = "ready"
-  let outputTitle = "Form example"
-  let outputBody = "Email subscription form with input binding."
-  let outputDetail = "Uses 'input into' for two-way binding."
-  let issueCount = 0
+  activeFile = "form.jtml"
+  selectedPanel = "ready"
+  outputTitle = "Form example"
+  outputBody = "Email subscription form with input binding."
+  outputDetail = "Uses 'input into' for two-way binding."
+  issueCount = 0
 
 when openFetch
-  let activeFile = "fetch.jtml"
-  let selectedPanel = "ready"
-  let outputTitle = "Fetch example"
-  let outputBody = "Async data loading with loading/error states."
-  let outputDetail = "Uses let name = fetch url."
-  let issueCount = 0
+  activeFile = "fetch.jtml"
+  selectedPanel = "ready"
+  outputTitle = "Fetch example"
+  outputBody = "Async data loading with loading/error states."
+  outputDetail = "Uses let name = fetch url."
+  issueCount = 0
 
 when openStore
-  let activeFile = "store.jtml"
-  let selectedPanel = "ready"
-  let outputTitle = "Store example"
-  let outputBody = "Shared state with the store keyword."
-  let outputDetail = "Uses store name with fields and actions."
-  let issueCount = 0
+  activeFile = "store.jtml"
+  selectedPanel = "ready"
+  outputTitle = "Store example"
+  outputBody = "Shared state with the store keyword."
+  outputDetail = "Uses store name with fields and actions."
+  issueCount = 0
 
 when updateSource
-  let selectedPanel = "editing"
-  let outputTitle = "Editing custom JTML"
-  let outputBody = "The editor value is live state."
-  let outputDetail = "Run clears diagnostics and records an execution."
-  let issueCount = 1
+  selectedPanel = "editing"
+  outputTitle = "Editing custom JTML"
+  outputBody = "The editor value is live state."
+  outputDetail = "Run clears diagnostics and records an execution."
+  issueCount = 1
 
 when runStudio
-  let runCount = runCount + 1
-  let selectedPanel = "ran"
-  let outputTitle = "Run complete"
-  let outputBody = "The current JTML source was accepted."
-  let outputDetail = "A future playground will compile this source into live DOM."
-  let issueCount = 0
+  runCount += 1
+  selectedPanel = "ran"
+  outputTitle = "Run complete"
+  outputBody = "The current JTML source was accepted."
+  outputDetail = "A future playground will compile this source into live DOM."
+  issueCount = 0
 
 when formatSource
-  let selectedPanel = "formatted"
-  let outputTitle = "Format complete"
-  let outputBody = "Source formatting is available from the toolbar."
-  let outputDetail = "This demo keeps your code text unchanged."
-  let issueCount = 0
+  selectedPanel = "formatted"
+  outputTitle = "Format complete"
+  outputBody = "Source formatting is available from the toolbar."
+  outputDetail = "This demo keeps your code text unchanged."
+  issueCount = 0
 
 when saveStudio
-  let savedCount = savedCount + 1
-  let selectedPanel = "saved"
-  let outputTitle = "Saved locally"
-  let outputBody = "{activeFile}"
-  let outputDetail = "The save counter proves app state is reactive."
+  savedCount += 1
+  selectedPanel = "saved"
+  outputTitle = "Saved locally"
+  outputBody = "{activeFile}"
+  outputDetail = "The save counter proves app state is reactive."
 
 when showReference
-  let selectedPanel = "reference"
-  let outputTitle = "JTML syntax"
-  let outputBody = "Use jtml 2 to enable Friendly syntax."
-  let outputDetail = "let, when, page, fetch, store, effect, route, make."
+  selectedPanel = "reference"
+  outputTitle = "JTML syntax"
+  outputBody = "Use jtml 2 to enable Friendly syntax."
+  outputDetail = "let, when, page, fetch, store, effect, route, make."

@@ -1,0 +1,20 @@
+jtml 2
+
+let saved = false
+let users = fetch "/api/users" timeout 2500 retry 2 stale keep
+
+when saveUser
+  let saved = true
+  invalidate users
+
+page style "max-width: 680px; margin: 48px auto; font-family: Arial, sans-serif; display: grid; gap: 16px"
+  h1 "Fetch invalidation"
+  button "Save user" click saveUser
+  if users.loading
+    text "Loading users..."
+  if users.error
+    text "Could not load users: {users.error}"
+  if saved
+    text "Saved. Users were invalidated."
+  for user in users.data
+    text "{user.name}"

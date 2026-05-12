@@ -1,0 +1,21 @@
+jtml 2
+
+let count = 0
+get doubled = count * 2
+
+when increment
+  count += 1
+
+when decrement
+  count -= 1
+
+when reset
+  let count = 0
+
+page style "max-width: 600px; margin: 48px auto; font-family: system-ui, sans-serif"
+  h1 "Counter"
+  p "count = {count}, doubled = {doubled}"
+  box
+    button "-" click decrement
+    button "+" click increment
+    button "reset" click reset

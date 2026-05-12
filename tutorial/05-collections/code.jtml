@@ -1,0 +1,20 @@
+jtml 2
+
+let user = { "name": "Ada", "score": 0 }
+let draftName = ""
+
+get userName = user["name"]
+get userScore = user["score"]
+
+when rename
+  user["name"] = draftName
+
+when addPoint
+  user["score"] += 1
+
+page style "max-width: 600px; margin: 48px auto; font-family: system-ui, sans-serif"
+  h1 "User: {userName}"
+  p "Score: {userScore}"
+  input placeholder "Rename" into draftName
+  button "Apply name" click rename
+  button "+1 point" click addPoint

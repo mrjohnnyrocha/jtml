@@ -1,0 +1,23 @@
+jtml 2
+
+let users = fetch "/api/users" lazy stale keep timeout 2500 retry 2
+
+make Home
+  page style "max-width: 680px; margin: 48px auto; font-family: Arial, sans-serif; display: grid; gap: 12px"
+    h1 "Route data"
+    text "Open the users route to start the lazy fetch."
+    link "Users" to "/users"
+
+make Users
+  page style "max-width: 680px; margin: 48px auto; font-family: Arial, sans-serif; display: grid; gap: 12px"
+    h1 "Users"
+    link "Home" to "/"
+    if users.loading
+      text "Loading users..."
+    if users.error
+      text "Could not load users: {users.error}"
+    for user in users.data
+      text "{user.name}"
+
+route "/" as Home
+route "/users" as Users load users

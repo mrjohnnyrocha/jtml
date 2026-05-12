@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="JTML example gallery for tiny reactive HTML pages.">
+    <title>JTML Examples</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./index.html" aria-label="JTML home">
+        <span class="brand-mark" aria-hidden="true">J</span>
+        <span>JTML</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="./index.html#syntax">Syntax</a>
+        <a href="./tools.html">Tools</a>
+        <a href="./examples.html">Examples</a>
+        <a href="./reference.html">Reference</a>
+        <a href="./security.html">Security</a>
+        <a href="./deploy.html">Deploy</a>
+      </nav>
+      <a class="header-action" href="./index.html#try">Get started</a>
+    </header>
+
+    <main>
+      <section class="page-hero" aria-labelledby="examples-title">
+        <p class="eyebrow">Examples</p>
+        <h1 id="examples-title">Small pages, readable source.</h1>
+        <p>Use these as starting points for prototypes, lessons, and server-backed UI.</p>
+      </section>
+
+      <section class="examples-section" aria-label="Example gallery">
+        <div class="example-grid gallery-grid">
+          <article class="example-card">
+            <h3>JTML Studio</h3>
+            <p>The native authoring surface with samples, snippets, linting, formatting, HTML export, diagnostics, and live preview.</p>
+            <code>jtml demo --port 8000</code>
+          </article>
+          <article class="example-card">
+            <h3>Starter Counter</h3>
+            <p>State, derived values, event handlers, and live DOM updates.</p>
+            <code>jtml serve examples/friendly_counter.jtml --port 8000</code>
+          </article>
+          <article class="example-card">
+            <h3>Friendly Elements</h3>
+            <p>Friendly element aliases, boolean attributes, custom names, media, and events.</p>
+            <code>jtml serve examples/friendly_elements.jtml --port 8000</code>
+          </article>
+          <article class="example-card">
+            <h3>Live Input</h3>
+            <p>Input events flowing into JTML functions without hand-written JavaScript.</p>
+            <code>jtml serve examples/live_input.jtml --port 8000</code>
+          </article>
+          <article class="example-card">
+            <h3>Fetch Dashboard</h3>
+            <p>Async data, loading/error states, refresh, stale data, and invalidation patterns.</p>
+            <code>jtml serve examples/friendly_fetch_refresh.jtml --port 8000</code>
+          </article>
+          <article class="example-card">
+            <h3>Routes</h3>
+            <p>Hash routes, parameters, layouts, active links, route loads, and guards.</p>
+            <code>jtml serve examples/friendly_route_layout.jtml --port 8000</code>
+          </article>
+          <article class="example-card">
+            <h3>Tutorial</h3>
+            <p>A split-view learning environment with prose, editor, and live preview.</p>
+            <code>jtml tutorial --port 8000</code>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>JTML</span>
+      <span>Example gallery for tiny reactive pages.</span>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+jtml 2
+
+let email = ""
+let message = "Ready"
+get status = email != "" ? "Ready to save {email}" : "Enter an email to continue"
+
+when save
+  let message = "Saved {email}"
+
+page class "friendly-form" style "max-width: 680px; margin: 48px auto; padding: 28px; font-family: Arial, sans-serif; display: grid; gap: 14px"
+  h1 "Friendly Form"
+  p "This example uses friendly input binding, submit/click event sugar, and interpolated text."
+  form submit save style "display: grid; gap: 12px"
+    input "Email" into email required type "email"
+    button "Save" click save type "button"
+  show status
+  show "Email: {email}"
+  show message

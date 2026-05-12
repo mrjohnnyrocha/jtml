@@ -1,0 +1,7 @@
+jtml 2
+
+use "./modules/friendly_message.jtml"
+
+page class "friendly-import-page" style "max-width: 680px; margin: 48px auto; padding: 28px; font-family: Arial, sans-serif"
+  h1 "Friendly Import"
+  show importedMessage

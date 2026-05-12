@@ -1,0 +1,8 @@
+jtml 2
+
+let name = ""
+
+page style "max-width: 600px; margin: 48px auto; font-family: system-ui, sans-serif"
+  h1 "Live input"
+  input placeholder "Your name" into name
+  p "Hello, {name}"

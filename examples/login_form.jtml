@@ -1,23 +1,14 @@
-#html
-  #head
-    show "Login Form Page"\\
-  \#head
-
-  #body style:"display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh;"
-    show "Please log in below"\\
-
-    #form class:"loginForm", style:"display: flex; flex-direction: column; width: 300px;"
-      show "Username:"\\
-      #input style:"margin-bottom: 10px", type:"text", name:"username", placeholder:"Enter username"
-      \#input
-
-      show "Password:"\\
-      #input style:"margin-bottom: 10px", type:"password", name:"password", placeholder:"Enter password"
-      \#input
-
-      #button onclick:"alert('Attempting login...')", style:"background: #007BFF; color: white; padding: 8px;"
-        show "Login"\\
-      \#button
-    \#form
-  \#body
-\#html
+jtml 2
+html
+  head
+    title
+      show "Login Form Page"
+  body style "display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh"
+    show "Please log in below"
+    form class "loginForm" style "display: flex; flex-direction: column; width: 300px"
+      show "Username:"
+      input "Enter username" style "margin-bottom: 10px" type "text" name "username"
+      show "Password:"
+      input "Enter password" style "margin-bottom: 10px" type "password" name "password"
+      button style "background: #007BFF; color: white; padding: 8px"
+        show "Login"

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="JTML security, operations, verification, and enterprise deployment posture.">
+    <meta name="theme-color" content="#172026">
+    <title>JTML Security And Operations</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./index.html" aria-label="JTML home">
+        <span class="brand-mark" aria-hidden="true">J</span>
+        <span>JTML</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="./index.html#syntax">Syntax</a>
+        <a href="./tools.html">Tools</a>
+        <a href="./examples.html">Examples</a>
+        <a href="./reference.html">Reference</a>
+        <a href="./security.html">Security</a>
+        <a href="./deploy.html">Deploy</a>
+      </nav>
+      <a class="header-action" href="./tools.html">Toolchain</a>
+    </header>
+
+    <main>
+      <section class="page-hero" aria-labelledby="security-title">
+        <p class="eyebrow">Security and operations</p>
+        <h1 id="security-title">Built for local control and auditability.</h1>
+        <p>
+          JTML keeps the authoring loop local, emits inspectable artifacts, and
+          separates static publishing from live runtime deployment.
+        </p>
+      </section>
+
+      <section aria-labelledby="security-grid-title">
+        <div class="section-heading">
+          <p class="eyebrow">Readiness checklist</p>
+          <h2 id="security-grid-title">What enterprise teams need before trust.</h2>
+        </div>
+
+        <div class="enterprise-grid">
+          <article>
+            <h3>Local-First Tooling</h3>
+            <p>No hosted compiler or SaaS account is required. Studio, tutorial, checker, formatter, linter, examples, and packager run on the developer machine.</p>
+          </article>
+          <article>
+            <h3>Artifact Verification</h3>
+            <p><code>scripts/verify_all.sh</code> runs unit tests, example smoke tests, static site generation, release packaging, and artifact existence checks.</p>
+          </article>
+          <article>
+            <h3>Static By Default</h3>
+            <p><code>jtml build</code> writes plain HTML for static hosting. Live runtime is explicit and should sit behind your normal TLS reverse proxy.</p>
+          </article>
+          <article>
+            <h3>Release Evidence</h3>
+            <p>The release script creates a manifest and SHA-256 checksums so downstream packaging systems can record exactly what was shipped.</p>
+          </article>
+          <article>
+            <h3>Operational Boundary</h3>
+            <p>The live server exposes HTTP, WebSocket, and <code>/api/event</code> fallback endpoints. Use <code>--watch</code> only for local development.</p>
+          </article>
+          <article>
+            <h3>Readable Source</h3>
+            <p>JTML files stay close to HTML, which makes review, diffs, and policy scanning simpler than opaque generated frontend bundles.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="try-section" aria-labelledby="ops-title">
+        <div class="section-heading">
+          <p class="eyebrow">Operational commands</p>
+          <h2 id="ops-title">Verify before publish.</h2>
+        </div>
+
+        <div class="steps">
+          <article class="step">
+            <span class="step-number">1</span>
+            <h3>Health Check</h3>
+            <pre><code>jtml doctor --json</code></pre>
+          </article>
+          <article class="step">
+            <span class="step-number">2</span>
+            <h3>Full Verification</h3>
+            <pre><code>scripts/verify_all.sh</code></pre>
+          </article>
+          <article class="step">
+            <span class="step-number">3</span>
+            <h3>Release Evidence</h3>
+            <pre><code>cat dist/release/MANIFEST.txt
+cat dist/release/SHA256SUMS</code></pre>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>JTML</span>
+      <span>Local control, inspectable output, explicit runtime.</span>
+    </footer>
+  </body>
+</html>

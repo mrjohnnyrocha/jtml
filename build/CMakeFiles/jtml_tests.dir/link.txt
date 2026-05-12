@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/jtml_tests.dir/main_tests.cpp.o CMakeFiles/jtml_tests.dir/src/jtml_ast.cpp.o CMakeFiles/jtml_tests.dir/src/jtml_lexer.cpp.o CMakeFiles/jtml_tests.dir/src/jtml_parser.cpp.o CMakeFiles/jtml_tests.dir/src/jtml_interpreter.cpp.o CMakeFiles/jtml_tests.dir/src/transpiler.cpp.o -o jtml_tests 

@@ -1,0 +1,6 @@
+jtml 2
+
+make Card title
+  box class "card"
+    h2 title
+    slot

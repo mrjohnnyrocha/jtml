@@ -347,6 +347,13 @@ const std::set<std::string>& commonAttributes() {
         "aria-describedby", "aria-hidden", "data-jtml-dropzone", "data-jtml-media-controller",
         "data-jtml-chart", "data-jtml-chart-data", "data-jtml-chart-by",
         "data-jtml-chart-value", "data-jtml-chart-color",
+        "data-jtml-chart-axis-x", "data-jtml-chart-axis-y", "data-jtml-chart-legend",
+        "data-jtml-chart-grid", "data-jtml-chart-stacked",
+        "data-jtml-timeline", "data-jtml-timeline-duration", "data-jtml-timeline-easing",
+        "data-jtml-timeline-animates", "data-jtml-timeline-autoplay", "data-jtml-timeline-repeat",
+        "data-jtml-image-proc", "data-jtml-image-src", "data-jtml-image-into",
+        "data-jtml-image-w", "data-jtml-image-h", "data-jtml-image-fit",
+        "data-jtml-image-x", "data-jtml-image-y", "data-jtml-image-filter", "data-jtml-image-amount",
         "data-jtml-scene3d", "data-jtml-scene", "data-jtml-camera",
         "data-jtml-controls", "data-jtml-renderer", "data-jtml-scene3d-controller",
         "scene", "camera", "renderer",
@@ -480,7 +487,7 @@ bool isKnownLineKeyword(const std::string& word) {
         "use", "let", "get", "const", "when", "make", "page", "show", "if", "else",
         "for", "while", "try", "catch", "finally", "return", "throw", "break",
         "continue", "slot", "style", "route", "effect", "store", "redirect", "guard",
-        "invalidate", "extern", "export"
+        "invalidate", "extern", "export", "timeline", "animate"
     };
     return names.find(word) != names.end();
 }
@@ -1507,13 +1514,20 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
     std::string height = "\"320\"";
     std::string viewBox = "\"0 0 640 320\"";
     std::string color = "\"#0f766e\"";
+    std::string axisXLabel;
+    std::string axisYLabel;
+    std::string legendStr;
+    std::string gridStr;
+    std::string stackedStr;
     std::vector<std::string> passthroughAttrs;
 
+    static const std::set<std::string> chartKeywords = {
+        "data", "by", "value", "label", "aria-label", "width", "height",
+        "viewBox", "viewbox", "color", "axis", "legend", "grid", "stacked"
+    };
+
     size_t i = 1;
-    if (i < tokens.size() && tokens[i] != "data" && tokens[i] != "by" &&
-        tokens[i] != "value" && tokens[i] != "label" && tokens[i] != "width" &&
-        tokens[i] != "height" && tokens[i] != "viewBox" && tokens[i] != "viewbox" &&
-        tokens[i] != "color") {
+    if (i < tokens.size() && !chartKeywords.count(tokens[i])) {
         type = tokens[i++];
     }
 
@@ -1526,38 +1540,45 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
             return tokens[i++];
         };
 
-        if (key == "data") {
-            dataExpr = requireValue("data");
-            continue;
-        }
-        if (key == "by") {
-            byField = requireValue("by");
-            continue;
-        }
-        if (key == "value") {
-            valueField = requireValue("value");
-            continue;
-        }
+        if (key == "data") { dataExpr = requireValue("data"); continue; }
+        if (key == "by")   { byField = requireValue("by"); continue; }
+        if (key == "value") { valueField = requireValue("value"); continue; }
         if (key == "label" || key == "aria-label") {
-            label = friendlyExpression(requireValue(key));
-            continue;
+            label = friendlyExpression(requireValue(key)); continue;
         }
-        if (key == "width") {
-            width = friendlyExpression(requireValue("width"));
-            continue;
-        }
-        if (key == "height") {
-            height = friendlyExpression(requireValue("height"));
-            continue;
-        }
+        if (key == "width")  { width  = friendlyExpression(requireValue("width")); continue; }
+        if (key == "height") { height = friendlyExpression(requireValue("height")); continue; }
         if (key == "viewBox" || key == "viewbox") {
-            viewBox = friendlyExpression(requireValue(key));
+            viewBox = friendlyExpression(requireValue(key)); continue;
+        }
+        if (key == "color") { color = friendlyExpression(requireValue("color")); continue; }
+        if (key == "axis") {
+            const std::string axis = (i < tokens.size()) ? tokens[i++] : "";
+            if (i < tokens.size() && tokens[i] == "label") {
+                ++i;
+                const std::string val = requireValue("axis label");
+                if (axis == "x") axisXLabel = friendlyExpression(val);
+                else if (axis == "y") axisYLabel = friendlyExpression(val);
+            }
             continue;
         }
-        if (key == "color") {
-            color = friendlyExpression(requireValue("color"));
+        if (key == "legend") {
+            if (i < tokens.size() && (tokens[i] == "true" || tokens[i] == "false")) {
+                legendStr = quote(tokens[i++]);
+            } else {
+                legendStr = "\"true\"";
+            }
             continue;
         }
+        if (key == "grid") {
+            if (i < tokens.size() && (tokens[i] == "true" || tokens[i] == "false")) {
+                gridStr = quote(tokens[i++]);
+            } else {
+                gridStr = "\"true\"";
+            }
+            continue;
+        }
+        if (key == "stacked") { stackedStr = "\"true\""; continue; }
         if (i >= tokens.size()) {
             passthroughAttrs.push_back(key);
         } else {
@@ -1565,16 +1586,16 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
         }
     }
 
-    if (type != "bar") {
-        throw std::runtime_error("Unsupported chart type '" + type + "' at line " + std::to_string(lineNumber) + "; supported: bar");
+    if (type != "bar" && type != "line") {
+        throw std::runtime_error("Unsupported chart type '" + type + "' at line " + std::to_string(lineNumber) + "; supported: bar, line");
     }
     if (dataExpr.empty() || byField.empty() || valueField.empty()) {
-        throw std::runtime_error("Expected 'chart bar data <rows> by <field> value <field>' at line " + std::to_string(lineNumber));
+        throw std::runtime_error("Expected 'chart " + type + " data <rows> by <field> value <field>' at line " + std::to_string(lineNumber));
     }
 
     std::ostringstream open;
     open << "@svg role=\"img\" aria-label=" << label
-         << " data-jtml-chart=\"bar\""
+         << " data-jtml-chart=" << quote(type)
          << " data-jtml-chart-data=" << quote(dataExpr)
          << " data-jtml-chart-by=" << quote(unquote(byField))
          << " data-jtml-chart-value=" << quote(unquote(valueField))
@@ -1582,6 +1603,11 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
          << " width=" << width
          << " height=" << height
          << " viewBox=" << viewBox;
+    if (!axisXLabel.empty()) open << " data-jtml-chart-axis-x=" << axisXLabel;
+    if (!axisYLabel.empty()) open << " data-jtml-chart-axis-y=" << axisYLabel;
+    if (!legendStr.empty())  open << " data-jtml-chart-legend=" << legendStr;
+    if (!gridStr.empty())    open << " data-jtml-chart-grid=" << gridStr;
+    if (!stackedStr.empty()) open << " data-jtml-chart-stacked=" << stackedStr;
     for (const auto& attr : passthroughAttrs) open << " " << attr;
     open << "\\\\";
     result.openLine = open.str();
@@ -2009,6 +2035,50 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
                 }
                 continue;
             }
+            // Detect `let name = image src resize W H [fit mode]`
+            const size_t exprStart = nameIndex + 1;
+            if (!insideBlock && exprStart + 2 < tokens.size() &&
+                tokens[exprStart] == "image") {
+                const std::string imgSrc = tokens[exprStart + 1];
+                const std::string imgOp  = exprStart + 2 < tokens.size() ? tokens[exprStart + 2] : "";
+                if (imgOp == "resize" || imgOp == "crop" || imgOp == "filter") {
+                    // Parse remaining image-proc args
+                    std::string procW, procH, procFit, procX, procY, procFilter, procAmount;
+                    size_t pi = exprStart + 3;
+                    if (imgOp == "resize") {
+                        if (pi < tokens.size()) procW = tokens[pi++];
+                        if (pi < tokens.size()) procH = tokens[pi++];
+                        if (pi < tokens.size() && tokens[pi] == "fit" && pi + 1 < tokens.size()) {
+                            ++pi; procFit = tokens[pi++];
+                        }
+                    } else if (imgOp == "crop") {
+                        if (pi < tokens.size()) procX = tokens[pi++];
+                        if (pi < tokens.size()) procY = tokens[pi++];
+                        if (pi < tokens.size()) procW = tokens[pi++];
+                        if (pi < tokens.size()) procH = tokens[pi++];
+                    } else if (imgOp == "filter") {
+                        if (pi < tokens.size()) procFilter = tokens[pi++];
+                        if (pi < tokens.size() && tokens[pi] == "amount" && pi + 1 < tokens.size()) {
+                            ++pi; procAmount = tokens[pi++];
+                        }
+                    }
+                    emitLine(out, level, "define " + typedName.name +
+                        " = {preview: \"\", loading: false, error: \"\", width: 0, height: 0}\\\\");
+                    std::string imgMarker = "@template data-jtml-image-proc=" + quote(imgOp) +
+                        " data-jtml-image-src=" + quote(imgSrc) +
+                        " data-jtml-image-into=" + quote(typedName.name);
+                    if (!procW.empty())      imgMarker += " data-jtml-image-w=" + quote(procW);
+                    if (!procH.empty())      imgMarker += " data-jtml-image-h=" + quote(procH);
+                    if (!procFit.empty())    imgMarker += " data-jtml-image-fit=" + quote(procFit);
+                    if (!procX.empty())      imgMarker += " data-jtml-image-x=" + quote(procX);
+                    if (!procY.empty())      imgMarker += " data-jtml-image-y=" + quote(procY);
+                    if (!procFilter.empty()) imgMarker += " data-jtml-image-filter=" + quote(procFilter);
+                    if (!procAmount.empty()) imgMarker += " data-jtml-image-amount=" + quote(procAmount);
+                    imgMarker += "\\\\";
+                    emitLine(out, level, imgMarker);
+                    continue;
+                }
+            }
             const std::string expr = friendlyExpression(joinTokens(tokens, nameIndex + 1));
             const std::string typeSuffix = (!insideBlock && !typedName.type.empty()) ? ": " + typedName.type : "";
             emitLine(out, level, (insideBlock ? "" : "define ") + typedName.name + typeSuffix + " = " + expr + "\\\\");
@@ -2156,6 +2226,50 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
                 if (!name.empty() && name.back() == ',') name.pop_back();
                 if (!name.empty()) names.push_back(name);
             }
+        } else if (head == "timeline") {
+            // timeline name [duration N] [easing E] [autoplay] [repeat]
+            //   animate var from A to B
+            if (tokens.size() < 2) {
+                throw std::runtime_error("Expected 'timeline name [duration N] [easing E]' at line " + std::to_string(line.number));
+            }
+            const std::string tlName = tokens[1];
+            std::string tlDuration = "400";
+            std::string tlEasing = "linear";
+            bool tlAutoplay = false;
+            bool tlRepeat = false;
+            for (size_t ti = 2; ti < tokens.size(); ++ti) {
+                if (tokens[ti] == "duration" && ti + 1 < tokens.size()) {
+                    tlDuration = tokens[++ti];
+                } else if (tokens[ti] == "easing" && ti + 1 < tokens.size()) {
+                    tlEasing = tokens[++ti];
+                } else if (tokens[ti] == "autoplay") {
+                    tlAutoplay = true;
+                } else if (tokens[ti] == "repeat") {
+                    tlRepeat = true;
+                }
+            }
+            std::string tlAnimates;
+            if (hasChildren) {
+                const size_t end = findBlockEnd(lines, index);
+                for (size_t ci = index + 1; ci < end; ++ci) {
+                    auto ctoks = splitTokens(lines[ci].text);
+                    if (ctoks.size() >= 6 && ctoks[0] == "animate" &&
+                        ctoks[2] == "from" && ctoks[4] == "to") {
+                        if (!tlAnimates.empty()) tlAnimates += ";";
+                        tlAnimates += ctoks[1] + ":" + ctoks[3] + ":" + ctoks[5];
+                    }
+                }
+                index = end - 1;
+            }
+            emitLine(out, level, "define " + tlName + " = {playing: false, paused: false, progress: 0.0, elapsed: 0}\\\\");
+            std::string tlMarker = "@template data-jtml-timeline=" + quote(tlName) +
+                " data-jtml-timeline-duration=" + quote(tlDuration) +
+                " data-jtml-timeline-easing=" + quote(tlEasing);
+            if (!tlAnimates.empty()) tlMarker += " data-jtml-timeline-animates=" + quote(tlAnimates);
+            if (tlAutoplay)          tlMarker += " data-jtml-timeline-autoplay=\"true\"";
+            if (tlRepeat)            tlMarker += " data-jtml-timeline-repeat=\"true\"";
+            tlMarker += "\\\\";
+            emitLine(out, level, tlMarker);
         } else if (head == "guard") {
             // guard "/path" require varName [else "/fallback"]
             // Emits a meta element for browser-side route guard checking.

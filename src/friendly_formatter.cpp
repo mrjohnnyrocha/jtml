@@ -452,6 +452,7 @@ void JtmlFriendlyFormatter::formatElement(const JtmlElementNode& elem) {
         std::string chartValue;
         std::string chartLabel;
         std::string chartColor;
+        std::string chartAxisX, chartAxisY, chartLegend, chartGrid, chartStacked;
         for (const auto& attr : elem.attributes) {
             if (!attr.value) continue;
             const std::string value = formatExpr(*attr.value);
@@ -461,14 +462,24 @@ void JtmlFriendlyFormatter::formatElement(const JtmlElementNode& elem) {
             else if (attr.key == "data-jtml-chart-value") chartValue = unquoteFormatted(value);
             else if (attr.key == "aria-label") chartLabel = value;
             else if (attr.key == "data-jtml-chart-color") chartColor = value;
+            else if (attr.key == "data-jtml-chart-axis-x") chartAxisX = unquoteFormatted(value);
+            else if (attr.key == "data-jtml-chart-axis-y") chartAxisY = unquoteFormatted(value);
+            else if (attr.key == "data-jtml-chart-legend") chartLegend = unquoteFormatted(value);
+            else if (attr.key == "data-jtml-chart-grid")   chartGrid   = unquoteFormatted(value);
+            else if (attr.key == "data-jtml-chart-stacked") chartStacked = unquoteFormatted(value);
         }
         if (!chartType.empty()) {
             out << "chart " << chartType;
-            if (!chartData.empty()) out << " data " << chartData;
-            if (!chartBy.empty()) out << " by " << chartBy;
-            if (!chartValue.empty()) out << " value " << chartValue;
-            if (!chartLabel.empty()) out << " label " << chartLabel;
-            if (!chartColor.empty()) out << " color " << chartColor;
+            if (!chartData.empty())    out << " data " << chartData;
+            if (!chartBy.empty())      out << " by " << chartBy;
+            if (!chartValue.empty())   out << " value " << chartValue;
+            if (!chartLabel.empty())   out << " label " << chartLabel;
+            if (!chartColor.empty())   out << " color " << chartColor;
+            if (!chartAxisX.empty())   out << " axis x label \"" << chartAxisX << "\"";
+            if (!chartAxisY.empty())   out << " axis y label \"" << chartAxisY << "\"";
+            if (chartLegend == "true") out << " legend";
+            if (chartGrid == "true")   out << " grid";
+            if (chartStacked == "true") out << " stacked";
             out << "\n";
             return;
         }

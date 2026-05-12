@@ -775,8 +775,9 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
                 <button data-open-sample="store.jtml">Store</button>
                 <button data-open-sample="routes.jtml">Routes</button>
                 <button data-open-sample="media.jtml">Media</button>
+                <button data-open-sample="charts.jtml">Charts</button>
+                <button data-open-sample="animation.jtml">Animation</button>
                 <button data-open-sample="components.jtml">Components</button>
-                <button data-open-doc="media-graphics-roadmap">Media</button>
               </div>
             </article>
             <article class="hub-card">
@@ -1211,9 +1212,9 @@ CodeMirror.defineSimpleMode("jtml", {
     /* Event attributes */
     { regex: /\b(?:onClick|onInput|onMouseOver|onScroll|onChange|onFocus|onBlur|onKeyDown|onKeyUp|onKeyPress|onSubmit|onDblClick)\b/, token: "jtml-event" },
     /* HTML-style attributes */
-    { regex: /\b(?:style|class|id|type|href|src|placeholder|value|disabled|required|readonly|checked|selected|name|method|action|target|rel|alt|title|role|width|height|viewBox|viewbox|fill|stroke|x|y|cx|cy|r|x1|y1|x2|y2|d|points|stroke-width|stroke-linecap|stroke-linejoin|stroke-dasharray|opacity|fill-opacity|stroke-opacity|rx|ry|scene|camera|renderer|min|max|step|pattern|tabindex|autocomplete|autofocus|multiple|accept|capture|enctype|for|poster|controls|autoplay|muted|loop|preload|playsinline|loading|decoding|aria-label|aria-describedby|aria-hidden|data-jtml-dropzone|data-jtml-media-controller|data-jtml-chart|data-jtml-chart-data|data-jtml-chart-by|data-jtml-chart-value|data-jtml-chart-color|data-jtml-scene3d|data-jtml-scene|data-jtml-camera|data-jtml-controls|data-jtml-renderer|data-jtml-scene3d-controller|data-jtml-fetch|data-url|data-method|data-timeout-ms|data-retry|data-stale|data-lazy|data-jtml-route-load|data-jtml-invalidate-action|data-jtml-invalidate-fetches)\b/, token: "jtml-attr" },
+    { regex: /\b(?:style|class|id|type|href|src|placeholder|value|disabled|required|readonly|checked|selected|name|method|action|target|rel|alt|title|role|width|height|viewBox|viewbox|fill|stroke|x|y|cx|cy|r|x1|y1|x2|y2|d|points|stroke-width|stroke-linecap|stroke-linejoin|stroke-dasharray|opacity|fill-opacity|stroke-opacity|rx|ry|scene|camera|renderer|min|max|step|pattern|tabindex|autocomplete|autofocus|multiple|accept|capture|enctype|for|poster|controls|autoplay|muted|loop|preload|playsinline|loading|decoding|aria-label|aria-describedby|aria-hidden|data-jtml-dropzone|data-jtml-media-controller|data-jtml-chart|data-jtml-chart-data|data-jtml-chart-by|data-jtml-chart-value|data-jtml-chart-color|data-jtml-chart-axis-x|data-jtml-chart-axis-y|data-jtml-chart-legend|data-jtml-chart-grid|data-jtml-chart-stacked|data-jtml-timeline|data-jtml-timeline-duration|data-jtml-timeline-easing|data-jtml-timeline-animates|data-jtml-image-proc|data-jtml-image-src|data-jtml-image-into|data-jtml-scene3d|data-jtml-scene|data-jtml-camera|data-jtml-controls|data-jtml-renderer|data-jtml-scene3d-controller|data-jtml-fetch|data-url|data-method|data-timeout-ms|data-retry|data-stale|data-lazy|data-jtml-route-load|data-jtml-invalidate-action|data-jtml-invalidate-fetches)\b/, token: "jtml-attr" },
     /* JTML keywords */
-    { regex: /\b(?:define|const|derive|show|if|else|while|for|in|break|continue|try|except|then|return|throw|async|subscribe|unsubscribe|to|from|store|unbind|object|derives|import|main|jtml|let|get|when|make|page|route|layout|load|slot|fetch|catch|finally|use|export|effect|redirect|refresh|invalidate|timeout|retry|stale|lazy|extern|into|link|text|box|image|video|audio|embed|file|dropzone|canvas|svg|graphic|group|bar|dot|line|path|polyline|polygon|chart|scene3d|item|list|ordered)\b/, token: "jtml-kw" },
+    { regex: /\b(?:define|const|derive|show|if|else|while|for|in|break|continue|try|except|then|return|throw|async|subscribe|unsubscribe|to|from|store|unbind|object|derives|import|main|jtml|let|get|when|make|page|route|layout|load|slot|fetch|catch|finally|use|export|effect|redirect|refresh|invalidate|timeout|retry|stale|lazy|extern|into|link|text|box|image|video|audio|embed|file|dropzone|canvas|svg|graphic|group|bar|dot|line|path|polyline|polygon|chart|scene3d|item|list|ordered|timeline|animate|resize|crop|filter|axis|legend|grid|stacked|duration|easing|autoplay|repeat)\b/, token: "jtml-kw" },
     /* Literals */
     { regex: /\b(?:true|false)\b/, token: "atom" },
     { regex: /\b\d+(?:\.\d+)?\b/, token: "number" },
@@ -1827,12 +1828,167 @@ page
         path d "M20 92 C90 20 180 120 300 40" fill "none" stroke "#9333ea" stroke-width "3"
     article
       h2 "Chart"
-      chart bar data revenue by month value total label "Revenue by month" color "#2563eb"
+      chart bar data revenue by month value total label "Revenue by month" color "#2563eb" axis x label "Month" axis y label "Revenue ($k)" grid legend
     article
       h2 "3D scene"
       scene3d "Interactive product scene" scene productScene camera orbit controls orbit renderer "three" into sceneState width "640" height "360"
       p "Renderer status: {sceneState.status}"
       p "Attach window.jtml3d.render(canvas, spec) for Three.js/WebGPU."`
+  },
+  {
+    name: "charts.jtml",
+    label: "Charts",
+    category: "media",
+    code: `jtml 2
+
+let revenue = [
+  { "month": "Jan", "sales": 12, "expenses": 8 },
+  { "month": "Feb", "sales": 18, "expenses": 10 },
+  { "month": "Mar", "sales": 9,  "expenses": 7 },
+  { "month": "Apr", "sales": 24, "expenses": 14 },
+  { "month": "May", "sales": 30, "expenses": 16 },
+  { "month": "Jun", "sales": 22, "expenses": 11 }
+]
+
+let traffic = [
+  { "day": "Mon", "visits": 420 },
+  { "day": "Tue", "visits": 680 },
+  { "day": "Wed", "visits": 540 },
+  { "day": "Thu", "visits": 790 },
+  { "day": "Fri", "visits": 610 },
+  { "day": "Sat", "visits": 320 },
+  { "day": "Sun", "visits": 210 }
+]
+
+style
+  main
+    font-family: system-ui
+    max-width: 860px
+    margin: 40px auto
+    padding: 0 24px
+    display: grid
+    gap: 24px
+  h1
+    margin: 0
+    font-size: 26px
+  .charts
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr))
+    gap: 20px
+  article
+    border: 1px solid #e8e4dc
+    border-radius: 10px
+    padding: 16px
+    background: white
+  h2
+    margin: 0 0 12px
+    font-size: 15px
+    color: #334155
+  svg
+    overflow: visible
+
+page
+  h1 "Charts"
+  p "JTML charts render to accessible SVG. Both bar and line types support axes, labels, legend, and grid."
+  box class "charts"
+    article
+      h2 "Bar chart with axes and grid"
+      chart bar data revenue by month value sales label "Monthly Sales" color "#0f766e" axis x label "Month" axis y label "Sales ($k)" grid width "380" height "240"
+    article
+      h2 "Line chart with legend"
+      chart line data traffic by day value visits label "Weekly Traffic" color "#2563eb" axis x label "Day" axis y label "Visits" legend width "380" height "240"
+    article
+      h2 "Bar chart — expenses"
+      chart bar data revenue by month value expenses label "Monthly Expenses" color "#b42318" axis y label "Expenses ($k)" grid legend width "380" height "240"
+    article
+      h2 "Line chart — smoothed traffic"
+      chart line data traffic by day value visits label "Traffic trend" color "#9333ea" grid axis x label "Day of week" width "380" height "240"`
+  },
+  {
+    name: "animation.jtml",
+    label: "Animation",
+    category: "media",
+    code: `jtml 2
+
+let progress = 0
+let opacity = 0
+let scale = 0
+
+timeline intro duration 800 easing ease-out
+  animate progress from 0 to 100
+  animate opacity from 0 to 1
+  animate scale from 20 to 100
+
+timeline pulse duration 600 easing ease-in-out repeat
+  animate progress from 0 to 100
+
+style
+  main
+    font-family: system-ui
+    max-width: 640px
+    margin: 40px auto
+    padding: 0 24px
+    display: grid
+    gap: 24px
+  h1
+    margin: 0
+    font-size: 26px
+  .controls
+    display: flex
+    gap: 10px
+    flex-wrap: wrap
+  button
+    padding: 8px 18px
+    border: 1px solid #d1d5db
+    border-radius: 6px
+    background: white
+    font: inherit
+    cursor: pointer
+    font-weight: 600
+  button:hover
+    background: #f1f5f9
+  .bar-track
+    height: 20px
+    background: #f1f5f9
+    border-radius: 10px
+    overflow: hidden
+  .bar-fill
+    height: 100%
+    background: #0f766e
+    border-radius: 10px
+    transition: width 0.05s linear
+  .card
+    border: 1px solid #e8e4dc
+    border-radius: 10px
+    padding: 20px
+    background: white
+    display: grid
+    gap: 12px
+  .stat
+    font-size: 48px
+    font-weight: 800
+    color: #0f766e
+
+page
+  h1 "Animation"
+  box class "card"
+    h2 "Intro animation"
+    p "progress: {progress}%  opacity: {opacity}  scale: {scale}%"
+    box class "bar-track"
+      box class "bar-fill" style "width: {progress}%"
+    box class "controls"
+      button "Play intro" click intro.play
+      button "Pause" click intro.pause
+      button "Reset" click intro.reset
+  box class "card"
+    h2 "Repeating pulse"
+    box class "stat" "{progress}%"
+    box class "bar-track"
+      box class "bar-fill" style "width: {progress}%"
+    box class "controls"
+      button "Start pulse" click pulse.play
+      button "Stop" click pulse.pause
+      button "Reset" click pulse.reset`
   },
   {
     name: "components.jtml",

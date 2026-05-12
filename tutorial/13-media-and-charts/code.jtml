@@ -1,0 +1,81 @@
+jtml 2
+
+let revenue = [
+  { "month": "Jan", "sales": 12 },
+  { "month": "Feb", "sales": 18 },
+  { "month": "Mar", "sales": 9  },
+  { "month": "Apr", "sales": 24 },
+  { "month": "May", "sales": 30 }
+]
+
+let progress = 0
+let opacity  = 0
+
+timeline intro duration 1000 easing ease-out
+  animate progress from 0 to 100
+  animate opacity  from 0 to 1
+
+style
+  main
+    font-family: system-ui
+    max-width: 700px
+    margin: 40px auto
+    padding: 0 20px
+    display: grid
+    gap: 24px
+  h1
+    margin: 0
+    font-size: 26px
+  .card
+    border: 1px solid #e8e4dc
+    border-radius: 10px
+    padding: 20px
+    background: white
+    display: grid
+    gap: 12px
+  .row
+    display: flex
+    gap: 10px
+    flex-wrap: wrap
+  button
+    padding: 8px 18px
+    border: 1px solid #d1d5db
+    border-radius: 6px
+    background: white
+    font: inherit
+    cursor: pointer
+    font-weight: 600
+  button:hover
+    background: #f1f5f9
+  .bar-track
+    height: 16px
+    background: #f1f5f9
+    border-radius: 8px
+    overflow: hidden
+  .bar-fill
+    height: 100%
+    background: #0f766e
+    border-radius: 8px
+  svg
+    overflow: visible
+
+page
+  h1 "Media, Charts & Animation"
+
+  box class "card"
+    h2 "Bar chart"
+    chart bar data revenue by month value sales label "Monthly Sales" color "#0f766e" axis x label "Month" axis y label "Sales ($k)" grid width "560" height "260"
+
+  box class "card"
+    h2 "Line chart"
+    chart line data revenue by month value sales label "Sales trend" color "#2563eb" axis x label "Month" axis y label "Sales" legend width "560" height "260"
+
+  box class "card"
+    h2 "Timeline animation"
+    p "Progress: {progress}%  Opacity: {opacity}"
+    box class "bar-track"
+      box class "bar-fill" style "width: {progress}%"
+    box class "row"
+      button "Play" click intro.play
+      button "Pause" click intro.pause
+      button "Reset" click intro.reset

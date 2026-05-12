@@ -741,6 +741,7 @@ std::string JtmlTranspiler::generateScriptBlock() {
           if (!changed) break;
         }
         renderCharts();
+        processImageBindings();
       }
 
       function applyClientExpressions() {
@@ -863,6 +864,7 @@ std::string JtmlTranspiler::generateScriptBlock() {
         }
         applyClientExpressions();
         renderCharts();
+        processImageBindings();
         applyRoutes();
       }
 
@@ -899,7 +901,6 @@ std::string JtmlTranspiler::generateScriptBlock() {
       function renderCharts() {
         document.querySelectorAll('svg[data-jtml-chart]').forEach(function (svg) {
           const type = svg.getAttribute('data-jtml-chart') || 'bar';
-          if (type !== 'bar') return;
           const dataExpr = svg.getAttribute('data-jtml-chart-data') || '';
           const byField = svg.getAttribute('data-jtml-chart-by') || 'label';
           const valueField = svg.getAttribute('data-jtml-chart-value') || 'value';
@@ -908,36 +909,296 @@ std::string JtmlTranspiler::generateScriptBlock() {
           const rows = normalizeChartRows(data.value);
           const width = Math.max(160, Number(svg.getAttribute('width') || 640) || 640);
           const height = Math.max(120, Number(svg.getAttribute('height') || 320) || 320);
-          const pad = { left: 44, right: 18, top: 20, bottom: 44 };
+          const axisXLabel = svg.getAttribute('data-jtml-chart-axis-x') || '';
+          const axisYLabel = svg.getAttribute('data-jtml-chart-axis-y') || '';
+          const showLegend = svg.getAttribute('data-jtml-chart-legend') === 'true';
+          const showGrid   = svg.getAttribute('data-jtml-chart-grid') === 'true';
+          const isStacked  = svg.getAttribute('data-jtml-chart-stacked') === 'true';
+          const padLeft  = axisYLabel ? 60 : 48;
+          const padRight = showLegend ? 130 : 20;
+          const padTop   = 20;
+          const padBottom = axisXLabel ? 56 : 44;
+          const pad = { left: padLeft, right: padRight, top: padTop, bottom: padBottom };
           const innerW = Math.max(1, width - pad.left - pad.right);
           const innerH = Math.max(1, height - pad.top - pad.bottom);
+          const color = svg.getAttribute('data-jtml-chart-color') || '#0f766e';
           const values = rows.map(function (row) {
             return Math.max(0, Number(row && row[valueField]) || 0);
           });
           const maxValue = Math.max(1, Math.max.apply(null, values.length ? values : [1]));
-          const gap = rows.length > 1 ? 8 : 0;
-          const barW = rows.length ? Math.max(2, (innerW - gap * (rows.length - 1)) / rows.length) : innerW;
-          const color = svg.getAttribute('data-jtml-chart-color') || '#0f766e';
+          // Compute a clean tick interval
+          const rawStep = maxValue / 4;
+          const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep || 1)));
+          const niceStep = Math.ceil(rawStep / magnitude) * magnitude || 1;
+          const niceMax = Math.ceil(maxValue / niceStep) * niceStep || niceStep;
+
           let html = '';
+          // Grid lines and Y-axis ticks
+          const tickCount = Math.min(6, Math.round(niceMax / niceStep));
+          for (let t = 0; t <= tickCount; t++) {
+            const tv = t * niceStep;
+            const ty = (pad.top + innerH) - (tv / niceMax) * innerH;
+            if (showGrid && t > 0) {
+              html += '<line x1="' + pad.left + '" y1="' + ty.toFixed(1) + '" x2="' + (width - pad.right) + '" y2="' + ty.toFixed(1) + '" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3"/>';
+            }
+            const tickLabel = tv >= 1000 ? (tv / 1000).toFixed(1) + 'k' : String(tv);
+            html += '<line x1="' + (pad.left - 4) + '" y1="' + ty.toFixed(1) + '" x2="' + pad.left + '" y2="' + ty.toFixed(1) + '" stroke="#94a3b8" stroke-width="1"/>';
+            html += '<text x="' + (pad.left - 7) + '" y="' + (ty + 4).toFixed(1) + '" text-anchor="end" fill="#64748b" font-size="11">' + escapeSvgText(tickLabel) + '</text>';
+          }
+          // Axes
           html += '<line x1="' + pad.left + '" y1="' + (height - pad.bottom) + '" x2="' + (width - pad.right) + '" y2="' + (height - pad.bottom) + '" stroke="#94a3b8" stroke-width="1"/>';
           html += '<line x1="' + pad.left + '" y1="' + pad.top + '" x2="' + pad.left + '" y2="' + (height - pad.bottom) + '" stroke="#94a3b8" stroke-width="1"/>';
+          // Y-axis label
+          if (axisYLabel) {
+            var rotTransform = 'rotate(-90)';
+            html += '<text transform="' + rotTransform + '" x="' + (-(height / 2)).toFixed(1) + '" y="14" text-anchor="middle" fill="#475569" font-size="12">' + escapeSvgText(axisYLabel) + '</text>';
+          }
+          // X-axis label
+          if (axisXLabel) {
+            html += '<text x="' + ((pad.left + width - pad.right) / 2).toFixed(1) + '" y="' + (height - 6) + '" text-anchor="middle" fill="#475569" font-size="12">' + escapeSvgText(axisXLabel) + '</text>';
+          }
           if (!rows.length) {
             html += '<text x="' + (width / 2) + '" y="' + (height / 2) + '" text-anchor="middle" fill="#64748b" font-size="14">No chart data</text>';
           }
-          rows.forEach(function (row, index) {
-            const value = values[index];
-            const barH = Math.round((value / maxValue) * innerH);
-            const x = pad.left + index * (barW + gap);
-            const y = height - pad.bottom - barH;
-            const label = row && row[byField] != null ? row[byField] : String(index + 1);
-            html += '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + barH.toFixed(2) + '" fill="' + escapeSvgText(color) + '" rx="3"/>';
-            html += '<text x="' + (x + barW / 2).toFixed(2) + '" y="' + (height - 18) + '" text-anchor="middle" fill="#334155" font-size="12">' + escapeSvgText(label) + '</text>';
-            html += '<text x="' + (x + barW / 2).toFixed(2) + '" y="' + Math.max(14, y - 6).toFixed(2) + '" text-anchor="middle" fill="#334155" font-size="12">' + escapeSvgText(value) + '</text>';
-          });
+          if (type === 'bar') {
+            const gap = rows.length > 1 ? Math.max(2, Math.round(innerW / rows.length * 0.15)) : 0;
+            const barW = rows.length ? Math.max(2, (innerW - gap * (rows.length - 1)) / rows.length) : innerW;
+            rows.forEach(function (row, index) {
+              const value = values[index];
+              const barH = Math.round((value / niceMax) * innerH);
+              const x = pad.left + index * (barW + gap);
+              const y = height - pad.bottom - barH;
+              const label = row && row[byField] != null ? row[byField] : String(index + 1);
+              html += '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + barH.toFixed(2) + '" fill="' + escapeSvgText(color) + '" rx="2"/>';
+              const xLabel = x + barW / 2;
+              const truncLabel = String(label).length > 8 ? String(label).slice(0, 7) + '…' : String(label);
+              html += '<text x="' + xLabel.toFixed(2) + '" y="' + (height - pad.bottom + 14) + '" text-anchor="middle" fill="#334155" font-size="11">' + escapeSvgText(truncLabel) + '</text>';
+              if (barH > 14) {
+                html += '<text x="' + xLabel.toFixed(2) + '" y="' + Math.max(pad.top + 12, y - 4).toFixed(2) + '" text-anchor="middle" fill="#334155" font-size="11">' + escapeSvgText(value) + '</text>';
+              }
+            });
+          } else if (type === 'line') {
+            const stepX = rows.length > 1 ? innerW / (rows.length - 1) : innerW;
+            let points = '';
+            rows.forEach(function (row, index) {
+              const value = values[index];
+              const x = (pad.left + (rows.length > 1 ? index * stepX : innerW / 2)).toFixed(2);
+              const y = (height - pad.bottom - (value / niceMax) * innerH).toFixed(2);
+              if (index === 0) points += 'M' + x + ' ' + y;
+              else points += ' L' + x + ' ' + y;
+            });
+            // Fill area under line
+            if (rows.length > 1) {
+              const firstX = pad.left.toFixed(2);
+              const lastX  = (pad.left + innerW).toFixed(2);
+              const baseY  = (height - pad.bottom).toFixed(2);
+              html += '<path d="' + points + ' L' + lastX + ' ' + baseY + ' L' + firstX + ' ' + baseY + ' Z" fill="' + escapeSvgText(color) + '" fill-opacity="0.12"/>';
+            }
+            html += '<path d="' + points + '" fill="none" stroke="' + escapeSvgText(color) + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+            rows.forEach(function (row, index) {
+              const value = values[index];
+              const x = (pad.left + (rows.length > 1 ? index * stepX : innerW / 2)).toFixed(2);
+              const y = (height - pad.bottom - (value / niceMax) * innerH).toFixed(2);
+              const label = row && row[byField] != null ? row[byField] : String(index + 1);
+              html += '<circle cx="' + x + '" cy="' + y + '" r="4" fill="' + escapeSvgText(color) + '" stroke="#fff" stroke-width="1.5"/>';
+              if (rows.length <= 16) {
+                const truncLabel = String(label).length > 8 ? String(label).slice(0, 7) + '…' : String(label);
+                html += '<text x="' + x + '" y="' + (height - pad.bottom + 14) + '" text-anchor="middle" fill="#334155" font-size="11">' + escapeSvgText(truncLabel) + '</text>';
+              }
+            });
+          }
+          // Legend
+          if (showLegend && rows.length > 0) {
+            const lx = width - pad.right + 12;
+            let ly = pad.top + 10;
+            const field = svg.getAttribute('aria-label') || valueField;
+            html += '<rect x="' + lx + '" y="' + ly + '" width="12" height="12" fill="' + escapeSvgText(color) + '" rx="2"/>';
+            html += '<text x="' + (lx + 16) + '" y="' + (ly + 10) + '" fill="#334155" font-size="12">' + escapeSvgText(field) + '</text>';
+          }
           if (svg.dataset.jtmlChartRendered !== html) {
             svg.innerHTML = html;
             svg.dataset.jtmlChartRendered = html;
           }
+        });
+      }
+
+      // ── Timeline animations ────────────────────────────────────────
+      const __jtml_timelines = {};
+      function initTimelines() {
+        document.querySelectorAll('template[data-jtml-timeline]').forEach(function (el) {
+          const name = el.getAttribute('data-jtml-timeline');
+          if (!name || __jtml_timelines[name]) return;
+          const duration = Math.max(1, Number(el.getAttribute('data-jtml-timeline-duration')) || 400);
+          const easingName = el.getAttribute('data-jtml-timeline-easing') || 'linear';
+          const autoplay = el.getAttribute('data-jtml-timeline-autoplay') === 'true';
+          const repeat = el.getAttribute('data-jtml-timeline-repeat') === 'true';
+          const animateStr = el.getAttribute('data-jtml-timeline-animates') || '';
+          const animates = animateStr.split(';').filter(Boolean).map(function (s) {
+            const parts = s.split(':');
+            return { varName: parts[0], from: Number(parts[1]) || 0, to: Number(parts[2]) || 0 };
+          });
+          function easeValue(t, easingFn) {
+            if (easingFn === 'ease-in')     return t * t;
+            if (easingFn === 'ease-out')    return 1 - (1 - t) * (1 - t);
+            if (easingFn === 'ease-in-out') return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+            if (easingFn === 'cubic-bezier') return t; // fallback
+            return t; // linear
+          }
+          const tl = {
+            name: name, duration: duration, easing: easingName,
+            playing: false, paused: false, elapsed: 0, startTime: null, rafId: null, repeat: repeat,
+            play: function () {
+              if (tl.playing && !tl.paused) return;
+              if (tl.paused) { tl.startTime = performance.now() - tl.elapsed; tl.paused = false; }
+              else { tl.startTime = performance.now(); tl.elapsed = 0; }
+              tl.playing = true;
+              __jtml_sendEvent('__timeline_' + name + '_play', []);
+              function tick(now) {
+                if (!tl.playing || tl.paused) return;
+                tl.elapsed = now - tl.startTime;
+                const rawT = Math.min(1, tl.elapsed / tl.duration);
+                const t = easeValue(rawT, easingName);
+                const progress = Math.round(t * 100);
+                animates.forEach(function (a) {
+                  const val = a.from + (a.to - a.from) * t;
+                  __jtml_sendEvent('__timeline_animate_' + a.varName, [val]);
+                });
+                __jtml_sendEvent('__timeline_' + name + '_progress', [progress]);
+                if (rawT < 1) { tl.rafId = requestAnimationFrame(tick); }
+                else {
+                  tl.playing = false;
+                  if (repeat) { tl.elapsed = 0; tl.startTime = now; tl.playing = true; tl.rafId = requestAnimationFrame(tick); }
+                  else { __jtml_sendEvent('__timeline_' + name + '_done', []); }
+                }
+              }
+              tl.rafId = requestAnimationFrame(tick);
+            },
+            pause: function () {
+              if (!tl.playing) return;
+              tl.paused = true; tl.playing = false;
+              if (tl.rafId) cancelAnimationFrame(tl.rafId);
+              __jtml_sendEvent('__timeline_' + name + '_pause', []);
+            },
+            reset: function () {
+              tl.playing = false; tl.paused = false; tl.elapsed = 0;
+              if (tl.rafId) cancelAnimationFrame(tl.rafId);
+              animates.forEach(function (a) {
+                __jtml_sendEvent('__timeline_animate_' + a.varName, [a.from]);
+              });
+              __jtml_sendEvent('__timeline_' + name + '_progress', [0]);
+            }
+          };
+          __jtml_timelines[name] = tl;
+          if (autoplay) setTimeout(function () { tl.play(); }, 50);
+        });
+      }
+
+      function __jtml_sendEvent(action, args) {
+        try {
+          sendEvent(action, args);
+        } catch (e) {}
+      }
+
+      // ── Browser image processing ───────────────────────────────────
+      function processImageBindings() {
+        document.querySelectorAll('template[data-jtml-image-proc]').forEach(function (el) {
+          const op     = el.getAttribute('data-jtml-image-proc') || 'resize';
+          const srcVar = el.getAttribute('data-jtml-image-src') || '';
+          const into   = el.getAttribute('data-jtml-image-into') || '';
+          if (!srcVar || !into) return;
+          const srcData = evaluateClientExpression(srcVar);
+          if (!srcData.found) return;
+          const srcValue = srcData.value;
+          const srcUrl = typeof srcValue === 'object' && srcValue
+            ? (srcValue.preview || srcValue.url || srcValue.src || '')
+            : String(srcValue || '');
+          if (!srcUrl) return;
+          const cacheKey = op + ':' + srcVar + ':' + JSON.stringify({
+            w: el.getAttribute('data-jtml-image-w'),
+            h: el.getAttribute('data-jtml-image-h'),
+            fit: el.getAttribute('data-jtml-image-fit'),
+            x: el.getAttribute('data-jtml-image-x'),
+            y: el.getAttribute('data-jtml-image-y'),
+            filter: el.getAttribute('data-jtml-image-filter'),
+            amount: el.getAttribute('data-jtml-image-amount'),
+            src: srcUrl
+          });
+          if (el.dataset.jtmlImgCacheKey === cacheKey) return;
+          el.dataset.jtmlImgCacheKey = cacheKey;
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = function () {
+            try {
+              const canvas = document.createElement('canvas');
+              let sw = img.naturalWidth, sh = img.naturalHeight;
+              let dx = 0, dy = 0, dw, dh;
+              if (op === 'resize') {
+                const tw = Number(el.getAttribute('data-jtml-image-w')) || sw;
+                const th = Number(el.getAttribute('data-jtml-image-h')) || sh;
+                const fit = el.getAttribute('data-jtml-image-fit') || 'fill';
+                const ratio = sw / sh;
+                if (fit === 'cover') {
+                  if (tw / th > ratio) { dw = tw; dh = Math.round(tw / ratio); }
+                  else { dh = th; dw = Math.round(th * ratio); }
+                  dx = Math.round((dw - tw) / 2); dy = Math.round((dh - th) / 2);
+                  canvas.width = tw; canvas.height = th;
+                  canvas.getContext('2d').drawImage(img, -dx, -dy, dw, dh);
+                } else if (fit === 'contain') {
+                  if (tw / th > ratio) { dh = th; dw = Math.round(th * ratio); }
+                  else { dw = tw; dh = Math.round(tw / ratio); }
+                  canvas.width = tw; canvas.height = th;
+                  canvas.getContext('2d').drawImage(img, Math.round((tw - dw) / 2), Math.round((th - dh) / 2), dw, dh);
+                } else {
+                  canvas.width = tw; canvas.height = th;
+                  canvas.getContext('2d').drawImage(img, 0, 0, tw, th);
+                }
+              } else if (op === 'crop') {
+                const cx = Number(el.getAttribute('data-jtml-image-x')) || 0;
+                const cy = Number(el.getAttribute('data-jtml-image-y')) || 0;
+                const cw = Number(el.getAttribute('data-jtml-image-w')) || sw;
+                const ch = Number(el.getAttribute('data-jtml-image-h')) || sh;
+                canvas.width = cw; canvas.height = ch;
+                canvas.getContext('2d').drawImage(img, cx, cy, cw, ch, 0, 0, cw, ch);
+              } else if (op === 'filter') {
+                const filterType = el.getAttribute('data-jtml-image-filter') || '';
+                const amount = Number(el.getAttribute('data-jtml-image-amount') || '1');
+                canvas.width = sw; canvas.height = sh;
+                const ctx = canvas.getContext('2d');
+                if (filterType === 'grayscale') {
+                  ctx.filter = 'grayscale(' + (amount * 100).toFixed(0) + '%)';
+                } else if (filterType === 'blur') {
+                  ctx.filter = 'blur(' + amount.toFixed(1) + 'px)';
+                } else if (filterType === 'brightness') {
+                  ctx.filter = 'brightness(' + amount.toFixed(2) + ')';
+                } else if (filterType === 'contrast') {
+                  ctx.filter = 'contrast(' + amount.toFixed(2) + ')';
+                } else if (filterType === 'sepia') {
+                  ctx.filter = 'sepia(' + (amount * 100).toFixed(0) + '%)';
+                } else if (filterType === 'invert') {
+                  ctx.filter = 'invert(' + (amount * 100).toFixed(0) + '%)';
+                } else if (filterType === 'saturate') {
+                  ctx.filter = 'saturate(' + amount.toFixed(2) + ')';
+                }
+                ctx.drawImage(img, 0, 0, sw, sh);
+              }
+              const preview = canvas.toDataURL('image/png');
+              const result = JSON.stringify({ preview: preview, loading: false, error: '', width: canvas.width, height: canvas.height });
+              if (typeof applyBindings === 'function') {
+                applyBindings({ bindings: { [into]: JSON.parse(result) } });
+              }
+            } catch (err) {
+              const result = JSON.stringify({ preview: '', loading: false, error: String(err), width: 0, height: 0 });
+              if (typeof applyBindings === 'function') {
+                applyBindings({ bindings: { [into]: JSON.parse(result) } });
+              }
+            }
+          };
+          img.onerror = function () {
+            if (typeof applyBindings === 'function') {
+              applyBindings({ bindings: { [into]: { preview: '', loading: false, error: 'Failed to load image', width: 0, height: 0 } } });
+            }
+          };
+          img.src = srcUrl;
         });
       }
 
@@ -1313,6 +1574,8 @@ std::string JtmlTranspiler::generateScriptBlock() {
         startDropzoneBindings();
         startMediaControllerBindings();
         startScene3DBindings();
+        initTimelines();
+        processImageBindings();
         applyRoutes();
       }
       if (document.readyState === 'loading') {

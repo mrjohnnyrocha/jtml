@@ -1,0 +1,543 @@
+jtml 2
+
+let appName = "OpsPulse"
+let currentUser = "João"
+let currentRole = "Admin"
+let sidebarOpen = true
+let darkMode = false
+let search = ""
+let selectedRegion = "All"
+let selectedPlatform = "All"
+let selectedTool = "All"
+let selectedPeriod = "30d"
+let activePanel = "summary"
+let savingSettings = false
+let settingsSaved = false
+let alertMessage = ""
+let draftNote = ""
+let selectedIncident = ""
+let selectedPriority = "All"
+let exportReady = false
+let mediaUploads = []
+
+let usage = fetch "/api/usage" timeout 3000 retry 2 stale keep refresh reloadUsage
+let users = fetch "/api/users" timeout 3000 retry 2 stale keep refresh reloadUsers
+let incidents = fetch "/api/incidents" timeout 3000 retry 2 stale keep refresh reloadIncidents
+let releases = fetch "/api/releases" lazy stale keep
+let media = fetch "/api/media" lazy stale keep
+
+get themeClass = darkMode ? "app app-dark" : "app"
+get sidebarClass = sidebarOpen ? "sidebar sidebar-open" : "sidebar sidebar-closed"
+get hasSearch = search != ""
+get hasAlert = alertMessage != ""
+get isFiltered = selectedRegion != "All" || selectedPlatform != "All" || selectedTool != "All" || selectedPriority != "All"
+get usageTitle = selectedTool == "All" ? "All tools" : selectedTool
+get filterSummary = selectedRegion + " / " + selectedPlatform + " / " + selectedTool
+get settingsState = settingsSaved ? "Settings saved" : "No recent changes"
+get exportLabel = exportReady ? "Export ready" : "Prepare export"
+
+when toggleSidebar
+  sidebarOpen = !sidebarOpen
+
+when toggleTheme
+  darkMode = !darkMode
+
+when clearSearch
+  search = ""
+
+when resetFilters
+  selectedRegion = "All"
+  selectedPlatform = "All"
+  selectedTool = "All"
+  selectedPriority = "All"
+  alertMessage = "Filters reset"
+
+when selectSummary
+  activePanel = "summary"
+
+when selectAdoption
+  activePanel = "adoption"
+
+when selectQuality
+  activePanel = "quality"
+
+when selectCost
+  activePanel = "cost"
+
+when pickRegion region
+  selectedRegion = region
+
+when pickPlatform platform
+  selectedPlatform = platform
+
+when pickTool tool
+  selectedTool = tool
+
+when pickPriority priority
+  selectedPriority = priority
+
+when openIncident id
+  selectedIncident = id
+  alertMessage = "Incident selected: {id}"
+
+when closeIncident
+  selectedIncident = ""
+
+when saveSettings
+  savingSettings = true
+  settingsSaved = true
+  savingSettings = false
+  alertMessage = "Settings saved"
+
+when dismissAlert
+  alertMessage = ""
+
+when prepareExport
+  exportReady = true
+  alertMessage = "Export is ready"
+
+when addNote
+  if draftNote != ""
+    alertMessage = "Note added"
+    draftNote = ""
+
+when hardRefresh
+  reloadUsage
+  reloadUsers
+  reloadIncidents
+  alertMessage = "Data refreshed"
+
+when reloadEverything
+  reloadUsage
+  reloadUsers
+  reloadIncidents
+  alertMessage = "Reload requested"
+
+route "/" as Dashboard
+route "/usage" as UsagePage
+route "/people" as PeoplePage
+route "/incidents" as IncidentsPage
+route "/releases" as ReleasesPage load releases
+route "/media" as MediaPage load media
+route "/settings" as SettingsPage
+route "*" as NotFoundPage
+
+make Shell title
+  page class "{themeClass}"
+    AppHeader title
+    table width "100%" cellpadding "0" cellspacing "0" bgcolor "#f4f7fb"
+      tr
+        td width "230" valign "top" bgcolor "#f8fafc"
+          AppSidebar
+        td valign "top"
+          table width "100%" cellpadding "24" cellspacing "0"
+            tr
+              td valign "top"
+                if hasAlert
+                  AlertBar alertMessage
+                slot
+
+make AppHeader title
+  header class "topbar"
+    table width "100%" cellpadding "14" cellspacing "0" bgcolor "#ffffff"
+      tr
+        td width "48" valign "middle"
+          button "☰" class "icon-button" click toggleSidebar
+        td valign "middle"
+          h1 appName
+          text title
+        td width "460" valign "middle" align "right"
+          input "Search" into search
+          if hasSearch
+            button "Clear" click clearSearch
+          button "Refresh" click hardRefresh
+          button "Reload everything" click reloadEverything
+          button exportLabel click prepareExport
+          button "Theme" click toggleTheme
+          text currentUser
+          text currentRole
+
+make AppSidebar
+  nav class "{sidebarClass}"
+    table width "100%" cellpadding "14" cellspacing "0" bgcolor "#f8fafc"
+      tr
+        td
+          h3 "Navigation"
+          list
+            item
+              link "Dashboard" to "/"
+            item
+              link "Usage" to "/usage"
+            item
+              link "People" to "/people"
+            item
+              link "Incidents" to "/incidents"
+            item
+              link "Releases" to "/releases"
+            item
+              link "Media" to "/media"
+            item
+              link "Settings" to "/settings"
+          hr
+          strong "Filters"
+          text filterSummary
+          if isFiltered
+            button "Reset filters" click resetFilters
+
+make AlertBar message
+  table width "100%" cellpadding "12" cellspacing "0" bgcolor "#eff6ff"
+    tr
+      td
+        strong message
+      td width "120" align "right"
+        button "Dismiss" click dismissAlert
+
+make MetricCard label value detail tone
+  fieldset class "metric-card"
+    legend label
+    h2 value
+    text detail
+
+make FilterPanel
+  fieldset class "filters"
+    legend "Filters"
+    table width "100%" cellpadding "8" cellspacing "0"
+      tr
+        td valign "top"
+          strong "Region"
+          br
+          button "All" click pickRegion("All")
+          button "Portugal" click pickRegion("Portugal")
+          button "Spain" click pickRegion("Spain")
+          button "Brazil" click pickRegion("Brazil")
+        td valign "top"
+          strong "Platform"
+          br
+          button "All" click pickPlatform("All")
+          button "Web" click pickPlatform("Web")
+          button "Mobile" click pickPlatform("Mobile")
+          button "Internal" click pickPlatform("Internal")
+        td valign "top"
+          strong "Tool"
+          br
+          button "All" click pickTool("All")
+          button "ChatGPT" click pickTool("ChatGPT")
+          button "Copilot" click pickTool("Copilot")
+          button "Mind4EDP" click pickTool("Mind4EDP")
+
+make LoadingBlock resource
+  fieldset class "loading"
+    legend "Loading"
+    text resource
+
+make ErrorBlock resource error
+  fieldset class "error"
+    legend "Could not load"
+    text resource
+    text error
+    button "Try again" click hardRefresh
+
+make EmptyBlock label
+  fieldset class "empty"
+    legend "Nothing here"
+    text label
+
+make Dashboard
+  fieldset class "panel"
+    h2 "Summary"
+    FilterPanel
+    table width "100%" cellpadding "8" cellspacing "0" class "metric-grid"
+      tr
+        td valign "top"
+          MetricCard "Total interactions" "{usage.data.totalInteractions}" selectedPeriod "primary"
+        td valign "top"
+          MetricCard "Active users" "{usage.data.activeUsers}" selectedRegion "good"
+        td valign "top"
+          MetricCard "Avg response time" "{usage.data.avgLatency}" selectedTool "warn"
+        td valign "top"
+          MetricCard "Cost estimate" "{usage.data.cost}" selectedPlatform "neutral"
+    table width "100%" cellpadding "8" cellspacing "0" class "two-column"
+      fieldset class "card"
+        h3 "Usage by tool"
+        chart bar data usage.data.byTool by label value total
+      fieldset class "card"
+        h3 "Recent activity"
+        for event in usage.data.recent
+          ActivityRow event
+    box class "tabs"
+      button "Summary" click selectSummary
+      button "Adoption" click selectAdoption
+      button "Quality" click selectQuality
+      button "Cost" click selectCost
+
+    if activePanel == "summary"
+      SummaryPanel
+    else
+      if activePanel == "adoption"
+        AdoptionPanel
+      else
+        if activePanel == "quality"
+          QualityPanel
+        else
+          CostPanel
+
+make SummaryPanel
+  fieldset class "panel"
+    h2 "Summary"
+    if usage.loading
+      LoadingBlock "usage"
+    else
+      if usage.error
+        ErrorBlock "usage" usage.error
+      else
+        table width "100%" cellpadding "8" cellspacing "0" class "metric-grid"
+          tr
+            td valign "top"
+              MetricCard "Total interactions" "{usage.data.totalInteractions}" selectedPeriod "primary"
+            td valign "top"
+              MetricCard "Active users" "{usage.data.activeUsers}" selectedRegion "good"
+            td valign "top"
+              MetricCard "Avg response time" "{usage.data.avgLatency}" selectedTool "warn"
+            td valign "top"
+              MetricCard "Cost estimate" "{usage.data.cost}" selectedPlatform "neutral"
+        table width "100%" cellpadding "8" cellspacing "0" class "two-column"
+          fieldset class "card"
+            h3 "Usage by tool"
+            chart bar data usage.data.byTool by label value total
+          fieldset class "card"
+            h3 "Recent activity"
+            for event in usage.data.recent
+              ActivityRow event
+
+make AdoptionPanel
+  fieldset class "panel"
+    h2 "Adoption"
+    if users.loading
+      LoadingBlock "users"
+    else
+      if users.error
+        ErrorBlock "users" users.error
+      else
+        table width "100%" cellpadding "8" cellspacing "0" class "metric-grid"
+          tr
+            td valign "top"
+              MetricCard "Professionals" "{users.data.professionals}" "Active this month" "primary"
+            td valign "top"
+              MetricCard "GBS users" "{users.data.gbs}" "Segment adoption" "good"
+            td valign "top"
+              MetricCard "New users" "{users.data.newUsers}" selectedPeriod "neutral"
+            td valign "top"
+              MetricCard "Inactive users" "{users.data.inactiveUsers}" "Needs attention" "warn"
+        fieldset class "card"
+          h3 "Adoption by region"
+          chart bar data users.data.byRegion by label value total
+
+make QualityPanel
+  fieldset class "panel"
+    h2 "Quality"
+    table width "100%" cellpadding "8" cellspacing "0" class "metric-grid"
+      tr
+        td valign "top"
+          MetricCard "Successful requests" "98.2%" "Last 30 days" "good"
+        td valign "top"
+          MetricCard "Failed requests" "1.8%" "Needs monitoring" "warn"
+        td valign "top"
+          MetricCard "Median latency" "1.4s" "Runtime path" "neutral"
+        td valign "top"
+          MetricCard "Slow traces" "37" "Above threshold" "danger"
+    fieldset class "card"
+      h3 "Quality notes"
+      text "This panel shows how JTML keeps the visible application state separate from hidden runtime details."
+      text "The user sees only the observable summary. The runtime handles fetch state, retries, actions and bindings."
+
+make CostPanel
+  fieldset class "panel"
+    h2 "Cost"
+    table width "100%" cellpadding "8" cellspacing "0" class "metric-grid"
+      tr
+        td valign "top"
+          MetricCard "Estimated spend" "€4,812" selectedPeriod "primary"
+        td valign "top"
+          MetricCard "Cost per active user" "€0.39" "Blended" "neutral"
+        td valign "top"
+          MetricCard "Highest tool" usageTitle "Current filter" "warn"
+        td valign "top"
+          MetricCard "Savings opportunity" "12%" "Optimisation estimate" "good"
+    fieldset class "card"
+      h3 "Cost by platform"
+      if usage.loading
+        LoadingBlock "cost data"
+      else
+        chart bar data usage.data.byPlatform by label value total
+
+make ActivityRow event
+  table width "100%" cellpadding "6" cellspacing "0" class "activity-row"
+    tr
+      td width "90"
+        text event.time
+      td
+        strong event.title
+      td
+        text event.detail
+
+make UsagePage
+  Shell "Usage explorer"
+    FilterPanel
+    fieldset class "panel"
+      h2 "Usage explorer"
+      text "Current scope: {filterSummary}"
+      if usage.loading
+        LoadingBlock "usage"
+      else
+        if usage.error
+          ErrorBlock "usage" usage.error
+        else
+          fieldset class "card"
+            h3 "Daily interactions"
+            chart bar data usage.data.daily by label value total
+          fieldset class "table-card"
+            h3 "Tool breakdown"
+            for row in usage.data.byTool
+              UsageRow row
+
+make UsageRow row
+  table width "100%" cellpadding "6" cellspacing "0" class "table-row"
+    tr
+      td
+        strong row.label
+      td
+        text row.value
+      td
+        text row.total
+
+make PeoplePage
+  Shell "People and segments"
+    fieldset class "panel"
+      h2 "People"
+      if users.loading
+        LoadingBlock "people"
+      else
+        if users.error
+          ErrorBlock "people" users.error
+        else
+          fieldset class "toolbar"
+            input "Search people" into search
+            button "Reload users" click reloadUsers
+          table width "100%" cellpadding "8" cellspacing "0" class "user-grid"
+            for person in users.data.people
+              PersonCard person
+
+make PersonCard person
+  fieldset class "person-card"
+    legend person.name
+    text person.email
+    text person.platform
+    text person.region
+    button "Open profile" click openIncident(person.id)
+
+make IncidentsPage
+  Shell "Incidents"
+    fieldset class "panel"
+      h2 "Incident centre"
+      box class "filters"
+        button "All" click pickPriority("All")
+        button "High" click pickPriority("High")
+        button "Medium" click pickPriority("Medium")
+        button "Low" click pickPriority("Low")
+      if incidents.loading
+        LoadingBlock "incidents"
+      else
+        if incidents.error
+          ErrorBlock "incidents" incidents.error
+        else
+          table width "100%" cellpadding "8" cellspacing "0" class "incident-layout"
+            tr
+              td valign "top" width "50%" class "incident-list"
+                for incident in incidents.data.items
+                  IncidentRow incident
+              td valign "top" width "50%" class "incident-detail"
+                if selectedIncident != ""
+                  h3 "Selected incident"
+                  text selectedIncident
+                  textarea "Write operational note" into draftNote
+                  button "Add note" click addNote
+                  button "Close" click closeIncident
+                else
+                  EmptyBlock "Select an incident to inspect details."
+
+make IncidentRow incident
+  fieldset class "incident-row"
+    legend incident.title
+    text incident.priority
+    text incident.status
+    button "Open" click openIncident(incident.id)
+
+make ReleasesPage
+  Shell "Releases"
+    fieldset class "panel"
+      h2 "Release train"
+      if releases.loading
+        LoadingBlock "releases"
+      else
+        if releases.error
+          ErrorBlock "releases" releases.error
+        else
+          table width "100%" cellpadding "8" cellspacing "0" class "release-list"
+            for release in releases.data.items
+              ReleaseCard release
+
+make ReleaseCard release
+  fieldset class "release-card"
+    legend release.name
+    text release.version
+    text release.status
+    text release.date
+
+make MediaPage
+  Shell "Media and demos"
+    fieldset class "panel"
+      h2 "Media hub"
+      text "This page mixes normal content with media state and externally hosted assets."
+      if media.loading
+        LoadingBlock "media"
+      else
+        if media.error
+          ErrorBlock "media" media.error
+        else
+          fieldset class "media-grid"
+            image src media.data.hero alt "Product overview"
+            video src media.data.demo controls poster media.data.poster into player
+            audio src media.data.audio controls into playback
+            dropzone "Drop screenshots or short demos" accept "image/*,video/*" into mediaUploads
+
+make SettingsPage
+  Shell "Settings"
+    fieldset class "panel"
+      h2 "Workspace settings"
+      fieldset class "form-card"
+        input "Workspace name" into appName
+        input "Default region" into selectedRegion
+        input "Default platform" into selectedPlatform
+        checkbox "Dark mode" into darkMode
+        button "Save settings" click saveSettings
+        if savingSettings
+          text "Saving..."
+        else
+          text settingsState
+      fieldset class "card"
+        h3 "Observable state"
+        text "Theme"
+        text themeClass
+        text "Sidebar"
+        text sidebarClass
+        text "Filters"
+        text filterSummary
+        text "Search active"
+        text hasSearch
+
+make NotFoundPage
+  Shell "Not found"
+    fieldset class "panel"
+      h2 "Page not found"
+      text "This route does not exist."
+      link "Back to dashboard" to "/"

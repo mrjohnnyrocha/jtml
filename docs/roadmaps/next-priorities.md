@@ -1,0 +1,194 @@
+# JTML Next Priorities
+
+Status: active implementation order after the observable-first cleanup slice.
+
+The next work should keep following the same rule:
+
+```text
+Friendly JTML -> typed AST -> semantic IR -> observable graph -> backends
+```
+
+## 1. Semantic Styling And UI Primitives
+
+Status: first slice implemented. `theme`, semantic UI primitives, utility
+modifier classes, generated CSS, `metric`, and semantic IR primitive/theme
+counts are available. The remaining work is to harden and expand the design
+system.
+
+Why first:
+
+- The current language has scoped `style` blocks and raw HTML/CSS access, but
+  production apps still need a JTML-native way to express visual intent.
+- Studio examples, tutorials, and AI-generated apps will improve immediately if
+  they can use stable primitives instead of repeated hand-written CSS.
+- It strengthens the semantic IR because layout, tone, spacing, theme, and
+  component surfaces become analyzable instead of opaque strings.
+
+Target syntax direction:
+
+```jtml
+jtml 2
+
+theme
+  color primary "#2563eb"
+  color surface "#ffffff"
+  space md 12
+  radius md 12
+
+page
+  shell
+    sidebar
+      navlink "Dashboard" to "/"
+    content
+      panel title "Usage"
+        grid cols 4 gap md
+          metric "Users" users.data.total "Active" tone good
+          metric "Latency" usage.data.latency "Median" tone warn
+```
+
+Implementation slices:
+
+1. ✅ Add first semantic counts/edges for theme tokens and UI primitives.
+2. ✅ Lower primitives to normal HTML plus generated classes.
+3. ✅ Keep raw `style` and raw CSS as escape hatches.
+4. ✅ Add first lints for impossible visual combinations: `cols` outside
+   `grid`, and `tone` on structural layout primitives.
+5. Update Studio samples to use the primitives consistently.
+6. Expand primitives into a documented, versioned component kit.
+
+## 2. Browser-Local Production Runtime
+
+Status: first two slices implemented. `--target browser` emits a client
+manifest for state, derived values, and actions. The runtime can now execute
+local actions, recompute derived values, apply conditions/loops, run fetch
+markers, handle route links/params/guards, and apply reactive attributes such
+as `image src selected.preview` without a WebSocket. Browser-side image
+processing markers now write their result back into observable client state.
+
+This is the next architectural step after styling starts to stabilize.
+
+Why second:
+
+- JTML must not be defined by WebSockets.
+- Real public deployments should work as static files with local browser
+  reactivity.
+- The semantic usage API and observable graph give this emitter a clearer
+  source of truth than the old interpreter-first model.
+
+Target:
+
+```sh
+jtml build app.jtml --target browser --out dist
+```
+
+Output:
+
+```text
+dist/index.html
+dist/app.js
+dist/jtml-runtime.js
+dist/assets/...
+```
+
+Implementation slices:
+
+1. ✅ Emit state cells, derived recomputation, action dispatch, and DOM
+   bindings for browser-local builds.
+2. ✅ Apply browser-local reactive attributes and media/image processing state.
+3. ✅ Support fetch nodes with fuller browser-local state parity: fetch values
+   now keep the stable `{ loading, data, error, stale, attempts, hasData }`
+   core plus `status`, `ok`, `url`, `method`, and `updatedAt` metadata; stale
+   UI is only marked stale after a previous successful response exists;
+   `window.jtml` exposes named fetch refresh hooks for devtools and demos.
+4. ✅ Bridge hash routing and fetches toward graph/runtime ownership: browser-local builds
+   now emit a compiler route manifest, and the browser runtime collects a live
+   route registry from that manifest when available. It publishes
+   `window.jtml.routeManifest`, `window.jtml.routes`, `getRoutes()`,
+   `getCurrentRoute()`, `navigate(path)`, `activeRouteName`, and route
+   lifecycle events. The semantic IR now also exposes structured
+   `routeRecords` with path, component, params, and route-load fetches, and
+   browser-local route manifest emission consumes those semantic records instead
+   of running its own lowered-AST route scan. The semantic IR also exposes
+   structured `fetchRecords` with URL, method, body expression, refresh action,
+   cache, credentials, timeout, retry, stale, and lazy metadata; browser-local
+   fetch registration now starts from those records and falls back to DOM markers
+   only for compatibility. The semantic IR now also exposes structured
+   `componentDefinitions` and `componentInstances`, giving explain/tooling a
+   stable component graph without parsing lowered marker attributes.
+   Browser-local component manifests now start from those records and fall back
+   to DOM marker scans only for compatibility.
+5. ✅ Align `jtml serve` with the same graph for component metadata: the live
+   interpreter now registers runtime component definitions and instances from
+   semantic records first, falling back to lowered DOM marker scans only for
+   compatibility. Next slice: move instance execution ownership beyond source
+   expansion while keeping this manifest/runtime contract stable.
+6. Add parity tests comparing browser-local output and live runtime behavior.
+
+## 3. Interop And Escape Hatches
+
+Interop should follow the browser-local runtime, not precede it.
+
+Why third:
+
+- JTML’s promise is a simpler semantic layer over the full web platform, not a
+  smaller prison.
+- Once the browser runtime is real, `extern`, custom elements, canvas, SVG,
+  WebGL, Monaco, Chart.js, Mapbox, and Three.js bridges have a stable target.
+
+Implementation slices:
+
+1. ✅ Formalize `extern action from "host.path"` in semantic IR with
+   `semantic.nodes.externs`, `extern:<name> --calls--> <window.path>` edges,
+   and lint review warnings.
+2. Add typed host hooks for canvas/SVG/custom elements.
+3. ✅ Add safe raw `html` and `css` blocks as explicit escape hatches,
+   semantic `rawCssBlocks` / `rawHtmlBlocks` counts, and lint warnings.
+4. Document package and asset boundaries.
+5. Add export targets only after the runtime contract is stable.
+
+## 4. Component Instance Semantics
+
+Component isolation exists as a runtime bridge today, but semantic ownership
+should become direct instead of expansion-derived.
+
+Why fourth:
+
+- Component instance semantics are essential for large apps, diagnostics,
+  Studio inspectors, and framework exports.
+- The current metadata bridge is useful, so this can be done incrementally.
+
+Implementation slices:
+
+1. ✅ Add first-class `ComponentDefinition` and `ComponentInstance` semantic
+   records.
+2. ✅ Preserve first-slice component-owned semantics in `ComponentDefinition`:
+   params, local state, local derived values, local actions, local effects,
+   event bindings, body payload, source line, and slot presence. These now
+   appear in `jtml explain --json` and browser-local component manifests.
+3. ✅ Make `jtml explain` and browser/live runtime registries consume component
+   records before compatibility marker scans.
+4. Preserve emitted custom events/slots as explicit authoring syntax once the
+   component API grows beyond implicit `slot` insertion and DOM event bindings.
+5. Gradually move runtime execution away from source-expanded components.
+
+## 5. Studio And Docs As Product Surface
+
+Studio remains the user-facing proof of the language.
+
+Implementation slices:
+
+1. Keep docs loaded from this organized folder structure.
+2. Add a docs index view that mirrors `docs/README.md`.
+3. Keep tutorial notebook mode as the default learning mode.
+4. Move compatibility IR behind diagnostics, not primary authoring.
+5. Make every Studio example use the same semantic styling system once P1
+   lands.
+6. ✅ Add a canonical language catalog and `jtml keywords --json`; keep README,
+   reference docs, Studio mini-reference, VS Code grammar, and LSP completions
+   aligned with that catalog instead of independent keyword folklore.
+
+## Decision
+
+Do semantic styling first, then browser-local runtime, then interop. Component
+instance semantics should proceed in parallel only where a styling or runtime
+slice exposes weak component ownership.

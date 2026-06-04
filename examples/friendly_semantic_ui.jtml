@@ -1,0 +1,35 @@
+jtml 2
+
+let users = 1280
+let latency = "84ms"
+let incidents = 3
+
+theme
+  color primary "#155e75"
+  color background "#f6f7fb"
+  color surface "#ffffff"
+  space md 14
+  radius md 12
+
+page
+  shell
+    sidebar
+      h1 "Ops"
+      navlink "Dashboard" to "/"
+      navlink "People" to "/people"
+    content
+      topbar
+        h2 "Semantic UI"
+        spacer
+        badge "Friendly JTML 2" tone primary
+      panel title "Usage" pad lg shadow md
+        grid cols 3 gap md
+          metric "Users" users "Active accounts" tone good
+          metric "Latency" latency "Median response" tone warn
+          metric "Incidents" incidents "Open issues" tone danger
+      split gap lg
+        card tone primary
+          h2 "Readable app structure"
+          text "This page uses theme tokens, layout primitives, utility modifiers, and metrics."
+        alert tone good
+          text "Semantic styling lowers to ordinary HTML and scoped generated CSS."

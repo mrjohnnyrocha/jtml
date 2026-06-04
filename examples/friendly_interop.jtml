@@ -1,0 +1,14 @@
+jtml 2
+
+extern notify from "host.notify"
+
+css raw
+  third-party-card { display: block; border: 1px solid #d8dee9; border-radius: 12px; padding: 16px; }
+
+let message = "Ready for host interop"
+
+page
+  h1 "Interop Escape Hatches"
+  text message
+  html raw "<third-party-card data-mode=\"demo\">Host-owned custom element surface</third-party-card>"
+  button "Notify host" click notify(message)

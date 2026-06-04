@@ -1,10 +1,13 @@
 #include "jtml/transpiler.h"
+#include "jtml/attribute_classifier.h"
+#include "jtml/semantic.h"
 #include <sstream>
 #include <iostream>
 #include <fstream>
 #include <algorithm>
 #include <cctype>
 #include <unordered_set>
+#include <vector>
 
 namespace {
 std::string lowerCopy(std::string value) {
@@ -14,49 +17,179 @@ std::string lowerCopy(std::string value) {
     return value;
 }
 
-bool isSupportedEventAttribute(const std::string& attrName) {
-    return attrName == "onClick" ||
-           attrName == "onInput" ||
-           attrName == "onChange" ||
-           attrName == "onKeyUp" ||
-           attrName == "onMouseOver" ||
-           attrName == "onScroll" ||
-           attrName == "onSubmit" ||
-           attrName == "onDragOver" ||
-           attrName == "onDrop";
-}
-
-bool eventCarriesElementValue(const std::string& attrName) {
-    return attrName == "onInput" ||
-           attrName == "onChange" ||
-           attrName == "onKeyUp";
-}
-
-bool staticAttributeValue(const ExpressionStatementNode* expr, std::string& value) {
-    if (!expr) {
-        value.clear();
-        return true;
+std::string jsonString(const std::string& value) {
+    std::ostringstream out;
+    out << '"';
+    for (char ch : value) {
+        switch (ch) {
+            case '\\': out << "\\\\"; break;
+            case '"':  out << "\\\""; break;
+            case '\b': out << "\\b"; break;
+            case '\f': out << "\\f"; break;
+            case '\n': out << "\\n"; break;
+            case '\r': out << "\\r"; break;
+            case '\t': out << "\\t"; break;
+            case '<':  out << "\\u003c"; break;
+            case '>':  out << "\\u003e"; break;
+            case '&':  out << "\\u0026"; break;
+            default:
+                if (static_cast<unsigned char>(ch) < 0x20) {
+                    out << "\\u00";
+                    const char* hex = "0123456789abcdef";
+                    out << hex[(ch >> 4) & 0xf] << hex[ch & 0xf];
+                } else {
+                    out << ch;
+                }
+        }
     }
+    out << '"';
+    return out.str();
+}
+
+std::string semanticPropertiesJson(const std::vector<jtml::SemanticProperty>& properties) {
+    std::ostringstream out;
+    out << '{';
+    for (size_t i = 0; i < properties.size(); ++i) {
+        if (i) out << ',';
+        out << jsonString(properties[i].name) << ':' << jsonString(properties[i].value);
+    }
+    out << '}';
+    return out.str();
+}
+
+std::string expressionSource(const ExpressionStatementNode* expr) {
+    if (!expr) return "";
     switch (expr->getExprType()) {
         case ExpressionStatementNodeType::StringLiteral: {
             const auto* literal = static_cast<const StringLiteralExpressionStatementNode*>(expr);
-            value = literal->value;
-            return true;
+            return jsonString(literal->value);
         }
-        case ExpressionStatementNodeType::NumberLiteral: {
-            const auto* literal = static_cast<const NumberLiteralExpressionStatementNode*>(expr);
-            value = literal->toString();
-            return true;
+        case ExpressionStatementNodeType::NumberLiteral:
+        case ExpressionStatementNodeType::BooleanLiteral:
+        case ExpressionStatementNodeType::Variable:
+            return expr->toString();
+        case ExpressionStatementNodeType::Binary: {
+            const auto* binary = static_cast<const BinaryExpressionStatementNode*>(expr);
+            return "(" + expressionSource(binary->left.get()) + " " + binary->op + " " +
+                   expressionSource(binary->right.get()) + ")";
         }
-        case ExpressionStatementNodeType::BooleanLiteral: {
-            const auto* literal = static_cast<const BooleanLiteralExpressionStatementNode*>(expr);
-            value = literal->value ? "true" : "false";
-            return true;
+        case ExpressionStatementNodeType::Unary: {
+            const auto* unary = static_cast<const UnaryExpressionStatementNode*>(expr);
+            return unary->op + expressionSource(unary->right.get());
         }
-        default:
-            return false;
+        case ExpressionStatementNodeType::EmbeddedVariable: {
+            const auto* embedded = static_cast<const EmbeddedVariableExpressionStatementNode*>(expr);
+            return expressionSource(embedded->embeddedExpression.get());
+        }
+        case ExpressionStatementNodeType::CompositeString: {
+            const auto* composite = static_cast<const CompositeStringExpressionStatementNode*>(expr);
+            std::ostringstream out;
+            for (size_t i = 0; i < composite->parts.size(); ++i) {
+                if (i) out << " + ";
+                out << expressionSource(composite->parts[i].get());
+            }
+            return out.str();
+        }
+        case ExpressionStatementNodeType::ArrayLiteral: {
+            const auto* array = static_cast<const ArrayLiteralExpressionStatementNode*>(expr);
+            std::ostringstream out;
+            out << '[';
+            for (size_t i = 0; i < array->elements.size(); ++i) {
+                if (i) out << ", ";
+                out << expressionSource(array->elements[i].get());
+            }
+            out << ']';
+            return out.str();
+        }
+        case ExpressionStatementNodeType::DictionaryLiteral: {
+            const auto* dict = static_cast<const DictionaryLiteralExpressionStatementNode*>(expr);
+            std::ostringstream out;
+            out << '{';
+            for (size_t i = 0; i < dict->entries.size(); ++i) {
+                if (i) out << ", ";
+                out << jsonString(dict->entries[i].key.text) << ": "
+                    << expressionSource(dict->entries[i].value.get());
+            }
+            out << '}';
+            return out.str();
+        }
+        case ExpressionStatementNodeType::Subscript: {
+            const auto* subscript = static_cast<const SubscriptExpressionStatementNode*>(expr);
+            return expressionSource(subscript->base.get()) + "[" +
+                   expressionSource(subscript->index.get()) + "]";
+        }
+        case ExpressionStatementNodeType::FunctionCall: {
+            const auto* call = static_cast<const FunctionCallExpressionStatementNode*>(expr);
+            std::ostringstream out;
+            out << call->functionName << "(";
+            for (size_t i = 0; i < call->arguments.size(); ++i) {
+                if (i) out << ", ";
+                out << expressionSource(call->arguments[i].get());
+            }
+            out << ")";
+            return out.str();
+        }
+        case ExpressionStatementNodeType::Conditional: {
+            const auto* conditional = static_cast<const ConditionalExpressionStatementNode*>(expr);
+            return expressionSource(conditional->condition.get()) + " ? " +
+                   expressionSource(conditional->whenTrue.get()) + " : " +
+                   expressionSource(conditional->whenFalse.get());
+        }
+        case ExpressionStatementNodeType::ObjectPropertyAccess: {
+            const auto* access = static_cast<const ObjectPropertyAccessExpressionNode*>(expr);
+            return expressionSource(access->base.get()) + "." + access->propertyName;
+        }
+        case ExpressionStatementNodeType::ObjectMethodCall: {
+            const auto* call = static_cast<const ObjectMethodCallExpressionNode*>(expr);
+            std::ostringstream out;
+            out << expressionSource(call->base.get()) << "." << call->methodName << "(";
+            for (size_t i = 0; i < call->arguments.size(); ++i) {
+                if (i) out << ", ";
+                out << expressionSource(call->arguments[i].get());
+            }
+            out << ")";
+            return out.str();
+        }
     }
+    return expr->toString();
 }
+
+std::string clientStatementsJson(const std::vector<std::unique_ptr<ASTNode>>& nodes) {
+    std::ostringstream out;
+    out << '[';
+    bool first = true;
+    auto sep = [&]() {
+        if (!first) out << ',';
+        first = false;
+    };
+    for (const auto& node : nodes) {
+        if (!node) continue;
+        if (node->getType() == ASTNodeType::AssignmentStatement) {
+            const auto& stmt = static_cast<const AssignmentStatementNode&>(*node);
+            sep();
+            out << "{\"kind\":\"assign\",\"lhs\":"
+                << jsonString(expressionSource(stmt.lhs.get()))
+                << ",\"expr\":" << jsonString(expressionSource(stmt.rhs.get())) << '}';
+        } else if (node->getType() == ASTNodeType::DefineStatement) {
+            const auto& stmt = static_cast<const DefineStatementNode&>(*node);
+            sep();
+            out << "{\"kind\":\"assign\",\"lhs\":"
+                << jsonString(stmt.identifier)
+                << ",\"expr\":" << jsonString(expressionSource(stmt.expression.get())) << '}';
+        } else if (node->getType() == ASTNodeType::IfStatement) {
+            const auto& stmt = static_cast<const IfStatementNode&>(*node);
+            sep();
+            out << "{\"kind\":\"if\",\"condition\":"
+                << jsonString(expressionSource(stmt.condition.get()))
+                << ",\"then\":" << clientStatementsJson(stmt.thenStatements)
+                << ",\"else\":" << clientStatementsJson(stmt.elseStatements)
+                << '}';
+        }
+    }
+    out << ']';
+    return out.str();
+}
+
 }
 
 JtmlTranspiler::JtmlTranspiler() {
@@ -65,6 +198,10 @@ JtmlTranspiler::JtmlTranspiler() {
 
 void JtmlTranspiler::setWebSocketPort(int port) {
     webSocketPort = port;
+}
+
+void JtmlTranspiler::setBrowserLocalRuntime(bool enabled) {
+    browserLocalRuntime = enabled;
 }
 
 std::string JtmlTranspiler::transpile(const std::vector<std::unique_ptr<ASTNode>>& program) {
@@ -86,6 +223,9 @@ std::string JtmlTranspiler::transpile(const std::vector<std::unique_ptr<ASTNode>
         out << transpileNode(*node, /*insideElement=*/false);
     }
 
+    if (browserLocalRuntime) {
+        out << generateClientManifest(program);
+    }
     out << generateScriptBlock();
     out << "\n</body>\n</html>\n";
     return out.str();
@@ -155,6 +295,26 @@ std::string JtmlTranspiler::transpileNode(const ASTNode& node, bool insideElemen
 // Transpile an element (with attributes + content)
 //--------------------------------------------------
 std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
+    if (lowerCopy(elem.tagName) == "raw") {
+        std::ostringstream raw;
+        for (const auto& child : elem.content) {
+            if (child->getType() == ASTNodeType::ShowStatement) {
+                const auto& show = static_cast<const ShowStatementNode&>(*child);
+                if (show.expr && show.expr->getExprType() == ExpressionStatementNodeType::StringLiteral) {
+                    const auto* literal = static_cast<const StringLiteralExpressionStatementNode*>(show.expr.get());
+                    raw << literal->value;
+                    if (literal->value.empty() || literal->value.back() != '\n') raw << "\n";
+                    continue;
+                }
+                if (show.expr) raw << show.expr->toString() << "\n";
+            } else {
+                raw << "<!-- Unsupported statement inside JTML raw block: "
+                    << escapeHTML(child->toString()) << " -->\n";
+            }
+        }
+        return raw.str();
+    }
+
     if (lowerCopy(elem.tagName) == "style") {
         std::ostringstream style;
         style << "<style>\n";
@@ -184,11 +344,13 @@ std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
     std::ostringstream out;
     out << "<" << elem.tagName << " id=\"" << domId << "\"";
 
-    // Transpile attributes, adding reactivity for expressions
+    // Transpile attributes using the semantic classifier: most attributes are
+    // static platform data, while only events and real expressions need runtime
+    // bindings.
     for (auto& attr : elem.attributes) {
-        std::string valStr = attr.value->toString();
+        const auto classification = classifyJtmlAttribute(attr);
 
-       if (isSupportedEventAttribute(attr.key)) {
+       if (classification.kind == JtmlAttributeKind::Event) {
             ++uniqueVarId;
             std::string derivedVarName = "attr_" + std::to_string(uniqueVarId);
 
@@ -200,7 +362,7 @@ std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
 
             // Handle browser events that provide a useful value to JTML.
             std::ostringstream args;
-            if (eventCarriesElementValue(attr.key)) {
+            if (jtmlEventCarriesElementValue(attr.key)) {
                 args << ", window.jtmlEventValue(event)";
             } else if (attr.key == "onScroll") {
                 args << ", String(window.scrollY)"; // Pass the scroll position as an argument
@@ -216,13 +378,14 @@ std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
             out << " " << htmlEventName << "=\"sendEvent('" << derivedVarName << "', '" << attr.key << "', ['" << functionCall << "'" << args.str() << "])\"";
 
         } else {
-            std::string staticValue;
-            if (staticAttributeValue(attr.value.get(), staticValue)) {
-                if (!attr.value) {
-                    out << " " << attr.key;
-                } else {
-                    out << " " << attr.key << "=\"" << escapeHTML(staticValue) << "\"";
-                }
+            if (classification.kind == JtmlAttributeKind::Boolean) {
+                out << " " << attr.key;
+                continue;
+            }
+            if (classification.kind == JtmlAttributeKind::Literal ||
+                classification.kind == JtmlAttributeKind::Passthrough ||
+                classification.kind == JtmlAttributeKind::Special) {
+                out << " " << attr.key << "=\"" << escapeHTML(classification.literalValue) << "\"";
                 continue;
             }
 
@@ -233,8 +396,14 @@ std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
             nodeDerivedMap[nodeID][attr.key] = derivedVarName;
             attributeBindings[&attr] = {derivedVarName, domId};
 
-            // Add a data attribute for the front-end to identify
+            // Add enough metadata for both live bindings and browser-local
+            // builds. The live backend still owns the generated binding name;
+            // the browser-local runtime evaluates the original source expr.
             out << " data-jtml-attr-" << attr.key << "=\"" << derivedVarName << "\"";
+            if (attr.value) {
+                out << " data-jtml-attr-" << attr.key << "-expr=\""
+                    << escapeHTML(expressionSource(attr.value.get())) << "\"";
+            }
         }
     }
 
@@ -385,11 +554,12 @@ std::string JtmlTranspiler::transpileShow(const ShowStatementNode& node) {
 
     // produce placeholder
     // e.g. <p>{{someExpr}}</p>
-    std::string placeholder = "{{" + node.expr->toString() + "}}";
+    const std::string clientExpr = expressionSource(node.expr.get());
+    std::string placeholder = "{{" + clientExpr + "}}";
 
     std::ostringstream out;
     out << "<div id=\""<< exprVarName << "\" data-jtml-expr=\""
-        << escapeHTML(node.expr->toString()) << "\">" << placeholder << "</div>\n";
+        << escapeHTML(clientExpr) << "\">" << placeholder << "</div>\n";
     return out.str();
 }
 
@@ -401,6 +571,157 @@ std::string JtmlTranspiler::transpileChildren(const std::vector<std::unique_ptr<
     for (auto& c : children) {
         out << transpileNode(*c, insideElement);
     }
+    return out.str();
+}
+
+std::string JtmlTranspiler::generateClientManifest(const std::vector<std::unique_ptr<ASTNode>>& program) {
+    std::ostringstream json;
+    json << "{\"state\":{";
+    bool firstState = true;
+    auto stateSep = [&]() {
+        if (!firstState) json << ',';
+        firstState = false;
+    };
+
+    std::ostringstream derived;
+    derived << "\"derived\":{";
+    bool firstDerived = true;
+    auto derivedSep = [&]() {
+        if (!firstDerived) derived << ',';
+        firstDerived = false;
+    };
+
+    std::ostringstream actions;
+    actions << "\"actions\":{";
+    bool firstAction = true;
+    auto actionSep = [&]() {
+        if (!firstAction) actions << ',';
+        firstAction = false;
+    };
+
+    const auto semantic = jtml::analyzeSemanticProgram(program);
+    auto stringVectorJson = [](const std::vector<std::string>& values) {
+        std::ostringstream out;
+        out << '[';
+        for (size_t i = 0; i < values.size(); ++i) {
+            if (i) out << ',';
+            out << jsonString(values[i]);
+        }
+        out << ']';
+        return out.str();
+    };
+    std::ostringstream routes;
+    routes << "\"routes\":[";
+    for (size_t i = 0; i < semantic.routeRecords.size(); ++i) {
+        if (i) routes << ',';
+        const auto& route = semantic.routeRecords[i];
+        routes << "{\"path\":" << jsonString(route.path)
+               << ",\"name\":" << jsonString(route.component)
+               << ",\"params\":[";
+        for (size_t paramIndex = 0; paramIndex < route.params.size(); ++paramIndex) {
+            if (paramIndex) routes << ',';
+            routes << jsonString(route.params[paramIndex]);
+        }
+        routes << "],\"load\":[";
+        for (size_t loadIndex = 0; loadIndex < route.loads.size(); ++loadIndex) {
+            if (loadIndex) routes << ',';
+            routes << jsonString(route.loads[loadIndex]);
+        }
+        routes << "]}";
+    }
+
+    std::ostringstream fetches;
+    fetches << "\"fetches\":[";
+    for (size_t i = 0; i < semantic.fetchRecords.size(); ++i) {
+        if (i) fetches << ',';
+        const auto& fetch = semantic.fetchRecords[i];
+        fetches << "{\"name\":" << jsonString(fetch.name)
+                << ",\"url\":" << jsonString(fetch.url)
+                << ",\"method\":" << jsonString(fetch.method.empty() ? "GET" : fetch.method)
+                << ",\"bodyExpr\":" << jsonString(fetch.bodyExpr)
+                << ",\"refreshAction\":" << jsonString(fetch.refreshAction)
+                << ",\"cache\":" << jsonString(fetch.cache)
+                << ",\"credentials\":" << jsonString(fetch.credentials)
+                << ",\"timeoutMs\":" << jsonString(fetch.timeoutMs)
+                << ",\"retryCount\":" << jsonString(fetch.retryCount)
+                << ",\"stalePolicy\":" << jsonString(fetch.stalePolicy.empty() ? "clear" : fetch.stalePolicy)
+                << ",\"lazy\":" << (fetch.lazy ? "true" : "false")
+                << "}";
+    }
+
+    std::ostringstream componentDefinitions;
+    componentDefinitions << "\"componentDefinitions\":[";
+    for (size_t i = 0; i < semantic.componentDefinitions.size(); ++i) {
+        if (i) componentDefinitions << ',';
+        const auto& definition = semantic.componentDefinitions[i];
+        componentDefinitions << "{\"name\":" << jsonString(definition.name)
+                             << ",\"params\":[";
+        for (size_t paramIndex = 0; paramIndex < definition.params.size(); ++paramIndex) {
+            if (paramIndex) componentDefinitions << ',';
+            componentDefinitions << jsonString(definition.params[paramIndex]);
+        }
+        componentDefinitions << "],\"localState\":" << stringVectorJson(definition.localState)
+                             << ",\"localDerived\":" << stringVectorJson(definition.localDerived)
+                             << ",\"localActions\":" << stringVectorJson(definition.localActions)
+                             << ",\"localEffects\":" << stringVectorJson(definition.localEffects)
+                             << ",\"eventBindings\":" << stringVectorJson(definition.eventBindings)
+                             << ",\"bodyHex\":" << jsonString(definition.bodyHex)
+                             << ",\"hasSlot\":" << (definition.hasSlot ? "true" : "false")
+                             << ",\"sourceLine\":" << definition.sourceLine
+                             << "}";
+    }
+
+    std::ostringstream componentInstances;
+    componentInstances << "\"componentInstances\":[";
+    for (size_t i = 0; i < semantic.componentInstances.size(); ++i) {
+        if (i) componentInstances << ',';
+        const auto& instance = semantic.componentInstances[i];
+        componentInstances << "{\"id\":" << jsonString(instance.id)
+                           << ",\"component\":" << jsonString(instance.component)
+                           << ",\"instanceId\":" << instance.instanceId
+                           << ",\"role\":" << jsonString(instance.role.empty() ? "component" : instance.role)
+                           << ",\"params\":" << semanticPropertiesJson(instance.params)
+                           << ",\"locals\":" << semanticPropertiesJson(instance.locals)
+                           << ",\"sourceLine\":" << instance.sourceLine
+                           << "}";
+    }
+
+    for (const auto& node : program) {
+        if (!node) continue;
+        if (node->getType() == ASTNodeType::DefineStatement) {
+            const auto& stmt = static_cast<const DefineStatementNode&>(*node);
+            stateSep();
+            json << jsonString(stmt.identifier) << ':' << jsonString(expressionSource(stmt.expression.get()));
+        } else if (node->getType() == ASTNodeType::DeriveStatement) {
+            const auto& stmt = static_cast<const DeriveStatementNode&>(*node);
+            derivedSep();
+            derived << jsonString(stmt.identifier) << ':' << jsonString(expressionSource(stmt.expression.get()));
+        } else if (node->getType() == ASTNodeType::FunctionDeclaration) {
+            const auto& stmt = static_cast<const FunctionDeclarationNode&>(*node);
+            actionSep();
+            actions << jsonString(stmt.name) << ":{\"params\":[";
+            for (size_t i = 0; i < stmt.parameters.size(); ++i) {
+                if (i) actions << ',';
+                actions << jsonString(stmt.parameters[i].name);
+            }
+            actions << "],\"body\":" << clientStatementsJson(stmt.body) << '}';
+        }
+    }
+
+    json << "},";
+    derived << "},";
+    routes << "],";
+    fetches << "],";
+    componentDefinitions << "],";
+    componentInstances << "],";
+    actions << "}}";
+    json << derived.str() << routes.str() << fetches.str()
+         << componentDefinitions.str() << componentInstances.str() << actions.str();
+
+    std::ostringstream out;
+    out << "<script type=\"application/json\" id=\"__jtml_client_manifest\">"
+        << json.str()
+        << "</script>\n";
     return out.str();
 }
 
@@ -426,6 +747,7 @@ std::string JtmlTranspiler::generateScriptBlock() {
   <script>
     (function () {
       const wsPort = )" << webSocketPort << R"(;
+      const browserLocalRuntime = )" << (browserLocalRuntime ? "true" : "false") << R"(;
 
       function reportStatus(state, message) {
         document.documentElement.dataset.jtmlStatus = state;
@@ -443,6 +765,8 @@ std::string JtmlTranspiler::generateScriptBlock() {
       }
 
       const clientState = {};
+      const clientDerived = {};
+      const clientActions = {};
       const __jtml_extern_fns = {};
       const __jtml_media_actions = {};
       let componentInstances = [];
@@ -487,32 +811,86 @@ std::string JtmlTranspiler::generateScriptBlock() {
         return map;
       }
 
+      function escapeSelectorValue(value) {
+        if (window.CSS && CSS.escape) return CSS.escape(value);
+        return String(value || '').replace(/["\\]/g, '\\$&');
+      }
+
+      function componentElementFor(id) {
+        if (!id) return null;
+        return document.querySelector('[data-jtml-instance="' + escapeSelectorValue(id) + '"]');
+      }
+
+      function componentDefinitionElementFor(name) {
+        if (!name) return null;
+        return document.querySelector('[data-jtml-component-def="' + escapeSelectorValue(name) + '"]');
+      }
+
       function scanComponentInstances() {
-        componentInstances = Array.prototype.slice.call(
-          document.querySelectorAll('[data-jtml-instance]')
-        ).map(function (el) {
-          return {
-            id: el.getAttribute('data-jtml-instance') || '',
-            component: el.getAttribute('data-jtml-component') || '',
-            instanceId: Number(el.getAttribute('data-jtml-instance-id') || 0),
-            role: el.getAttribute('data-jtml-component-role') || 'component',
-            params: parseComponentMap(el.getAttribute('data-jtml-component-params') || ''),
-            locals: parseComponentMap(el.getAttribute('data-jtml-component-locals') || ''),
-            sourceLine: Number(el.getAttribute('data-jtml-source-line') || 0),
-            element: el
-          };
-        });
-        componentDefinitions = Array.prototype.slice.call(
-          document.querySelectorAll('[data-jtml-component-def]')
-        ).map(function (el) {
-          return {
-            name: el.getAttribute('data-jtml-component-def') || '',
-            params: String(el.getAttribute('data-jtml-component-def-params') || '').split(';').filter(Boolean),
-            sourceLine: Number(el.getAttribute('data-jtml-source-line') || 0),
-            body: decodeHex(el.getAttribute('data-jtml-component-body-hex') || ''),
-            element: el
-          };
-        });
+        const manifestInstances = (window.jtml && Array.isArray(window.jtml.componentInstanceManifest))
+          ? window.jtml.componentInstanceManifest
+          : [];
+        const manifestDefinitions = (window.jtml && Array.isArray(window.jtml.componentDefinitionManifest))
+          ? window.jtml.componentDefinitionManifest
+          : [];
+        if (manifestInstances.length) {
+          componentInstances = manifestInstances.map(function (record) {
+            return {
+              id: record.id || '',
+              component: record.component || '',
+              instanceId: Number(record.instanceId || 0),
+              role: record.role || 'component',
+              params: record.params || {},
+              locals: record.locals || {},
+              sourceLine: Number(record.sourceLine || 0),
+              element: componentElementFor(record.id || '')
+            };
+          });
+        } else {
+          componentInstances = Array.prototype.slice.call(
+            document.querySelectorAll('[data-jtml-instance]')
+          ).map(function (el) {
+            return {
+              id: el.getAttribute('data-jtml-instance') || '',
+              component: el.getAttribute('data-jtml-component') || '',
+              instanceId: Number(el.getAttribute('data-jtml-instance-id') || 0),
+              role: el.getAttribute('data-jtml-component-role') || 'component',
+              params: parseComponentMap(el.getAttribute('data-jtml-component-params') || ''),
+              locals: parseComponentMap(el.getAttribute('data-jtml-component-locals') || ''),
+              sourceLine: Number(el.getAttribute('data-jtml-source-line') || 0),
+              element: el
+            };
+          });
+        }
+        if (manifestDefinitions.length) {
+          componentDefinitions = manifestDefinitions.map(function (record) {
+            return {
+              name: record.name || '',
+              params: Array.isArray(record.params) ? record.params.slice() : [],
+              localState: Array.isArray(record.localState) ? record.localState.slice() : [],
+              localDerived: Array.isArray(record.localDerived) ? record.localDerived.slice() : [],
+              localActions: Array.isArray(record.localActions) ? record.localActions.slice() : [],
+              localEffects: Array.isArray(record.localEffects) ? record.localEffects.slice() : [],
+              eventBindings: Array.isArray(record.eventBindings) ? record.eventBindings.slice() : [],
+              hasSlot: !!record.hasSlot,
+              sourceLine: Number(record.sourceLine || 0),
+              body: decodeHex(record.bodyHex || ''),
+              element: componentDefinitionElementFor(record.name || '')
+            };
+          });
+        } else {
+          componentDefinitions = Array.prototype.slice.call(
+            document.querySelectorAll('[data-jtml-component-def]')
+          ).map(function (el) {
+            return {
+              name: el.getAttribute('data-jtml-component-def') || '',
+              params: String(el.getAttribute('data-jtml-component-def-params') || '').split(';').filter(Boolean),
+              sourceLine: Number(el.getAttribute('data-jtml-source-line') || 0),
+              body: decodeHex(el.getAttribute('data-jtml-component-body-hex') || ''),
+              element: el
+            };
+          });
+        }
         window.__jtml_components = componentInstances;
         window.__jtml_component_definitions = componentDefinitions;
         window.jtml = Object.assign(window.jtml || {}, {
@@ -588,9 +966,87 @@ std::string JtmlTranspiler::generateScriptBlock() {
         return { found: true, value: value };
       }
 
+      function splitTopLevelToken(source, token) {
+        const parts = [];
+        let current = '';
+        let quote = '';
+        let depth = 0;
+        for (let i = 0; i < source.length; i += 1) {
+          const ch = source[i];
+          if (quote) {
+            current += ch;
+            if (ch === '\\' && i + 1 < source.length) current += source[++i];
+            else if (ch === quote) quote = '';
+            continue;
+          }
+          if (ch === '"' || ch === "'") {
+            quote = ch;
+            current += ch;
+            continue;
+          }
+          if (ch === '{' || ch === '[' || ch === '(') depth += 1;
+          if (ch === '}' || ch === ']' || ch === ')') depth -= 1;
+          if (depth === 0 && source.slice(i, i + token.length) === token) {
+            parts.push(current.trim());
+            current = '';
+            i += token.length - 1;
+          } else {
+            current += ch;
+          }
+        }
+        if (parts.length) parts.push(current.trim());
+        return parts.filter(function (part) { return part.length > 0; });
+      }
+
       function evaluateClientExpression(expr) {
         expr = normalizeClientExpr(expr);
         if (!expr) return { found: false, value: undefined };
+        const conditionalParts = splitTopLevelToken(expr, '?');
+        if (conditionalParts.length === 2) {
+          const falseParts = splitTopLevelToken(conditionalParts[1], ':');
+          if (falseParts.length === 2) {
+            const condition = evaluateClientExpression(conditionalParts[0]);
+            return evaluateClientExpression(condition.found && condition.value ? falseParts[0] : falseParts[1]);
+          }
+        }
+        const orParts = splitTopLevelToken(expr, '||');
+        if (orParts.length > 1) {
+          for (let i = 0; i < orParts.length; i += 1) {
+            const part = evaluateClientExpression(orParts[i]);
+            if (!part.found) return { found: false, value: undefined };
+            if (part.value) return { found: true, value: true };
+          }
+          return { found: true, value: false };
+        }
+        const andParts = splitTopLevelToken(expr, '&&');
+        if (andParts.length > 1) {
+          for (let i = 0; i < andParts.length; i += 1) {
+            const part = evaluateClientExpression(andParts[i]);
+            if (!part.found) return { found: false, value: undefined };
+            if (!part.value) return { found: true, value: false };
+          }
+          return { found: true, value: true };
+        }
+        if (expr[0] === '!' && expr.slice(0, 2) !== '!=') {
+          const part = evaluateClientExpression(expr.slice(1));
+          return part.found ? { found: true, value: !part.value } : part;
+        }
+        const comparisons = ['==', '!=', '>=', '<=', '>', '<'];
+        for (let c = 0; c < comparisons.length; c += 1) {
+          const op = comparisons[c];
+          const parts = splitTopLevelToken(expr, op);
+          if (parts.length === 2) {
+            const left = evaluateClientExpression(parts[0]);
+            const right = evaluateClientExpression(parts[1]);
+            if (!left.found || !right.found) return { found: false, value: undefined };
+            if (op === '==') return { found: true, value: left.value == right.value };
+            if (op === '!=') return { found: true, value: left.value != right.value };
+            if (op === '>=') return { found: true, value: left.value >= right.value };
+            if (op === '<=') return { found: true, value: left.value <= right.value };
+            if (op === '>') return { found: true, value: left.value > right.value };
+            if (op === '<') return { found: true, value: left.value < right.value };
+          }
+        }
         const plusParts = splitTopLevelOperator(expr, '+');
         if (plusParts.length > 1) {
           let out = '';
@@ -602,6 +1058,24 @@ std::string JtmlTranspiler::generateScriptBlock() {
             out += renderTemplateValue(part.value);
           }
           return { found: true, value: out };
+        }
+        const minusParts = splitTopLevelToken(expr, '-');
+        if (minusParts.length === 2) {
+          const left = evaluateClientExpression(minusParts[0]);
+          const right = evaluateClientExpression(minusParts[1]);
+          if (left.found && right.found) return { found: true, value: Number(left.value) - Number(right.value) };
+        }
+        const multiplyParts = splitTopLevelToken(expr, '*');
+        if (multiplyParts.length === 2) {
+          const left = evaluateClientExpression(multiplyParts[0]);
+          const right = evaluateClientExpression(multiplyParts[1]);
+          if (left.found && right.found) return { found: true, value: Number(left.value) * Number(right.value) };
+        }
+        const divideParts = splitTopLevelToken(expr, '/');
+        if (divideParts.length === 2) {
+          const left = evaluateClientExpression(divideParts[0]);
+          const right = evaluateClientExpression(divideParts[1]);
+          if (left.found && right.found) return { found: true, value: Number(left.value) / Number(right.value) };
         }
         if (expr === 'true') return { found: true, value: true };
         if (expr === 'false') return { found: true, value: false };
@@ -697,11 +1171,31 @@ std::string JtmlTranspiler::generateScriptBlock() {
           });
           return { found: true, value: body };
         }
+        if (expr[0] === '[' && expr[expr.length - 1] === ']') {
+          const inner = expr.slice(1, -1).trim();
+          if (!inner) return { found: true, value: [] };
+          return {
+            found: true,
+            value: splitTopLevelList(inner).map(function (part) {
+              const value = evaluateClientBodyExpression(part);
+              return value.found ? value.value : part;
+            })
+          };
+        }
         return evaluateClientExpression(expr);
       }
 
+      function applyClientDerived() {
+        for (const name in clientDerived) {
+          const result = evaluateClientBodyExpression(clientDerived[name]);
+          if (result.found) clientState[name] = result.value;
+        }
+      }
+
       function applyClientState() {
+        applyClientDerived();
         applyClientExpressions();
+        applyClientAttributes();
 
         for (let pass = 0; pass < 5; pass += 1) {
           let changed = false;
@@ -738,6 +1232,7 @@ std::string JtmlTranspiler::generateScriptBlock() {
           });
 
           applyClientExpressions();
+          applyClientAttributes();
           if (!changed) break;
         }
         renderCharts();
@@ -751,16 +1246,147 @@ std::string JtmlTranspiler::generateScriptBlock() {
         });
       }
 
+      function applyClientAttributes() {
+        document.querySelectorAll('*').forEach(function (el) {
+          Array.prototype.slice.call(el.attributes || []).forEach(function (attr) {
+            const match = attr.name.match(/^data-jtml-attr-(.+)-expr$/);
+            if (!match) return;
+            const htmlAttr = match[1];
+            const result = evaluateClientExpression(attr.value);
+            if (!result.found) return;
+            applyAttribute(el, htmlAttr, result.value);
+          });
+        });
+      }
+
+      function assignClientPath(path, value) {
+        path = normalizeClientExpr(path);
+        const parts = path.split('.').filter(Boolean);
+        if (!parts.length) return;
+        if (parts.length === 1) {
+          clientState[parts[0]] = value;
+          return;
+        }
+        let target = clientState[parts[0]];
+        if (target == null || typeof target !== 'object') target = clientState[parts[0]] = {};
+        for (let i = 1; i < parts.length - 1; i += 1) {
+          if (target[parts[i]] == null || typeof target[parts[i]] !== 'object') target[parts[i]] = {};
+          target = target[parts[i]];
+        }
+        target[parts[parts.length - 1]] = value;
+      }
+
+      function runClientStatements(statements) {
+        statements = statements || [];
+        for (let i = 0; i < statements.length; i += 1) {
+          const stmt = statements[i];
+          if (!stmt || !stmt.kind) continue;
+          if (stmt.kind === 'assign') {
+            const result = evaluateClientBodyExpression(stmt.expr || '');
+            if (result.found) assignClientPath(stmt.lhs || '', result.value);
+          } else if (stmt.kind === 'if') {
+            const condition = evaluateClientExpression(stmt.condition || '');
+            runClientStatements(condition.found && condition.value ? stmt.then : stmt.else);
+          }
+        }
+      }
+
+      function executeClientAction(name, args) {
+        const action = clientActions[name];
+        if (!action) return false;
+        args = args || [];
+        const restore = {};
+        const missing = {};
+        (action.params || []).forEach(function (param, index) {
+          if (Object.prototype.hasOwnProperty.call(clientState, param)) restore[param] = clientState[param];
+          else missing[param] = true;
+          clientState[param] = args[index];
+        });
+        try {
+          runClientStatements(action.body || []);
+          applyClientState();
+        } finally {
+          (action.params || []).forEach(function (param) {
+            if (Object.prototype.hasOwnProperty.call(restore, param)) clientState[param] = restore[param];
+            else if (missing[param]) delete clientState[param];
+          });
+        }
+        return true;
+      }
+
+      function bootstrapClientManifest() {
+        const el = document.getElementById('__jtml_client_manifest');
+        if (!el) return;
+        let manifest = null;
+        try {
+          manifest = JSON.parse(el.textContent || '{}');
+        } catch (err) {
+          reportStatus('error', 'Invalid browser runtime manifest');
+          return;
+        }
+        const state = manifest.state || {};
+        for (const name in state) {
+          const result = evaluateClientBodyExpression(state[name]);
+          if (result.found) clientState[name] = result.value;
+        }
+        const routeManifest = Array.isArray(manifest.routes) ? manifest.routes : [];
+        const fetchManifest = Array.isArray(manifest.fetches) ? manifest.fetches : [];
+        const componentDefinitionManifest = Array.isArray(manifest.componentDefinitions) ? manifest.componentDefinitions : [];
+        const componentInstanceManifest = Array.isArray(manifest.componentInstances) ? manifest.componentInstances : [];
+        Object.assign(clientDerived, manifest.derived || {});
+        Object.assign(clientActions, manifest.actions || {});
+        window.jtml = Object.assign(window.jtml || {}, {
+          state: clientState,
+          actions: clientActions,
+          derived: clientDerived,
+          routeManifest: routeManifest,
+          fetchManifest: fetchManifest,
+          componentDefinitionManifest: componentDefinitionManifest,
+          componentInstanceManifest: componentInstanceManifest,
+          runAction: function (name) {
+            return executeClientAction(name, Array.prototype.slice.call(arguments, 1));
+          }
+        });
+      }
+
       const __jtml_refresh_fns = {};
       const __jtml_fetch_fns = {};
       const __jtml_invalidate_fns = {};
 
+      function createFetchState(previous, patch) {
+        previous = previous || {};
+        return Object.assign({
+          loading: false,
+          data: [],
+          error: '',
+          stale: false,
+          attempts: 0,
+          hasData: false,
+          status: 0,
+          ok: false,
+          url: '',
+          method: 'GET',
+          updatedAt: 0
+        }, previous, patch || {});
+      }
+
       async function executeFetch(name, url, method, bodyExpr, cachePolicy, credentialsPolicy, timeoutMs, retryCount, stalePolicy) {
-        const previous = clientState[name] || { data: [] };
+        const previous = createFetchState(clientState[name], {});
         const keepStale = stalePolicy === 'keep';
-        clientState[name] = { loading: true, data: keepStale ? previous.data : [], error: '', stale: keepStale };
+        const hasPreviousData = !!previous.hasData;
+        clientState[name] = createFetchState(previous, {
+          loading: true,
+          data: keepStale ? previous.data : [],
+          error: '',
+          stale: keepStale && hasPreviousData,
+          hasData: keepStale && hasPreviousData,
+          ok: false,
+          url: url,
+          method: method
+        });
         applyClientState();
         let lastError = null;
+        let lastStatus = 0;
         const maxRetries = Math.max(0, Number(retryCount || 0) || 0);
         for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
           const options = { method: method };
@@ -780,11 +1406,24 @@ std::string JtmlTranspiler::generateScriptBlock() {
               options.body = JSON.stringify(body.found ? body.value : bodyExpr);
             }
             const response = await fetch(url, options);
+            lastStatus = response.status;
             if (timeoutId) clearTimeout(timeoutId);
             const type = response.headers.get('content-type') || '';
             const payload = type.indexOf('application/json') !== -1 ? await response.json() : await response.text();
             if (!response.ok) throw new Error(response.status + ' ' + response.statusText);
-            clientState[name] = { loading: false, data: payload, error: '', stale: false, attempts: attempt + 1 };
+            clientState[name] = createFetchState(previous, {
+              loading: false,
+              data: payload,
+              error: '',
+              stale: false,
+              attempts: attempt + 1,
+              hasData: true,
+              status: response.status,
+              ok: true,
+              url: url,
+              method: method,
+              updatedAt: Date.now()
+            });
             lastError = null;
             break;
           } catch (err) {
@@ -794,42 +1433,75 @@ std::string JtmlTranspiler::generateScriptBlock() {
           }
         }
         if (lastError) {
-          clientState[name] = {
+          clientState[name] = createFetchState(previous, {
             loading: false,
             data: keepStale ? previous.data : [],
             error: lastError && lastError.name === 'AbortError'
               ? 'Fetch timed out'
               : (lastError && lastError.message ? lastError.message : String(lastError)),
-            stale: keepStale,
-            attempts: maxRetries + 1
-          };
+            stale: keepStale && hasPreviousData,
+            attempts: maxRetries + 1,
+            hasData: keepStale && hasPreviousData,
+            status: lastStatus,
+            ok: false,
+            url: url,
+            method: method,
+            updatedAt: Date.now()
+          });
         }
         applyClientState();
       }
 
-      function startFetchBindings() {
-        document.querySelectorAll('[data-jtml-fetch]').forEach(function (marker) {
-          const name = marker.getAttribute('data-jtml-fetch');
-          const url = marker.getAttribute('data-url');
-          const method = marker.getAttribute('data-method') || 'GET';
-          const bodyExpr = marker.getAttribute('data-body-expr') || '';
-          const refreshAction = marker.getAttribute('data-refresh-action') || '';
-          const cachePolicy = marker.getAttribute('data-cache') || '';
-          const credentialsPolicy = marker.getAttribute('data-credentials') || '';
-          const timeoutMs = marker.getAttribute('data-timeout-ms') || '';
-          const retryCount = marker.getAttribute('data-retry') || '';
-          const stalePolicy = marker.getAttribute('data-stale') || 'clear';
-          const lazy = marker.getAttribute('data-lazy') === 'true';
-          if (!name || !url) return;
-          __jtml_fetch_fns[name] = function () {
-            return executeFetch(name, url, method, bodyExpr, cachePolicy, credentialsPolicy, timeoutMs, retryCount, stalePolicy);
+      function registerFetchBinding(record, lazy) {
+        const name = record && record.name ? record.name : '';
+        const url = record && record.url ? record.url : '';
+        if (!name || !url || __jtml_fetch_fns[name]) return;
+        const method = record.method || 'GET';
+        const bodyExpr = record.bodyExpr || '';
+        const refreshAction = record.refreshAction || '';
+        const cachePolicy = record.cache || '';
+        const credentialsPolicy = record.credentials || '';
+        const timeoutMs = record.timeoutMs || '';
+        const retryCount = record.retryCount || '';
+        const stalePolicy = record.stalePolicy || 'clear';
+        __jtml_fetch_fns[name] = function () {
+          return executeFetch(name, url, method, bodyExpr, cachePolicy, credentialsPolicy, timeoutMs, retryCount, stalePolicy);
+        };
+        if (refreshAction) {
+          __jtml_refresh_fns[refreshAction] = function () {
+            return __jtml_fetch_fns[name]();
           };
-          if (refreshAction) {
-            __jtml_refresh_fns[refreshAction] = function () {
-              return __jtml_fetch_fns[name]();
-            };
+        }
+        if (!lazy) __jtml_fetch_fns[name]();
+      }
+
+      function startFetchBindings() {
+        const manifestFetches = (window.jtml && Array.isArray(window.jtml.fetchManifest))
+          ? window.jtml.fetchManifest
+          : [];
+        manifestFetches.forEach(function (fetch) {
+          registerFetchBinding(fetch, !!fetch.lazy);
+        });
+        document.querySelectorAll('[data-jtml-fetch]').forEach(function (marker) {
+          registerFetchBinding({
+            name: marker.getAttribute('data-jtml-fetch') || '',
+            url: marker.getAttribute('data-url') || '',
+            method: marker.getAttribute('data-method') || 'GET',
+            bodyExpr: marker.getAttribute('data-body-expr') || '',
+            refreshAction: marker.getAttribute('data-refresh-action') || '',
+            cache: marker.getAttribute('data-cache') || '',
+            credentials: marker.getAttribute('data-credentials') || '',
+            timeoutMs: marker.getAttribute('data-timeout-ms') || '',
+            retryCount: marker.getAttribute('data-retry') || '',
+            stalePolicy: marker.getAttribute('data-stale') || 'clear'
+          }, marker.getAttribute('data-lazy') === 'true');
+        });
+        window.jtml = Object.assign(window.jtml || {}, {
+          fetches: __jtml_fetch_fns,
+          refreshFetch: function (name) {
+            if (__jtml_fetch_fns[name]) return __jtml_fetch_fns[name]();
+            return Promise.reject(new Error('Unknown JTML fetch: ' + name));
           }
-          if (!lazy) __jtml_fetch_fns[name]();
         });
       }
 
@@ -844,6 +1516,11 @@ std::string JtmlTranspiler::generateScriptBlock() {
         if (b.state) {
           for (const name in b.state) {
             clientState[name] = b.state[name];
+          }
+        }
+        if (b.bindings) {
+          for (const name in b.bindings) {
+            clientState[name] = b.bindings[name];
           }
         }
         applyTemplates(b);
@@ -870,8 +1547,15 @@ std::string JtmlTranspiler::generateScriptBlock() {
 
       function applyAttribute(el, attr, value) {
         el.setAttribute(attr, value);
-        if (attr === 'value' && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+          if (attr === 'value' && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
           el.value = value;
+        }
+        if ((attr === 'disabled' || attr === 'checked' || attr === 'hidden' || attr === 'open') && !value) {
+          el.removeAttribute(attr);
+          if (attr in el) el[attr] = false;
+        } else if ((attr === 'disabled' || attr === 'checked' || attr === 'hidden' || attr === 'open') && value) {
+          el.setAttribute(attr, attr);
+          if (attr in el) el[attr] = true;
         }
       }
 
@@ -1182,21 +1866,16 @@ std::string JtmlTranspiler::generateScriptBlock() {
                 ctx.drawImage(img, 0, 0, sw, sh);
               }
               const preview = canvas.toDataURL('image/png');
-              const result = JSON.stringify({ preview: preview, loading: false, error: '', width: canvas.width, height: canvas.height });
-              if (typeof applyBindings === 'function') {
-                applyBindings({ bindings: { [into]: JSON.parse(result) } });
-              }
+              assignClientPath(into, { preview: preview, loading: false, error: '', width: canvas.width, height: canvas.height });
+              applyClientState();
             } catch (err) {
-              const result = JSON.stringify({ preview: '', loading: false, error: String(err), width: 0, height: 0 });
-              if (typeof applyBindings === 'function') {
-                applyBindings({ bindings: { [into]: JSON.parse(result) } });
-              }
+              assignClientPath(into, { preview: '', loading: false, error: String(err), width: 0, height: 0 });
+              applyClientState();
             }
           };
           img.onerror = function () {
-            if (typeof applyBindings === 'function') {
-              applyBindings({ bindings: { [into]: { preview: '', loading: false, error: 'Failed to load image', width: 0, height: 0 } } });
-            }
+            assignClientPath(into, { preview: '', loading: false, error: 'Failed to load image', width: 0, height: 0 });
+            applyClientState();
           };
           img.src = srcUrl;
         });
@@ -1297,6 +1976,80 @@ std::string JtmlTranspiler::generateScriptBlock() {
         fetches.forEach(function (name) {
           if (__jtml_fetch_fns[name]) __jtml_fetch_fns[name]();
         });
+      }
+
+      const __jtml_routes = [];
+      let __jtml_current_route = null;
+
+      function publicRouteRecord(record) {
+        return {
+          path: record.path,
+          name: record.name,
+          params: record.params.slice(),
+          load: record.load.slice()
+        };
+      }
+
+      function publishRouteApi() {
+        window.jtml = Object.assign(window.jtml || {}, {
+          routes: __jtml_routes.map(publicRouteRecord),
+          currentRoute: __jtml_current_route,
+          getRoutes: function () {
+            return __jtml_routes.map(publicRouteRecord);
+          },
+          getCurrentRoute: function () {
+            return __jtml_current_route ? Object.assign({}, __jtml_current_route) : null;
+          },
+          navigate: function (path) {
+            const before = location.hash;
+            window.__jtml_redirect(path);
+            if (location.hash === before) applyRoutes();
+          }
+        });
+      }
+
+      function collectRouteBindings() {
+        __jtml_routes.length = 0;
+        const routeElements = Array.prototype.slice.call(document.querySelectorAll('[data-jtml-route]'));
+        const manifestRoutes = (window.jtml && Array.isArray(window.jtml.routeManifest))
+          ? window.jtml.routeManifest
+          : [];
+        if (manifestRoutes.length) {
+          manifestRoutes.forEach(function (manifest, index) {
+            const path = manifest && manifest.path ? manifest.path : '/';
+            const name = manifest && manifest.name ? manifest.name : '';
+            const el = routeElements.find(function (candidate) {
+              return candidate.getAttribute('data-jtml-route') === path &&
+                (!name || candidate.getAttribute('data-jtml-route-name') === name);
+            }) || routeElements[index];
+            if (!el) return;
+            __jtml_routes.push({
+              element: el,
+              path: path,
+              name: name,
+              params: Array.isArray(manifest.params) ? manifest.params.slice() : [],
+              load: Array.isArray(manifest.load) ? manifest.load.slice() : []
+            });
+          });
+        } else {
+          routeElements.forEach(function (el) {
+          __jtml_routes.push({
+            element: el,
+            path: el.getAttribute('data-jtml-route') || '/',
+            name: el.getAttribute('data-jtml-route-name') || '',
+            params: (el.getAttribute('data-jtml-route-params') || '').split(',').filter(Boolean),
+            load: String(el.getAttribute('data-jtml-route-load') || '')
+              .split(',')
+              .map(function (name) { return name.trim(); })
+              .filter(Boolean)
+          });
+        });
+        }
+        publishRouteApi();
+        document.dispatchEvent(new CustomEvent('jtml:routes-ready', {
+          detail: { routes: __jtml_routes.map(publicRouteRecord) }
+        }));
+        return __jtml_routes;
       }
 
       function getWindowPath(path) {
@@ -1563,6 +2316,7 @@ std::string JtmlTranspiler::generateScriptBlock() {
       }
 
       function applyInitial() {
+        bootstrapClientManifest();
         if (window.__jtml_bindings) applyBindings(window.__jtml_bindings);
         scanComponentInstances();
         startFetchBindings();
@@ -1570,12 +2324,14 @@ std::string JtmlTranspiler::generateScriptBlock() {
         startExternBindings();
         startRedirectBindings();
         startGuardBindings();
+        collectRouteBindings();
         startLinkBindings();
         startDropzoneBindings();
         startMediaControllerBindings();
         startScene3DBindings();
         initTimelines();
         processImageBindings();
+        applyClientState();
         applyRoutes();
       }
       if (document.readyState === 'loading') {
@@ -1585,31 +2341,35 @@ std::string JtmlTranspiler::generateScriptBlock() {
       }
 
       let ws = null;
-      try {
-        const host = location.hostname || 'localhost';
-        ws = new WebSocket('ws://' + host + ':' + wsPort);
-        ws.onmessage = function (event) {
-          const m = JSON.parse(event.data);
-          reportStatus('connected', 'Runtime connected');
-          if (m.type === 'populateBindings' && m.bindings) applyBindings(m.bindings);
-          else if (m.type === 'updateBinding') {
-            const el = document.getElementById(m.elementId);
-            if (el) el.textContent = m.value;
-          } else if (m.type === 'updateAttribute') {
-            const el = document.getElementById(m.elementId);
-            if (el) applyAttribute(el, m.attribute, m.value);
-          } else if (m.type === 'reload') {
-            // Structural change (source file edited in watch mode).
-            // A full reload is safer than patching bindings, since the
-            // element tree itself may have changed.
-            location.reload();
-          }
-        };
-        ws.onopen = function () { reportStatus('connected', 'Runtime connected'); };
-        ws.onclose = function () { reportStatus('offline', 'Runtime disconnected; HTTP fallback available'); };
-        ws.onerror = function () { reportStatus('fallback', 'WebSocket unavailable; using HTTP fallback'); };
-      } catch (_) {
-        reportStatus('fallback', 'WebSocket unavailable; using HTTP fallback');
+      if (browserLocalRuntime) {
+        reportStatus('browser-local', 'Browser-local runtime active');
+      } else {
+        try {
+          const host = location.hostname || 'localhost';
+          ws = new WebSocket('ws://' + host + ':' + wsPort);
+          ws.onmessage = function (event) {
+            const m = JSON.parse(event.data);
+            reportStatus('connected', 'Runtime connected');
+            if (m.type === 'populateBindings' && m.bindings) applyBindings(m.bindings);
+            else if (m.type === 'updateBinding') {
+              const el = document.getElementById(m.elementId);
+              if (el) el.textContent = m.value;
+            } else if (m.type === 'updateAttribute') {
+              const el = document.getElementById(m.elementId);
+              if (el) applyAttribute(el, m.attribute, m.value);
+            } else if (m.type === 'reload') {
+              // Structural change (source file edited in watch mode).
+              // A full reload is safer than patching bindings, since the
+              // element tree itself may have changed.
+              location.reload();
+            }
+          };
+          ws.onopen = function () { reportStatus('connected', 'Runtime connected'); };
+          ws.onclose = function () { reportStatus('offline', 'Runtime disconnected; HTTP fallback available'); };
+          ws.onerror = function () { reportStatus('fallback', 'WebSocket unavailable; using HTTP fallback'); };
+        } catch (_) {
+          reportStatus('fallback', 'WebSocket unavailable; using HTTP fallback');
+        }
       }
 
       window.sendEvent = async function (elementId, eventType, args) {
@@ -1627,6 +2387,14 @@ std::string JtmlTranspiler::generateScriptBlock() {
         }
         if (fnName && __jtml_media_actions[fnName]) {
           await __jtml_media_actions[fnName](action.args.concat(args.slice(1)));
+          return;
+        }
+        if (browserLocalRuntime && fnName && executeClientAction(fnName, action.args.concat(args.slice(1)))) {
+          await runInvalidations(fnName);
+          return;
+        }
+        if (browserLocalRuntime) {
+          reportStatus('error', 'No browser-local action named: ' + (fnName || '(unknown)'));
           return;
         }
         try {
@@ -1707,34 +2475,50 @@ std::string JtmlTranspiler::generateScriptBlock() {
       }
 
       function applyRoutes() {
-        const routes = document.querySelectorAll('[data-jtml-route]');
+        const routes = __jtml_routes.length ? __jtml_routes : collectRouteBindings();
         if (!routes.length) return;
         const path = normalizeRoute(location.hash || '/');
         clientState['activeRoute'] = path;
         applyActiveLinkClasses(path);
         if (!checkGuards(path)) return;
         let matched = false;
-        routes.forEach(function (route) {
-          const params = !matched ? matchRouteParams(route.getAttribute('data-jtml-route'), path) : null;
+        let nextCurrentRoute = null;
+        routes.forEach(function (record) {
+          const route = record.element;
+          const params = !matched ? matchRouteParams(record.path, path) : null;
           const isMatch = !!params;
           route.hidden = !isMatch;
           route.setAttribute('aria-hidden', isMatch ? 'false' : 'true');
           if (isMatch) {
-            const declared = (route.getAttribute('data-jtml-route-params') || '').split(',').filter(Boolean);
-            declared.forEach(function (name) {
+            record.params.forEach(function (name) {
               clientState[name] = Object.prototype.hasOwnProperty.call(params, name) ? params[name] : '';
             });
+            clientState['activeRouteName'] = record.name;
+            nextCurrentRoute = {
+              path: path,
+              pattern: record.path,
+              name: record.name,
+              params: Object.assign({}, params),
+              load: record.load.slice()
+            };
             matched = true;
             runRouteLoads(route);
             applyClientState();
           }
         });
         if (!matched) {
-          routes.forEach(function (route, index) {
-            route.hidden = index !== 0;
-            route.setAttribute('aria-hidden', index === 0 ? 'false' : 'true');
+          routes.forEach(function (record, index) {
+            record.element.hidden = index !== 0;
+            record.element.setAttribute('aria-hidden', index === 0 ? 'false' : 'true');
           });
+          clientState['activeRouteName'] = '';
+          nextCurrentRoute = { path: path, pattern: '', name: '', params: {}, load: [] };
         }
+        __jtml_current_route = nextCurrentRoute;
+        publishRouteApi();
+        document.dispatchEvent(new CustomEvent('jtml:route-change', {
+          detail: { route: __jtml_current_route }
+        }));
       }
 
       window.addEventListener('hashchange', applyRoutes);

@@ -18,27 +18,34 @@ FetchContent_MakeAvailable(googletest)
 
 set(JTML_TEST_SOURCES
     test_lexer.cpp
+    test_attribute_classifier.cpp
     test_parser.cpp
     test_diagnostics.cpp
     test_c_api.cpp
+    test_cli_commands.cpp
     test_fix.cpp
     test_formatter.cpp
     test_friendly.cpp
     test_linter.cpp
     test_module_resolver.cpp
     test_refactor.cpp
+    test_semantic.cpp
+    test_studio_samples.cpp
     test_tutorial.cpp
     test_friendly_formatter.cpp
 )
 
 add_executable(jtml_tests ${JTML_TEST_SOURCES})
 target_link_libraries(jtml_tests PRIVATE
-    jtml_core
     jtml_c
+    jtml_cli_lib
     GTest::gtest_main
 )
 target_include_directories(jtml_tests PRIVATE
     ${CMAKE_SOURCE_DIR}
+)
+target_compile_definitions(jtml_tests PRIVATE
+    JTML_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
 
 include(GoogleTest)

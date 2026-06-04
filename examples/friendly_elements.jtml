@@ -85,12 +85,10 @@ page class "element-dict-demo" style "max-width: 900px; margin: 48px auto; paddi
     h2 "Media Elements"
     text "image, video, audio, embed, canvas, graphic, and SVG-compatible tags use standards-based browser output."
     image src "/assets/photo.jpg" alt "Example image"
-    video src "/assets/demo.mp4" controls poster "/assets/demo.jpg" into mediaPlayer
-    text "Video paused: {mediaPlayer.paused}"
-    button "Play video" click mediaPlayer.play
-    button "Pause video" click mediaPlayer.pause
-    audio src "/assets/intro.mp3" controls into audioPlayer
-    text "Audio paused: {audioPlayer.paused}"
+    video src "/assets/demo.mp4" controls poster "/assets/demo.jpg"
+    text "Native media controls are safe in every preview."
+    audio src "/assets/intro.mp3" controls
+    text "Custom media controller actions are planned for a hardened runtime slice."
     embed src "about:blank" title "Embedded preview"
     canvas aria-label "Demo drawing surface" width "320" height "120"
     graphic aria-label "Small chart" width "220" height "80" viewBox "0 0 220 80"
@@ -100,8 +98,8 @@ page class "element-dict-demo" style "max-width: 900px; margin: 48px auto; paddi
       line x1 "12" y1 "68" x2 "208" y2 "68" stroke "#475569" stroke-width "2"
       path d "M12 60 C60 10 120 80 208 24" fill "none" stroke "#9333ea" stroke-width "2"
     chart bar data revenue by month value total label "Revenue by month" color "#2563eb"
-    scene3d "Product scene" scene productScene camera orbit controls orbit renderer "three" into productSceneState width "640" height "360"
-    text "3D status: {productSceneState.status}"
+    scene3d "Product scene" scene productScene camera orbit controls orbit renderer "three" width "640" height "360"
+    text "3D host integration can mount Three.js or WebGPU renderers."
 
   footer
     text "\u00A9 2026 JTML Project"

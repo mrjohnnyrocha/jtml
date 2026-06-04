@@ -245,6 +245,7 @@ make Command
           checkbox "Policy reviewed" into acceptedPolicy
           box class "button-row"
             button "Submit workflow" type "submit"
+            button "Capture note" type "button" click captureNote
             button "Reset local form" type "button" click resetWorkspace
         text "Priority: {priority}"
         text "Policy accepted: {acceptedPolicy}"

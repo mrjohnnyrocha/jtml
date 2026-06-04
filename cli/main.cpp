@@ -14,7 +14,7 @@ namespace {
 bool commandTakesNoInputFile(const std::string& cmd) {
     return cmd == "examples" || cmd == "doctor"  || cmd == "demo"     ||
            cmd == "tutorial" || cmd == "studio"  || cmd == "test"     ||
-           cmd == "install"  || cmd == "lsp";
+           cmd == "install"  || cmd == "keywords" || cmd == "lsp";
 }
 
 jtml::SyntaxMode parseSyntaxMode(const char* value) {
@@ -117,6 +117,7 @@ int dispatch(const Options& o) {
     if (o.command == "examples")  return cmdExamples (o);
     if (o.command == "doctor")    return cmdDoctor   (o);
     if (o.command == "generate")  return cmdGenerate (o);
+    if (o.command == "keywords")  return cmdKeywords (o);
     if (o.command == "explain")   return cmdExplain  (o);
     if (o.command == "suggest")   return cmdSuggest  (o);
     if (o.command == "lsp")       return cmdLsp      (o);

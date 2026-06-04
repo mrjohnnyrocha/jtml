@@ -26,3 +26,14 @@ Build it as a static artifact:
 ```
 
 This demo intentionally describes a full-stack-ready shape using the current JTML runtime HTTP contracts. Future server blocks, database bindings, SSR, and native packaging can attach to the same app structure.
+
+## OpsPulse Reference Surface
+
+`example.jtml` is a second, denser enterprise workspace used to stress the language and tooling. It covers a dashboard shell, nested component composition, route-backed pages, fetch resources, operational forms, media upload state, charts, settings flows, and observable-first lint checks.
+
+It is intentionally kept as a source-quality demo rather than the default built artifact. Validate it with:
+
+```bash
+./build/jtml check demos/example.jtml
+./build/jtml lint demos/example.jtml
+```

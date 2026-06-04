@@ -2,6 +2,8 @@
 
 Use local `let` state for a page or component. Use `store name` when several parts of an app need the same state.
 
+<!-- studio:playground -->
+
 A store is a named namespace:
 
 ```jtml

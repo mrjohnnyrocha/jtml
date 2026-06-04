@@ -30,9 +30,10 @@ Try it with:
 ./build/jtml serve examples/friendly_counter.jtml --port 8000
 ```
 
-Friendly syntax is the format used by the tutorial, Studio samples, AI authoring
-contract, formatter, and most bundled examples. Classic JTML remains supported
-as a compatibility/low-level target for existing files and compiler artifacts.
+Friendly syntax is the format used by the tutorial, Studio samples, AI
+authoring contract, formatter, and bundled app examples. The Classic-compatible
+backend remains supported for existing files, migration, embedding, and
+compiler artifacts, but it is not the public authoring style for new apps.
 
 Hyphenated attributes such as `data-page` and `aria-label` are supported.
 Keyword-shaped attributes such as `for` are supported in element position, and
@@ -50,8 +51,8 @@ page class "profile" data-page "home"
 ```
 
 Browser events use Friendly event sugar in `jtml 2` files: `click`, `input`,
-`change`, `submit`, `hover`, `scroll`, `focus`, `blur`, `key-down`, `key-up`,
-and `double-click`.
+`change`, `submit`, `hover`, `scroll`, `focus`, `blur`, `keyup`, `keydown`,
+`key-up`, `key-down`, `dragover`, `drop`, `dblclick`, and `double-click`.
 
 ```jtml
 let email = ""
@@ -89,9 +90,10 @@ make User id
     h1 "User {id}"
 ```
 
-Classic syntax is still accepted for compatibility and for generated
-compiler artifacts. It uses `define`, `derive`, `function`, `@tag`, `\`, and
-`#`:
+## Compatibility Backend
+
+Classic syntax is still accepted for older files and generated compiler
+artifacts. It uses `define`, `derive`, `function`, `@tag`, `\`, and `#`:
 
 ```jtml
 define name = "Alice"\\
@@ -101,22 +103,38 @@ derive greeting = "Hello, " + name\\
 #
 ```
 
-Use Classic only when maintaining old code or inspecting lowered artifacts.
+Use this form only when maintaining old code, testing migration, embedding
+through compatibility APIs, or inspecting lowered artifacts.
 
 ## Reserved Keywords
 
-The language reserves these words:
+Friendly JTML 2 reserves the current public language surface. The most useful
+groups are:
 
 ```text
-element show define derive unbind store for if const in break continue throw
-else while try except then return function to subscribe from unsubscribe
-object derives async import main true false
-let get when make page route layout load slot fetch effect use export style
-guard redirect refresh invalidate lazy extern into link text box image video
-audio embed canvas list item
+state: let const get show
+actions: when effect store extern redirect refresh invalidate
+components: make slot export use
+flow: if else for in while break continue try catch finally return throw
+data: fetch method body cache credentials timeout retry stale keep lazy load
+routes: route layout guard require activeRoute activeRouteName
+forms/events: into click input change submit hover scroll focus blur keyup
+        keydown key-up key-down dragover drop dblclick double-click
+styles: theme style css raw app shell topbar sidebar content panel card grid
+        stack cluster split toolbar tabs tab alert badge modal drawer toast
+        loading error empty field metric spacer cols gap pad radius shadow tone
+        align justify width surface
+elements/media: page link navlink text box image video audio embed file
+        dropzone canvas svg graphic group bar dot line path polyline polygon
+        chart scene3d checkbox list ordered item
+media helpers: timeline animate resize crop filter axis legend stacked duration
+        easing autoplay repeat
 ```
 
-`const` defines immutable variables, `async function` dispatches calls without blocking the caller, `import` evaluates another JTML file in the current runtime, `subscribe` and `unsubscribe` manage variable-change callbacks, and `object ... derives from ...` defines inherited object members.
+Classic compatibility also reserves the backend forms `element`, `define`,
+`derive`, `unbind`, `function`, `async`, `subscribe`, `unsubscribe`, `object`,
+`derives`, `import`, `main`, `then`, and `except`. Use those only in
+compatibility examples or lowered artifact debugging.
 
 ## Build
 
@@ -151,7 +169,7 @@ site/            static project website
 ./build/jtml serve examples/user_interactions.jtml --port 8000
 ```
 
-For `jtml serve`, the generated page connects to the runtime WebSocket server on `--port + 80` and falls back to `POST /api/event` if WebSocket is unavailable. The same server exposes `/api/health`, `/api/bindings`, `/api/state`, and `/api/runtime` for IDEs, test runners, and external hosts; see `docs/runtime-http-contract.md`.
+For `jtml serve`, the generated page connects to the runtime WebSocket server on `--port + 80` and falls back to `POST /api/event` if WebSocket is unavailable. The same server exposes `/api/health`, `/api/bindings`, `/api/state`, and `/api/runtime` for IDEs, test runners, and external hosts; see `docs/tooling/runtime-http-contract.md`.
 
 ## Quick Start For End Users
 
@@ -168,6 +186,7 @@ Check your install:
 
 ```sh
 ./build/jtml --version
+./build/jtml keywords
 ```
 
 Create a starter page:
@@ -230,11 +249,20 @@ Run the editor-neutral language server:
 ./build/jtml lsp
 ```
 
-`jtml lsp` speaks the Language Server Protocol over stdio. It supports diagnostics, formatting, completions, hover, document/workspace symbols, cross-file definition, references, rename, code actions, signature help, document highlights, and selection ranges; see `docs/language-server.md`.
+`jtml lsp` speaks the Language Server Protocol over stdio. It supports diagnostics, formatting, completions, hover, document/workspace symbols, cross-file definition, references, rename, code actions, signature help, document highlights, and selection ranges; see `docs/tooling/language-server.md`.
+
+Semantic styling first slice is available through `theme`, UI primitives such
+as `shell`, `panel`, `grid`, `card`, `metric`, and utility modifiers such as
+`gap`, `pad`, `shadow`, `tone`, and `cols`. These lower to ordinary HTML,
+generated CSS, and semantic IR counts in `jtml explain`.
+Use scoped `style` for page-local CSS, and explicit `css raw` / `html raw`
+only when integrating trusted host widgets, custom elements, or third-party
+surfaces that need direct platform markup. These escape hatches are reported
+by semantic IR counts and `jtml lint` warnings for production review.
 
 ## AI-Native Authoring
 
-JTML is designed to be a small, predictable target for AI-generated and AI-edited web apps. The contract for models and agents lives in `docs/ai-authoring-contract.md`, and the implementation track lives in `docs/ai-native-implementation-roadmap.md`.
+JTML is designed to be a small, predictable target for AI-generated and AI-edited web apps. The contract for models and agents lives in `docs/reference/ai-authoring-contract.md`, and the implementation track lives in `docs/roadmaps/ai-native-implementation-roadmap.md`.
 
 Recommended repair loop:
 
@@ -246,6 +274,20 @@ Recommended repair loop:
 ./build/jtml lint my_page.jtml
 ./build/jtml build my_page.jtml --out dist
 ```
+
+`jtml explain --json` now includes an early semantic-analysis section sourced
+from the parsed AST, including semantic node counts, structured route records,
+dependency edges, and attribute kind counts for literal, boolean, reactive,
+event, special, and passthrough attributes. It also reports imported modules in
+`imports`, `semantic.nodes.imports`, raw escape hatches in
+`semantic.nodes.rawCssBlocks` and `semantic.nodes.rawHtmlBlocks`, host interop
+boundaries in `semantic.nodes.externs`, `semantic.routeRecords`,
+`semantic.fetchRecords`, `semantic.componentDefinitions`,
+`semantic.componentInstances`, and
+`module --imports--> ...` / `extern:<name> --calls--> <window.path>` graph
+edges. This is the first slice of the observable-first architecture: tooling
+should explain language meaning before any particular runtime backend executes
+it.
 
 ## Interactive Tutorial
 
@@ -267,12 +309,13 @@ JTML supports standards-based media today with `image`, `video`, `audio`,
 `embed`, `file`, `dropzone`, SVG-first `graphic`/`bar`/`dot`/`line`/`path`,
 accessible
 `chart bar data rows by label value total`, and `scene3d` 3D mount points, plus raw `canvas`/SVG-compatible tags and
-explicit `extern` bridges for host-provided graphics or media libraries.
+explicit `extern`, `html raw`, and `css raw` bridges for host-provided graphics
+or media libraries.
 `video/audio ... into name` exposes playback state and client actions such as
 `name.play`, `name.pause`, and `name.seek(0)`. `scene3d ... into sceneState`
 exposes renderer/fallback state and lets host renderers publish updates through
 `spec.update(...)`. Richer charts, 3D adapters, and media processing are tracked
-in `docs/media-graphics-roadmap.md` and `docs/3d-custom-interfaces-roadmap.md`.
+in `docs/roadmaps/media-graphics-roadmap.md` and `docs/roadmaps/3d-custom-interfaces-roadmap.md`.
 
 The roadmap lives in `ROADMAP.md`, and the docs index lives in
 `docs/README.md`. The current product lane is production hardening:
@@ -305,8 +348,8 @@ cd build && cpack
 ```
 
 The documentation set starts at `docs/README.md`. The versioned language
-reference is in `docs/language-reference.md`, the deployment guide is in
-`docs/deployment.md`, and the predeploy static website for `jtml.org` lives in
+reference is in `docs/reference/language-reference.md`, the deployment guide is in
+`docs/tooling/deployment.md`, and the predeploy static website for `jtml.org` lives in
 `site/`.
 
 Build all local predeploy artifacts:

@@ -2,6 +2,8 @@
 
 `let` creates a mutable reactive variable. `get` creates a value that is automatically recomputed whenever its dependencies change. This is the core reactivity of JTML: you never manually recompute derived values, the runtime does it for you.
 
+<!-- studio:playground -->
+
 In the example:
 
 - `count` is state.

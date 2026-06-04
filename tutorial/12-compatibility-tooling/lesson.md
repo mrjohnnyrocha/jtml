@@ -2,6 +2,8 @@
 
 For new code, choose **Friendly JTML 2**:
 
+<!-- studio:playground -->
+
 ```jtml
 jtml 2
 

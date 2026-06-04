@@ -16,7 +16,7 @@ example.html
 jtml_app
 quick-test
 test_parse
-jtml
+/jtml
 dist/
 out/
 

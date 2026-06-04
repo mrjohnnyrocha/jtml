@@ -16,7 +16,11 @@ ctest --test-dir "$build_dir" --output-on-failure
 "$build_dir/jtml" check "$repo_root/examples/friendly_components.jtml"
 "$build_dir/jtml" check "$repo_root/examples/friendly_import_page.jtml"
 "$build_dir/jtml" build "$repo_root/examples/friendly_import_page.jtml" --out "$repo_root/dist/verify-app"
-"$build_dir/jtml" check "$repo_root/demos/index.jtml"
+for demo_file in "$repo_root"/demos/*.jtml; do
+  "$build_dir/jtml" check "$demo_file"
+  "$build_dir/jtml" lint "$demo_file"
+done
+"$build_dir/jtml" explain "$repo_root/demos/index.jtml" --json > "$repo_root/dist/demo-explain.json"
 "$build_dir/jtml" build "$repo_root/demos" --out "$repo_root/dist/demos"
 
 tmp_pkg_root="$(mktemp -d "${TMPDIR:-/tmp}/jtml-package.XXXXXX")"

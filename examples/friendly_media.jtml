@@ -14,7 +14,7 @@ style
     gap: 20px
   .grid
     display: grid
-    grid-template-columns: repeat(2, minmax(0, 1fr))
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))
     gap: 16px
   article
     border: 1px solid #e4dfd4
@@ -23,10 +23,14 @@ style
     display: grid
     gap: 10px
     background: white
+    min-width: 0
   image
     max-width: 100%
     border-radius: 8px
   input
+    max-width: 100%
+    min-width: 0
+    box-sizing: border-box
     padding: 12px
     border: 1px dashed #7a8b8b
     border-radius: 8px
@@ -49,17 +53,13 @@ page
 
     article
       h2 "Video"
-      video src "/assets/demo.mp4" controls poster "/assets/demo.jpg" preload "metadata" into videoPlayer
-      text "Paused: {videoPlayer.paused} | Time: {videoPlayer.currentTime}"
-      box
-        button "Play" click videoPlayer.play
-        button "Pause" click videoPlayer.pause
-        button "Restart" click videoPlayer.seek(0)
+      video src "/assets/demo.mp4" controls poster "/assets/demo.jpg" preload "metadata"
+      text "Native controls work today. Reactive video controllers are on the runtime hardening roadmap."
 
     article
       h2 "Audio"
-      audio src "/assets/intro.mp3" controls preload "metadata" into audioPlayer
-      text "Audio paused: {audioPlayer.paused}"
+      audio src "/assets/intro.mp3" controls preload "metadata"
+      text "Use audio for standards-based playback; host actions can add custom controls."
 
     article
       h2 "File input"
@@ -94,6 +94,5 @@ page
 
     article
       h2 "3D scene"
-      scene3d "Interactive product scene" scene productScene camera orbit controls orbit renderer "three" into sceneState width "640" height "360"
-      text "Renderer status: {sceneState.status}"
+      scene3d "Interactive product scene" scene productScene camera orbit controls orbit renderer "three" width "640" height "360"
       text "Hosts can attach Three.js/WebGPU through window.jtml3d.render(canvas, spec)."

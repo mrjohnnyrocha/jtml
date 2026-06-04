@@ -2,6 +2,8 @@
 
 JTML routes are local, hash-based SPA routes. A route maps a path to a component:
 
+<!-- studio:playground -->
+
 ```jtml
 route "/user/:id" as UserProfile
 ```

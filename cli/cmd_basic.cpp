@@ -5,17 +5,22 @@
 #include "diagnostic_json.h"
 
 #include "jtml/interpreter.h"
+#include "jtml/language_catalog.h"
 #include "jtml/linter.h"
+#include "jtml/semantic.h"
 #include "jtml/transpiler.h"
 #include "json.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <map>
+#include <set>
 #include <sstream>
 #include <vector>
 
@@ -27,13 +32,6 @@ namespace {
 bool pathIsInside(const std::filesystem::path& path, const std::filesystem::path& parent) {
     auto rel = std::filesystem::relative(path, parent);
     return rel.empty() || (rel.native().rfind("..", 0) != 0 && rel != ".");
-}
-
-std::string trimCopy(std::string s) {
-    auto notSpace = [](unsigned char ch) { return !std::isspace(ch); };
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), notSpace));
-    s.erase(std::find_if(s.rbegin(), s.rend(), notSpace).base(), s.end());
-    return s;
 }
 
 std::vector<int> friendlyLineMapForFile(const Options& o) {
@@ -77,119 +75,186 @@ void copyBuildAssets(const std::filesystem::path& inputDir,
     }
 }
 
-struct SourceInsights {
-    std::vector<std::string> state;
-    std::vector<std::string> constants;
-    std::vector<std::string> derived;
-    std::vector<std::string> actions;
-    std::vector<std::string> components;
-    std::vector<std::string> routes;
-    std::vector<std::string> fetches;
-    std::vector<std::string> stores;
-    std::vector<std::string> effects;
-    int styleBlocks = 0;
-};
-
-std::vector<std::string> words(const std::string& line) {
-    std::vector<std::string> out;
-    std::istringstream input(line);
-    std::string word;
-    while (input >> word) out.push_back(word);
-    return out;
-}
-
-std::string stripInlineComment(const std::string& line) {
-    char quote = '\0';
-    for (size_t i = 0; i < line.size(); ++i) {
-        char ch = line[i];
-        if (quote != '\0') {
-            if (ch == '\\' && i + 1 < line.size()) ++i;
-            else if (ch == quote) quote = '\0';
-            continue;
-        }
-        if (ch == '"' || ch == '\'') {
-            quote = ch;
-            continue;
-        }
-        if (ch == '/' && i + 1 < line.size() && line[i + 1] == '/') return line.substr(0, i);
-        if (ch == '#' && (i == 0 || std::isspace(static_cast<unsigned char>(line[i - 1])))) {
-            return line.substr(0, i);
-        }
-    }
-    return line;
-}
-
-std::string cleanIdentifier(std::string token) {
-    while (!token.empty() && (token.back() == '\\' || token.back() == '(' ||
-                              token.back() == ')' || token.back() == ',' ||
-                              token.back() == ':')) {
-        token.pop_back();
-    }
-    const auto colon = token.find(':');
-    if (colon != std::string::npos) token = token.substr(0, colon);
-    return token;
-}
-
-SourceInsights inspectSource(const std::string& source) {
-    SourceInsights insights;
-    std::istringstream input(source);
-    std::string raw;
-    while (std::getline(input, raw)) {
-        std::string line = trimCopy(stripInlineComment(raw));
-        if (line.empty() || line == "jtml 2") continue;
-        auto tokens = words(line);
-        if (tokens.empty()) continue;
-
-        const std::string head = tokens[0];
-        auto second = [&]() -> std::string {
-            return tokens.size() > 1 ? cleanIdentifier(tokens[1]) : std::string{};
-        };
-
-        if ((head == "let" || head == "define") && tokens.size() > 1) {
-            std::string name = second();
-            insights.state.push_back(name);
-            if (line.find(" fetch ") != std::string::npos ||
-                line.find("= fetch ") != std::string::npos) {
-                insights.fetches.push_back(name);
-            }
-        } else if (head == "const" && tokens.size() > 1) {
-            insights.constants.push_back(second());
-        } else if ((head == "get" || head == "derive") && tokens.size() > 1) {
-            insights.derived.push_back(second());
-        } else if ((head == "when" || head == "function") && tokens.size() > 1) {
-            insights.actions.push_back(second());
-        } else if (head == "make" && tokens.size() > 1) {
-            insights.components.push_back(second());
-        } else if (head == "route" && tokens.size() >= 4) {
-            insights.routes.push_back(tokens[1] + " -> " + cleanIdentifier(tokens[3]));
-        } else if (head == "store" && tokens.size() > 1) {
-            insights.stores.push_back(second());
-        } else if (head == "effect" && tokens.size() > 1) {
-            insights.effects.push_back(second());
-        } else if (head == "style") {
-            ++insights.styleBlocks;
-        }
-    }
-    return insights;
-}
-
 nlohmann::json listJson(const std::vector<std::string>& values) {
     nlohmann::json out = nlohmann::json::array();
     for (const auto& value : values) out.push_back(value);
     return out;
 }
 
-void printInsightList(const std::string& label, const std::vector<std::string>& values) {
-    std::cout << "- " << label << ": ";
-    if (values.empty()) {
-        std::cout << "none\n";
-        return;
+nlohmann::json attributeKindCountsToJson(const jtml::AttributeKindCounts& counts) {
+    return {
+        {"literal",     counts.literal},
+        {"boolean",     counts.boolean},
+        {"reactive",    counts.reactive},
+        {"event",       counts.event},
+        {"special",     counts.special},
+        {"passthrough", counts.passthrough},
+    };
+}
+
+nlohmann::json semanticNodeCountsToJson(const jtml::SemanticProgram& semantic) {
+    return {
+        {"state",      semantic.state.size()},
+        {"constants",  semantic.constants.size()},
+        {"derived",    semantic.derived.size()},
+        {"actions",    semantic.actions.size()},
+        {"fetches",    semantic.fetches.size()},
+        {"routes",     semantic.routes.size()},
+        {"effects",    semantic.effects.size()},
+        {"imports",    semantic.imports.size()},
+        {"externs",    semantic.externs.size()},
+        {"components", semantic.components.size()},
+        {"stores",     semantic.stores.size()},
+        {"uiPrimitives", semantic.uiPrimitives.size()},
+        {"themeTokens", semantic.themeTokenCount},
+        {"rawStyleAttributes", semantic.rawStyleAttributeCount},
+        {"semanticPrimitiveRawStyleAttributes", semantic.semanticPrimitiveRawStyleCount},
+        {"timelines",  semantic.timelineCount},
+        {"styleBlocks",semantic.styleBlocks},
+        {"rawCssBlocks", semantic.rawCssBlocks},
+        {"rawHtmlBlocks", semantic.rawHtmlBlocks},
+    };
+}
+
+nlohmann::json semanticEdgesToJson(const jtml::SemanticProgram& semantic) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& edge : semantic.dependencies) {
+        out.push_back({
+            {"from", edge.from},
+            {"to", edge.to},
+            {"kind", edge.kind},
+        });
     }
+    return out;
+}
+
+nlohmann::json semanticUiModifiersToJson(const jtml::SemanticProgram& semantic) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& modifier : semantic.uiModifiers) {
+        out.push_back({
+            {"primitive", modifier.primitive},
+            {"modifier", modifier.modifier},
+            {"value", modifier.value},
+        });
+    }
+    return out;
+}
+
+nlohmann::json semanticRouteRecordsToJson(const jtml::SemanticProgram& semantic) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& route : semantic.routeRecords) {
+        out.push_back({
+            {"path", route.path},
+            {"component", route.component},
+            {"params", route.params},
+            {"loads", route.loads},
+        });
+    }
+    return out;
+}
+
+nlohmann::json semanticFetchRecordsToJson(const jtml::SemanticProgram& semantic) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& fetch : semantic.fetchRecords) {
+        out.push_back({
+            {"name", fetch.name},
+            {"url", fetch.url},
+            {"method", fetch.method},
+            {"bodyExpr", fetch.bodyExpr},
+            {"refreshAction", fetch.refreshAction},
+            {"cache", fetch.cache},
+            {"credentials", fetch.credentials},
+            {"timeoutMs", fetch.timeoutMs},
+            {"retryCount", fetch.retryCount},
+            {"stalePolicy", fetch.stalePolicy},
+            {"lazy", fetch.lazy},
+        });
+    }
+    return out;
+}
+
+nlohmann::json semanticPropertiesToJson(const std::vector<jtml::SemanticProperty>& properties) {
+    nlohmann::json out = nlohmann::json::object();
+    for (const auto& property : properties) out[property.name] = property.value;
+    return out;
+}
+
+nlohmann::json semanticComponentDefinitionsToJson(const jtml::SemanticProgram& semantic) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& definition : semantic.componentDefinitions) {
+        out.push_back({
+            {"name", definition.name},
+            {"params", definition.params},
+            {"localState", definition.localState},
+            {"localDerived", definition.localDerived},
+            {"localActions", definition.localActions},
+            {"localEffects", definition.localEffects},
+            {"eventBindings", definition.eventBindings},
+            {"bodyHex", definition.bodyHex},
+            {"hasSlot", definition.hasSlot},
+            {"sourceLine", definition.sourceLine},
+        });
+    }
+    return out;
+}
+
+nlohmann::json semanticComponentInstancesToJson(const jtml::SemanticProgram& semantic) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& instance : semantic.componentInstances) {
+        out.push_back({
+            {"id", instance.id},
+            {"component", instance.component},
+            {"instanceId", instance.instanceId},
+            {"role", instance.role},
+            {"params", semanticPropertiesToJson(instance.params)},
+            {"locals", semanticPropertiesToJson(instance.locals)},
+            {"sourceLine", instance.sourceLine},
+        });
+    }
+    return out;
+}
+
+std::string joinDisplay(const std::vector<std::string>& values,
+                        const std::string& empty = "(none)") {
+    if (values.empty()) return empty;
+    std::ostringstream out;
     for (size_t i = 0; i < values.size(); ++i) {
-        if (i > 0) std::cout << ", ";
-        std::cout << values[i];
+        if (i > 0) out << ", ";
+        out << values[i];
     }
-    std::cout << "\n";
+    return out.str();
+}
+
+struct DepthSummary {
+    int level = 0;
+    std::string label = "static";
+};
+
+DepthSummary classifyDepth(const jtml::SemanticProgram& semantic) {
+    int depth = 0;
+    if (!semantic.state.empty() || !semantic.constants.empty()) depth = std::max(depth, 1);
+    if (!semantic.derived.empty()) depth = std::max(depth, 2);
+    if (!semantic.actions.empty()) depth = std::max(depth, 3);
+    if (!semantic.fetches.empty()) depth = std::max(depth, 4);
+    if (!semantic.routes.empty()) depth = std::max(depth, 5);
+    if (!semantic.components.empty()) depth = std::max(depth, 6);
+    if (!semantic.effects.empty() || semantic.timelineCount > 0 ||
+        !semantic.stores.empty() || !semantic.uiPrimitives.empty()) {
+        depth = std::max(depth, 7);
+    }
+
+    static const std::array<std::string, 9> labels = {
+        "static",
+        "stateful",
+        "reactive",
+        "interactive",
+        "data-driven",
+        "routed",
+        "composed",
+        "full-featured",
+        "full-stack",
+    };
+    return {depth, labels[std::min(static_cast<size_t>(depth), labels.size() - 1)]};
 }
 
 } // namespace
@@ -706,88 +771,317 @@ int cmdGenerate(const Options& o) {
     return 0;
 }
 
+int cmdKeywords(const Options& o) {
+    const auto& catalog = jtml::languageCatalog();
+
+    if (o.json) {
+        nlohmann::json groups = nlohmann::json::array();
+        for (const auto& group : catalog.friendlyGroups) {
+            groups.push_back({
+                {"area", group.area},
+                {"keywords", group.keywords},
+            });
+        }
+        std::cout << nlohmann::json{
+            {"dialect", "Friendly JTML 2"},
+            {"sourceOfTruth", "Friendly is canonical; Classic is backend-only compatibility"},
+            {"friendlyGroups", groups},
+            {"friendlyKeywords", jtml::friendlyKeywords()},
+            {"compatibilityBackendKeywords", catalog.compatibilityBackendKeywords},
+            {"eventAttributes", catalog.eventAttributes},
+        }.dump(2) << "\n";
+        return 0;
+    }
+
+    std::cout << "Friendly JTML 2 keyword catalog\n"
+              << "Friendly is canonical. Classic words are backend-only compatibility.\n\n";
+    for (const auto& group : catalog.friendlyGroups) {
+        std::cout << group.area << ":\n  ";
+        for (size_t i = 0; i < group.keywords.size(); ++i) {
+            if (i > 0) std::cout << ' ';
+            std::cout << group.keywords[i];
+        }
+        std::cout << "\n";
+    }
+    std::cout << "\ncompatibility backend:\n  ";
+    for (size_t i = 0; i < catalog.compatibilityBackendKeywords.size(); ++i) {
+        if (i > 0) std::cout << ' ';
+        std::cout << catalog.compatibilityBackendKeywords[i];
+    }
+    std::cout << "\n";
+    return 0;
+}
+
 int cmdExplain(const Options& o) {
     const std::string source = readFile(o.inputFile);
-    const SourceInsights insights = inspectSource(source);
+
     std::vector<std::unique_ptr<ASTNode>> program;
     {
         SilenceStdout silence;
         program = parseProgramFromFile(o.inputFile, o.syntax);
     }
-
-    int elements = 0, functions = 0, values = 0, control = 0;
-    for (const auto& node : program) {
-        switch (node->getType()) {
-            case ASTNodeType::JtmlElement: ++elements; break;
-            case ASTNodeType::FunctionDeclaration: ++functions; break;
-            case ASTNodeType::DefineStatement:
-            case ASTNodeType::DeriveStatement: ++values; break;
-            case ASTNodeType::IfStatement:
-            case ASTNodeType::ForStatement:
-            case ASTNodeType::WhileStatement: ++control; break;
-            default: break;
-        }
-    }
     JtmlLinter linter;
     auto diagnostics = linter.lint(program);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto usage = jtml::analyzeSemanticUsage(semantic);
+    const auto depth = classifyDepth(semantic);
+
+    // Build action profiles map for easy lookup
+    std::map<std::string, const jtml::SemanticActionProfile*> profMap;
+    for (const auto& p : usage.actionProfiles) profMap[p.name] = &p;
+
+    int lintErrors = 0;
+    for (const auto& d : diagnostics)
+        if (d.severity == LintDiagnostic::Severity::Error) ++lintErrors;
+
+    // ── JSON output ────────────────────────────────────────────────────
     if (o.json) {
-        int errors = 0;
-        for (const auto& d : diagnostics) {
-            if (d.severity == LintDiagnostic::Severity::Error) ++errors;
+        // Action profile array
+        nlohmann::json actionArr = nlohmann::json::array();
+        for (const auto& p : usage.actionProfiles) {
+            actionArr.push_back({
+                {"name", p.name},
+                {"writes", listJson(p.writes)},
+                {"reads",  listJson(p.reads)},
+                {"triggers", listJson(p.triggers)},
+                {"hasVisibleEffect", p.hasVisibleEffect}
+            });
         }
         std::cout << nlohmann::json{
-            {"ok", errors == 0},
+            {"ok", lintErrors == 0},
             {"file", o.inputFile},
-            {"summary", {
-                {"topLevelStatements", program.size()},
-                {"astElements", elements},
-                {"astFunctions", functions},
-                {"astValues", values},
-                {"astControlFlow", control},
-                {"styleBlocks", insights.styleBlocks},
+            {"depth", {{"level", depth.level}, {"label", depth.label}}},
+            {"complexity", {
+                {"state",      semantic.state.size()},
+                {"constants",  semantic.constants.size()},
+                {"derived",    semantic.derived.size()},
+                {"actions",    semantic.actions.size()},
+                {"fetches",    semantic.fetches.size()},
+                {"routes",     semantic.routes.size()},
+                {"effects",    semantic.effects.size()},
+                {"imports",    semantic.imports.size()},
+                {"externs",    semantic.externs.size()},
+                {"components", semantic.components.size()},
+                {"stores",     semantic.stores.size()},
+                {"uiPrimitives", semantic.uiPrimitives.size()},
+                {"themeTokens", semantic.themeTokenCount},
+                {"rawStyleAttributes", semantic.rawStyleAttributeCount},
+                {"semanticPrimitiveRawStyleAttributes", semantic.semanticPrimitiveRawStyleCount},
+                {"timelines",  semantic.timelineCount},
+                {"styleBlocks",semantic.styleBlocks},
+                {"rawCssBlocks", semantic.rawCssBlocks},
+                {"rawHtmlBlocks", semantic.rawHtmlBlocks}
             }},
-            {"state", listJson(insights.state)},
-            {"constants", listJson(insights.constants)},
-            {"derived", listJson(insights.derived)},
-            {"actions", listJson(insights.actions)},
-            {"components", listJson(insights.components)},
-            {"routes", listJson(insights.routes)},
-            {"fetches", listJson(insights.fetches)},
-            {"stores", listJson(insights.stores)},
-            {"effects", listJson(insights.effects)},
-            {"diagnostics", lintDiagnosticsToJson(diagnostics)},
+            {"observable", {
+                {"state",   listJson(usage.observedState)},
+                {"derived", listJson(usage.observedDerived)},
+                {"actions", listJson(usage.boundActions)}
+            }},
+            {"semantic", {
+                {"attributes", attributeKindCountsToJson(semantic.attributes)},
+                {"nodes", semanticNodeCountsToJson(semantic)},
+                {"routeRecords", semanticRouteRecordsToJson(semantic)},
+                {"fetchRecords", semanticFetchRecordsToJson(semantic)},
+                {"componentDefinitions", semanticComponentDefinitionsToJson(semantic)},
+                {"componentInstances", semanticComponentInstancesToJson(semantic)},
+                {"uiModifiers", semanticUiModifiersToJson(semantic)},
+                {"dependencies", semanticEdgesToJson(semantic)},
+                {"sourceOfTruth", "typed AST -> semantic analysis -> observable graph"}
+            }},
+            {"issues", {
+                {"deadState",          listJson(usage.deadState)},
+                {"zombieState",        listJson(usage.zombieState)},
+                {"unusedDerived",      listJson(usage.unusedDerived)},
+                {"unboundActions",     listJson(usage.unboundActions)},
+                {"unproductiveActions",listJson(usage.unproductiveActions)}
+            }},
+            {"actionProfiles", actionArr},
+            {"state",      listJson(semantic.state)},
+            {"constants",  listJson(semantic.constants)},
+            {"derived",    listJson(semantic.derived)},
+            {"actions",    listJson(semantic.actions)},
+            {"components", listJson(semantic.components)},
+            {"routes",     listJson(semantic.routes)},
+            {"fetches",    listJson(semantic.fetches)},
+            {"stores",     listJson(semantic.stores)},
+            {"effects",    listJson(semantic.effects)},
+            {"imports",    listJson(semantic.imports)},
+            {"externs",    listJson(semantic.externs)},
+            {"diagnostics",lintDiagnosticsToJson(diagnostics)},
         }.dump(2) << "\n";
-        return errors == 0 ? 0 : 1;
+        return lintErrors == 0 ? 0 : 1;
     }
 
-    std::cout << "JTML explanation: " << o.inputFile << "\n";
-    std::cout << "- Parsed " << program.size() << " top-level statement(s).\n";
-    std::cout << "- Values/computed values: " << values << "\n";
-    std::cout << "- Actions/functions: " << functions << "\n";
-    std::cout << "- Page/component roots: " << elements << "\n";
-    std::cout << "- Top-level control flow: " << control << "\n";
+    // ── Human-readable output ──────────────────────────────────────────
+    const std::string sep(60, '-');
+    std::cout << "Observable-first analysis: " << o.inputFile << "\n";
+    std::cout << sep << "\n";
 
-    printInsightList("State", insights.state);
-    printInsightList("Constants", insights.constants);
-    printInsightList("Derived values", insights.derived);
-    printInsightList("Actions", insights.actions);
-    printInsightList("Components", insights.components);
-    printInsightList("Routes", insights.routes);
-    printInsightList("Fetch resources", insights.fetches);
-    printInsightList("Stores", insights.stores);
-    printInsightList("Effects", insights.effects);
-    std::cout << "- Style blocks: " << insights.styleBlocks << "\n";
+    // Depth
+    std::cout << "Depth:       " << depth.level << " (" << depth.label << ")\n";
 
-    if (diagnostics.empty()) {
-        std::cout << "- Linter: no issues found.\n";
+    // Complexity table
+    std::cout << "\nComplexity:\n";
+    auto metric = [](const std::string& label, int n, const std::string& note = "") {
+        if (n == 0 && note.empty()) return;
+        std::cout << "  " << std::left << std::setw(14) << label << n;
+        if (!note.empty()) std::cout << "   " << note;
+        std::cout << "\n";
+    };
+    metric("state",      static_cast<int>(semantic.state.size()));
+    metric("constants",  static_cast<int>(semantic.constants.size()));
+    metric("derived",    static_cast<int>(semantic.derived.size()));
+    metric("actions",    static_cast<int>(semantic.actions.size()));
+    metric("fetches",    static_cast<int>(semantic.fetches.size()));
+    metric("routes",     static_cast<int>(semantic.routes.size()));
+    metric("effects",    static_cast<int>(semantic.effects.size()));
+    metric("imports",    static_cast<int>(semantic.imports.size()));
+    metric("externs",    static_cast<int>(semantic.externs.size()));
+    metric("timelines",  semantic.timelineCount);
+    metric("ui primitives", static_cast<int>(semantic.uiPrimitives.size()));
+    metric("theme tokens", semantic.themeTokenCount);
+    metric("components", static_cast<int>(semantic.components.size()));
+    metric("stores",     static_cast<int>(semantic.stores.size()));
+    metric("styles",     semantic.styleBlocks);
+    metric("raw css",    semantic.rawCssBlocks);
+    metric("raw html",   semantic.rawHtmlBlocks);
+
+    if (!semantic.dependencies.empty()) {
+        std::cout << "\nSemantic graph (" << semantic.dependencies.size() << " edge"
+                  << (semantic.dependencies.size() == 1 ? "" : "s") << "):\n";
+        const size_t limit = std::min<size_t>(semantic.dependencies.size(), 16);
+        for (size_t i = 0; i < limit; ++i) {
+            const auto& edge = semantic.dependencies[i];
+            std::cout << "  " << edge.from << " --" << edge.kind << "--> " << edge.to << "\n";
+        }
+        if (semantic.dependencies.size() > limit) {
+            std::cout << "  ... " << (semantic.dependencies.size() - limit)
+                      << " more edge" << (semantic.dependencies.size() - limit == 1 ? "" : "s")
+                      << " in `--json`\n";
+        }
+    }
+
+    if (!semantic.componentDefinitions.empty()) {
+        std::cout << "\nComponent definitions (" << semantic.componentDefinitions.size() << "):\n";
+        for (const auto& definition : semantic.componentDefinitions) {
+            std::cout << "  + " << definition.name;
+            if (!definition.params.empty()) {
+                std::cout << "(" << joinDisplay(definition.params, "") << ")";
+            }
+            if (definition.sourceLine > 0) std::cout << "  line " << definition.sourceLine;
+            if (definition.hasSlot) std::cout << "  slot";
+            std::cout << "\n";
+            if (!definition.localState.empty()) {
+                std::cout << "      state: " << joinDisplay(definition.localState) << "\n";
+            }
+            if (!definition.localDerived.empty()) {
+                std::cout << "      derived: " << joinDisplay(definition.localDerived) << "\n";
+            }
+            if (!definition.localActions.empty()) {
+                std::cout << "      actions: " << joinDisplay(definition.localActions) << "\n";
+            }
+            if (!definition.localEffects.empty()) {
+                std::cout << "      effects: " << joinDisplay(definition.localEffects) << "\n";
+            }
+            if (!definition.eventBindings.empty()) {
+                std::cout << "      event bindings: " << joinDisplay(definition.eventBindings) << "\n";
+            }
+        }
+    }
+
+    if (!semantic.componentInstances.empty()) {
+        std::cout << "\nComponent instances (" << semantic.componentInstances.size() << "):\n";
+        for (const auto& instance : semantic.componentInstances) {
+            std::cout << "  + " << instance.id << " : " << instance.component
+                      << " [" << instance.role << "]";
+            if (instance.sourceLine > 0) std::cout << "  line " << instance.sourceLine;
+            std::cout << "\n";
+            if (!instance.params.empty()) {
+                std::cout << "      params: ";
+                for (size_t i = 0; i < instance.params.size(); ++i) {
+                    if (i > 0) std::cout << ", ";
+                    std::cout << instance.params[i].name << "=" << instance.params[i].value;
+                }
+                std::cout << "\n";
+            }
+            if (!instance.locals.empty()) {
+                std::cout << "      locals: ";
+                for (size_t i = 0; i < instance.locals.size(); ++i) {
+                    if (i > 0) std::cout << ", ";
+                    std::cout << instance.locals[i].name << "->" << instance.locals[i].value;
+                }
+                std::cout << "\n";
+            }
+        }
+    }
+
+    // Observable state
+    std::cout << "\nObservable state (" << usage.observedState.size() << "):\n";
+    if (usage.observedState.empty()) {
+        std::cout << "  (none)\n";
     } else {
-        std::cout << "- Linter: " << diagnostics.size() << " issue(s).\n";
+        for (const auto& s : usage.observedState) std::cout << "  + " << s << "\n";
+    }
+
+    if (!usage.observedDerived.empty()) {
+        std::cout << "\nObservable derived (" << usage.observedDerived.size() << "):\n";
+        for (const auto& d : usage.observedDerived) std::cout << "  + " << d << "\n";
+    }
+
+    // Bound actions with effect summary
+    if (!usage.boundActions.empty()) {
+        std::cout << "\nUI-bound actions (" << usage.boundActions.size() << "):\n";
+        for (const auto& a : usage.boundActions) {
+            std::cout << "  + " << a;
+            auto it = profMap.find(a);
+            if (it != profMap.end()) {
+                const auto& p = *it->second;
+                if (!p.writes.empty()) {
+                    std::cout << "  →  writes: ";
+                    for (size_t i = 0; i < p.writes.size(); ++i) {
+                        if (i > 0) std::cout << ", ";
+                        std::cout << p.writes[i];
+                    }
+                }
+                if (!p.hasVisibleEffect && !p.writes.empty()) {
+                    std::cout << "  ⚠ writes nothing observable";
+                }
+            }
+            std::cout << "\n";
+        }
+    }
+
+    // Issues
+    bool hasIssues = !usage.deadState.empty() || !usage.zombieState.empty() ||
+                     !usage.unusedDerived.empty() || !usage.unboundActions.empty() ||
+                     !usage.unproductiveActions.empty();
+    if (hasIssues) {
+        std::cout << "\nObservability issues:\n";
+        for (const auto& s : usage.deadState)
+            std::cout << "  ! dead state: \"" << s << "\" is never read by UI, actions, or effects — remove it or bind it to an output.\n";
+        for (const auto& s : usage.zombieState)
+            std::cout << "  ~ zombie state: \"" << s << "\" is used by actions but never observed in the UI.\n";
+        for (const auto& d : usage.unusedDerived)
+            std::cout << "  ~ unused derived: \"" << d << "\" is computed but never shown or used.\n";
+        for (const auto& a : usage.unboundActions)
+            std::cout << "  ~ unbound action: \"" << a << "\" is defined but never triggered from the UI.\n";
+        for (const auto& a : usage.unproductiveActions)
+            std::cout << "  ~ unproductive action: \"" << a << "\" is triggered but its writes are not observed in the UI.\n";
+    } else {
+        std::cout << "\nNo observability issues found. Every state variable, derived value, and action is wired to the UI.\n";
+    }
+
+    // Linter
+    if (!diagnostics.empty()) {
+        std::cout << "\nLint (" << diagnostics.size() << " issue" << (diagnostics.size() == 1 ? "" : "s") << "):\n";
         for (const auto& d : diagnostics) {
-            std::cout << "  " << (d.severity == LintDiagnostic::Severity::Error ? "error" : "warning")
+            std::cout << "  " << (d.severity == LintDiagnostic::Severity::Error ? "error" : "warn")
                       << ": " << d.message << "\n";
         }
     }
-    return 0;
+
+    std::cout << sep << "\n";
+    return lintErrors == 0 ? 0 : 1;
 }
 
 int cmdSuggest(const Options& o) {
@@ -925,6 +1219,7 @@ int cmdInterpret(const Options& o) {
 int cmdTranspile(const Options& o) {
     auto program = parseProgramFromFile(o.inputFile, o.syntax);
     JtmlTranspiler transpiler;
+    if (o.target == "browser") transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
 
     if (!o.outputFile.empty()) {
@@ -958,6 +1253,7 @@ int cmdBuild(const Options& o) {
 
     auto program = parseProgramFromFile(input.string(), o.syntax);
     JtmlTranspiler transpiler;
+    if (o.target == "browser") transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
 
     std::ofstream ofs(outFile);

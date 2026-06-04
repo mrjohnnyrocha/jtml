@@ -79,7 +79,22 @@ header {
 .logo sub { font-size: 11px; font-weight: 600; color: #7dd3c8; vertical-align: baseline; margin-left: 3px; }
 .brand-btn { background: transparent; border: 0; color: inherit; padding: 0; display: flex; align-items: baseline; }
 .tagline { color: #9eb3c4; font-size: 12px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.h-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.h-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.mode-cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
 .hub-chip {
   border: 1px solid rgba(125,211,200,.25);
   background: rgba(125,211,200,.10);
@@ -99,6 +114,7 @@ header {
 .btn {
   border: 1px solid #a9b0b6; background: var(--panel); color: var(--ink);
   border-radius: 6px; padding: 6px 11px; font-weight: 700; font-size: 13px;
+  flex-shrink: 0;
 }
 .btn:hover:not(:disabled) { border-color: #6e7b85; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -213,7 +229,82 @@ header {
   outline: none;
 }
 .sidebar-search:focus { border-color: #9ab6e8; box-shadow: 0 0 0 3px rgba(37,99,235,.10); }
+.workspace-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+.workspace-create {
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-2);
+}
+.workspace-create[hidden] { display: none; }
+.create-label {
+  font-size: 10px;
+  font-weight: 850;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.create-input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 6px 7px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+}
+.create-actions { display: flex; gap: 5px; }
+.create-actions .mini-btn { flex: 1; }
+.create-error {
+  min-height: 14px;
+  margin: 0;
+  color: #b91c1c;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.mini-btn {
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--ink);
+  border-radius: 5px;
+  padding: 5px 6px;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+}
+.mini-btn:hover { border-color: #9ab6e8; color: #174ea6; }
+.tree-group { margin: 2px 0 6px; }
+.tree-folder {
+  font-size: 11px;
+  font-weight: 850;
+  color: #596b7f;
+  padding: 5px 8px 4px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.tree-children {
+  display: grid;
+  gap: 2px;
+  margin-left: 8px;
+  padding-left: 7px;
+  border-left: 1px solid rgba(103,116,135,.18);
+}
+.sb-empty-note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+  padding: 6px 8px;
+}
 .sb-section { display: flex; flex-direction: column; gap: 2px; }
+.sb-section[hidden] { display: none; }
 .sb-category { margin: 8px 4px 2px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .sb-category:first-child { margin-top: 2px; }
 .sb-label {
@@ -224,9 +315,15 @@ header {
   width: 100%; text-align: left; background: transparent; border: 1px solid transparent;
   border-radius: 5px; padding: 6px 8px; font-size: 12px; font-weight: 500;
   display: flex; align-items: center; justify-content: space-between; gap: 4px;
-  color: var(--ink); white-space: nowrap; overflow: hidden;
+  color: var(--ink); overflow: hidden;
 }
 .sb-item span { overflow: hidden; text-overflow: ellipsis; }
+.sb-text { min-width: 0; display: grid; gap: 1px; }
+.sb-main { white-space: nowrap; font-weight: 700; }
+.sb-sub { white-space: nowrap; font-size: 10px; color: var(--muted); font-weight: 600; }
+.sb-item.active-file .sb-sub,
+.sb-item.active-lesson .sb-sub,
+.sb-item.active-doc .sb-sub { color: currentColor; opacity: .75; }
 .sb-item:hover:not(:disabled) { background: #edeae2; }
 .sb-item.active-file { background: #e7f1ef; border-color: #b7d6d1; color: #0d5d57; }
 .sb-item.active-lesson { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
@@ -347,6 +444,15 @@ header {
   will-change: height;
 }
 .prose-panel.collapsing { transition: height .2s ease; }
+.lesson-after-panel {
+  flex-shrink: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: auto;
+  max-height: 170px;
+}
+.lesson-after-panel[hidden] { display: none; }
 .prose-body {
   flex: 1; overflow-y: auto; padding: 12px 16px 6px;
   line-height: 1.6; font-size: 13px;
@@ -392,6 +498,26 @@ header {
   border-bottom: 1px solid var(--line);
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   flex-shrink: 0;
+}
+.editor-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(15, 23, 32, .72);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  flex-shrink: 0;
+}
+.editor-tools .btn { padding: 5px 9px; font-size: 12px; }
+.tool-caption {
+  color: #88a0b5;
+  font: 10px/1 "SF Mono", Menlo, Consolas, monospace;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-right: 2px;
+  white-space: nowrap;
 }
 .editor-name { margin: 0; font-size: 12px; font-weight: 700; color: #b8d0da; }
 .editor-right { display: flex; align-items: center; gap: 7px; }
@@ -496,30 +622,58 @@ iframe { flex: 1; width: 100%; border: 0; background: #fff; display: block; }
 .bottom-row {
   flex-shrink: 0;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   overflow: hidden;
   will-change: height;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 .bottom-row.collapsing { transition: height .2s ease; }
+.inspector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.inspector-tabs { display: flex; align-items: center; gap: 5px; }
+.inspector-tab {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+.inspector-tab.active { background: #e7f1ef; border-color: #b7d6d1; color: #0d5d57; }
+.bottom-row > .rh { display: none; }
 .diag-panel {
-  flex-shrink: 0; min-width: 120px;
+  flex: 1; min-width: 0;
   display: flex; flex-direction: column;
-  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
   overflow: hidden;
 }
 .artifact-panel {
-  flex: 0 1 34%;
-  min-width: 160px;
+  flex: 1;
+  min-width: 0;
   display: flex; flex-direction: column;
-  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
   overflow: hidden;
 }
 .ref-panel {
-  flex: 1; min-width: 120px;
+  flex: 1; min-width: 0;
   display: flex; flex-direction: column;
-  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
   overflow: hidden;
 }
+.bottom-row[data-mode="diagnostics"] .artifact-panel,
+.bottom-row[data-mode="diagnostics"] .ref-panel,
+.bottom-row[data-mode="artifacts"] .diag-panel,
+.bottom-row[data-mode="artifacts"] .ref-panel,
+.bottom-row[data-mode="reference"] .diag-panel,
+.bottom-row[data-mode="reference"] .artifact-panel { display: none; }
 .panel-body { flex: 1; overflow-y: auto; padding: 8px 11px; }
 /* Diagnostics */
 .diag-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
@@ -664,6 +818,10 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
   #lint { display: none; }
   header { padding: 8px 10px; gap: 6px; }
 }
+@media (max-width: 1280px) {
+  .tagline, .kb { display: none; }
+  .h-actions { justify-content: flex-start; }
+}
 </style>
 </head>
 <body>
@@ -678,20 +836,13 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
     <span class="hub-chip" id="workspace-chip">Local workspace</span>
     <span class="tagline">Home · Learn · Build · Debug · Ship</span>
     <div class="h-actions">
-      <span class="kb"><kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> run</span>
-      <button class="btn dark" id="home-btn">Home</button>
-      <button class="btn dark" id="learn-btn">Learn</button>
-      <button class="btn dark" id="docs-btn">Docs</button>
-      <button class="btn dark" id="reference-btn">Reference</button>
-      <button class="btn dark" id="playground-btn">IDE</button>
-      <button class="btn primary" id="run">Run</button>
-      <button class="btn dark" id="lint">Lint</button>
-      <button class="btn dark" id="fix">Fix</button>
-      <button class="btn dark" id="format">Format</button>
-      <button class="btn dark" id="export">Export</button>
-      <button class="btn dark" id="save">Save</button>
-      <button class="btn dark" id="reset">Reset</button>
-      <button class="btn dark" id="bottom-toggle" title="Toggle diagnostics panel (D)">&#x229F;</button>
+      <div class="mode-cluster" aria-label="Studio sections">
+        <button class="btn dark" id="home-btn">Home</button>
+        <button class="btn dark" id="learn-btn">Learn</button>
+        <button class="btn dark" id="docs-btn">Docs</button>
+        <button class="btn dark" id="reference-btn">Reference</button>
+        <button class="btn dark" id="playground-btn">IDE</button>
+      </div>
     </div>
   </header>
 
@@ -701,20 +852,43 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-head">
-        <h2 class="sidebar-title">Explorer</h2>
+        <h2 class="sidebar-title">Workspace</h2>
       </div>
       <div class="sidebar-body">
-        <button class="sb-item active-hub" id="hub-nav"><span>Studio home</span></button>
+        <button class="sb-item active-hub" id="hub-nav">
+          <span class="sb-text">
+            <span class="sb-main">Studio home</span>
+            <span class="sb-sub">overview, paths, and workflow</span>
+          </span>
+        </button>
         <input class="sidebar-search" id="sidebar-search" type="search" placeholder="Search examples, lessons, docs">
         <div class="sb-section">
-          <span class="sb-label">Files</span>
-          <div id="file-list"></div>
+          <span class="sb-label">Projects</span>
+          <div class="workspace-actions">
+            <button class="mini-btn" id="new-project">Project</button>
+            <button class="mini-btn" id="new-folder">Folder</button>
+            <button class="mini-btn" id="new-file">File</button>
+          </div>
+          <div class="workspace-create" id="workspace-create" hidden>
+            <div class="create-label" id="workspace-create-title">New file</div>
+            <input class="create-input" id="workspace-create-path" type="text" autocomplete="off" spellcheck="false">
+            <div class="create-actions">
+              <button class="mini-btn" id="workspace-create-confirm">Create</button>
+              <button class="mini-btn" id="workspace-create-cancel">Cancel</button>
+            </div>
+            <p class="create-error" id="workspace-create-error"></p>
+          </div>
+          <div id="project-tree"></div>
         </div>
         <div class="sb-section">
+          <span class="sb-label">Templates</span>
+          <div id="file-list"></div>
+        </div>
+        <div class="sb-section" hidden>
           <span class="sb-label">Tutorial</span>
           <div id="lesson-list"><p class="no-items">Loading…</p></div>
         </div>
-        <div class="sb-section">
+        <div class="sb-section" hidden>
           <span class="sb-label">Docs &amp; guides</span>
           <div id="doc-list"><p class="no-items">Loading…</p></div>
         </div>
@@ -804,7 +978,7 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
             </article>
             <article class="hub-card">
               <h3>Friendly vs Classic</h3>
-              <p>Use Friendly JTML 2 for all new code. Classic stays as the stable compatibility layer for old files, generated artifacts, migration, and embedding.</p>
+              <p>Use Friendly JTML 2 for all new code. The compatibility backend exists for older files, generated artifacts, migration, and embedding.</p>
               <div class="hub-track">
                 <button data-open-lesson="12">Compatibility lesson</button>
                 <button data-open-doc="language-reference">Syntax reference</button>
@@ -852,11 +1026,23 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
         <section class="editor-panel" id="editor-panel">
           <div class="editor-head">
             <h2 class="editor-name" id="active-name">counter.jtml</h2>
-            <div class="editor-right">
+          <div class="editor-right">
               <span class="dialect-badge" id="dialect-badge">Friendly JTML 2</span>
               <span class="editor-meta" id="editor-meta"></span>
               <button class="history-btn" id="history-btn">History</button>
             </div>
+          </div>
+          <div class="editor-tools" id="editor-tools" aria-label="Current document tools">
+            <span class="tool-caption">Tools</span>
+            <span class="kb"><kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> run</span>
+            <button class="btn primary" id="run">Run</button>
+            <button class="btn dark" id="lint">Lint</button>
+            <button class="btn dark" id="fix">Fix</button>
+            <button class="btn dark" id="format">Format</button>
+            <button class="btn dark" id="export">Export</button>
+            <button class="btn dark" id="save">Save</button>
+            <button class="btn dark" id="reset">Reset</button>
+            <button class="btn dark" id="bottom-toggle" title="Toggle inspector panel (D)">&#x229F;</button>
           </div>
           <div class="editor-body" id="editor-body"></div>
           <div class="editor-foot">
@@ -880,11 +1066,24 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
 
       </div><!-- .work-row -->
 
+      <!-- Follow-up prose appears below the live lesson so code + preview sit in the middle. -->
+      <div class="lesson-after-panel" id="lesson-after-panel" hidden>
+        <div class="prose-body" id="lesson-after-body"></div>
+      </div>
+
       <!-- Bottom resize handle -->
       <div class="rh row" id="rh-bottom" title="Drag to resize · Double-click to reset"></div>
 
       <!-- Bottom row -->
-      <div class="bottom-row" id="bottom-row">
+      <div class="bottom-row" id="bottom-row" data-mode="diagnostics">
+        <div class="inspector-head">
+          <h2 class="panel-title">Inspector</h2>
+          <div class="inspector-tabs" aria-label="Inspector sections">
+            <button class="inspector-tab active" id="inspector-diagnostics">Diagnostics</button>
+            <button class="inspector-tab" id="inspector-artifacts">Artifacts</button>
+            <button class="inspector-tab" id="inspector-reference">Reference</button>
+          </div>
+        </div>
 
         <section class="diag-panel" id="diag-panel">
           <div class="panel-head">
@@ -898,19 +1097,16 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
           </div>
         </section>
 
-        <!-- Diag/Ref resize handle -->
-        <div class="rh col" id="rh-diag" title="Drag to resize · Double-click to reset"></div>
-
         <section class="artifact-panel">
           <div class="panel-head">
             <h2 class="panel-title">Artifacts</h2>
             <div class="artifact-tabs">
-              <button class="artifact-tab active" id="artifact-classic-tab">Lowered Classic</button>
-              <button class="artifact-tab" id="artifact-html-tab">HTML</button>
+              <button class="artifact-tab active" id="artifact-html-tab">HTML</button>
+              <button class="artifact-tab" id="artifact-classic-tab">Compatibility IR</button>
             </div>
           </div>
           <div class="panel-body" style="padding:0">
-            <pre class="artifact-code" id="artifact-code"><span class="artifact-empty">Run the current file to inspect Friendly-to-Classic lowering and generated HTML.</span></pre>
+            <pre class="artifact-code" id="artifact-code"><span class="artifact-empty">Run the current file to inspect generated HTML and compatibility IR.</span></pre>
           </div>
         </section>
 
@@ -924,9 +1120,9 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
               <p class="ref-sec-label">Which syntax should I choose?</p>
               <table class="ref-table"><tbody>
                 <tr><td><code>jtml 2</code></td><td><strong>Default for new code.</strong> Indentation-based Friendly syntax for humans, AI agents, Studio, docs, examples, and tutorials.</td></tr>
-                <tr><td><code>Classic</code></td><td>Compatibility syntax for older files, compiler artifacts, generated output, migration targets, and low-level embedding.</td></tr>
+                <tr><td><code>Compatibility backend</code></td><td>Support layer for older files, compiler artifacts, generated output, migration targets, and low-level embedding.</td></tr>
                 <tr><td><code>jtml migrate old.jtml -o new.jtml</code></td><td>Convert most Classic files into Friendly JTML 2.</td></tr>
-                <tr><td><code>Artifacts → Classic</code></td><td>Shows how Friendly lowers into the compatibility runtime. Inspect it, but do not copy it for new apps.</td></tr>
+                <tr><td><code>Artifacts → Compatibility IR</code></td><td>Shows the lowered backend form. Inspect it for debugging, but do not copy it for new apps.</td></tr>
               </tbody></table>
             </div>
             <div class="ref-sec">
@@ -943,7 +1139,7 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
               </tbody></table>
             </div>
             <div class="ref-sec">
-              <p class="ref-sec-label">Classic compatibility: elements</p>
+              <p class="ref-sec-label">Compatibility backend: elements</p>
               <table class="ref-table"><tbody>
                 <tr><td><code>element tag [attrs] … #</code></td><td>Classic block</td></tr>
                 <tr><td><code>@tag [attrs] … #</code></td><td>Short form</td></tr>
@@ -952,7 +1148,7 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
               </tbody></table>
             </div>
             <div class="ref-sec">
-              <p class="ref-sec-label">Classic compatibility: flow</p>
+              <p class="ref-sec-label">Compatibility backend: flow</p>
               <table class="ref-table"><tbody>
                 <tr><td><code>if (expr)\\</code></td><td>Conditional block</td></tr>
                 <tr><td><code>else \\</code></td><td>Fallback block after <code>if</code></td></tr>
@@ -962,7 +1158,7 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
               </tbody></table>
             </div>
             <div class="ref-sec">
-              <p class="ref-sec-label">Classic compatibility: functions &amp; modules</p>
+              <p class="ref-sec-label">Compatibility backend: functions &amp; modules</p>
               <table class="ref-table"><tbody>
                 <tr><td><code>function save(value)\\</code></td><td>Define event handler or helper</td></tr>
                 <tr><td><code>return expr</code></td><td>Return from function</td></tr>
@@ -1069,6 +1265,8 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
               <table class="ref-table"><tbody>
                 <tr><td><code>extern notify from "host.notify"</code></td><td>Declare a browser-hosted action</td></tr>
                 <tr><td><code>button "Notify" click notify("Saved")</code></td><td>Calls <code>window.host.notify("Saved")</code> client-side</td></tr>
+                <tr><td><code>html raw "&lt;host-widget&gt;&lt;/host-widget&gt;"</code></td><td>Trusted raw HTML escape hatch for custom elements/host widgets</td></tr>
+                <tr><td><code>css raw</code></td><td>Unscoped CSS escape hatch for host-owned surfaces</td></tr>
               </tbody></table>
             </div>
             <div class="ref-sec">
@@ -1078,6 +1276,16 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
                 <tr><td><code>&nbsp;&nbsp;h1</code></td><td>Selector block — scoped to <code>[data-jtml-app]</code></td></tr>
                 <tr><td><code>&nbsp;&nbsp;&nbsp;&nbsp;color: teal</code></td><td>CSS declaration (semicolons optional)</td></tr>
                 <tr><td><code>&nbsp;&nbsp;body</code> / <code>:root</code></td><td>Maps to <code>[data-jtml-app]</code></td></tr>
+              </tbody></table>
+            </div>
+            <div class="ref-sec">
+              <p class="ref-sec-label">Semantic UI</p>
+              <table class="ref-table"><tbody>
+                <tr><td><code>theme</code></td><td>Define color, spacing, radius, and shadow tokens</td></tr>
+                <tr><td><code>shell / sidebar / content</code></td><td>App chrome primitives that lower to ordinary HTML/classes</td></tr>
+                <tr><td><code>panel title "Usage" pad lg shadow md</code></td><td>Framed surface with semantic utility modifiers</td></tr>
+                <tr><td><code>grid cols 4 gap md</code></td><td>Responsive grid intent, visible to semantic analysis</td></tr>
+                <tr><td><code>metric "Users" total "Active" tone good</code></td><td>Dashboard metric primitive</td></tr>
               </tbody></table>
             </div>
             <div class="ref-sec">
@@ -1094,6 +1302,7 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
                 <tr><td><code>guard "/path" require var</code></td><td>Block route when <code>var</code> is falsy</td></tr>
                 <tr><td><code>guard "/path" require var else "/login"</code></td><td>Redirect to fallback when guard fails</td></tr>
                 <tr><td><code>activeRoute</code></td><td>Built-in reactive var — current hash path (e.g. <code>"/"</code>)</td></tr>
+                <tr><td><code>activeRouteName</code></td><td>Built-in reactive var — matched route component name</td></tr>
               </tbody></table>
             </div>
             <div class="ref-sec">
@@ -1115,7 +1324,7 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
                 <tr><td><code>Export</code></td><td>Download the compiled HTML file</td></tr>
                 <tr><td><code>Save</code></td><td>Versioned local snapshot (up to 50 per file)</td></tr>
                 <tr><td><kbd>⌘B</kbd></td><td>Toggle sidebar</td></tr>
-                <tr><td><kbd>⌘J</kbd></td><td>Toggle diagnostics panel</td></tr>
+                <tr><td><kbd>⌘J</kbd></td><td>Toggle inspector panel</td></tr>
               </tbody></table>
             </div>
           </div>
@@ -1209,12 +1418,12 @@ CodeMirror.defineSimpleMode("jtml", {
     { regex: /\belement\b/, token: "jtml-el", push: "etag" },
     /* function keyword — push state to highlight the fn name */
     { regex: /\bfunction\b/, token: "jtml-kw", push: "fname" },
-    /* Event attributes */
-    { regex: /\b(?:onClick|onInput|onMouseOver|onScroll|onChange|onFocus|onBlur|onKeyDown|onKeyUp|onKeyPress|onSubmit|onDblClick)\b/, token: "jtml-event" },
+    /* Event attributes and Friendly event sugar */
+    { regex: /\b(?:onClick|onInput|onMouseOver|onScroll|onChange|onFocus|onBlur|onKeyDown|onKeyUp|onKeyPress|onSubmit|onDblClick|click|input|change|submit|focus|blur|keydown|keyup|key-down|key-up|keypress|dblclick|double-click|dragover|drop|mouseover|scroll)\b/, token: "jtml-event" },
     /* HTML-style attributes */
-    { regex: /\b(?:style|class|id|type|href|src|placeholder|value|disabled|required|readonly|checked|selected|name|method|action|target|rel|alt|title|role|width|height|viewBox|viewbox|fill|stroke|x|y|cx|cy|r|x1|y1|x2|y2|d|points|stroke-width|stroke-linecap|stroke-linejoin|stroke-dasharray|opacity|fill-opacity|stroke-opacity|rx|ry|scene|camera|renderer|min|max|step|pattern|tabindex|autocomplete|autofocus|multiple|accept|capture|enctype|for|poster|controls|autoplay|muted|loop|preload|playsinline|loading|decoding|aria-label|aria-describedby|aria-hidden|data-jtml-dropzone|data-jtml-media-controller|data-jtml-chart|data-jtml-chart-data|data-jtml-chart-by|data-jtml-chart-value|data-jtml-chart-color|data-jtml-chart-axis-x|data-jtml-chart-axis-y|data-jtml-chart-legend|data-jtml-chart-grid|data-jtml-chart-stacked|data-jtml-timeline|data-jtml-timeline-duration|data-jtml-timeline-easing|data-jtml-timeline-animates|data-jtml-image-proc|data-jtml-image-src|data-jtml-image-into|data-jtml-scene3d|data-jtml-scene|data-jtml-camera|data-jtml-controls|data-jtml-renderer|data-jtml-scene3d-controller|data-jtml-fetch|data-url|data-method|data-timeout-ms|data-retry|data-stale|data-lazy|data-jtml-route-load|data-jtml-invalidate-action|data-jtml-invalidate-fetches)\b/, token: "jtml-attr" },
+    { regex: /\b(?:style|class|id|type|href|src|placeholder|value|disabled|required|readonly|checked|selected|name|method|body|cache|credentials|action|target|rel|alt|title|role|width|height|viewBox|viewbox|fill|stroke|x|y|cx|cy|r|x1|y1|x2|y2|d|points|stroke-width|stroke-linecap|stroke-linejoin|stroke-dasharray|opacity|fill-opacity|stroke-opacity|rx|ry|scene|camera|renderer|min|max|step|pattern|tabindex|autocomplete|autofocus|multiple|accept|capture|enctype|for|poster|controls|autoplay|muted|loop|preload|playsinline|loading|decoding|active-class|aria-label|aria-describedby|aria-hidden|data-jtml-dropzone|data-jtml-media-controller|data-jtml-chart|data-jtml-chart-data|data-jtml-chart-by|data-jtml-chart-value|data-jtml-chart-color|data-jtml-chart-axis-x|data-jtml-chart-axis-y|data-jtml-chart-legend|data-jtml-chart-grid|data-jtml-chart-stacked|data-jtml-timeline|data-jtml-timeline-duration|data-jtml-timeline-easing|data-jtml-timeline-animates|data-jtml-image-proc|data-jtml-image-src|data-jtml-image-into|data-jtml-scene3d|data-jtml-scene|data-jtml-camera|data-jtml-controls|data-jtml-renderer|data-jtml-scene3d-controller|data-jtml-fetch|data-url|data-method|data-timeout-ms|data-retry|data-stale|data-lazy|data-jtml-route-load|data-jtml-route-guard|data-jtml-guard-var|data-jtml-guard-redirect|data-jtml-invalidate-action|data-jtml-invalidate-fetches)\b/, token: "jtml-attr" },
     /* JTML keywords */
-    { regex: /\b(?:define|const|derive|show|if|else|while|for|in|break|continue|try|except|then|return|throw|async|subscribe|unsubscribe|to|from|store|unbind|object|derives|import|main|jtml|let|get|when|make|page|route|layout|load|slot|fetch|catch|finally|use|export|effect|redirect|refresh|invalidate|timeout|retry|stale|lazy|extern|into|link|text|box|image|video|audio|embed|file|dropzone|canvas|svg|graphic|group|bar|dot|line|path|polyline|polygon|chart|scene3d|item|list|ordered|timeline|animate|resize|crop|filter|axis|legend|grid|stacked|duration|easing|autoplay|repeat)\b/, token: "jtml-kw" },
+    { regex: /\b(?:define|const|derive|show|if|else|while|for|in|break|continue|try|except|then|return|throw|async|subscribe|unsubscribe|to|from|store|unbind|object|derives|import|main|jtml|let|get|when|make|page|route|layout|load|guard|require|slot|fetch|catch|finally|use|export|effect|redirect|refresh|invalidate|timeout|retry|stale|lazy|keep|extern|html|css|raw|into|link|navlink|text|box|image|video|audio|embed|file|dropzone|canvas|svg|graphic|group|bar|dot|line|path|polyline|polygon|chart|scene3d|item|list|ordered|theme|app|shell|topbar|sidebar|content|panel|card|metric|stack|cluster|split|toolbar|tabs|tab|alert|badge|modal|drawer|toast|loading|error|empty|field|spacer|cols|gap|pad|radius|shadow|tone|align|justify|width|surface|timeline|animate|resize|crop|filter|axis|legend|grid|stacked|duration|easing|autoplay|repeat|activeRoute|activeRouteName)\b/, token: "jtml-kw" },
     /* Literals */
     { regex: /\b(?:true|false)\b/, token: "atom" },
     { regex: /\b\d+(?:\.\d+)?\b/, token: "number" },
@@ -1309,24 +1518,41 @@ page
     code: `jtml 2
 
 let email = ""
+let plan = "Pro"
+let accepted = false
 let submitted = false
-get label = submitted ? "Subscribed! Check {email}." : "Enter your email to subscribe."
+let status = "Ready."
+let subscribers = 128
+get label = submitted ? "Subscribed to {plan}. Check {email}." : "Enter your email to subscribe."
+get canSubmit = email != "" && accepted
+get audience = subscribers + 1
 
 when submit
-  if email != ""
+  if canSubmit
     submitted = true
+    status = "Subscription saved locally."
+    subscribers += 1
+  else
+    status = "Add an email and accept the terms first."
+
+when resetForm
+  email = ""
+  plan = "Pro"
+  accepted = false
+  submitted = false
+  status = "Ready."
 
 style
   main
     font-family: system-ui
-    max-width: 420px
+    max-width: 520px
     margin: 48px auto
     padding: 32px
     background: white
     border-radius: 12px
     box-shadow: 0 4px 24px rgba(0,0,0,.08)
     display: grid
-    gap: 14px
+    gap: 16px
   h1
     margin: 0
     font-size: 22px
@@ -1334,29 +1560,94 @@ style
     margin: 0
     color: #64707a
     font-size: 14px
-  input
+  .field
+    display: grid
+    gap: 6px
+  label
+    font-size: 13px
+    font-weight: 700
+    color: #334155
+  input, select
     padding: 10px 12px
     border: 1px solid #d8d4c8
     border-radius: 6px
     font-size: 14px
     width: 100%
     box-sizing: border-box
+  .terms
+    display: flex
+    align-items: center
+    gap: 8px
+  .terms input
+    width: auto
+  .actions
+    display: flex
+    gap: 10px
+    flex-wrap: wrap
   button
     padding: 11px 20px
-    background: #0f766e
-    color: white
-    border: none
+    background: white
+    color: #111827
+    border: 1px solid #d8d4c8
     border-radius: 6px
     font-size: 14px
     cursor: pointer
     font-weight: 600
+  .primary
+    background: #0f766e
+    color: white
+    border-color: #0f766e
+  .notice
+    padding: 12px 14px
+    border-radius: 8px
+    background: #ecfdf5
+    border: 1px solid #99f6e4
+    color: #115e59
+  .summary
+    display: grid
+    grid-template-columns: repeat(3, 1fr)
+    gap: 8px
+  .summary div
+    border: 1px solid #e8e4dc
+    border-radius: 8px
+    padding: 10px
+    background: #f8fafc
+  .summary strong
+    display: block
+    font-size: 20px
 
 page
   h1 "Newsletter"
   p label
-  form submit submit style "display: grid; gap: 14px"
-    input type "email" placeholder "you@example.com" into email required
-    button "Subscribe" type "submit"`
+  box class "summary"
+    div
+      strong "{subscribers}"
+      text "current"
+    div
+      strong plan
+      text "plan"
+    div
+      strong "{audience}"
+      text "after save"
+  box style "display: grid; gap: 14px"
+    box class "field"
+      label "Email"
+      input type "text" placeholder "you@example.com" into email required
+    box class "field"
+      label "Plan"
+      select into plan
+        option "Free" value "Free"
+        option "Pro" value "Pro" selected
+        option "Enterprise" value "Enterprise"
+    label class "terms"
+      checkbox into accepted
+      text "I accept product updates."
+    box class "actions"
+      button "Subscribe" class "primary" click submit
+      button "Reset" type "button" click resetForm
+  p class "notice" status
+  if submitted
+    p "Saved subscriber: {email} on {plan}."`
   },
   {
     name: "dashboard.jtml",
@@ -1364,27 +1655,50 @@ page
     category: "basics",
     code: `jtml 2
 
-let revenue = 12400
+let revenue = 124
 let customers = 320
-get avg = revenue / customers
+let trials = 42
+let health = 87
+let incidents = 2
+let report = [{ "month": "Jan", "mrr": 92 }, { "month": "Feb", "mrr": 106 }, { "month": "Mar", "mrr": 118 }, { "month": "Apr", "mrr": 124 }]
+get avg = revenue * 1000 / customers
+get conversion = customers / trials
+get score = health > 90 ? "Excellent" : "Needs attention"
+get runway = revenue - incidents * 12
 
-when addCustomer
-  customers += 1
-  revenue += avg
+when addTrial
+  trials += 5
+  health -= 1
+
+when closeDeal
+  customers += 3
+  revenue += 8
+  health += 2
+
+when reduceChurn
+  health += 4
+  incidents -= 1
+
+when resetQuarter
+  revenue = 124
+  customers = 320
+  trials = 42
+  health = 87
+  incidents = 2
 
 style
   main
     font-family: system-ui
-    max-width: 800px
+    max-width: 920px
     margin: 40px auto
     padding: 0 16px
     display: grid
-    gap: 20px
+    gap: 18px
   h1
     margin: 0
   .cards
     display: grid
-    grid-template-columns: repeat(3, 1fr)
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))
     gap: 14px
   article
     background: white
@@ -1393,6 +1707,7 @@ style
     padding: 18px 20px
     display: grid
     gap: 6px
+    min-width: 0
   .label
     font-size: 12px
     color: #64707a
@@ -1403,30 +1718,73 @@ style
     font-size: 28px
     font-weight: 700
     margin: 0
+  .status
+    color: #0f766e
+    font-weight: 800
+  .actions
+    display: flex
+    gap: 10px
+    flex-wrap: wrap
+  .insight
+    border: 1px solid #bfdbfe
+    background: #eff6ff
+    color: #1e3a8a
+    border-radius: 10px
+    padding: 14px 16px
+    display: grid
+    gap: 4px
+  .insight strong
+    color: #172554
   button
-    justify-self: start
     padding: 10px 18px
-    background: #0f766e
-    color: white
-    border: none
+    background: white
+    color: #111827
+    border: 1px solid #d8d4c8
     border-radius: 7px
     font-size: 14px
     cursor: pointer
     font-weight: 600
+  .primary
+    background: #0f766e
+    color: white
+    border-color: #0f766e
 
 page
   h1 "Dashboard"
   box class "cards"
     article
       p class "label" "Revenue"
-      p class "value" "{revenue}"
+      p class "value" "USD {revenue}k"
     article
       p class "label" "Customers"
       p class "value" "{customers}"
     article
       p class "label" "Avg / customer"
       p class "value" "{avg}"
-  button "+ Add customer" click addCustomer`
+    article
+      p class "label" "Open trials"
+      p class "value" "{trials}"
+    article
+      p class "label" "Health"
+      p class "value" "{health}%"
+    article
+      p class "label" "Status"
+      p class "value status" "{score}"
+    article
+      p class "label" "Incidents"
+      p class "value" "{incidents}"
+    article
+      p class "label" "Runway score"
+      p class "value" "{runway}"
+  box class "insight"
+    strong "Operator note"
+    p "Close deals to grow revenue, reduce churn to improve health, and reset to replay the quarter."
+  chart bar data report by month value mrr label "MRR" color "#0f766e" axis x label "Month" axis y label "MRR ($k)" grid legend width "760" height "260"
+  box class "actions"
+    button "Add trials" click addTrial
+    button "Close deal" class "primary" click closeDeal
+    button "Reduce churn" click reduceChurn
+    button "Reset quarter" click resetQuarter`
   },
   {
     name: "fetch.jtml",
@@ -1437,46 +1795,73 @@ page
 // Fetches /api/users (or any JSON endpoint).
 // Swap the URL for a real endpoint in your project.
 let saved = false
-let users = fetch "/api/users" timeout 2500 retry 2 stale keep refresh reload
+let users = fetch "/api/users" timeout 2500 retry 2 stale keep
 
 when saveLocal
-  let saved = true
+  saved = true
   invalidate users
+
+when clearSaved
+  saved = false
 
 style
   main
     font-family: system-ui
-    max-width: 560px
+    max-width: 680px
     margin: 48px auto
     padding: 0 20px
     display: grid
-    gap: 12px
+    gap: 14px
   h1
     margin: 0
+  .toolbar
+    display: flex
+    gap: 10px
+    flex-wrap: wrap
   .user-card
     padding: 14px 16px
     background: white
     border: 1px solid #e8e4dc
     border-radius: 8px
+    display: grid
+    gap: 4px
   .loading
     color: #64707a
   .error
     color: #b42318
+  .notice
+    padding: 10px 12px
+    background: #ecfdf5
+    border: 1px solid #99f6e4
+    border-radius: 8px
+    color: #115e59
   button
-    justify-self: start
     padding: 8px 14px
+    background: white
+    border: 1px solid #d8d4c8
     border-radius: 6px
     font-size: 13px
     cursor: pointer
+    font-weight: 700
+  .primary
+    background: #0f766e
+    color: white
+    border-color: #0f766e
+  .meta
+    color: #64707a
+    font-size: 13px
 
 page
   h1 "Users"
-  button "Reload" click reload
-  button "Save + invalidate" click saveLocal
+  p class "meta" "Endpoint: /api/users · stale keep · timeout 2500ms · retry 2"
+  box class "toolbar"
+    button "Load users" class "primary" click saveLocal
+    button "Save + invalidate" click saveLocal
+    button "Clear saved flag" click clearSaved
   if users.loading
     p class "loading" "Loading…"
   if saved
-    p "Saved locally; users fetch was invalidated."
+    p class "notice" "Saved locally; users fetch was invalidated."
   for user in users.data
     div class "user-card"
       strong "{user.name}"
@@ -1491,34 +1876,73 @@ page
     code: `jtml 2
 
 let email = "ada@example.com"
+let note = "Ready to send."
 let login = fetch "/api/login" method "POST" body { email: email } cache "no-store" credentials "include" timeout 2500 retry 2 stale keep refresh retryLogin
+
+when useValid
+  email = "ada@example.com"
+  note = "Valid request prepared."
+
+when useInvalid
+  email = "not-an-email"
+  note = "Invalid request prepared; retry to see server validation."
+
+when clearRequest
+  email = ""
+  note = "Empty request prepared."
 
 style
   main
     font-family: system-ui
-    max-width: 520px
+    max-width: 640px
     margin: 48px auto
     padding: 0 20px
     display: grid
-    gap: 12px
+    gap: 14px
   h1
     margin: 0
+  .toolbar
+    display: flex
+    flex-wrap: wrap
+    gap: 10px
   input
     padding: 10px 12px
     border: 1px solid #d8d4c8
     border-radius: 6px
+    min-width: 280px
+    box-sizing: border-box
   button
-    justify-self: start
     padding: 9px 16px
+    background: white
+    border: 1px solid #d8d4c8
     border-radius: 6px
     cursor: pointer
+    font-weight: 700
+  .primary
+    background: #0f766e
+    color: white
+    border-color: #0f766e
+  .notice
+    padding: 10px 12px
+    background: #f8fafc
+    border: 1px solid #e2e8f0
+    border-radius: 8px
   .error
     color: #b42318
+    background: #fef2f2
+    border: 1px solid #fecaca
+    padding: 10px 12px
+    border-radius: 8px
 
 page
   h1 "Login request"
-  input "Email" into email
-  button "Retry" click retryLogin
+  p class "notice" note
+  input type "text" placeholder "ada@example.com" into email
+  box class "toolbar"
+    button "POST login" class "primary" click retryLogin
+    button "Valid example" click useValid
+    button "Invalid email" click useInvalid
+    button "Empty body value" click clearRequest
   if login.loading
     p "Sending request…"
   else
@@ -1528,7 +1952,7 @@ page
     p "{login.data.user.name}"
     p "{login.data.user.email}"
   if login.error
-    p class "error" "Error: {login.error}"`
+    p class "error" "Server rejected request: {login.error}"`
   },
   {
     name: "store.jtml",
@@ -1540,20 +1964,25 @@ let name = ""
 
 store auth
   let user = ""
+  let role = "viewer"
+  let sessions = 0
   let loggedIn = false
 
   when login
     let user = name
+    let role = "admin"
+    let sessions = sessions + 1
     let loggedIn = true
 
   when logout
     let user = ""
+    let role = "viewer"
     let loggedIn = false
 
 style
   main
     font-family: system-ui
-    max-width: 420px
+    max-width: 560px
     margin: 48px auto
     padding: 0 20px
     display: grid
@@ -1567,6 +1996,16 @@ style
     border-radius: 6px
     font-size: 14px
     color: #065f46
+  .panel
+    border: 1px solid #e8e4dc
+    border-radius: 10px
+    padding: 16px
+    background: white
+    display: grid
+    gap: 8px
+  .muted
+    color: #64707a
+    font-size: 14px
   input
     padding: 10px 14px
     border: 1px solid #d1cfc9
@@ -1583,12 +2022,18 @@ style
 
 page
   h1 "Auth Store"
+  p class "muted" "Store state is shared and keeps its own actions."
   if auth.loggedIn
-    p class "badge" "Signed in as {auth.user}"
-    button "Logout" click auth.logout
+    box class "panel"
+      p class "badge" "Signed in as {auth.user}"
+      p "Role: {auth.role}"
+      p "Sessions opened: {auth.sessions}"
+      button "Logout" click auth.logout
   else
-    input type "text" placeholder "Your name" into name
-    button "Login" click auth.login`
+    box class "panel"
+      input type "text" placeholder "Your name" into name
+      p "Next role: admin"
+      button "Login" click auth.login`
   },
   {
     name: "effects.jtml",
@@ -1598,15 +2043,25 @@ page
 
 let count = 0
 let last = "No changes yet."
+let direction = "idle"
+let saves = 0
 
 effect count
   last = "Count changed to {count}"
+  if count > 0
+    direction = "positive"
+  else
+    direction = "zero or negative"
 
 when increment
   count += 1
 
 when decrement
   count -= 1
+
+when saveSnapshot
+  saves += 1
+  last = "Snapshot {saves}: count {count}"
 
 style
   main
@@ -1625,9 +2080,17 @@ style
     border-radius: 8px
     font-size: 14px
     color: #166534
+  .panel
+    border: 1px solid #e8e4dc
+    border-radius: 10px
+    padding: 16px
+    background: white
+    display: grid
+    gap: 8px
   .controls
     display: flex
     gap: 8px
+    flex-wrap: wrap
   button
     padding: 10px 16px
     border-radius: 6px
@@ -1636,11 +2099,15 @@ style
 
 page
   h1 "Effects"
-  p "Count: {count}"
-  p class "log" "Last: {last}"
-  box class "controls"
-    button "+ Increment" click increment
-    button "− Decrement" click decrement`
+  box class "panel"
+    p "Count: {count}"
+    p "Direction: {direction}"
+    p "Saved snapshots: {saves}"
+    p class "log" "Last effect: {last}"
+    box class "controls"
+      button "+ Increment" click increment
+      button "- Decrement" click decrement
+      button "Save snapshot" click saveSnapshot`
   },
   {
     name: "routes.jtml",
@@ -1651,66 +2118,85 @@ page
 // active-class highlights the current nav link
 // guard blocks protected routes when token is empty
 
-let token = ""
-let loginEmail = ""
+let token = "demo-token"
 let users = fetch "/api/users" lazy stale keep
+let routeMode = "hash router"
 
 guard "/dashboard" require token else "/login"
 
-when signIn
-  let token = loginEmail
-
-when signOut
-  let token = ""
-
 make Nav
   style
+    .shell
+      font-family: system-ui
+      max-width: 720px
+      margin: 44px auto
+      padding: 0 20px
+      display: grid
+      gap: 16px
     nav
       display: flex
       gap: 12px
       margin-bottom: 16px
+      flex-wrap: wrap
     nav a
       color: #0f766e
       text-decoration: none
-      padding: 4px 8px
-      border-radius: 4px
+      padding: 8px 12px
+      border: 1px solid #99f6e4
+      border-radius: 999px
     nav a.active
       background: #ccfbf1
       font-weight: 600
+    .route-card
+      border: 1px solid #e8e4dc
+      border-radius: 12px
+      padding: 18px
+      background: white
+      display: grid
+      gap: 10px
+    .muted
+      color: #64707a
+      margin: 0
   nav
     link "Home" to "/" active-class "active"
     link "Dashboard" to "/dashboard" active-class "active"
     link "Login" to "/login" active-class "active"
 
 make Home
-  page style "font-family: system-ui; max-width: 600px; margin: 48px auto; padding: 0 20px; display: grid; gap: 12px"
+  page class "shell"
     Nav
-    h1 "Home"
-    p "Navigate to Dashboard (requires login) or Login."
+    box class "route-card"
+      h1 "Home"
+      p "Routes render components without a page refresh."
+      p class "muted" "Mode: {routeMode}. Token is prefilled so the protected route opens."
+      link "Open dashboard" to "/dashboard"
 
 make Dashboard
-  page style "font-family: system-ui; max-width: 600px; margin: 48px auto; padding: 0 20px; display: grid; gap: 12px"
+  page class "shell"
     Nav
-    h1 "Dashboard"
-    p "Protected — you are logged in."
-    if users.loading
-      p "Loading dashboard data..."
-    for user in users.data
-      p "{user.name}"
-    button "Sign out" click signOut
+    box class "route-card"
+      h1 "Dashboard"
+      p "Protected route: token is present."
+      if users.loading
+        p "Loading dashboard data..."
+      for user in users.data
+        p "{user.name}"
+      link "Back home" to "/"
 
 make Login
-  page style "font-family: system-ui; max-width: 600px; margin: 48px auto; padding: 0 20px; display: grid; gap: 12px"
+  page class "shell"
     Nav
-    h1 "Login"
-    input "Email" into loginEmail
-    button "Sign in" click signIn
+    box class "route-card"
+      h1 "Login"
+      p "If token were empty, the guard would redirect /dashboard here."
+      link "Back home" to "/"
 
 make NotFound
-  page style "font-family: system-ui; max-width: 600px; margin: 48px auto; padding: 0 20px; display: grid; gap: 12px"
+  page class "shell"
     Nav
-    h1 "Not found"
-    p "No route matched the current path."
+    box class "route-card"
+      h1 "Not found"
+      p "No route matched the current path."
 
 route "/" as Home
 route "/dashboard" as Dashboard load users
@@ -1755,11 +2241,16 @@ route "*" as NotFound`
 let selectedImage = ""
 let assets = []
 let revenue = [{ "month": "Jan", "total": 12 }, { "month": "Feb", "total": 18 }, { "month": "Mar", "total": 9 }]
+let sampleImage = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 360'%3E%3Crect width='640' height='360' fill='%23ecfeff'/%3E%3Ccircle cx='180' cy='180' r='96' fill='%230f766e'/%3E%3Crect x='300' y='110' width='220' height='140' rx='24' fill='%232563eb'/%3E%3Ctext x='320' y='190' font-family='system-ui' font-size='42' fill='white'%3EJTML%3C/text%3E%3C/svg%3E"
+
+when clearMedia
+  selectedImage = ""
+  assets = []
 
 style
   main
     font-family: system-ui
-    max-width: 760px
+    max-width: 920px
     margin: 40px auto
     padding: 0 20px
     display: grid
@@ -1776,6 +2267,12 @@ style
     display: grid
     gap: 10px
     min-width: 0
+  .hero
+    grid-column: 1 / -1
+    display: grid
+    grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr)
+    gap: 16px
+    align-items: center
   input
     max-width: 100%
     min-width: 0
@@ -1786,37 +2283,51 @@ style
   input[data-jtml-drag="over"]
     border-color: #0f766e
     background: #ecfdf5
-  image
+  img
     max-width: 100%
+    width: 100%
     border-radius: 8px
+    border: 1px solid #e8e4dc
+  button
+    justify-self: start
+    padding: 9px 14px
+    border: 1px solid #d8d4c8
+    border-radius: 6px
+    background: white
+    cursor: pointer
+    font-weight: 700
 
 page
   h1 "Media"
   p "Files become previewable JTML state; images, video, audio, canvas, and SVG stay standards-based."
   box class "grid"
-    article
-      h2 "File"
-      file "Choose image" accept "image/*" into selectedImage
-      if selectedImage
-        p "Selected: {selectedImage.name}"
-        image src selectedImage.preview alt selectedImage.name
+    article class "hero"
+      box
+        h2 "Image pipeline"
+        p "Upload an image to turn the file into state with name and preview URL."
+        file "Choose image" accept "image/*" into selectedImage
+        button "Clear media state" click clearMedia
+      box
+        if selectedImage
+          p "Selected: {selectedImage.name}"
+          image src selectedImage.preview alt selectedImage.name
+        else
+          p "Fallback preview"
+          image src sampleImage alt "Generated JTML preview"
     article
       h2 "Dropzone"
       dropzone "Drop media files" accept "image/*,video/*,audio/*" into assets
       p "Assets: {assets.length}"
+      for asset in assets
+        if asset.preview
+          image src asset.preview alt asset.name
+        else
+          p asset.name
     article
-      h2 "Video"
-      video src "/assets/demo.mp4" controls poster "/assets/demo.jpg" preload "metadata" into videoPlayer
-      p "Paused: {videoPlayer.paused}"
-      p "Time: {videoPlayer.currentTime}"
-      button "Play" click videoPlayer.play
-      button "Pause" click videoPlayer.pause
-      button "Restart" click videoPlayer.seek(0)
-    article
-      h2 "Audio"
-      audio src "/assets/intro.mp3" controls preload "metadata" into audioPlayer
-      p "Paused: {audioPlayer.paused}"
-      button "Toggle" click audioPlayer.toggle
+      h2 "Media controllers"
+      p "Video and audio elements expose controller state with into."
+      p "Use video src mediaUrl controls into player, then call player.play, player.pause, or player.seek."
+      p "Studio avoids bundling heavy demo media, so uploads are the live path here."
     article
       h2 "Graphic"
       graphic aria-label "Simple bars" width "320" height "120" viewBox "0 0 320 120"
@@ -1831,9 +2342,8 @@ page
       chart bar data revenue by month value total label "Revenue by month" color "#2563eb" axis x label "Month" axis y label "Revenue ($k)" grid legend
     article
       h2 "3D scene"
-      scene3d "Interactive product scene" scene productScene camera orbit controls orbit renderer "three" into sceneState width "640" height "360"
-      p "Renderer status: {sceneState.status}"
-      p "Attach window.jtml3d.render(canvas, spec) for Three.js/WebGPU."`
+      scene3d "Interactive product scene" scene productScene camera orbit controls orbit renderer "three" width "640" height "360"
+      p "3D hosts can attach Three.js/WebGPU through window.jtml3d.render(canvas, spec)."`
   },
   {
     name: "charts.jtml",
@@ -1841,24 +2351,9 @@ page
     category: "media",
     code: `jtml 2
 
-let revenue = [
-  { "month": "Jan", "sales": 12, "expenses": 8 },
-  { "month": "Feb", "sales": 18, "expenses": 10 },
-  { "month": "Mar", "sales": 9,  "expenses": 7 },
-  { "month": "Apr", "sales": 24, "expenses": 14 },
-  { "month": "May", "sales": 30, "expenses": 16 },
-  { "month": "Jun", "sales": 22, "expenses": 11 }
-]
+let revenue = [{ "month": "Jan", "sales": 12, "expenses": 8 }, { "month": "Feb", "sales": 18, "expenses": 10 }, { "month": "Mar", "sales": 9, "expenses": 7 }, { "month": "Apr", "sales": 24, "expenses": 14 }, { "month": "May", "sales": 30, "expenses": 16 }, { "month": "Jun", "sales": 22, "expenses": 11 }]
 
-let traffic = [
-  { "day": "Mon", "visits": 420 },
-  { "day": "Tue", "visits": 680 },
-  { "day": "Wed", "visits": 540 },
-  { "day": "Thu", "visits": 790 },
-  { "day": "Fri", "visits": 610 },
-  { "day": "Sat", "visits": 320 },
-  { "day": "Sun", "visits": 210 }
-]
+let traffic = [{ "day": "Mon", "visits": 420 }, { "day": "Tue", "visits": 680 }, { "day": "Wed", "visits": 540 }, { "day": "Thu", "visits": 790 }, { "day": "Fri", "visits": 610 }, { "day": "Sat", "visits": 320 }, { "day": "Sun", "visits": 210 }]
 
 style
   main
@@ -1913,14 +2408,26 @@ page
 let progress = 0
 let opacity = 0
 let scale = 0
+let playing = false
 
-timeline intro duration 800 easing ease-out
-  animate progress from 0 to 100
-  animate opacity from 0 to 1
-  animate scale from 20 to 100
+when advance
+  if progress < 100
+    progress += 25
+    opacity += 25
+    scale += 25
+    playing = true
 
-timeline pulse duration 600 easing ease-in-out repeat
-  animate progress from 0 to 100
+when resetMotion
+  progress = 0
+  opacity = 0
+  scale = 0
+  playing = false
+
+when completeMotion
+  progress = 100
+  opacity = 100
+  scale = 100
+  playing = false
 
 style
   main
@@ -1956,7 +2463,13 @@ style
     height: 100%
     background: #0f766e
     border-radius: 10px
-    transition: width 0.05s linear
+    transition: width .2s ease-out
+  .orb
+    width: 96px
+    height: 96px
+    border-radius: 999px
+    background: #0f766e
+    transition: all .2s ease-out
   .card
     border: 1px solid #e8e4dc
     border-radius: 10px
@@ -1972,23 +2485,23 @@ style
 page
   h1 "Animation"
   box class "card"
-    h2 "Intro animation"
-    p "progress: {progress}%  opacity: {opacity}  scale: {scale}%"
+    h2 "Interactive motion state"
+    p "progress: {progress}%  opacity: {opacity}%  scale: {scale}%"
     box class "bar-track"
       box class "bar-fill" style "width: {progress}%"
+    box class "orb" aria-label "Animated preview" style "opacity: {opacity}%; width: {scale}px; height: {scale}px"
     box class "controls"
-      button "Play intro" click intro.play
-      button "Pause" click intro.pause
-      button "Reset" click intro.reset
+      button "Advance" click advance
+      button "Complete" click completeMotion
+      button "Reset" click resetMotion
   box class "card"
-    h2 "Repeating pulse"
+    h2 "State-driven CSS"
+    p "JTML can bind state into styles while CSS handles motion smoothly."
     box class "stat" "{progress}%"
-    box class "bar-track"
-      box class "bar-fill" style "width: {progress}%"
-    box class "controls"
-      button "Start pulse" click pulse.play
-      button "Stop" click pulse.pause
-      button "Reset" click pulse.reset`
+    if playing
+      p "Motion is in progress."
+    else
+      p "Motion is idle."`
   },
   {
     name: "components.jtml",
@@ -2056,6 +2569,7 @@ let mode            = "file";
 let activeFileIdx   = 0;
 let activeLessonIdx = -1;
 let activeDocIdx    = -1;
+let activeWorkspacePath = "";
 let lessons         = [];
 let docs            = [];
 let completedSlugs  = new Set(JSON.parse(localStorage.getItem("jtml:completed") || "[]"));
@@ -2064,9 +2578,11 @@ let loading         = false;
 let proseOpen       = false;
 let sidebarOpen     = true;
 let bottomOpen      = true;
-let artifactMode    = "classic";
+let inspectorMode   = "diagnostics";
+let artifactMode    = "html";
 let lastArtifacts   = { classic: "", html: "" };
 let sidebarQuery    = "";
+let workspaceCreateKind = "file";
 let draftTimer      = 0;
 let paletteItems    = [];
 let paletteActive   = 0;
@@ -2076,7 +2592,7 @@ let paletteActive   = 0;
 ═══════════════════════════════════════════════════════════ */
 const PORT = location.port || "80";
 const LAYOUT_KEY = "jtml:layout:" + PORT;
-const DEF_LAYOUT = { sidebarW: 210, editorW: null, bottomH: 185, diagW: null, proseH: 200 };
+const DEF_LAYOUT = { sidebarW: 210, editorW: null, bottomH: 185, proseH: 200 };
 let L = Object.assign({}, DEF_LAYOUT, JSON.parse(localStorage.getItem(LAYOUT_KEY) || "{}"));
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -2091,6 +2607,7 @@ function applyLayout() {
   if (isHub) {
     $("prose-panel").style.height = "0";
     $("rh-prose").style.display = "none";
+    $("lesson-after-panel").hidden = true;
   }
 
   /* Sidebar */
@@ -2118,16 +2635,6 @@ function applyLayout() {
   $("rh-bottom").style.visibility = bottomOpen ? "" : "hidden";
   $("bottom-toggle").classList.toggle("active", !bottomOpen);
   $("bottom-toggle").innerHTML = bottomOpen ? "&#x229F;" : "&#x229E;";
-
-  /* Diag width inside bottom-row */
-  if (bottomOpen) {
-    const bRect = bottomRow.getBoundingClientRect();
-    if (bRect.width > 0) {
-      const avail = bRect.width - 6;
-      const dW = L.diagW != null ? clamp(L.diagW, 120, avail - 120) : Math.round(avail * 0.56);
-      $("diag-panel").style.flexBasis = dW + "px";
-    }
-  }
 
   /* Prose height */
   if (!isHub) {
@@ -2193,11 +2700,6 @@ makeResizable("rh-bottom", "row", (x, y) => {
   L.bottomH = clamp(cRect.bottom - y, 80, cRect.height * 0.45 | 0);
 }, () => { L.bottomH = DEF_LAYOUT.bottomH; });
 
-/* Diag/Reference resize */
-makeResizable("rh-diag", "col", (x) => {
-  L.diagW = clamp(x - $("bottom-row").getBoundingClientRect().left, 120, $("bottom-row").getBoundingClientRect().width - 120);
-}, () => { L.diagW = null; });
-
 /* Sidebar toggle */
 $("sidebar-toggle").onclick = () => {
   sidebarOpen = !sidebarOpen;
@@ -2261,6 +2763,153 @@ function latestKey(name)   { return "jtml:latest:"   + PORT + ":" + name; }
 function versionsKey(name) { return "jtml:versions:" + PORT + ":" + name; }
 function draftKey(name)    { return "jtml:draft:"    + PORT + ":" + name; }
 function lessonKey(slug)   { return "jtml:lesson:"   + PORT + ":" + slug; }
+const WORKSPACE_KEY = "jtml:workspace:" + PORT;
+
+function defaultWorkspace() {
+  return {
+    projects: [{
+      type: "project",
+      name: "starter-app",
+      children: [
+        { type: "file", name: "index.jtml", code: SAMPLES[0].code },
+        { type: "folder", name: "app", children: [
+          { type: "file", name: "dashboard.jtml", code: SAMPLES.find(s => s.name === "dashboard.jtml").code },
+          { type: "file", name: "routes.jtml", code: SAMPLES.find(s => s.name === "routes.jtml").code },
+        ]},
+        { type: "folder", name: "docs", children: [
+          { type: "doc", name: "Language reference", slug: "language-reference" },
+          { type: "doc", name: "AI authoring contract", slug: "ai-authoring-contract" },
+        ]},
+      ],
+    }]
+  };
+}
+function loadWorkspace() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(WORKSPACE_KEY) || "null");
+    if (parsed && Array.isArray(parsed.projects)) return parsed;
+  } catch {}
+  const fresh = defaultWorkspace();
+  localStorage.setItem(WORKSPACE_KEY, JSON.stringify(fresh));
+  return fresh;
+}
+let workspace = loadWorkspace();
+function saveWorkspace() {
+  localStorage.setItem(WORKSPACE_KEY, JSON.stringify(workspace));
+}
+
+function pathParts(path) {
+  return String(path || "").split("/").map(p => p.trim()).filter(Boolean);
+}
+function workspacePathFor(projectName, parts) {
+  return [projectName].concat(parts || []).join("/");
+}
+function findWorkspaceNode(path) {
+  const parts = pathParts(path);
+  if (!parts.length) return null;
+  let node = (workspace.projects || []).find(p => p.name === parts[0]);
+  for (let i = 1; node && i < parts.length; i++) {
+    node = (node.children || []).find(child => child.name === parts[i]);
+  }
+  return node || null;
+}
+function ensureWorkspaceFolder(project, parts) {
+  let node = project;
+  for (const part of parts) {
+    node.children = node.children || [];
+    let next = node.children.find(child => child.type === "folder" && child.name === part);
+    if (!next) {
+      next = { type: "folder", name: part, children: [] };
+      node.children.push(next);
+    }
+    node = next;
+  }
+  return node;
+}
+function setWorkspaceCreateError(message) {
+  $("workspace-create-error").textContent = message || "";
+}
+function openWorkspaceCreate(kind) {
+  workspaceCreateKind = kind;
+  const defaults = {
+    project: ["New project", "my-jtml-app"],
+    folder: ["New folder", "starter-app/app/components"],
+    file: ["New file", "starter-app/app/page.jtml"],
+  };
+  const [title, value] = defaults[kind] || defaults.file;
+  $("workspace-create-title").textContent = title;
+  $("workspace-create-path").value = value;
+  setWorkspaceCreateError("");
+  $("workspace-create").hidden = false;
+  $("workspace-create-path").focus();
+  $("workspace-create-path").select();
+}
+function closeWorkspaceCreate() {
+  $("workspace-create").hidden = true;
+  setWorkspaceCreateError("");
+}
+function submitWorkspaceCreate() {
+  const raw = ($("workspace-create-path").value || "").trim();
+  if (workspaceCreateKind === "project") createWorkspaceProject(raw);
+  else if (workspaceCreateKind === "folder") createWorkspaceFolder(raw);
+  else createWorkspaceFile(raw);
+}
+function createWorkspaceProject(name) {
+  name = (name || "").trim();
+  if (!name) return;
+  if ((workspace.projects || []).some(p => p.name === name)) {
+    setWorkspaceCreateError("A project with that name already exists.");
+    return;
+  }
+  workspace.projects.push({
+    type: "project",
+    name,
+    children: [{ type: "file", name: "index.jtml", code: SAMPLES[0].code }],
+  });
+  saveWorkspace();
+  closeWorkspaceCreate();
+  renderSidebar();
+}
+function createWorkspaceFolder(raw) {
+  raw = (raw || "").trim();
+  const parts = pathParts(raw);
+  if (parts.length < 2) return;
+  const project = (workspace.projects || []).find(p => p.name === parts[0]);
+  if (!project) {
+    setWorkspaceCreateError("Start the path with an existing project name.");
+    return;
+  }
+  ensureWorkspaceFolder(project, parts.slice(1));
+  saveWorkspace();
+  closeWorkspaceCreate();
+  renderSidebar();
+}
+function createWorkspaceFile(raw) {
+  raw = (raw || "").trim();
+  const parts = pathParts(raw);
+  if (parts.length < 2) return;
+  const project = (workspace.projects || []).find(p => p.name === parts[0]);
+  if (!project) {
+    setWorkspaceCreateError("Start the path with an existing project name.");
+    return;
+  }
+  const fileName = parts[parts.length - 1];
+  const folder = ensureWorkspaceFolder(project, parts.slice(1, -1));
+  folder.children = folder.children || [];
+  if (folder.children.some(child => child.name === fileName)) {
+    setWorkspaceCreateError("A file or folder already exists at that path.");
+    return;
+  }
+  folder.children.push({
+    type: "file",
+    name: fileName,
+    code: fileName.endsWith(".jtml") ? SAMPLES[0].code : "# Notes\n\nUse .jtml files for runnable Studio documents.\n",
+  });
+  saveWorkspace();
+  closeWorkspaceCreate();
+  renderSidebar();
+  selectWorkspaceFile(raw);
+}
 
 function legacyLessonLatestKey(slug) { return lessonKey(slug); }
 function hashText(text) {
@@ -2363,12 +3012,14 @@ function pushVersionByName(name, code) {
 function activeDocName() {
   if (mode === "home") return "studio:home";
   if (mode === "file") return SAMPLES[activeFileIdx].name;
+  if (mode === "workspace") return "workspace:" + activeWorkspacePath;
   if (mode === "lesson" && activeLessonIdx >= 0) return "lesson:" + lessons[activeLessonIdx].slug;
   return "untitled";
 }
 function activeDisplayName() {
   if (mode === "home") return "Studio home";
   if (mode === "file") return SAMPLES[activeFileIdx].name;
+  if (mode === "workspace") return activeWorkspacePath || "workspace file";
   if (mode === "lesson" && activeLessonIdx >= 0) return lessons[activeLessonIdx].slug + "/code.jtml";
   return "untitled";
 }
@@ -2394,6 +3045,21 @@ function loadLessonCode(l) {
 }
 function saveLessonCode(l, code) {
   return pushVersionByName("lesson:" + l.slug, code);
+}
+function loadWorkspaceFileCode(path) {
+  const name = "workspace:" + path;
+  const node = findWorkspaceNode(path);
+  const draft = getDraftByName(name);
+  if (draft) return draft.code;
+  return localStorage.getItem(latestKey(name)) || (node && node.code) || "";
+}
+function saveWorkspaceFileCode(path, code) {
+  const node = findWorkspaceNode(path);
+  if (node && node.type === "file") {
+    node.code = code;
+    saveWorkspace();
+  }
+  return pushVersionByName("workspace:" + path, code);
 }
 function markComplete(slug) {
   completedSlugs.add(slug);
@@ -2440,8 +3106,15 @@ function renderArtifacts() {
     $("artifact-code").textContent = value;
   } else {
     $("artifact-code").innerHTML =
-      '<span class="artifact-empty">Run the current file to inspect Friendly-to-Classic lowering and generated HTML.</span>';
+      '<span class="artifact-empty">Run the current file to inspect generated HTML and compatibility IR.</span>';
   }
+}
+function setInspectorMode(modeName) {
+  inspectorMode = modeName;
+  $("bottom-row").dataset.mode = modeName;
+  $("inspector-diagnostics").classList.toggle("active", modeName === "diagnostics");
+  $("inspector-artifacts").classList.toggle("active", modeName === "artifacts");
+  $("inspector-reference").classList.toggle("active", modeName === "reference");
 }
 function setArtifacts(data) {
   lastArtifacts = {
@@ -2462,7 +3135,7 @@ function updateMeta() {
   const dialect = $("dialect-badge");
   if (dialect) {
     const friendly = isFriendlySource(text);
-    dialect.textContent = friendly ? "Friendly JTML 2" : "Classic compatibility";
+    dialect.textContent = friendly ? "Friendly JTML 2" : "Compatibility backend";
     dialect.className = "dialect-badge" + (friendly ? "" : " classic");
   }
   /* Dirty dot in name */
@@ -2470,6 +3143,8 @@ function updateMeta() {
     ? "Studio home"
     : mode === "file"
     ? SAMPLES[activeFileIdx].name
+    : mode === "workspace"
+    ? activeWorkspacePath
     : (lessons[activeLessonIdx] ? lessons[activeLessonIdx].slug + "/code.jtml" : "");
   $("active-name").textContent = base + (dirty ? " ●" : "");
 }
@@ -2478,12 +3153,15 @@ function renderSidebar() {
   const query = sidebarQuery.trim().toLowerCase();
   const matches = text => !query || String(text || "").toLowerCase().includes(query);
   $("hub-nav").className = "sb-item" + (mode === "home" ? " active-hub" : "");
+  renderProjectTree(query);
   /* Files grouped by category */
   const fl = $("file-list");
   fl.innerHTML = "";
   const categoryLabels = { basics: "Basics", data: "Data & State", navigation: "Navigation", media: "Media & Graphics", composition: "Composition" };
   const seen = {};
+  const pinnedTemplates = new Set(["counter.jtml", "form.jtml", "dashboard.jtml", "fetch.jtml", "routes.jtml", "media.jtml", "components.jtml"]);
   SAMPLES.forEach((s, i) => {
+    if (!pinnedTemplates.has(s.name)) return;
     if (!matches((s.label || "") + " " + s.name + " " + (s.category || ""))) return;
     const cat = s.category || "basics";
     if (!seen[cat]) {
@@ -2497,7 +3175,7 @@ function renderSidebar() {
     const btn = document.createElement("button");
     btn.className = "sb-item" + (mode === "file" && i === activeFileIdx ? " active-file" : "");
     const label = s.label || s.name;
-    btn.innerHTML = `<span>${esc(label)}</span>${vs.length ? `<span class="v-badge">v${vs.length}</span>` : ""}`;
+    btn.innerHTML = `<span class="sb-text"><span class="sb-main">${esc(label)}</span><span class="sb-sub">${esc(s.name)}</span></span>${vs.length ? `<span class="v-badge">v${vs.length}</span>` : ""}`;
     btn.onclick = () => selectFile(i);
     fl.appendChild(btn);
   });
@@ -2516,7 +3194,7 @@ function renderSidebar() {
     btn.className = "sb-item" + (mode === "lesson" && i === activeLessonIdx ? " active-lesson" : "");
     const chk = completedSlugs.has(l.slug) ? '<span class="check-ok">&#x2713;</span>' : "";
     const badge = vs.length ? `<span class="v-badge">v${vs[0].version}</span>` : "";
-    btn.innerHTML = `<span>${esc((i + 1) + ". " + l.title)}</span>${badge}${chk}`;
+    btn.innerHTML = `<span class="sb-text"><span class="sb-main">${esc((i + 1) + ". " + l.title)}</span><span class="sb-sub">${esc(l.slug + "/code.jtml")}</span></span>${badge}${chk}`;
     btn.onclick = () => selectLesson(i);
     ll.appendChild(btn);
   });
@@ -2537,11 +3215,76 @@ function renderSidebar() {
     }
     const btn = document.createElement("button");
     btn.className = "sb-item" + (i === activeDocIdx ? " active-doc" : "");
-    btn.innerHTML = `<span>${esc(d.title)}</span>`;
+    btn.innerHTML = `<span class="sb-text"><span class="sb-main">${esc(d.title)}</span><span class="sb-sub">${esc(d.slug)}</span></span>`;
     btn.onclick = () => openDoc(i);
     dl.appendChild(btn);
   });
   if (!dl.children.length) dl.innerHTML = '<p class="no-items">No docs match.</p>';
+}
+
+function renderProjectTree(query) {
+  const root = $("project-tree");
+  root.innerHTML = "";
+  const matchesTree = text => !query || String(text || "").toLowerCase().includes(query);
+  function renderNode(node, projectName, parts, parent) {
+    const fullPath = workspacePathFor(projectName, parts.concat(node.name));
+    if (node.type === "folder") {
+      const group = document.createElement("div");
+      group.className = "tree-group";
+      const label = document.createElement("div");
+      label.className = "tree-folder";
+      label.textContent = node.name;
+      const children = document.createElement("div");
+      children.className = "tree-children";
+      (node.children || []).forEach(child => renderNode(child, projectName, parts.concat(node.name), children));
+      if (children.children.length || matchesTree(fullPath)) {
+        group.appendChild(label);
+        group.appendChild(children);
+        parent.appendChild(group);
+      }
+      return;
+    }
+    if (node.type === "doc") {
+      if (!matchesTree(fullPath + " " + (node.slug || ""))) return;
+      const btn = document.createElement("button");
+      btn.className = "sb-item";
+      btn.innerHTML = `<span class="sb-text"><span class="sb-main">${esc(node.name)}</span><span class="sb-sub">docs/${esc(node.slug || "")}</span></span>`;
+      btn.onclick = () => {
+        const i = docIndexBySlug(node.slug);
+        if (i >= 0) {
+          if (mode === "home") selectWorkspaceFile(findFirstWorkspaceFile() || "");
+          openDoc(i);
+        }
+      };
+      parent.appendChild(btn);
+      return;
+    }
+    if (!matchesTree(fullPath)) return;
+    const vs = getVersionsByName("workspace:" + fullPath);
+    const btn = document.createElement("button");
+    btn.className = "sb-item" + (mode === "workspace" && fullPath === activeWorkspacePath ? " active-file" : "");
+    btn.innerHTML = `<span class="sb-text"><span class="sb-main">${esc(node.name)}</span><span class="sb-sub">${esc(fullPath)}</span></span>${vs.length ? `<span class="v-badge">v${vs[0].version}</span>` : ""}`;
+    btn.onclick = () => selectWorkspaceFile(fullPath);
+    parent.appendChild(btn);
+  }
+  (workspace.projects || []).forEach(project => {
+    const group = document.createElement("div");
+    group.className = "tree-group";
+    const label = document.createElement("div");
+    label.className = "tree-folder";
+    label.textContent = project.name;
+    const children = document.createElement("div");
+    children.className = "tree-children";
+    (project.children || []).forEach(child => renderNode(child, project.name, [], children));
+    if (children.children.length || matchesTree(project.name)) {
+      group.appendChild(label);
+      group.appendChild(children);
+      root.appendChild(group);
+    }
+  });
+  if (!root.children.length) {
+    root.innerHTML = '<p class="sb-empty-note">No local project files match. Create a project, folder, or file above.</p>';
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -2560,6 +3303,9 @@ function setToolButtonsEnabled(enabled) {
     if (el) el.disabled = !enabled;
   });
 }
+function currentSourceIsJtml() {
+  return mode !== "workspace" || activeWorkspacePath.endsWith(".jtml");
+}
 
 function openProse() {
   proseOpen = true;
@@ -2570,8 +3316,28 @@ function openProse() {
 function closeProse() {
   proseOpen = false;
   $("prose-panel").classList.add("collapsing");
+  $("lesson-after-panel").hidden = true;
   applyLayout();
   setTimeout(() => $("prose-panel").classList.remove("collapsing"), 220);
+}
+
+function renderMarkdown(md) {
+  return typeof marked !== "undefined" ? marked.parse(md || "") : "<p>" + esc(md || "") + "</p>";
+}
+
+function splitLessonProse(md) {
+  const marker = "<!-- studio:playground -->";
+  const at = (md || "").indexOf(marker);
+  if (at < 0) return { intro: md || "", after: "" };
+  return {
+    intro: md.slice(0, at).trim(),
+    after: md.slice(at + marker.length).trim()
+  };
+}
+
+function setLessonFollowup(markdown) {
+  $("lesson-after-body").innerHTML = renderMarkdown(markdown);
+  $("lesson-after-panel").hidden = !(markdown && markdown.trim());
 }
 
 function showHub() {
@@ -2594,6 +3360,49 @@ function showHub() {
 function openWorkMode() {
   $("hub-panel").hidden = true;
   setToolButtonsEnabled(true);
+}
+
+function findFirstWorkspaceFile() {
+  for (const project of workspace.projects || []) {
+    const found = findFirstFileInNode(project, project.name, []);
+    if (found) return found;
+  }
+  return "";
+}
+function findFirstFileInNode(node, projectName, parts) {
+  for (const child of node.children || []) {
+    const nextParts = parts.concat(child.name);
+    if (child.type === "file") return workspacePathFor(projectName, nextParts);
+    if (child.type === "folder") {
+      const found = findFirstFileInNode(child, projectName, nextParts);
+      if (found) return found;
+    }
+  }
+  return "";
+}
+
+function selectWorkspaceFile(path) {
+  const node = findWorkspaceNode(path);
+  if (!node || node.type !== "file") return;
+  flushPendingDraft();
+  mode = "workspace";
+  activeWorkspacePath = path;
+  activeDocIdx = -1;
+  openWorkMode();
+  $("history-btn").style.display = "";
+  closeProse();
+  setCode(loadWorkspaceFileCode(path));
+  setArtifacts({});
+  dirty = hasDraftByName("workspace:" + path);
+  if (dirty) { $("status").textContent = "draft restored"; $("status").className = "run"; }
+  updateMeta();
+  renderSidebar();
+  if (path.endsWith(".jtml")) run();
+  else {
+    $("status").textContent = "notes file";
+    $("status").className = "";
+    $("preview").srcdoc = "<!doctype html><body style='font:16px system-ui;padding:24px;white-space:pre-wrap'>" + esc(editor.getValue()) + "</body>";
+  }
 }
 
 function selectFile(i) {
@@ -2634,9 +3443,9 @@ async function selectLesson(i) {
   } catch {}
 
   const restoredDraft = hasDraftByName("lesson:" + l.slug);
-  $("prose-body").innerHTML = typeof marked !== "undefined"
-    ? marked.parse(l.prose || "")
-    : "<p>" + esc(l.prose || "") + "</p>";
+  const lessonProse = splitLessonProse(l.prose || "");
+  $("prose-body").innerHTML = renderMarkdown(lessonProse.intro);
+  setLessonFollowup(lessonProse.after);
   $("prev").disabled = i === 0;
   $("next").disabled = i === lessons.length - 1;
   $("lesson-ctr").textContent = "Lesson " + (i + 1) + " of " + lessons.length;
@@ -2661,9 +3470,8 @@ async function openDoc(i) {
     const data = await res.json();
     d.prose = data.prose || "";
   } catch {}
-  $("prose-body").innerHTML = typeof marked !== "undefined"
-    ? marked.parse(d.prose || "")
-    : "<p>" + esc(d.prose || "") + "</p>";
+  $("prose-body").innerHTML = renderMarkdown(d.prose || "");
+  setLessonFollowup("");
   $("prev").disabled = true;
   $("next").disabled = true;
   $("lesson-ctr").textContent = d.category || "Guide";
@@ -2694,6 +3502,7 @@ async function api(path, body) {
    Diagnostics
 ═══════════════════════════════════════════════════════════ */
 function showDiagnostics(data) {
+  setInspectorMode("diagnostics");
   const ds      = data.diagnostics || [];
   const list    = $("diag-list");
   const summary = $("diag-sum");
@@ -2768,6 +3577,12 @@ window.addEventListener("message", (event) => {
 ═══════════════════════════════════════════════════════════ */
 async function run() {
   const st = $("status");
+  if (!currentSourceIsJtml()) {
+    $("preview").srcdoc = "<!doctype html><body style='font:16px system-ui;padding:24px;white-space:pre-wrap'>" + esc(editor.getValue()) + "</body>";
+    st.textContent = "notes preview";
+    st.className = "";
+    return;
+  }
   st.textContent = "running…"; st.className = "run";
   $("run").disabled = true;
   try {
@@ -2892,6 +3707,11 @@ function saveSource() {
     dirty = false; updateMeta(); renderSidebar();
     st.textContent = result.saved ? "saved v" + result.version : "already saved v" + result.version;
     st.className = "ok";
+  } else if (mode === "workspace") {
+    const result = saveWorkspaceFileCode(activeWorkspacePath, code);
+    dirty = false; updateMeta(); renderSidebar();
+    st.textContent = result.saved ? "saved v" + result.version : "already saved v" + result.version;
+    st.className = "ok";
   } else if (mode === "lesson" && activeLessonIdx >= 0) {
     const result = saveLessonCode(lessons[activeLessonIdx], code);
     dirty = false; updateMeta(); renderSidebar();
@@ -2907,6 +3727,11 @@ function resetSource() {
     loading = true; editor.setValue(SAMPLES[activeFileIdx].code); editor.clearHistory(); loading = false;
     dirty = false; updateMeta();
     st.textContent = "reset"; st.className = "";
+  } else if (mode === "workspace") {
+    const node = findWorkspaceNode(activeWorkspacePath);
+    loading = true; editor.setValue((node && node.code) || ""); editor.clearHistory(); loading = false;
+    dirty = false; updateMeta();
+    st.textContent = "reset to saved file"; st.className = "";
   } else if (mode === "lesson" && activeLessonIdx >= 0) {
     const l = lessons[activeLessonIdx];
     // Clear saved versions too so re-loading this lesson shows the original code
@@ -2916,7 +3741,11 @@ function resetSource() {
     dirty = false; updateMeta();
     st.textContent = "reset to original"; st.className = "";
   }
-  run();
+  if (mode === "workspace" && !activeWorkspacePath.endsWith(".jtml")) {
+    $("preview").srcdoc = "<!doctype html><body style='font:16px system-ui;padding:24px;white-space:pre-wrap'>" + esc(editor.getValue()) + "</body>";
+  } else {
+    run();
+  }
 }
 
 $("run").onclick    = run;
@@ -2955,26 +3784,38 @@ $("home-btn").onclick = showHub;
 $("learn-btn").onclick = () => selectLesson(0);
 $("docs-btn").onclick = () => {
   if (docs.length) {
-    if (mode === "home") selectFile(0);
+    if (mode === "home") selectWorkspaceFile(findFirstWorkspaceFile() || "");
     openDoc(0);
   }
 };
 $("reference-btn").onclick = () => {
   const i = docIndexBySlug("language-reference");
   if (i >= 0) {
-    if (mode === "home") selectFile(0);
+    if (mode === "home") selectWorkspaceFile(findFirstWorkspaceFile() || "");
     openDoc(i);
   }
 };
-$("playground-btn").onclick = () => selectFile(0);
+$("playground-btn").onclick = () => selectWorkspaceFile(findFirstWorkspaceFile() || "");
 $("brand-home").onclick = showHub;
 $("hub-nav").onclick = showHub;
+$("new-project").onclick = () => openWorkspaceCreate("project");
+$("new-folder").onclick = () => openWorkspaceCreate("folder");
+$("new-file").onclick = () => openWorkspaceCreate("file");
+$("workspace-create-confirm").onclick = submitWorkspaceCreate;
+$("workspace-create-cancel").onclick = closeWorkspaceCreate;
+$("workspace-create-path").onkeydown = e => {
+  if (e.key === "Enter") submitWorkspaceCreate();
+  if (e.key === "Escape") closeWorkspaceCreate();
+};
 $("sidebar-search").oninput = e => {
   sidebarQuery = e.target.value || "";
   renderSidebar();
 };
-$("artifact-classic-tab").onclick = () => { artifactMode = "classic"; renderArtifacts(); };
-$("artifact-html-tab").onclick    = () => { artifactMode = "html"; renderArtifacts(); };
+$("artifact-classic-tab").onclick = () => { artifactMode = "classic"; setInspectorMode("artifacts"); renderArtifacts(); };
+$("artifact-html-tab").onclick    = () => { artifactMode = "html"; setInspectorMode("artifacts"); renderArtifacts(); };
+$("inspector-diagnostics").onclick = () => setInspectorMode("diagnostics");
+$("inspector-artifacts").onclick = () => setInspectorMode("artifacts");
+$("inspector-reference").onclick = () => setInspectorMode("reference");
 
 function sampleIndexByName(name) {
   return SAMPLES.findIndex(s => s.name === name || (s.label || "").toLowerCase() === String(name).toLowerCase());
@@ -3004,7 +3845,7 @@ document.addEventListener("click", e => {
   if (docBtn) {
     const i = docIndexBySlug(docBtn.dataset.openDoc);
     if (i >= 0) {
-      if (mode === "home") selectFile(0);
+      if (mode === "home") selectWorkspaceFile(findFirstWorkspaceFile() || "");
       openDoc(i);
     }
   }
@@ -3023,7 +3864,7 @@ function commandItems() {
     { kind: "command", title: "Save snapshot", sub: "Create a versioned local snapshot", run: saveSource },
     { kind: "command", title: "Export HTML", sub: "Download generated HTML", run: exportHtml },
     { kind: "command", title: "Toggle sidebar", sub: "Show or hide Explorer", run: () => $("sidebar-toggle").click() },
-    { kind: "command", title: "Toggle diagnostics", sub: "Show or hide Diagnostics, Artifacts, Reference", run: () => $("bottom-toggle").click() },
+    { kind: "command", title: "Toggle inspector", sub: "Show or hide Diagnostics, Artifacts, Reference", run: () => $("bottom-toggle").click() },
   ];
   SAMPLES.forEach((s, i) => items.push({
     kind: "example",
@@ -3041,7 +3882,7 @@ function commandItems() {
     kind: "doc",
     title: d.title,
     sub: (d.category || "Guide") + " · " + d.slug,
-    run: () => { if (mode === "home") selectFile(0); openDoc(i); }
+    run: () => { if (mode === "home") selectWorkspaceFile(findFirstWorkspaceFile() || ""); openDoc(i); }
   }));
   return items;
 }
@@ -3191,7 +4032,8 @@ async function boot() {
   /* Apply layout after first paint so getBoundingClientRect returns real values */
   requestAnimationFrame(() => {
     applyLayout();
-    showHub();
+    if (lessons.length) selectLesson(0);
+    else selectWorkspaceFile(findFirstWorkspaceFile() || "");
   });
 }
 boot();

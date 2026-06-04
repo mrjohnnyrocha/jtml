@@ -7,12 +7,13 @@
 #include "jtml/formatter.h"
 #include "jtml/friendly_formatter.h"
 #include "jtml/linter.h"
+#include "jtml/semantic.h"
 
 #include <fstream>
 #include <iostream>
 #include <memory>
-#include <stdexcept>
 #include <sstream>
+#include <stdexcept>
 
 namespace jtml::cli {
 
@@ -76,8 +77,8 @@ int cmdFmt(const Options& o) {
 
 int cmdLint(const Options& o) {
     std::vector<LintDiagnostic> diagnostics;
+    std::vector<std::unique_ptr<ASTNode>> program;
     try {
-        std::vector<std::unique_ptr<ASTNode>> program;
         {
             SilenceStdout silence;
             program = parseProgramFromFile(o.inputFile, o.syntax);
@@ -110,16 +111,24 @@ int cmdLint(const Options& o) {
         if (d.severity == LintDiagnostic::Severity::Error) ++errors;
     }
 
+    const std::string source = readFile(o.inputFile);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto usage = jtml::analyzeSemanticUsage(semantic);
+
     if (o.json) {
+        auto jdiags = lintDiagnosticsToJson(diagnostics);
+        for (const auto& w : usage.warnings) {
+            jdiags.push_back({{"severity","warning"},{"code",w.code},{"message",w.message},{"line",0},{"column",0}});
+        }
         std::cout << nlohmann::json{
             {"ok", errors == 0},
             {"file", o.inputFile},
-            {"diagnostics", lintDiagnosticsToJson(diagnostics)},
+            {"diagnostics", jdiags},
         }.dump(2) << "\n";
         return errors > 0 ? 1 : 0;
     }
 
-    if (diagnostics.empty()) {
+    if (diagnostics.empty() && usage.warnings.empty()) {
         std::cout << "OK: " << o.inputFile << "\n";
         return 0;
     }
@@ -135,8 +144,11 @@ int cmdLint(const Options& o) {
         std::cerr << ": " << d.message << "\n";
         if (!d.hint.empty()) std::cerr << "  hint: " << d.hint << "\n";
     }
-    std::cerr << "\n" << diagnostics.size() << " issue(s), "
-              << errors << " error(s)\n";
+    for (const auto& w : usage.warnings) {
+        std::cerr << o.inputFile << ": warning[" << w.code << "]: " << w.message << "\n";
+    }
+    const int totalIssues = static_cast<int>(diagnostics.size() + usage.warnings.size());
+    std::cerr << "\n" << totalIssues << " issue(s), " << errors << " error(s)\n";
     return errors > 0 ? 1 : 0;
 }
 

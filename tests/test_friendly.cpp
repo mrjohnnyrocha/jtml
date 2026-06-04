@@ -42,9 +42,44 @@ TEST(FriendlySyntax, LooksLikeFriendlyDetectsMoreKeywords) {
     EXPECT_TRUE(jtml::looksLikeFriendlySyntax("if count > 0\n  show count\n"));
     EXPECT_TRUE(jtml::looksLikeFriendlySyntax("while running\n  show \"go\"\n"));
     EXPECT_TRUE(jtml::looksLikeFriendlySyntax("style\n  .card\n    color: red\n"));
+    EXPECT_TRUE(jtml::looksLikeFriendlySyntax("css raw\n  .host-widget { display: block; }\n"));
+    EXPECT_TRUE(jtml::looksLikeFriendlySyntax("html raw \"<host-widget></host-widget>\"\n"));
+    EXPECT_TRUE(jtml::looksLikeFriendlySyntax("theme\n  color primary \"#155e75\"\n"));
     EXPECT_TRUE(jtml::looksLikeFriendlySyntax("store auth\n  let user = \"Ada\"\n"));
     EXPECT_TRUE(jtml::looksLikeFriendlySyntax("export make Card\n  text \"Hi\"\n"));
     EXPECT_FALSE(jtml::looksLikeFriendlySyntax("define count = 0\\\\\n"));
+}
+
+TEST(FriendlySyntax, RawHtmlAndCssEscapeHatchesLowerAndTranspile) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "css raw\n"
+        "  .third-party-widget { display: grid; }\n"
+        "  .third-party-widget iframe { border: 0; }\n"
+        "page\n"
+        "  h1 \"Interop\"\n"
+        "  html raw \"<third-party-widget data-mode=\\\"demo\\\"></third-party-widget>\"\n");
+
+    EXPECT_NE(classic.find("@style\\\\"), std::string::npos);
+    EXPECT_NE(classic.find(".third-party-widget { display: grid; }"), std::string::npos);
+    EXPECT_EQ(classic.find("[data-jtml-app] .third-party-widget"), std::string::npos);
+    EXPECT_NE(classic.find("@raw\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("<third-party-widget data-mode=\\\"demo\\\"></third-party-widget>"), std::string::npos);
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("<style>"), std::string::npos);
+    EXPECT_NE(html.find(".third-party-widget iframe { border: 0; }"), std::string::npos);
+    EXPECT_NE(html.find("<third-party-widget data-mode=\"demo\"></third-party-widget>"), std::string::npos);
+    EXPECT_EQ(html.find("&lt;third-party-widget"), std::string::npos);
 }
 
 TEST(FriendlySyntax, ExportModifierIsErasedForClassicCompatibility) {
@@ -96,6 +131,7 @@ TEST(FriendlySyntax, ScopedStyleBlockLowersAndTranspiles) {
     ASSERT_TRUE(parser.getErrors().empty()) << classic;
 
     JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
     auto styleStart = html.find("<style>");
     auto styleEnd = html.find("</style>");
@@ -105,6 +141,53 @@ TEST(FriendlySyntax, ScopedStyleBlockLowersAndTranspiles) {
     EXPECT_NE(html.find("<body data-jtml-app>"), std::string::npos);
     EXPECT_NE(styleHtml.find("[data-jtml-app] .card:hover"), std::string::npos);
     EXPECT_EQ(styleHtml.find("{{"), std::string::npos);
+}
+
+TEST(FriendlySyntax, ThemeAndUiPrimitivesLowerToSemanticHtmlAndCss) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "theme\n"
+        "  color primary \"#155e75\"\n"
+        "  space md 14\n"
+        "  radius lg \"1rem\"\n"
+        "page\n"
+        "  shell align stretch\n"
+        "    sidebar\n"
+        "      navlink \"Home\" to \"/\" active-class \"active\"\n"
+        "    content\n"
+        "      panel title \"Usage\" pad lg shadow md width wide surface raised\n"
+        "        grid cols 2 gap md\n"
+        "          metric \"Users\" users.total \"Active\" tone good\n"
+        "          card tone primary\n"
+        "            h2 \"Ready\"\n");
+
+    EXPECT_NE(classic.find("@style\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("--jtml-color-primary: #155e75;"), std::string::npos);
+    EXPECT_NE(classic.find("--jtml-space-md: 14px;"), std::string::npos);
+    EXPECT_NE(classic.find("--jtml-radius-lg: 1rem;"), std::string::npos);
+    EXPECT_NE(classic.find("[data-jtml-app] .jtml-align-stretch"), std::string::npos);
+    EXPECT_NE(classic.find("[data-jtml-app] .jtml-width-wide"), std::string::npos);
+    EXPECT_NE(classic.find("[data-jtml-app] .jtml-surface-raised"), std::string::npos);
+    EXPECT_NE(classic.find("@div class=\"jtml-shell jtml-align-stretch\" data-jtml-ui=\"shell\"\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("@section class=\"jtml-panel jtml-pad-lg jtml-shadow-md jtml-width-wide jtml-surface-raised\" data-jtml-ui=\"panel\"\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("@h2 class=\"jtml-panel-title\"\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("@div class=\"jtml-grid jtml-cols-2 jtml-gap-md\" data-jtml-ui=\"grid\"\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("@article class=\"jtml-metric jtml-tone-good\" data-jtml-ui=\"metric\"\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("data-jtml-link=\"true\""), std::string::npos);
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("class=\"jtml-shell jtml-align-stretch\""), std::string::npos);
+    EXPECT_NE(html.find("class=\"jtml-metric jtml-tone-good\""), std::string::npos);
+    EXPECT_NE(html.find("--jtml-color-primary: #155e75;"), std::string::npos);
+    EXPECT_NE(html.find("[data-jtml-app] .jtml-panel"), std::string::npos);
 }
 
 TEST(FriendlySyntax, RoutesExpandToRoutedSectionsAndRuntime) {
@@ -138,6 +221,14 @@ TEST(FriendlySyntax, RoutesExpandToRoutedSectionsAndRuntime) {
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("data-jtml-route"), std::string::npos);
     EXPECT_NE(html.find("function applyRoutes()"), std::string::npos);
+    EXPECT_NE(html.find("const __jtml_routes = []"), std::string::npos);
+    EXPECT_NE(html.find("function collectRouteBindings()"), std::string::npos);
+    EXPECT_NE(html.find("window.jtml = Object.assign(window.jtml || {}, {"), std::string::npos);
+    EXPECT_NE(html.find("getRoutes: function ()"), std::string::npos);
+    EXPECT_NE(html.find("getCurrentRoute: function ()"), std::string::npos);
+    EXPECT_NE(html.find("navigate: function (path)"), std::string::npos);
+    EXPECT_NE(html.find("jtml:routes-ready"), std::string::npos);
+    EXPECT_NE(html.find("jtml:route-change"), std::string::npos);
     EXPECT_NE(html.find("hashchange"), std::string::npos);
 }
 
@@ -167,6 +258,52 @@ TEST(FriendlySyntax, RouteParamsBecomeClientStateBindings) {
     EXPECT_NE(html.find("data-jtml-expr=\"id\""), std::string::npos);
     EXPECT_NE(html.find("function matchRouteParams"), std::string::npos);
     EXPECT_NE(html.find("clientState[name]"), std::string::npos);
+    EXPECT_NE(html.find("clientState['activeRouteName'] = record.name"), std::string::npos);
+    EXPECT_NE(html.find("params: Object.assign({}, params)"), std::string::npos);
+}
+
+TEST(FriendlySyntax, BrowserLocalManifestCarriesRouteTable) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "let users = fetch \"/api/users\" lazy\n"
+        "route \"/\" as Home\n"
+        "route \"/user/:id\" as UserProfile load users\n"
+        "make Home\n"
+        "  page\n"
+        "    h1 \"Home\"\n"
+        "make UserProfile id\n"
+        "  page\n"
+        "    show id\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+
+    EXPECT_NE(html.find("\"routes\":[{\"path\":\"/\",\"name\":\"Home\",\"params\":[],\"load\":[]}"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("{\"path\":\"/user/:id\",\"name\":\"UserProfile\",\"params\":[\"id\"],\"load\":[\"users\"]}"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("\"fetches\":[{\"name\":\"users\",\"url\":\"/api/users\",\"method\":\"GET\""),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("\"lazy\":true"), std::string::npos) << html;
+    EXPECT_NE(html.find("routeManifest: routeManifest"), std::string::npos) << html;
+    EXPECT_NE(html.find("fetchManifest: fetchManifest"), std::string::npos) << html;
+    EXPECT_NE(html.find("const manifestRoutes = (window.jtml && Array.isArray(window.jtml.routeManifest))"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const manifestFetches = (window.jtml && Array.isArray(window.jtml.fetchManifest))"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("registerFetchBinding(fetch, !!fetch.lazy)"), std::string::npos) << html;
+    EXPECT_NE(html.find("if (manifestRoutes.length)"), std::string::npos) << html;
+    EXPECT_NE(html.find("params: Array.isArray(manifest.params) ? manifest.params.slice() : []"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("collectRouteBindings();"), std::string::npos) << html;
 }
 
 TEST(FriendlySyntax, RouteAwareLinksLowerToHashLinks) {
@@ -204,7 +341,8 @@ TEST(FriendlySyntax, RouteCanLoadLazyFetchesWhenMatched) {
 
     JtmlTranspiler transpiler;
     std::string html = transpiler.transpile(program);
-    EXPECT_NE(html.find("const lazy = marker.getAttribute('data-lazy') === 'true'"), std::string::npos);
+    EXPECT_NE(html.find("function registerFetchBinding(record, lazy)"), std::string::npos);
+    EXPECT_NE(html.find("}, marker.getAttribute('data-lazy') === 'true');"), std::string::npos);
     EXPECT_NE(html.find("if (!lazy) __jtml_fetch_fns[name]()"), std::string::npos);
     EXPECT_NE(html.find("function runRouteLoads(route)"), std::string::npos);
     EXPECT_NE(html.find("runRouteLoads(route)"), std::string::npos);
@@ -312,7 +450,7 @@ TEST(FriendlySyntax, FetchDeclarationsExposeClientRuntimeBindings) {
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("data-jtml-fetch=\"users\""), std::string::npos);
     EXPECT_NE(html.find("data-url=\"/api/users\""), std::string::npos);
-    EXPECT_NE(html.find("data-jtml-expr=\"(users.error)\""), std::string::npos);
+    EXPECT_NE(html.find("data-jtml-expr=\"users.error\""), std::string::npos);
     EXPECT_NE(html.find("data-jtml-cond-expr=\"(users.loading)\""), std::string::npos);
     EXPECT_NE(html.find("data-jtml-for-expr=&quot;(users.data)&quot;"), std::string::npos);
     EXPECT_NE(html.find("function startFetchBindings()"), std::string::npos);
@@ -412,10 +550,30 @@ TEST(FriendlySyntax, FetchDeclarationsSupportTimeoutRetryAndStalePolicy) {
     ASSERT_TRUE(parser.getErrors().empty()) << classic;
 
     JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("\"fetches\":[{\"name\":\"users\",\"url\":\"/api/users\",\"method\":\"GET\""),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("\"timeoutMs\":\"2500\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"retryCount\":\"2\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"stalePolicy\":\"keep\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"refreshAction\":\"reloadUsers\""), std::string::npos) << html;
     EXPECT_NE(html.find("new AbortController()"), std::string::npos);
     EXPECT_NE(html.find("maxRetries"), std::string::npos);
     EXPECT_NE(html.find("stalePolicy === 'keep'"), std::string::npos);
+    EXPECT_NE(html.find("function createFetchState(previous, patch)"), std::string::npos);
+    EXPECT_NE(html.find("status: 0"), std::string::npos);
+    EXPECT_NE(html.find("ok: false"), std::string::npos);
+    EXPECT_NE(html.find("hasData: false"), std::string::npos);
+    EXPECT_NE(html.find("const hasPreviousData = !!previous.hasData"), std::string::npos);
+    EXPECT_NE(html.find("updatedAt: 0"), std::string::npos);
+    EXPECT_NE(html.find("status: response.status"), std::string::npos);
+    EXPECT_NE(html.find("ok: true"), std::string::npos);
+    EXPECT_NE(html.find("hasData: true"), std::string::npos);
+    EXPECT_NE(html.find("updatedAt: Date.now()"), std::string::npos);
+    EXPECT_NE(html.find("stale: keepStale && hasPreviousData"), std::string::npos);
+    EXPECT_NE(html.find("refreshFetch: function (name)"), std::string::npos);
+    EXPECT_NE(html.find("Unknown JTML fetch: "), std::string::npos);
 }
 
 TEST(FriendlySyntax, InvalidateRefreshesFetchAfterActionDispatch) {
@@ -550,6 +708,28 @@ TEST(FriendlySyntax, PageElementsEventsAndInputLowerToClassic) {
               std::string::npos);
     EXPECT_NE(classic.find("@button onClick=save()\\\\"), std::string::npos);
     EXPECT_NE(classic.find("function setEmail(value)\\\\"), std::string::npos);
+}
+
+TEST(FriendlySyntax, ReadableEventAliasesLowerToClassicEvents) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "when handleKey\n"
+        "  show \"key\"\n"
+        "when handleDouble\n"
+        "  show \"double\"\n"
+        "when handleDrop\n"
+        "  show \"drop\"\n"
+        "page\n"
+        "  input \"Search\" key-down handleKey\n"
+        "  button \"Open\" double-click handleDouble\n"
+        "  dropzone \"Drop\" dragover handleDrop\n");
+
+    EXPECT_NE(classic.find("@input placeholder=\"Search\" onKeyDown=handleKey()\\\\"),
+              std::string::npos) << classic;
+    EXPECT_NE(classic.find("@button onDblClick=handleDouble()\\\\"), std::string::npos)
+        << classic;
+    EXPECT_NE(classic.find("data-jtml-dropzone=\"true\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("onDragOver=handleDrop()"), std::string::npos) << classic;
 }
 
 TEST(FriendlySyntax, InterpolatedStringsLowerToConcatenation) {
@@ -996,6 +1176,83 @@ TEST(FriendlySyntax, Scene3DLowersToCanvasMountWithFallbackRuntime) {
     EXPECT_NE(html.find("window.jtml3d.render(canvas, spec)"), std::string::npos);
 }
 
+TEST(FriendlySyntax, BrowserLocalRuntimeAppliesReactiveAttributes) {
+    const std::string classic = normalizeOk(
+        "jtml 2\n"
+        "let selected = {preview: \"/avatar.png\", name: \"Avatar\"}\n"
+        "page\n"
+        "  image src selected.preview alt selected.name\n"
+        "  link \"Profile\" href selected.preview title selected.name\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    const std::string html = transpiler.transpile(program);
+
+    EXPECT_NE(html.find("data-jtml-attr-src-expr=\"selected.preview\""), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-attr-alt-expr=\"selected.name\""), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-attr-href-expr=\"selected.preview\""), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-attr-title-expr=\"selected.name\""), std::string::npos) << html;
+    EXPECT_NE(html.find("function applyClientAttributes()"), std::string::npos) << html;
+    EXPECT_NE(html.find("applyClientAttributes();"), std::string::npos) << html;
+    EXPECT_NE(html.find("const browserLocalRuntime = true;"), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, BrowserLocalRuntimeEvaluatesLogicalExpressions) {
+    const std::string classic = normalizeOk(
+        "jtml 2\n"
+        "let ready = true\n"
+        "let blocked = false\n"
+        "page\n"
+        "  if ready && !blocked\n"
+        "    text \"Ready\"\n"
+        "  else\n"
+        "    text \"Blocked\"\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    const std::string html = transpiler.transpile(program);
+
+    EXPECT_NE(html.find("data-jtml-cond-expr=\"(ready &amp;&amp; (! blocked))\""), std::string::npos) << html;
+    EXPECT_NE(html.find("splitTopLevelToken(expr, '||')"), std::string::npos) << html;
+    EXPECT_NE(html.find("splitTopLevelToken(expr, '&&')"), std::string::npos) << html;
+    EXPECT_NE(html.find("value: !part.value"), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, BrowserLocalImageProcessingWritesObservableState) {
+    const std::string classic = normalizeOk(
+        "jtml 2\n"
+        "let photo = {preview: \"/photo.png\", name: \"Photo\"}\n"
+        "let thumb = image photo resize 128 128 fit cover\n"
+        "page\n"
+        "  image src thumb.preview alt \"Thumbnail\"\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    const std::string html = transpiler.transpile(program);
+
+    EXPECT_NE(html.find("data-jtml-image-proc=\"resize\""), std::string::npos) << html;
+    EXPECT_NE(html.find("assignClientPath(into, { preview: preview"), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-attr-src-expr=\"thumb.preview\""), std::string::npos) << html;
+}
+
 // ---------------------------------------------------------------------------
 // Select / Option Elements
 // ---------------------------------------------------------------------------
@@ -1222,7 +1479,17 @@ TEST(FriendlySyntax, ComponentExpansionAddsInstanceMarker) {
     ASSERT_TRUE(parser.getErrors().empty()) << classic;
 
     JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("\"componentDefinitions\":[{\"name\":\"Badge\",\"params\":[\"label\"]"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("\"componentInstances\":[{\"id\":\"Badge_"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"component\":\"Badge\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"params\":{\"label\":\"Gold\"}"), std::string::npos) << html;
+    EXPECT_NE(html.find("const componentDefinitionManifest = Array.isArray(manifest.componentDefinitions)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const manifestInstances = (window.jtml && Array.isArray(window.jtml.componentInstanceManifest))"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("window.__jtml_component_definitions"), std::string::npos);
     EXPECT_NE(html.find("getComponentDefinitions"), std::string::npos);
     EXPECT_NE(html.find("findComponentDefinition"), std::string::npos);
@@ -1277,6 +1544,22 @@ TEST(FriendlySyntax, ComponentMetadataListsIsolatedLocals) {
     EXPECT_NE(html.find("function scanComponentInstances()"), std::string::npos);
     EXPECT_NE(html.find("window.__jtml_components = componentInstances"), std::string::npos);
     EXPECT_NE(html.find("jtml:components-ready"), std::string::npos);
+}
+
+TEST(FriendlySyntax, ComponentLocalUnaryExpressionsAreIsolated) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Toggle\n"
+        "  let open = true\n"
+        "  when flip\n"
+        "    open = !open\n"
+        "  button \"Flip\" click flip\n"
+        "page\n"
+        "  Toggle\n");
+
+    EXPECT_NE(classic.find("__Toggle_1_open = !__Toggle_1_open"), std::string::npos)
+        << classic;
+    EXPECT_EQ(classic.find("open = (! open)"), std::string::npos) << classic;
 }
 
 TEST(FriendlySyntax, InterpreterRegistersComponentInstancesAndLocalState) {
@@ -1535,6 +1818,100 @@ TEST(FriendlyEffect, EffectBodyMutatesOuterVariableAndPropagates) {
     auto updated = nlohmann::json::parse(updatedJson);
     EXPECT_EQ(updated["state"]["count"], 1) << updated.dump(2);
     EXPECT_EQ(updated["state"]["last"], "Count changed to 1") << updated.dump(2);
+}
+
+TEST(FriendlySyntax, BrowserLocalRuntimeEmitsStateDerivedAndActionManifest) {
+    const std::string src =
+        "jtml 2\n"
+        "\n"
+        "let count = 0\n"
+        "get label = \"Count {count}\"\n"
+        "\n"
+        "when add\n"
+        "  count += 1\n"
+        "\n"
+        "page\n"
+        "  text label\n"
+        "  button \"Add\" click add\n";
+
+    std::string classic = jtml::normalizeSourceSyntax(src, jtml::SyntaxMode::Friendly);
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+
+    EXPECT_NE(html.find("id=\"__jtml_client_manifest\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"state\":{\"count\":\"0.000000000000000\"}"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"derived\":{\"label\":\"(\\\"Count \\\" + count)\"}"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"actions\":{\"add\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"kind\":\"assign\""), std::string::npos) << html;
+    EXPECT_NE(html.find("const browserLocalRuntime = true;"), std::string::npos) << html;
+    EXPECT_NE(html.find("executeClientAction(fnName"), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-expr=\"&quot;Add&quot;\""), std::string::npos) << html;
+}
+
+TEST(FriendlyMedia, FileInputEventCarriesObjectState) {
+    const std::string src =
+        "jtml 2\n"
+        "\n"
+        "let selectedImage = \"\"\n"
+        "\n"
+        "page\n"
+        "  file \"Choose image\" accept \"image/*\" into selectedImage\n"
+        "  if selectedImage\n"
+        "    p \"Selected: {selectedImage.name}\"\n";
+
+    std::string classic = jtml::normalizeSourceSyntax(src, jtml::SyntaxMode::Friendly);
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    std::string html = transpiler.transpile(program);
+
+    const std::string marker = "sendEvent('";
+    const auto pos = html.find(marker);
+    ASSERT_NE(pos, std::string::npos) << html;
+    const auto idStart = pos + marker.size();
+    const auto idEnd = html.find('\'', idStart);
+    ASSERT_NE(idEnd, std::string::npos) << html;
+    const std::string elementId = html.substr(idStart, idEnd - idStart);
+
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(transpiler, config);
+    interpreter.interpret(program);
+
+    std::string updatedJson;
+    std::string error;
+    ASSERT_TRUE(interpreter.dispatchEvent(
+        elementId,
+        "onChange",
+        nlohmann::json::array({
+            "setSelectedImage()",
+            {
+                {"name", "edp-logo.png"},
+                {"type", "image/png"},
+                {"size", 1234},
+                {"preview", "blob:jtml-preview"},
+            },
+        }),
+        updatedJson,
+        error)) << error;
+
+    auto updated = nlohmann::json::parse(updatedJson);
+    ASSERT_TRUE(updated["state"]["selectedImage"].is_object()) << updated.dump(2);
+    EXPECT_EQ(updated["state"]["selectedImage"]["name"], "edp-logo.png") << updated.dump(2);
+    EXPECT_EQ(updated["state"]["selectedImage"]["preview"], "blob:jtml-preview") << updated.dump(2);
 }
 
 } // namespace

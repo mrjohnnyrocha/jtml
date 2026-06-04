@@ -9,6 +9,7 @@
 #include "jtml/fix.h"
 #include "jtml/formatter.h"
 #include "jtml/friendly_formatter.h"
+#include "jtml/language_catalog.h"
 #include "jtml/linter.h"
 #include "jtml/module_resolver.h"
 #include "jtml/refactor.h"
@@ -25,6 +26,7 @@
 #include <map>
 #include <optional>
 #include <regex>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -310,49 +312,54 @@ nlohmann::json completionItem(const std::string& label,
 
 nlohmann::json completionItems() {
     nlohmann::json items = nlohmann::json::array();
+    std::set<std::string> seenLabels;
+    auto pushItem = [&](const std::string& label,
+                        int kind,
+                        const std::string& detail,
+                        const std::string& insertText = "",
+                        bool snippet = false) {
+        if (!seenLabels.insert(label).second) return;
+        items.push_back(completionItem(label, kind, detail, insertText, snippet));
+    };
+
     items.push_back(completionItem(
         "jtml 2", 14, "Friendly JTML file header", "jtml 2\n\n$0", true));
-    items.push_back(completionItem(
-        "page", 14, "Root page block", "page\n  $0", true));
-    items.push_back(completionItem(
-        "let", 14, "Reactive state declaration", "let ${1:name} = ${2:value}", true));
-    items.push_back(completionItem(
-        "get", 14, "Derived value declaration", "get ${1:name} = ${2:expression}", true));
-    items.push_back(completionItem(
-        "when", 14, "Action declaration", "when ${1:save}\n  $0", true));
-    items.push_back(completionItem(
-        "make", 14, "Component declaration", "make ${1:Card} ${2:title}\n  box class \"${3:card}\"\n    h2 ${2:title}\n    slot", true));
-    items.push_back(completionItem(
-        "export make", 14, "Public module component", "export make ${1:Card} ${2:title}\n  box class \"${3:card}\"\n    h2 ${2:title}\n    slot", true));
-    items.push_back(completionItem(
-        "route", 14, "Client-side route", "route \"${1:/}\" as ${2:Home}", true));
-    items.push_back(completionItem(
-        "route layout", 15, "Route wrapped in a shared layout", "route \"${1:/}\" as ${2:Home} layout ${3:AppLayout}", true));
-    items.push_back(completionItem(
-        "route load", 15, "Route-level lazy data load", "route \"${1:/items}\" as ${2:Items} load ${3:items}", true));
-    items.push_back(completionItem(
-        "fetch", 14, "Reactive async data", "let ${1:items} = fetch \"${2:/api/items}\" timeout ${3:2500} retry ${4:2} stale keep refresh ${5:reloadItems}", true));
-    items.push_back(completionItem(
-        "fetch lazy", 15, "Lazy route-loaded fetch", "let ${1:items} = fetch \"${2:/api/items}\" lazy stale keep", true));
-    items.push_back(completionItem(
-        "invalidate", 14, "Refresh fetch after action", "invalidate ${1:items}", true));
-    items.push_back(completionItem(
-        "store", 14, "Shared store declaration", "store ${1:auth}\n  let ${2:user} = \"\"\n\n  when ${3:logout}\n    let ${2:user} = \"\"", true));
-    items.push_back(completionItem(
-        "effect", 14, "Reactive side effect", "effect ${1:value}\n  $0", true));
-    items.push_back(completionItem(
-        "style", 14, "Scoped CSS block", "style\n  .${1:card}\n    padding: 16px", true));
-    items.push_back(completionItem(
-        "extern", 14, "Browser host action", "extern ${1:notify} from \"${2:host.notify}\"", true));
-    items.push_back(completionItem(
-        "input into", 15, "Input bound into state", "input \"${1:Label}\" into ${2:value}", true));
-    items.push_back(completionItem(
-        "link to", 15, "Route link", "link \"${1:Home}\" to \"${2:/}\" active-class \"${3:active}\"", true));
+    pushItem("page", 14, "Root page block", "page\n  $0", true);
+    pushItem("let", 14, "Reactive state declaration", "let ${1:name} = ${2:value}", true);
+    pushItem("get", 14, "Derived value declaration", "get ${1:name} = ${2:expression}", true);
+    pushItem("when", 14, "Action declaration", "when ${1:save}\n  $0", true);
+    pushItem("make", 14, "Component declaration", "make ${1:Card} ${2:title}\n  box class \"${3:card}\"\n    h2 ${2:title}\n    slot", true);
+    pushItem("export make", 14, "Public module component", "export make ${1:Card} ${2:title}\n  box class \"${3:card}\"\n    h2 ${2:title}\n    slot", true);
+    pushItem("route", 14, "Client-side route", "route \"${1:/}\" as ${2:Home}", true);
+    pushItem("route layout", 15, "Route wrapped in a shared layout", "route \"${1:/}\" as ${2:Home} layout ${3:AppLayout}", true);
+    pushItem("route load", 15, "Route-level lazy data load", "route \"${1:/items}\" as ${2:Items} load ${3:items}", true);
+    pushItem("fetch", 14, "Reactive async data", "let ${1:items} = fetch \"${2:/api/items}\" timeout ${3:2500} retry ${4:2} stale keep refresh ${5:reloadItems}", true);
+    pushItem("fetch lazy", 15, "Lazy route-loaded fetch", "let ${1:items} = fetch \"${2:/api/items}\" lazy stale keep", true);
+    pushItem("invalidate", 14, "Refresh fetch after action", "invalidate ${1:items}", true);
+    pushItem("store", 14, "Shared store declaration", "store ${1:auth}\n  let ${2:user} = \"\"\n\n  when ${3:logout}\n    let ${2:user} = \"\"", true);
+    pushItem("effect", 14, "Reactive side effect", "effect ${1:value}\n  $0", true);
+    pushItem("style", 14, "Scoped CSS block", "style\n  .${1:card}\n    padding: 16px", true);
+    pushItem("css raw", 15, "Unscoped raw CSS escape hatch", "css raw\n  ${1:.third-party-widget { display: block; }}", true);
+    pushItem("html raw", 15, "Raw HTML escape hatch", "html raw \"${1:<third-party-widget></third-party-widget>}\"", true);
+    pushItem("theme", 14, "Semantic theme tokens", "theme\n  color primary \"${1:#155e75}\"\n  space md ${2:14}\n  radius md ${3:12}", true);
+    pushItem("panel", 14, "Semantic panel", "panel title \"${1:Title}\" pad lg shadow md\n  $0", true);
+    pushItem("grid", 14, "Semantic grid", "grid cols ${1:3} gap md\n  $0", true);
+    pushItem("metric", 14, "Dashboard metric primitive", "metric \"${1:Users}\" ${2:value} \"${3:Active}\" tone ${4:good}", true);
+    pushItem("extern", 14, "Browser host action", "extern ${1:notify} from \"${2:host.notify}\"", true);
+    pushItem("input into", 15, "Input bound into state", "input \"${1:Label}\" into ${2:value}", true);
+    pushItem("link to", 15, "Route link", "link \"${1:Home}\" to \"${2:/}\" active-class \"${3:active}\"", true);
+
+    for (const auto& group : jtml::languageCatalog().friendlyGroups) {
+        for (const auto& keyword : group.keywords) {
+            pushItem(keyword, 14, "Friendly JTML 2 keyword: " + group.area);
+        }
+    }
 
     for (const std::string& tag : {
              "box", "text", "h1", "h2", "h3", "p", "button", "form", "section",
-             "article", "nav", "list", "item", "image", "video", "audio"}) {
-        items.push_back(completionItem(tag, 10, "Friendly element shorthand"));
+             "article", "nav", "list", "item", "image", "video", "audio",
+             "shell", "sidebar", "content", "card", "stack", "cluster", "alert", "badge"}) {
+        pushItem(tag, 10, "Friendly element shorthand");
     }
     return items;
 }
@@ -375,12 +382,29 @@ std::map<std::string, std::string> hoverDocs() {
         {"store", "`store name` groups shared state and namespaced actions."},
         {"effect", "`effect value` runs when a reactive value changes."},
         {"style", "`style` declares scoped CSS for the page."},
+        {"css", "`css raw` emits explicit unscoped CSS for third-party or host integration."},
+        {"html", "`html raw` emits explicit raw HTML for custom elements and host widgets."},
+        {"raw", "`raw` marks an explicit web-platform escape hatch; prefer semantic JTML first."},
+        {"theme", "`theme` declares semantic color, spacing, radius, shadow, and font tokens."},
+        {"panel", "`panel title \"...\"` creates a styled semantic section."},
+        {"grid", "`grid cols 3 gap md` lays out child content with semantic utility modifiers."},
+        {"metric", "`metric \"Label\" value \"Caption\" tone good` creates a dashboard metric."},
         {"extern", "`extern action from \"host.path\"` calls a browser-provided host function."},
         {"guard", "`guard \"/path\" require value else \"/login\"` protects a route."},
         {"redirect", "`redirect \"/path\"` navigates to a route from an action."},
         {"invalidate", "`invalidate name` refreshes a named fetch after the current action dispatches."},
         {"activeRoute", "`activeRoute` is the current normalized route path."},
+        {"activeRouteName", "`activeRouteName` is the name of the matched route component."},
         {"into", "`input \"Label\" into value` binds browser input into JTML state."},
+        {"click", "`click action` binds a browser click event to a JTML action."},
+        {"input", "`input` is both an element name and an input-event shorthand depending on position."},
+        {"change", "`change action` binds a browser change event to a JTML action."},
+        {"submit", "`submit action` binds a form submit event to a JTML action."},
+        {"key-down", "`key-down action` binds a keydown event; `keydown` is also accepted."},
+        {"key-up", "`key-up action` binds a keyup event; `keyup` is also accepted."},
+        {"double-click", "`double-click action` binds a double-click event; `dblclick` is also accepted."},
+        {"dragover", "`dragover action` binds a drag-over event, useful for dropzones."},
+        {"drop", "`drop action` binds a drop event, useful for custom media workflows."},
     };
 }
 

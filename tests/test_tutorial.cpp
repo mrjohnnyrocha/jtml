@@ -100,4 +100,25 @@ TEST(Tutorial, EveryLessonParsesAndLintsAndFormatsIdempotently) {
     EXPECT_GT(checked, 0) << "no lessons were exercised";
 }
 
+TEST(Tutorial, EveryLessonPlacesPlaygroundInTheNarrative) {
+    namespace fs = std::filesystem;
+    int checked = 0;
+    for (const auto& entry : fs::directory_iterator(tutorialDir())) {
+        if (!entry.is_directory()) continue;
+        fs::path lessonPath = entry.path() / "lesson.md";
+        if (!fs::exists(lessonPath)) continue;
+        const std::string slug = entry.path().filename().string();
+        const std::string prose = readFile(lessonPath);
+        const auto marker = prose.find("<!-- studio:playground -->");
+        ASSERT_NE(marker, std::string::npos)
+            << slug << ": lesson prose must mark where the live code/preview belongs";
+        EXPECT_GT(marker, prose.find('\n'))
+            << slug << ": intro prose should appear before the live playground marker";
+        EXPECT_GT(prose.size(), marker + std::string("<!-- studio:playground -->").size() + 20)
+            << slug << ": follow-up learning notes should appear after the playground";
+        ++checked;
+    }
+    EXPECT_GT(checked, 0) << "no lesson prose files were exercised";
+}
+
 } // namespace

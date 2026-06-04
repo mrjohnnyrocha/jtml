@@ -1,10 +1,23 @@
 # JTML Roadmap
 
-JTML should be a tiny, Friendly-first reactive HTML language for small
-interactive pages, prototypes, teaching, AI-authored apps, and server-backed
-UI. It should stay smaller and more auditable than React/Vue/Angular stacks,
-while covering the production basics: data loading, routing, scoped styles,
-components, media/graphics, tooling, Studio, and static/live deployment.
+JTML should be an observable-first UI language over the full web platform:
+apps read like documents but behave like reactive software. Friendly JTML is
+the default authoring dialect, Classic remains the compatibility/lowering
+layer, and WebSocket/live rendering is one backend rather than the definition
+of the language.
+
+The durable architecture target is:
+
+```text
+Friendly JTML -> typed AST -> semantic IR -> observable graph -> backends
+```
+
+Backends should include static HTML, browser-local JavaScript runtime, live
+server/WebSocket runtime, custom elements, and framework exports. The full
+architecture thesis lives in
+[`docs/architecture/observable-first-architecture-roadmap.md`](docs/architecture/observable-first-architecture-roadmap.md).
+The near-term implementation order lives in
+[`docs/roadmaps/next-priorities.md`](docs/roadmaps/next-priorities.md).
 
 ## Phase 1: Try It In Five Minutes
 
@@ -46,20 +59,25 @@ components, media/graphics, tooling, Studio, and static/live deployment.
 - A test command that runs example smoke tests. ✅ — `jtml test` parses, lints, and transpiles every bundled example.
 - Watch mode for rebuild/reload: `jtml serve <file> --watch` ✅ — polls the source, re-transpiles on change, hot-swaps interpreter state, broadcasts `{"type":"reload"}` to every connected browser.
 - Version introspection: `jtml --version` ✅
+- Language catalog introspection: `jtml keywords [--json]` ✅
 
 ## Phase 5: End-User Distribution
 
 - Installable CLI. ✅ — `cmake --install` plus CPack `.tar.gz` packaging.
-- Versioned language reference. ✅ — `docs/language-reference.md` and `site/reference.html`.
+- Versioned language reference. ✅ — `docs/reference/language-reference.md` and `site/reference.html`.
+- Canonical mini-reference. ✅ — `jtml keywords` / `jtml keywords --json`
+  expose the Friendly JTML 2 keyword catalog; README, reference docs, Studio,
+  VS Code grammar, and LSP completions are guarded against drift.
 - Example gallery. ✅ — `site/examples.html`.
-- Minimal deployment story for static transpiled pages and live server-backed pages. ✅ — `docs/deployment.md` and `site/deploy.html`.
+- Minimal deployment story for static transpiled pages and live server-backed pages. ✅ — `docs/tooling/deployment.md` and `site/deploy.html`.
 - Local-first package/dev workflow. ✅ — `jtml new app`, `jtml add`,
   `jtml install`, `jtml dev <file|app/>`, `jtml build <file|app/> --out dist`.
 
 ## Phase 6: Production Language And Studio
 
-- `fetch` with loading/data/error/stale/attempts, retry, timeout, refresh,
-  lazy loading, and invalidation. ✅
+- `fetch` with loading/data/error/stale/attempts/hasData plus browser-local
+  metadata (`status`, `ok`, `url`, `method`, `updatedAt`), retry, timeout,
+  refresh, lazy loading, and invalidation. ✅
 - Hash routing with params, wildcard fallback, layout, route load hooks,
   active links, guards, and `activeRoute`. ✅
 - Scoped Friendly `style` blocks under `[data-jtml-app]`. ✅
@@ -89,13 +107,54 @@ components, media/graphics, tooling, Studio, and static/live deployment.
 
 ## Current Focus
 
-The current focus is production hardening: keep Friendly JTML as the only
-default authoring dialect, keep Classic as a stable compatibility layer, make
-every bundled example/tutorial/doc match the AI authoring contract, and continue
-tightening component/runtime semantics until larger apps feel boringly reliable.
-The next competitiveness lane is deepening media and graphics: asset input,
-media state, charts, diagrams, `scene3d` host packages, and declarative visuals
-that remain readable, portable, and AI-friendly.
+The current focus is the semantic-core transition:
+
+- P0 semantic correctness: typed AST tightening, explicit attribute
+  classification, literal/reactive separation, source spans, and source-first
+  diagnostics. ✅ First slice: `JtmlAttributeKind` now classifies
+  literal/boolean/reactive/event/special/passthrough attributes before
+  transpiler/interpreter runtime binding.
+- P1 observable graph: make `jtml explain` consume a real semantic model rather
+  than ad-hoc parser guesses. ✅ First slice: state/constants/derived/actions,
+  fetches, routes, effects, stores, components, imports, attribute kinds, and
+  dependency edges are now emitted from `jtml::analyzeSemanticProgram`.
+  ✅ Cleanup slice: observable lint/explain warnings now come from
+  `analyzeSemanticUsage` instead of CLI source-token scans. ✅ Manifest slice:
+  route and fetch browser-local manifests are now emitted from
+  `semantic.routeRecords` / `semantic.fetchRecords`, with DOM markers retained
+  as compatibility fallbacks. ✅ Component graph slice: semantic explain now
+  exposes structured `componentDefinitions` and `componentInstances`, and the
+  browser component registry consumes those records before DOM marker fallback.
+  ✅ Live-backend alignment slice: the interpreter now registers runtime
+  component definitions/instances from the same semantic records first, using
+  lowered DOM marker scans only as a compatibility fallback.
+- P2 component instances: keep the existing metadata bridge stable while moving
+  beyond source expansion as the semantic truth.
+- P3 semantic styling: ✅ First slice. `theme`, UI primitives, utility
+  modifiers, generated stylesheet, semantic primitive/theme counts, and raw
+  CSS escape hatch are now available. Next: lints, richer primitives, and
+  Studio sample migration.
+- P4 browser-local production runtime: `jtml build --target browser --out dist`
+  should run local reactivity without WebSockets.
+- P5 live backend on the same graph: `jtml serve` remains valuable for Studio,
+  tutorials, internal tools, and server-owned state, but shares semantics with
+  browser-local build.
+- P6 interop and escape hatches: formalize `extern`, raw HTML/CSS, canvas/SVG,
+  custom elements, WebGL/Three.js, and framework/package boundaries after the
+  browser-local runtime has a stable backend contract.
+
+Priority order after the semantic usage cleanup is:
+
+1. Semantic styling and UI primitives.
+2. Browser-local production runtime.
+3. Interop and full web-platform escape hatches.
+4. Direct component-instance semantics where those slices expose weak ownership.
+5. Studio/docs hardening on top of the same semantics.
+
+In parallel, keep Friendly JTML as the only default authoring dialect, keep the
+Classic-compatible backend stable for migration/embedding/artifacts, make every bundled
+example/tutorial/doc match the AI authoring contract, and continue tightening
+component/runtime semantics until larger apps feel boringly reliable.
 
 The shareable documentation map lives in `docs/README.md`. Feature documents
 should use the same status language as this roadmap: implemented, first slice,

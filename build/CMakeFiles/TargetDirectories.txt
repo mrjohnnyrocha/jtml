@@ -1,5 +1,6 @@
 /Users/joaorocha/Documents/jtml-v1/build/CMakeFiles/jtml_core.dir
 /Users/joaorocha/Documents/jtml-v1/build/CMakeFiles/jtml_c.dir
+/Users/joaorocha/Documents/jtml-v1/build/CMakeFiles/jtml_cli_lib.dir
 /Users/joaorocha/Documents/jtml-v1/build/CMakeFiles/jtml_cli.dir
 /Users/joaorocha/Documents/jtml-v1/build/CMakeFiles/package.dir
 /Users/joaorocha/Documents/jtml-v1/build/CMakeFiles/package_source.dir

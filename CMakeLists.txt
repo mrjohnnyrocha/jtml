@@ -42,18 +42,21 @@ endif()
 # ---------------------------------------------------------------------------
 set(JTML_CORE_SOURCES
     src/ast.cpp
+    src/attribute_classifier.cpp
     src/lexer.cpp
     src/parser.cpp
     src/diagnostic.cpp
     src/fix.cpp
     src/friendly.cpp
     src/friendly_formatter.cpp
+    src/language_catalog.cpp
     src/module_resolver.cpp
     src/interpreter.cpp
     src/transpiler.cpp
     src/formatter.cpp
     src/linter.cpp
     src/refactor.cpp
+    src/semantic.cpp
     src/environment.cpp
     src/array.cpp
     src/dict.cpp
@@ -88,8 +91,7 @@ jtml_apply_version_defs(jtml_c)
 # CLI binary — each command group has its own translation unit under `cli/`,
 # `main.cpp` does only dispatch.
 # ---------------------------------------------------------------------------
-set(JTML_CLI_SOURCES
-    cli/main.cpp
+set(JTML_CLI_LIB_SOURCES
     cli/util.cpp
     cli/diagnostic_json.cpp
     cli/cmd_basic.cpp
@@ -103,9 +105,12 @@ set(JTML_CLI_SOURCES
     cli/tutorial_shell.cpp
 )
 
-add_executable(jtml_cli ${JTML_CLI_SOURCES})
+add_library(jtml_cli_lib STATIC ${JTML_CLI_LIB_SOURCES})
+target_link_libraries(jtml_cli_lib PUBLIC jtml_core)
+
+add_executable(jtml_cli cli/main.cpp)
 set_target_properties(jtml_cli PROPERTIES OUTPUT_NAME jtml)
-target_link_libraries(jtml_cli PRIVATE jtml_core)
+target_link_libraries(jtml_cli PRIVATE jtml_cli_lib)
 jtml_apply_version_defs(jtml_cli)
 
 # ---------------------------------------------------------------------------

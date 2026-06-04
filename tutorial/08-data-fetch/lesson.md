@@ -2,6 +2,8 @@
 
 Real apps load data. Friendly JTML gives data loading a first-class form:
 
+<!-- studio:playground -->
+
 ```jtml
 let users = fetch "/api/users"
 ```

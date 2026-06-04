@@ -2,6 +2,8 @@
 
 This is canonical Friendly JTML. The header `jtml 2` enables the friendly dialect. `let` declares state, `page` is the root element, and `{name}` interpolates a value into a string.
 
+<!-- studio:playground -->
+
 The program below does three things:
 
 1. Declares a reactive variable `name` with `let`.

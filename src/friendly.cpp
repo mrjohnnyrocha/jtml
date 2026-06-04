@@ -111,6 +111,31 @@ std::string unquote(const std::string& token) {
     return isQuoted(token) ? token.substr(1, token.size() - 2) : token;
 }
 
+std::string unquoteRawPayload(const std::string& token) {
+    const std::string inner = unquote(token);
+    std::ostringstream out;
+    for (size_t i = 0; i < inner.size(); ++i) {
+        char ch = inner[i];
+        if (ch != '\\' || i + 1 >= inner.size()) {
+            out << ch;
+            continue;
+        }
+        const char next = inner[++i];
+        switch (next) {
+            case 'n': out << '\n'; break;
+            case 'r': out << '\r'; break;
+            case 't': out << '\t'; break;
+            case '"': out << '"'; break;
+            case '\'': out << '\''; break;
+            case '\\': out << '\\'; break;
+            default:
+                out << '\\' << next;
+                break;
+        }
+    }
+    return out.str();
+}
+
 std::string quote(const std::string& s) {
     std::ostringstream out;
     out << '"';
@@ -323,8 +348,9 @@ std::vector<Line> collectLines(const std::string& source) {
 
 const std::set<std::string>& eventNames() {
     static const std::set<std::string> names = {
-        "click", "input", "change", "keyup", "keydown", "hover", "scroll", "submit",
-        "dragover", "drop"
+        "click", "input", "change", "focus", "blur", "keyup", "keydown",
+        "key-up", "key-down", "hover", "scroll", "submit", "dragover", "drop",
+        "dblclick", "double-click"
     };
     return names;
 }
@@ -380,6 +406,7 @@ const std::map<std::string, ElementAlias>& elementAliases() {
         {"text",     {"p",      {}}},
         {"box",      {"div",    {}}},
         {"link",     {"a",      {}}},
+        {"navlink",  {"a",      {}}},
         {"image",    {"img",    {}}},
         {"embed",    {"iframe", {}}},
         {"graphic",  {"svg",    {{"role", "\"img\""}}}},
@@ -398,6 +425,378 @@ const std::map<std::string, ElementAlias>& elementAliases() {
     return aliases;
 }
 
+const std::map<std::string, std::pair<std::string, std::string>>& uiPrimitives() {
+    static const std::map<std::string, std::pair<std::string, std::string>> primitives = {
+        {"app",     {"main",    "jtml-app-shell"}},
+        {"shell",   {"div",     "jtml-shell"}},
+        {"topbar",  {"header",  "jtml-topbar"}},
+        {"sidebar", {"aside",   "jtml-sidebar"}},
+        {"content", {"section", "jtml-content"}},
+        {"panel",   {"section", "jtml-panel"}},
+        {"card",    {"article", "jtml-card"}},
+        {"grid",    {"div",     "jtml-grid"}},
+        {"stack",   {"div",     "jtml-stack"}},
+        {"cluster", {"div",     "jtml-cluster"}},
+        {"split",   {"div",     "jtml-split"}},
+        {"toolbar", {"div",     "jtml-toolbar"}},
+        {"tabs",    {"div",     "jtml-tabs"}},
+        {"tab",     {"button",  "jtml-tab"}},
+        {"alert",   {"div",     "jtml-alert"}},
+        {"badge",   {"span",    "jtml-badge"}},
+        {"modal",   {"section", "jtml-modal"}},
+        {"drawer",  {"aside",   "jtml-drawer"}},
+        {"toast",   {"div",     "jtml-toast"}},
+        {"loading", {"div",     "jtml-loading"}},
+        {"error",   {"div",     "jtml-error"}},
+        {"empty",   {"div",     "jtml-empty"}},
+        {"field",   {"label",   "jtml-field"}},
+        {"metric",  {"article", "jtml-metric"}},
+        {"spacer",  {"span",    "jtml-spacer"}},
+    };
+    return primitives;
+}
+
+bool isUiPrimitive(const std::string& tag) {
+    return uiPrimitives().count(tag) > 0;
+}
+
+std::string primitiveClass(const std::string& tag) {
+    auto it = uiPrimitives().find(tag);
+    return it == uiPrimitives().end() ? "" : it->second.second;
+}
+
+std::string appendClassToken(std::string existing, const std::string& token) {
+    if (token.empty()) return existing;
+    if (existing.empty()) return token;
+    return existing + " " + token;
+}
+
+std::string semanticUiStyles() {
+    return R"CSS([data-jtml-app] {
+  --jtml-color-primary: #2563eb;
+  --jtml-color-background: #f6f7fb;
+  --jtml-color-surface: #ffffff;
+  --jtml-color-text: #182033;
+  --jtml-color-muted: #64748b;
+  --jtml-color-good: #047857;
+  --jtml-color-warn: #b45309;
+  --jtml-color-danger: #b91c1c;
+  --jtml-space-xs: 4px;
+  --jtml-space-sm: 8px;
+  --jtml-space-md: 12px;
+  --jtml-space-lg: 18px;
+  --jtml-space-xl: 28px;
+  --jtml-radius-sm: 6px;
+  --jtml-radius-md: 10px;
+  --jtml-radius-lg: 16px;
+  --jtml-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --jtml-shadow-md: 0 10px 28px rgba(15, 23, 42, 0.10);
+  background: var(--jtml-color-background);
+  color: var(--jtml-color-text);
+}
+[data-jtml-app] .jtml-app-shell,
+[data-jtml-app] .jtml-content {
+  min-width: 0;
+}
+[data-jtml-app] .jtml-shell {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  min-height: 100vh;
+}
+[data-jtml-app] .jtml-topbar,
+[data-jtml-app] .jtml-toolbar,
+[data-jtml-app] .jtml-cluster {
+  display: flex;
+  align-items: center;
+  gap: var(--jtml-space-md);
+  flex-wrap: wrap;
+}
+[data-jtml-app] .jtml-sidebar {
+  border-right: 1px solid rgba(100, 116, 139, 0.22);
+  padding: var(--jtml-space-lg);
+  background: color-mix(in srgb, var(--jtml-color-surface) 88%, var(--jtml-color-background));
+}
+[data-jtml-app] .jtml-content {
+  padding: var(--jtml-space-xl);
+}
+[data-jtml-app] .jtml-panel,
+[data-jtml-app] .jtml-card,
+[data-jtml-app] .jtml-modal,
+[data-jtml-app] .jtml-drawer,
+[data-jtml-app] .jtml-toast {
+  background: var(--jtml-color-surface);
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  border-radius: var(--jtml-radius-md);
+  box-shadow: var(--jtml-shadow-sm);
+}
+[data-jtml-app] .jtml-panel,
+[data-jtml-app] .jtml-card {
+  padding: var(--jtml-space-lg);
+}
+[data-jtml-app] .jtml-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--jtml-space-md);
+}
+[data-jtml-app] .jtml-stack {
+  display: grid;
+  gap: var(--jtml-space-md);
+}
+[data-jtml-app] .jtml-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--jtml-space-lg);
+  align-items: start;
+}
+[data-jtml-app] .jtml-tabs {
+  display: flex;
+  gap: var(--jtml-space-sm);
+  border-bottom: 1px solid rgba(100, 116, 139, 0.24);
+}
+[data-jtml-app] .jtml-tab,
+[data-jtml-app] .jtml-navlink {
+  border: 0;
+  border-radius: var(--jtml-radius-sm);
+  padding: var(--jtml-space-sm) var(--jtml-space-md);
+  background: transparent;
+  color: inherit;
+  text-decoration: none;
+}
+[data-jtml-app] .jtml-tab:hover,
+[data-jtml-app] .jtml-navlink:hover {
+  background: rgba(37, 99, 235, 0.10);
+}
+[data-jtml-app] .jtml-alert,
+[data-jtml-app] .jtml-error,
+[data-jtml-app] .jtml-empty,
+[data-jtml-app] .jtml-loading {
+  padding: var(--jtml-space-md);
+  border-radius: var(--jtml-radius-md);
+}
+[data-jtml-app] .jtml-alert { background: rgba(37, 99, 235, 0.10); }
+[data-jtml-app] .jtml-error { background: rgba(185, 28, 28, 0.10); color: var(--jtml-color-danger); }
+[data-jtml-app] .jtml-empty,
+[data-jtml-app] .jtml-loading { color: var(--jtml-color-muted); background: rgba(100, 116, 139, 0.10); }
+[data-jtml-app] .jtml-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: rgba(100, 116, 139, 0.14);
+  font-size: 0.875em;
+}
+[data-jtml-app] .jtml-field {
+  display: grid;
+  gap: var(--jtml-space-xs);
+}
+[data-jtml-app] .jtml-metric {
+  display: grid;
+  gap: var(--jtml-space-xs);
+  padding: var(--jtml-space-lg);
+  background: var(--jtml-color-surface);
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  border-radius: var(--jtml-radius-md);
+  box-shadow: var(--jtml-shadow-sm);
+}
+[data-jtml-app] .jtml-metric-label,
+[data-jtml-app] .jtml-metric-caption {
+  color: var(--jtml-color-muted);
+}
+[data-jtml-app] .jtml-metric-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+[data-jtml-app] .jtml-spacer {
+  flex: 1 1 auto;
+}
+[data-jtml-app] .jtml-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+[data-jtml-app] .jtml-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+[data-jtml-app] .jtml-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+[data-jtml-app] .jtml-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+[data-jtml-app] .jtml-cols-auto { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+[data-jtml-app] .jtml-gap-none { gap: 0; }
+[data-jtml-app] .jtml-gap-xs { gap: var(--jtml-space-xs); }
+[data-jtml-app] .jtml-gap-sm { gap: var(--jtml-space-sm); }
+[data-jtml-app] .jtml-gap-md { gap: var(--jtml-space-md); }
+[data-jtml-app] .jtml-gap-lg { gap: var(--jtml-space-lg); }
+[data-jtml-app] .jtml-gap-xl { gap: var(--jtml-space-xl); }
+[data-jtml-app] .jtml-pad-none { padding: 0; }
+[data-jtml-app] .jtml-pad-xs { padding: var(--jtml-space-xs); }
+[data-jtml-app] .jtml-pad-sm { padding: var(--jtml-space-sm); }
+[data-jtml-app] .jtml-pad-md { padding: var(--jtml-space-md); }
+[data-jtml-app] .jtml-pad-lg { padding: var(--jtml-space-lg); }
+[data-jtml-app] .jtml-pad-xl { padding: var(--jtml-space-xl); }
+[data-jtml-app] .jtml-radius-none { border-radius: 0; }
+[data-jtml-app] .jtml-radius-sm { border-radius: var(--jtml-radius-sm); }
+[data-jtml-app] .jtml-radius-md { border-radius: var(--jtml-radius-md); }
+[data-jtml-app] .jtml-radius-lg { border-radius: var(--jtml-radius-lg); }
+[data-jtml-app] .jtml-radius-pill { border-radius: 999px; }
+[data-jtml-app] .jtml-shadow-none { box-shadow: none; }
+[data-jtml-app] .jtml-shadow-sm { box-shadow: var(--jtml-shadow-sm); }
+[data-jtml-app] .jtml-shadow-md { box-shadow: var(--jtml-shadow-md); }
+[data-jtml-app] .jtml-tone-primary { border-color: color-mix(in srgb, var(--jtml-color-primary) 40%, transparent); }
+[data-jtml-app] .jtml-tone-good { border-color: color-mix(in srgb, var(--jtml-color-good) 40%, transparent); }
+[data-jtml-app] .jtml-tone-warn { border-color: color-mix(in srgb, var(--jtml-color-warn) 40%, transparent); }
+[data-jtml-app] .jtml-tone-danger { border-color: color-mix(in srgb, var(--jtml-color-danger) 40%, transparent); }
+[data-jtml-app] .jtml-tone-primary .jtml-metric-value,
+[data-jtml-app] .jtml-tone-primary { color: var(--jtml-color-primary); }
+[data-jtml-app] .jtml-tone-good .jtml-metric-value { color: var(--jtml-color-good); }
+[data-jtml-app] .jtml-tone-warn .jtml-metric-value { color: var(--jtml-color-warn); }
+[data-jtml-app] .jtml-tone-danger .jtml-metric-value,
+[data-jtml-app] .jtml-tone-danger { color: var(--jtml-color-danger); }
+[data-jtml-app] .jtml-align-start { align-items: start; }
+[data-jtml-app] .jtml-align-center { align-items: center; }
+[data-jtml-app] .jtml-align-end { align-items: end; }
+[data-jtml-app] .jtml-align-stretch { align-items: stretch; }
+[data-jtml-app] .jtml-justify-start { justify-content: start; }
+[data-jtml-app] .jtml-justify-center { justify-content: center; }
+[data-jtml-app] .jtml-justify-end { justify-content: end; }
+[data-jtml-app] .jtml-justify-between { justify-content: space-between; }
+[data-jtml-app] .jtml-width-full { width: 100%; }
+[data-jtml-app] .jtml-width-content { width: fit-content; }
+[data-jtml-app] .jtml-width-narrow { max-width: 680px; }
+[data-jtml-app] .jtml-width-wide { max-width: 1180px; }
+[data-jtml-app] .jtml-surface-flat { box-shadow: none; }
+[data-jtml-app] .jtml-surface-raised { box-shadow: var(--jtml-shadow-md); }
+[data-jtml-app] .jtml-surface-inset { box-shadow: inset 0 1px 4px rgba(15, 23, 42, 0.12); }
+[data-jtml-app] .jtml-surface-dark {
+  background: #111827;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+@media (max-width: 760px) {
+  [data-jtml-app] .jtml-shell,
+  [data-jtml-app] .jtml-split {
+    grid-template-columns: 1fr;
+  }
+  [data-jtml-app] .jtml-cols-2,
+  [data-jtml-app] .jtml-cols-3,
+  [data-jtml-app] .jtml-cols-4 {
+    grid-template-columns: 1fr;
+  }
+}
+)CSS";
+}
+
+std::string cssTokenName(std::string name) {
+    for (char& ch : name) {
+        if (!std::isalnum(static_cast<unsigned char>(ch)) && ch != '-') ch = '-';
+        else ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    }
+    return name;
+}
+
+std::string cssValueToken(const std::string& token) {
+    return isQuoted(token) ? unquote(token) : token;
+}
+
+bool isBareNumber(const std::string& value) {
+    if (value.empty()) return false;
+    bool sawDigit = false;
+    bool sawDot = false;
+    size_t index = (value[0] == '-' || value[0] == '+') ? 1 : 0;
+    if (index >= value.size()) return false;
+    for (; index < value.size(); ++index) {
+        const char ch = value[index];
+        if (std::isdigit(static_cast<unsigned char>(ch))) {
+            sawDigit = true;
+            continue;
+        }
+        if (ch == '.' && !sawDot) {
+            sawDot = true;
+            continue;
+        }
+        return false;
+    }
+    return sawDigit;
+}
+
+std::string cssDimensionValue(const std::string& value) {
+    return isBareNumber(value) ? value + "px" : value;
+}
+
+std::string themeBlockToCss(const std::vector<Line>& lines, size_t begin, size_t end) {
+    std::ostringstream css;
+    css << "[data-jtml-app] {\n";
+    for (size_t i = begin; i < end; ++i) {
+        const auto tokens = splitTokens(lines[i].text);
+        if (tokens.size() < 3) continue;
+        const std::string kind = tokens[0];
+        const std::string name = cssTokenName(tokens[1]);
+        const std::string value = cssValueToken(joinTokens(tokens, 2));
+        if (kind == "color") {
+            css << "  --jtml-color-" << name << ": " << value << ";\n";
+        } else if (kind == "space") {
+            css << "  --jtml-space-" << name << ": " << cssDimensionValue(value) << ";\n";
+        } else if (kind == "radius") {
+            css << "  --jtml-radius-" << name << ": " << cssDimensionValue(value) << ";\n";
+        } else if (kind == "shadow") {
+            css << "  --jtml-shadow-" << name << ": " << value << ";\n";
+        } else if (kind == "font") {
+            css << "  --jtml-font-" << name << ": " << value << ";\n";
+        }
+    }
+    css << "}\n";
+    return css.str();
+}
+
+std::string semanticUiPreludeCss(const std::string& themeCss) {
+    std::ostringstream css;
+    css << semanticUiStyles();
+    if (!themeCss.empty()) css << "\n" << themeCss;
+    return css.str();
+}
+
+bool sourceUsesSemanticUi(const std::vector<Line>& lines) {
+    for (size_t i = 0; i < lines.size(); ++i) {
+        auto tokens = splitTokens(lines[i].text);
+        if (tokens.empty()) continue;
+        if (tokens[0] == "theme") return true;
+        if (isUiPrimitive(tokens[0])) return true;
+    }
+    return false;
+}
+
+size_t findBlockEnd(const std::vector<Line>& lines, size_t headerIndex);
+
+std::string collectThemeCss(const std::vector<Line>& lines) {
+    std::ostringstream css;
+    for (size_t i = 0; i < lines.size(); ++i) {
+        auto tokens = splitTokens(lines[i].text);
+        if (tokens.empty() || tokens[0] != "theme") continue;
+        if (i + 1 >= lines.size() || lines[i + 1].indent <= lines[i].indent) {
+            throw std::runtime_error("Expected indented token block after 'theme' at line " + std::to_string(lines[i].number));
+        }
+        const size_t end = findBlockEnd(lines, i);
+        css << themeBlockToCss(lines, i + 1, end);
+        i = end - 1;
+    }
+    return css.str();
+}
+
+bool isUtilityModifier(const std::string& key) {
+    static const std::set<std::string> names = {
+        "cols", "gap", "pad", "radius", "shadow", "tone",
+        "align", "justify", "width", "surface"
+    };
+    return names.count(key) > 0;
+}
+
+std::string utilityClass(const std::string& key, const std::string& value) {
+    std::string clean = cssTokenName(unquote(value));
+    if (key == "cols") return "jtml-cols-" + clean;
+    if (key == "gap") return "jtml-gap-" + clean;
+    if (key == "pad") return "jtml-pad-" + clean;
+    if (key == "radius") return "jtml-radius-" + clean;
+    if (key == "shadow") return "jtml-shadow-" + clean;
+    if (key == "tone") return "jtml-tone-" + clean;
+    if (key == "align") return "jtml-align-" + clean;
+    if (key == "justify") return "jtml-justify-" + clean;
+    if (key == "width") return "jtml-width-" + clean;
+    if (key == "surface") return "jtml-surface-" + clean;
+    return "";
+}
+
 // Check if a tag name is a friendly alias
 bool isElementAlias(const std::string& tag) {
     return elementAliases().count(tag) > 0;
@@ -413,6 +812,8 @@ std::string resolveTagName(const std::string& tag, const std::vector<std::string
         return "ul";
     }
     if (tag == "item") return "li";
+    auto primitiveIt = uiPrimitives().find(tag);
+    if (primitiveIt != uiPrimitives().end()) return primitiveIt->second.first;
     auto it = elementAliases().find(tag);
     if (it != elementAliases().end()) return it->second.htmlTag;
     return tag;
@@ -422,13 +823,16 @@ std::string classicEventName(const std::string& event) {
     if (event == "click") return "onClick";
     if (event == "input") return "onInput";
     if (event == "change") return "onChange";
-    if (event == "keyup") return "onKeyUp";
-    if (event == "keydown") return "onKeyDown";
+    if (event == "focus") return "onFocus";
+    if (event == "blur") return "onBlur";
+    if (event == "keyup" || event == "key-up") return "onKeyUp";
+    if (event == "keydown" || event == "key-down") return "onKeyDown";
     if (event == "hover") return "onMouseOver";
     if (event == "scroll") return "onScroll";
     if (event == "submit") return "onSubmit";
     if (event == "dragover") return "onDragOver";
     if (event == "drop") return "onDrop";
+    if (event == "dblclick" || event == "double-click") return "onDblClick";
     return event;
 }
 
@@ -471,6 +875,7 @@ bool isVoidTag(const std::string& tag) {
     std::string resolved = tag;
     if (tag == "image") resolved = "img";
     else if (tag == "checkbox" || tag == "file" || tag == "dropzone") resolved = "input";
+    else if (isUiPrimitive(tag)) resolved = resolveTagName(tag, {});
     else {
         auto it = elementAliases().find(tag);
         if (it != elementAliases().end()) resolved = it->second.htmlTag;
@@ -486,7 +891,7 @@ bool isKnownLineKeyword(const std::string& word) {
     static const std::set<std::string> names = {
         "use", "let", "get", "const", "when", "make", "page", "show", "if", "else",
         "for", "while", "try", "catch", "finally", "return", "throw", "break",
-        "continue", "slot", "style", "route", "effect", "store", "redirect", "guard",
+        "continue", "slot", "style", "theme", "route", "effect", "store", "redirect", "guard",
         "invalidate", "extern", "export", "timeline", "animate"
     };
     return names.find(word) != names.end();
@@ -764,6 +1169,41 @@ std::string friendlyStyleBlockToCss(const std::vector<Line>& lines, size_t begin
         i = blockEnd;
     }
     return css.str();
+}
+
+std::string rawIndentedBlock(const std::vector<Line>& lines, size_t begin, size_t end) {
+    if (begin >= end) return "";
+    const int baseIndent = lines[begin].indent;
+    std::ostringstream out;
+    for (size_t i = begin; i < end; ++i) {
+        const int extra = std::max(0, lines[i].indent - baseIndent);
+        out << std::string(static_cast<size_t>(extra), ' ') << lines[i].text;
+        if (i + 1 < end) out << "\n";
+    }
+    return out.str();
+}
+
+std::string rawPayload(const std::vector<std::string>& tokens,
+                       const std::vector<Line>& lines,
+                       size_t index,
+                       size_t& end,
+                       const std::string& head,
+                       int lineNumber,
+                       bool hasChildren) {
+    if (tokens.size() == 3 && tokens[1] == "raw") {
+        if (!isQuoted(tokens[2])) {
+            throw std::runtime_error("Expected quoted payload after '" + head + " raw' at line " +
+                                     std::to_string(lineNumber));
+        }
+        end = index + 1;
+        return unquoteRawPayload(tokens[2]);
+    }
+    if (tokens.size() == 2 && tokens[1] == "raw" && hasChildren) {
+        end = findBlockEnd(lines, index);
+        return rawIndentedBlock(lines, index + 1, end);
+    }
+    throw std::runtime_error("Expected '" + head + " raw \"...\"' or indented raw block at line " +
+                             std::to_string(lineNumber));
 }
 
 std::string translateUse(const std::vector<std::string>& tokens, int lineNumber) {
@@ -1065,6 +1505,13 @@ std::string substituteIdentifiers(const std::string& text,
         if (it != bindings.end()) {
             token = it->second;
             continue;
+        }
+        if (token.size() > 1 && token.front() == '!') {
+            auto unaryIt = bindings.find(token.substr(1));
+            if (unaryIt != bindings.end()) {
+                token = "!" + unaryIt->second;
+                continue;
+            }
         }
         for (const auto& [name, replacement] : bindings) {
             if (startsWith(token, name + ".") ||
@@ -1616,6 +2063,76 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
     return result;
 }
 
+ElementResult translateMetricElement(const std::vector<std::string>& tokens, int lineNumber) {
+    ElementResult result;
+    if (tokens.size() < 3) {
+        throw std::runtime_error("Expected 'metric \"Label\" value [caption] [tone good]' at line " +
+                                 std::to_string(lineNumber));
+    }
+
+    std::string className = "jtml-metric";
+    std::vector<std::string> attrs = {
+        "class=\"jtml-metric\"",
+        "data-jtml-ui=\"metric\""
+    };
+    const std::string label = tokens[1];
+    const std::string value = tokens[2];
+    size_t i = 3;
+    std::string caption;
+    if (i < tokens.size() && !isUtilityModifier(tokens[i]) &&
+        !eventNames().count(tokens[i]) && tokens[i] != "class" && tokens[i] != "id") {
+        caption = tokens[i++];
+    }
+
+    while (i < tokens.size()) {
+        const std::string key = tokens[i++];
+        if (isUtilityModifier(key)) {
+            if (i >= tokens.size()) {
+                throw std::runtime_error("Expected value after '" + key + "' at line " + std::to_string(lineNumber));
+            }
+            className = appendClassToken(className, utilityClass(key, tokens[i++]));
+            continue;
+        }
+        if (eventNames().count(key)) {
+            if (i >= tokens.size()) {
+                throw std::runtime_error("Expected action after event '" + key + "' at line " + std::to_string(lineNumber));
+            }
+            attrs.push_back(classicEventName(key) + "=" + actionCall(tokens[i++]));
+            continue;
+        }
+        if (key == "class") {
+            if (i >= tokens.size()) {
+                throw std::runtime_error("Expected class value after 'class' at line " + std::to_string(lineNumber));
+            }
+            className = appendClassToken(className, unquote(tokens[i++]));
+            continue;
+        }
+        if (i >= tokens.size()) attrs.push_back(key);
+        else attrs.push_back(key + "=" + friendlyExpression(tokens[i++]));
+    }
+
+    attrs.front() = "class=" + quote(className);
+    std::ostringstream open;
+    open << "@article";
+    for (const auto& attr : attrs) open << " " << attr;
+    open << "\\\\";
+    result.openLine = open.str();
+    result.bodyLines.push_back("@p class=\"jtml-metric-label\"\\\\");
+    result.bodyLines.push_back("    show " + friendlyExpression(label) + "\\\\");
+    result.bodyLines.push_back("#");
+    result.bodyLines.push_back("@strong class=\"jtml-metric-value\"\\\\");
+    result.bodyLines.push_back("    show " + friendlyExpression(value) + "\\\\");
+    result.bodyLines.push_back("#");
+    if (!caption.empty()) {
+        result.bodyLines.push_back("@p class=\"jtml-metric-caption\"\\\\");
+        result.bodyLines.push_back("    show " + friendlyExpression(caption) + "\\\\");
+        result.bodyLines.push_back("#");
+    }
+    result.closesWithHash = true;
+    result.isVoid = false;
+    return result;
+}
+
 ElementResult translateElement(const std::vector<std::string>& tokens, int lineNumber) {
     if (tokens.empty()) {
         throw std::runtime_error("Empty element line at line " + std::to_string(lineNumber));
@@ -1624,12 +2141,21 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
     if (tokens[0] == "chart") {
         return translateChartElement(tokens, lineNumber);
     }
+    if (tokens[0] == "metric") {
+        return translateMetricElement(tokens, lineNumber);
+    }
 
     ElementResult result;
     const std::string friendlyTag = tokens[0];
     const std::string resolvedTag = resolveTagName(friendlyTag, tokens);
     size_t i = 1;
     std::vector<std::string> attrs;
+    std::string className;
+    const bool primitive = isUiPrimitive(friendlyTag);
+    if (primitive) {
+        className = primitiveClass(friendlyTag);
+        attrs.push_back("data-jtml-ui=" + quote(friendlyTag));
+    }
 
     // Inject default attributes from element aliases (e.g. checkbox → type="checkbox")
     auto aliasIt = elementAliases().find(friendlyTag);
@@ -1702,6 +2228,33 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
             attrs.push_back(classicEventName(key) + "=" + actionCall(tokens[i++]));
             continue;
         }
+        if (primitive && isUtilityModifier(key)) {
+            if (i >= tokens.size()) {
+                throw std::runtime_error("Expected value after '" + key + "' at line " + std::to_string(lineNumber));
+            }
+            className = appendClassToken(className, utilityClass(key, tokens[i++]));
+            continue;
+        }
+        if (primitive && key == "primary") {
+            className = appendClassToken(className, "jtml-tone-primary");
+            continue;
+        }
+        if (primitive && key == "class") {
+            if (i >= tokens.size()) {
+                throw std::runtime_error("Expected class value after 'class' at line " + std::to_string(lineNumber));
+            }
+            className = appendClassToken(className, unquote(tokens[i++]));
+            continue;
+        }
+        if (primitive && key == "title" && (friendlyTag == "panel" || friendlyTag == "card")) {
+            if (i >= tokens.size()) {
+                throw std::runtime_error("Expected title after '" + friendlyTag + " title' at line " + std::to_string(lineNumber));
+            }
+            result.bodyLines.push_back("@h2 class=\"jtml-panel-title\"\\\\");
+            result.bodyLines.push_back("    show " + friendlyExpression(tokens[i++]) + "\\\\");
+            result.bodyLines.push_back("#");
+            continue;
+        }
         if (isScene3d && (key == "scene" || key == "camera" ||
                           key == "controls" || key == "renderer")) {
             if (i >= tokens.size()) {
@@ -1767,6 +2320,10 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
         attrs.push_back(key + "=" + friendlyExpression(tokens[i++]));
     }
 
+    if (!className.empty()) {
+        attrs.insert(attrs.begin(), "class=" + quote(className));
+    }
+
     std::ostringstream open;
     open << "@" << resolvedTag;
     for (const auto& attr : attrs) open << " " << attr;
@@ -1802,9 +2359,10 @@ bool looksLikeFriendlySyntax(const std::string& source) {
         const std::string& head = tokens[0];
         if (head == "let" || head == "get" || head == "const" || head == "when" || head == "page" ||
             head == "make" || head == "use" || head == "show" ||
-            head == "for" || head == "if" || head == "while" || head == "style" ||
+            head == "for" || head == "if" || head == "while" || head == "style" || head == "theme" ||
             head == "route" || head == "effect" || head == "store" || head == "extern" ||
-            head == "export") {
+            head == "export" ||
+            ((head == "html" || head == "css") && tokens.size() >= 2 && tokens[1] == "raw")) {
             return true;
         }
         return false;
@@ -1898,6 +2456,8 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
     lines = rewriteStoreActionRefs(lines, storeActions);
     const auto componentDefs = collectComponentDefs(lines);
     lines = expandComponentLines(lines, componentDefs);
+    const bool usesSemanticUi = sourceUsesSemanticUi(lines);
+    const std::string themeCss = collectThemeCss(lines);
     std::ostringstream out;
     std::vector<OpenBlock> stack;
     std::set<std::string> synthesizedSetters;
@@ -1928,6 +2488,15 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
         }
         return "";
     };
+
+    if (usesSemanticUi) {
+        activeFriendlySourceLine = 0;
+        emitLine(out, 0, "@style\\\\");
+        emitLine(out, 1, "show " + cssStringLiteral(semanticUiPreludeCss(themeCss)) + "\\\\");
+        emitLine(out, 0, "#");
+        out << "\n";
+        if (activeFriendlySourceMap) activeFriendlySourceMap->push_back(0);
+    }
 
     for (const auto& [_, def] : componentDefs) {
         activeFriendlySourceLine = def.number;
@@ -1973,6 +2542,20 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
                 : quote(action);
             emitLine(out, level, "@meta data-jtml-extern-action=" + quote(action) +
                      " data-window=" + target + "\\\\");
+        } else if (head == "css" && tokens.size() >= 2 && tokens[1] == "raw") {
+            size_t end = index + 1;
+            const std::string css = rawPayload(tokens, lines, index, end, head, line.number, hasChildren);
+            emitLine(out, level, "@style\\\\");
+            emitLine(out, level + 1, "show " + cssStringLiteral(css) + "\\\\");
+            emitLine(out, level, "#");
+            index = end - 1;
+        } else if (head == "html" && tokens.size() >= 2 && tokens[1] == "raw") {
+            size_t end = index + 1;
+            const std::string html = rawPayload(tokens, lines, index, end, head, line.number, hasChildren);
+            emitLine(out, level, "@raw\\\\");
+            emitLine(out, level + 1, "show " + cssStringLiteral(html) + "\\\\");
+            emitLine(out, level, "#");
+            index = end - 1;
         } else if (head == "style") {
             if (!hasChildren) {
                 throw std::runtime_error("Expected indented CSS block after 'style' at line " + std::to_string(line.number));
@@ -1983,6 +2566,11 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
             emitLine(out, level + 1, "show " + cssStringLiteral(css) + "\\\\");
             emitLine(out, level, "#");
             index = end - 1;
+        } else if (head == "theme") {
+            if (!hasChildren) {
+                throw std::runtime_error("Expected indented token block after 'theme' at line " + std::to_string(line.number));
+            }
+            index = findBlockEnd(lines, index) - 1;
         } else if (head == "let") {
             if (tokens.size() < 4) {
                 throw std::runtime_error("Expected 'let name = expression' at line " + std::to_string(line.number));
@@ -2076,6 +2664,7 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
                     if (!procAmount.empty()) imgMarker += " data-jtml-image-amount=" + quote(procAmount);
                     imgMarker += "\\\\";
                     emitLine(out, level, imgMarker);
+                    emitLine(out, level, "#");
                     continue;
                 }
             }

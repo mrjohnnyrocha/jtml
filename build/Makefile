@@ -218,6 +218,19 @@ jtml_c/fast:
 .PHONY : jtml_c/fast
 
 #=============================================================================
+# Target rules for targets named jtml_cli_lib
+
+# Build rule for target.
+jtml_cli_lib: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 jtml_cli_lib
+.PHONY : jtml_cli_lib
+
+# fast build rule for target.
+jtml_cli_lib/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/build
+.PHONY : jtml_cli_lib/fast
+
+#=============================================================================
 # Target rules for targets named jtml_cli
 
 # Build rule for target.
@@ -300,7 +313,7 @@ cli/cmd_basic.o: cli/cmd_basic.cpp.o
 
 # target to build an object file
 cli/cmd_basic.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_basic.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_basic.cpp.o
 .PHONY : cli/cmd_basic.cpp.o
 
 cli/cmd_basic.i: cli/cmd_basic.cpp.i
@@ -308,7 +321,7 @@ cli/cmd_basic.i: cli/cmd_basic.cpp.i
 
 # target to preprocess a source file
 cli/cmd_basic.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_basic.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_basic.cpp.i
 .PHONY : cli/cmd_basic.cpp.i
 
 cli/cmd_basic.s: cli/cmd_basic.cpp.s
@@ -316,7 +329,7 @@ cli/cmd_basic.s: cli/cmd_basic.cpp.s
 
 # target to generate assembly for a file
 cli/cmd_basic.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_basic.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_basic.cpp.s
 .PHONY : cli/cmd_basic.cpp.s
 
 cli/cmd_fix.o: cli/cmd_fix.cpp.o
@@ -324,7 +337,7 @@ cli/cmd_fix.o: cli/cmd_fix.cpp.o
 
 # target to build an object file
 cli/cmd_fix.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_fix.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_fix.cpp.o
 .PHONY : cli/cmd_fix.cpp.o
 
 cli/cmd_fix.i: cli/cmd_fix.cpp.i
@@ -332,7 +345,7 @@ cli/cmd_fix.i: cli/cmd_fix.cpp.i
 
 # target to preprocess a source file
 cli/cmd_fix.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_fix.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_fix.cpp.i
 .PHONY : cli/cmd_fix.cpp.i
 
 cli/cmd_fix.s: cli/cmd_fix.cpp.s
@@ -340,7 +353,7 @@ cli/cmd_fix.s: cli/cmd_fix.cpp.s
 
 # target to generate assembly for a file
 cli/cmd_fix.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_fix.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_fix.cpp.s
 .PHONY : cli/cmd_fix.cpp.s
 
 cli/cmd_fmt_lint.o: cli/cmd_fmt_lint.cpp.o
@@ -348,7 +361,7 @@ cli/cmd_fmt_lint.o: cli/cmd_fmt_lint.cpp.o
 
 # target to build an object file
 cli/cmd_fmt_lint.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_fmt_lint.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_fmt_lint.cpp.o
 .PHONY : cli/cmd_fmt_lint.cpp.o
 
 cli/cmd_fmt_lint.i: cli/cmd_fmt_lint.cpp.i
@@ -356,7 +369,7 @@ cli/cmd_fmt_lint.i: cli/cmd_fmt_lint.cpp.i
 
 # target to preprocess a source file
 cli/cmd_fmt_lint.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_fmt_lint.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_fmt_lint.cpp.i
 .PHONY : cli/cmd_fmt_lint.cpp.i
 
 cli/cmd_fmt_lint.s: cli/cmd_fmt_lint.cpp.s
@@ -364,7 +377,7 @@ cli/cmd_fmt_lint.s: cli/cmd_fmt_lint.cpp.s
 
 # target to generate assembly for a file
 cli/cmd_fmt_lint.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_fmt_lint.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_fmt_lint.cpp.s
 .PHONY : cli/cmd_fmt_lint.cpp.s
 
 cli/cmd_lsp.o: cli/cmd_lsp.cpp.o
@@ -372,7 +385,7 @@ cli/cmd_lsp.o: cli/cmd_lsp.cpp.o
 
 # target to build an object file
 cli/cmd_lsp.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_lsp.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_lsp.cpp.o
 .PHONY : cli/cmd_lsp.cpp.o
 
 cli/cmd_lsp.i: cli/cmd_lsp.cpp.i
@@ -380,7 +393,7 @@ cli/cmd_lsp.i: cli/cmd_lsp.cpp.i
 
 # target to preprocess a source file
 cli/cmd_lsp.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_lsp.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_lsp.cpp.i
 .PHONY : cli/cmd_lsp.cpp.i
 
 cli/cmd_lsp.s: cli/cmd_lsp.cpp.s
@@ -388,7 +401,7 @@ cli/cmd_lsp.s: cli/cmd_lsp.cpp.s
 
 # target to generate assembly for a file
 cli/cmd_lsp.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_lsp.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_lsp.cpp.s
 .PHONY : cli/cmd_lsp.cpp.s
 
 cli/cmd_refactor.o: cli/cmd_refactor.cpp.o
@@ -396,7 +409,7 @@ cli/cmd_refactor.o: cli/cmd_refactor.cpp.o
 
 # target to build an object file
 cli/cmd_refactor.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_refactor.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_refactor.cpp.o
 .PHONY : cli/cmd_refactor.cpp.o
 
 cli/cmd_refactor.i: cli/cmd_refactor.cpp.i
@@ -404,7 +417,7 @@ cli/cmd_refactor.i: cli/cmd_refactor.cpp.i
 
 # target to preprocess a source file
 cli/cmd_refactor.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_refactor.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_refactor.cpp.i
 .PHONY : cli/cmd_refactor.cpp.i
 
 cli/cmd_refactor.s: cli/cmd_refactor.cpp.s
@@ -412,7 +425,7 @@ cli/cmd_refactor.s: cli/cmd_refactor.cpp.s
 
 # target to generate assembly for a file
 cli/cmd_refactor.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_refactor.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_refactor.cpp.s
 .PHONY : cli/cmd_refactor.cpp.s
 
 cli/cmd_serve.o: cli/cmd_serve.cpp.o
@@ -420,7 +433,7 @@ cli/cmd_serve.o: cli/cmd_serve.cpp.o
 
 # target to build an object file
 cli/cmd_serve.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_serve.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_serve.cpp.o
 .PHONY : cli/cmd_serve.cpp.o
 
 cli/cmd_serve.i: cli/cmd_serve.cpp.i
@@ -428,7 +441,7 @@ cli/cmd_serve.i: cli/cmd_serve.cpp.i
 
 # target to preprocess a source file
 cli/cmd_serve.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_serve.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_serve.cpp.i
 .PHONY : cli/cmd_serve.cpp.i
 
 cli/cmd_serve.s: cli/cmd_serve.cpp.s
@@ -436,7 +449,7 @@ cli/cmd_serve.s: cli/cmd_serve.cpp.s
 
 # target to generate assembly for a file
 cli/cmd_serve.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_serve.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_serve.cpp.s
 .PHONY : cli/cmd_serve.cpp.s
 
 cli/cmd_tutorial.o: cli/cmd_tutorial.cpp.o
@@ -444,7 +457,7 @@ cli/cmd_tutorial.o: cli/cmd_tutorial.cpp.o
 
 # target to build an object file
 cli/cmd_tutorial.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_tutorial.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_tutorial.cpp.o
 .PHONY : cli/cmd_tutorial.cpp.o
 
 cli/cmd_tutorial.i: cli/cmd_tutorial.cpp.i
@@ -452,7 +465,7 @@ cli/cmd_tutorial.i: cli/cmd_tutorial.cpp.i
 
 # target to preprocess a source file
 cli/cmd_tutorial.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_tutorial.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_tutorial.cpp.i
 .PHONY : cli/cmd_tutorial.cpp.i
 
 cli/cmd_tutorial.s: cli/cmd_tutorial.cpp.s
@@ -460,7 +473,7 @@ cli/cmd_tutorial.s: cli/cmd_tutorial.cpp.s
 
 # target to generate assembly for a file
 cli/cmd_tutorial.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/cmd_tutorial.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/cmd_tutorial.cpp.s
 .PHONY : cli/cmd_tutorial.cpp.s
 
 cli/diagnostic_json.o: cli/diagnostic_json.cpp.o
@@ -468,7 +481,7 @@ cli/diagnostic_json.o: cli/diagnostic_json.cpp.o
 
 # target to build an object file
 cli/diagnostic_json.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/diagnostic_json.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/diagnostic_json.cpp.o
 .PHONY : cli/diagnostic_json.cpp.o
 
 cli/diagnostic_json.i: cli/diagnostic_json.cpp.i
@@ -476,7 +489,7 @@ cli/diagnostic_json.i: cli/diagnostic_json.cpp.i
 
 # target to preprocess a source file
 cli/diagnostic_json.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/diagnostic_json.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/diagnostic_json.cpp.i
 .PHONY : cli/diagnostic_json.cpp.i
 
 cli/diagnostic_json.s: cli/diagnostic_json.cpp.s
@@ -484,7 +497,7 @@ cli/diagnostic_json.s: cli/diagnostic_json.cpp.s
 
 # target to generate assembly for a file
 cli/diagnostic_json.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/diagnostic_json.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/diagnostic_json.cpp.s
 .PHONY : cli/diagnostic_json.cpp.s
 
 cli/main.o: cli/main.cpp.o
@@ -516,7 +529,7 @@ cli/studio_shell.o: cli/studio_shell.cpp.o
 
 # target to build an object file
 cli/studio_shell.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/studio_shell.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/studio_shell.cpp.o
 .PHONY : cli/studio_shell.cpp.o
 
 cli/studio_shell.i: cli/studio_shell.cpp.i
@@ -524,7 +537,7 @@ cli/studio_shell.i: cli/studio_shell.cpp.i
 
 # target to preprocess a source file
 cli/studio_shell.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/studio_shell.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/studio_shell.cpp.i
 .PHONY : cli/studio_shell.cpp.i
 
 cli/studio_shell.s: cli/studio_shell.cpp.s
@@ -532,7 +545,7 @@ cli/studio_shell.s: cli/studio_shell.cpp.s
 
 # target to generate assembly for a file
 cli/studio_shell.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/studio_shell.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/studio_shell.cpp.s
 .PHONY : cli/studio_shell.cpp.s
 
 cli/tutorial_shell.o: cli/tutorial_shell.cpp.o
@@ -540,7 +553,7 @@ cli/tutorial_shell.o: cli/tutorial_shell.cpp.o
 
 # target to build an object file
 cli/tutorial_shell.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/tutorial_shell.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/tutorial_shell.cpp.o
 .PHONY : cli/tutorial_shell.cpp.o
 
 cli/tutorial_shell.i: cli/tutorial_shell.cpp.i
@@ -548,7 +561,7 @@ cli/tutorial_shell.i: cli/tutorial_shell.cpp.i
 
 # target to preprocess a source file
 cli/tutorial_shell.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/tutorial_shell.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/tutorial_shell.cpp.i
 .PHONY : cli/tutorial_shell.cpp.i
 
 cli/tutorial_shell.s: cli/tutorial_shell.cpp.s
@@ -556,7 +569,7 @@ cli/tutorial_shell.s: cli/tutorial_shell.cpp.s
 
 # target to generate assembly for a file
 cli/tutorial_shell.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/tutorial_shell.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/tutorial_shell.cpp.s
 .PHONY : cli/tutorial_shell.cpp.s
 
 cli/util.o: cli/util.cpp.o
@@ -564,7 +577,7 @@ cli/util.o: cli/util.cpp.o
 
 # target to build an object file
 cli/util.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/util.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/util.cpp.o
 .PHONY : cli/util.cpp.o
 
 cli/util.i: cli/util.cpp.i
@@ -572,7 +585,7 @@ cli/util.i: cli/util.cpp.i
 
 # target to preprocess a source file
 cli/util.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/util.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/util.cpp.i
 .PHONY : cli/util.cpp.i
 
 cli/util.s: cli/util.cpp.s
@@ -580,7 +593,7 @@ cli/util.s: cli/util.cpp.s
 
 # target to generate assembly for a file
 cli/util.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli.dir/build.make CMakeFiles/jtml_cli.dir/cli/util.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_cli_lib.dir/build.make CMakeFiles/jtml_cli_lib.dir/cli/util.cpp.s
 .PHONY : cli/util.cpp.s
 
 src/array.o: src/array.cpp.o
@@ -630,6 +643,30 @@ src/ast.s: src/ast.cpp.s
 src/ast.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_core.dir/build.make CMakeFiles/jtml_core.dir/src/ast.cpp.s
 .PHONY : src/ast.cpp.s
+
+src/attribute_classifier.o: src/attribute_classifier.cpp.o
+.PHONY : src/attribute_classifier.o
+
+# target to build an object file
+src/attribute_classifier.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_core.dir/build.make CMakeFiles/jtml_core.dir/src/attribute_classifier.cpp.o
+.PHONY : src/attribute_classifier.cpp.o
+
+src/attribute_classifier.i: src/attribute_classifier.cpp.i
+.PHONY : src/attribute_classifier.i
+
+# target to preprocess a source file
+src/attribute_classifier.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_core.dir/build.make CMakeFiles/jtml_core.dir/src/attribute_classifier.cpp.i
+.PHONY : src/attribute_classifier.cpp.i
+
+src/attribute_classifier.s: src/attribute_classifier.cpp.s
+.PHONY : src/attribute_classifier.s
+
+# target to generate assembly for a file
+src/attribute_classifier.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_core.dir/build.make CMakeFiles/jtml_core.dir/src/attribute_classifier.cpp.s
+.PHONY : src/attribute_classifier.cpp.s
 
 src/c_api.o: src/c_api.cpp.o
 .PHONY : src/c_api.o
@@ -847,6 +884,30 @@ src/interpreter.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_core.dir/build.make CMakeFiles/jtml_core.dir/src/interpreter.cpp.s
 .PHONY : src/interpreter.cpp.s
 
+src/language_catalog.o: src/language_catalog.cpp.o
+.PHONY : src/language_catalog.o
+
+# target to build an object file
+src/language_catalog.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_core.dir/build.make CMakeFiles/jtml_core.dir/src/language_catalog.cpp.o
+.PHONY : src/language_catalog.cpp.o
+
+src/language_catalog.i: src/language_catalog.cpp.i
+.PHONY : src/language_catalog.i
+
+# target to preprocess a source file
+src/language_catalog.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_core.dir/build.make CMakeFiles/jtml_core.dir/src/language_catalog.cpp.i
+.PHONY : src/language_catalog.cpp.i
+
+src/language_catalog.s: src/language_catalog.cpp.s
+.PHONY : src/language_catalog.s
+
+# target to generate assembly for a file
+src/language_catalog.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_core.dir/build.make CMakeFiles/jtml_core.dir/src/language_catalog.cpp.s
+.PHONY : src/language_catalog.cpp.s
+
 src/lexer.o: src/lexer.cpp.o
 .PHONY : src/lexer.o
 
@@ -967,6 +1028,30 @@ src/refactor.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_core.dir/build.make CMakeFiles/jtml_core.dir/src/refactor.cpp.s
 .PHONY : src/refactor.cpp.s
 
+src/semantic.o: src/semantic.cpp.o
+.PHONY : src/semantic.o
+
+# target to build an object file
+src/semantic.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_core.dir/build.make CMakeFiles/jtml_core.dir/src/semantic.cpp.o
+.PHONY : src/semantic.cpp.o
+
+src/semantic.i: src/semantic.cpp.i
+.PHONY : src/semantic.i
+
+# target to preprocess a source file
+src/semantic.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_core.dir/build.make CMakeFiles/jtml_core.dir/src/semantic.cpp.i
+.PHONY : src/semantic.cpp.i
+
+src/semantic.s: src/semantic.cpp.s
+.PHONY : src/semantic.s
+
+# target to generate assembly for a file
+src/semantic.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jtml_core.dir/build.make CMakeFiles/jtml_core.dir/src/semantic.cpp.s
+.PHONY : src/semantic.cpp.s
+
 src/transpiler.o: src/transpiler.cpp.o
 .PHONY : src/transpiler.o
 
@@ -1036,6 +1121,7 @@ help:
 	@echo "... gtest_main"
 	@echo "... jtml_c"
 	@echo "... jtml_cli"
+	@echo "... jtml_cli_lib"
 	@echo "... jtml_core"
 	@echo "... jtml_tests"
 	@echo "... cli/cmd_basic.o"
@@ -1080,6 +1166,9 @@ help:
 	@echo "... src/ast.o"
 	@echo "... src/ast.i"
 	@echo "... src/ast.s"
+	@echo "... src/attribute_classifier.o"
+	@echo "... src/attribute_classifier.i"
+	@echo "... src/attribute_classifier.s"
 	@echo "... src/c_api.o"
 	@echo "... src/c_api.i"
 	@echo "... src/c_api.s"
@@ -1107,6 +1196,9 @@ help:
 	@echo "... src/interpreter.o"
 	@echo "... src/interpreter.i"
 	@echo "... src/interpreter.s"
+	@echo "... src/language_catalog.o"
+	@echo "... src/language_catalog.i"
+	@echo "... src/language_catalog.s"
 	@echo "... src/lexer.o"
 	@echo "... src/lexer.i"
 	@echo "... src/lexer.s"
@@ -1122,6 +1214,9 @@ help:
 	@echo "... src/refactor.o"
 	@echo "... src/refactor.i"
 	@echo "... src/refactor.s"
+	@echo "... src/semantic.o"
+	@echo "... src/semantic.i"
+	@echo "... src/semantic.s"
 	@echo "... src/transpiler.o"
 	@echo "... src/transpiler.i"
 	@echo "... src/transpiler.s"

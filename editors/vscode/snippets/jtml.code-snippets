@@ -134,6 +134,51 @@
     ],
     "description": "Add a scoped Friendly style block."
   },
+  "Raw CSS": {
+    "prefix": "cssraw",
+    "body": [
+      "css raw",
+      "  ${1:.third-party-widget { display: block; }}"
+    ],
+    "description": "Emit explicit unscoped CSS for a host or third-party widget."
+  },
+  "Raw HTML": {
+    "prefix": "htmlraw",
+    "body": [
+      "html raw \"${1:<third-party-widget></third-party-widget>}\""
+    ],
+    "description": "Emit explicit raw HTML for a custom element or host widget."
+  },
+  "Semantic theme": {
+    "prefix": "theme",
+    "body": [
+      "theme",
+      "  color primary \"${1:#155e75}\"",
+      "  color surface \"${2:#ffffff}\"",
+      "  color background \"${3:#f6f7fb}\"",
+      "  space md ${4:14}",
+      "  radius md ${5:12}"
+    ],
+    "description": "Declare semantic JTML theme tokens."
+  },
+  "Semantic dashboard": {
+    "prefix": "semanticui",
+    "body": [
+      "theme",
+      "  color primary \"${1:#155e75}\"",
+      "  space md ${2:14}",
+      "",
+      "page",
+      "  shell",
+      "    sidebar",
+      "      navlink \"${3:Dashboard}\" to \"/\"",
+      "    content",
+      "      panel title \"${4:Usage}\" pad lg shadow md",
+      "        grid cols ${5:3} gap md",
+      "          metric \"${6:Users}\" ${7:users} \"${8:Active}\" tone good"
+    ],
+    "description": "Create a semantic JTML layout with theme, shell, panel, grid, and metric."
+  },
   "Input binding": {
     "prefix": "input",
     "body": [

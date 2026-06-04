@@ -28,17 +28,17 @@
       <section class="page-hero" aria-labelledby="reference-title">
         <p class="eyebrow">Reference</p>
         <h1 id="reference-title">The language in one page.</h1>
-        <p>JTML keeps HTML's element model, then adds Friendly state, derived values, actions, components, modules, fetches, routes, stores, effects, and runtime tooling.</p>
+        <p>Friendly JTML 2 is the canonical authoring syntax. The full keyword index and versioned reference ship with every site artifact as <a href="./language-reference.md">language-reference.md</a>.</p>
       </section>
 
       <section class="reference-layout">
         <article>
-          <h2>Elements</h2>
+          <h2>Canonical Syntax</h2>
           <pre><code>jtml 2
 
 page class "profile"
   h1 "Hello"</code></pre>
-          <p>Friendly `jtml 2` is the canonical syntax. Classic `@tag` and `element` forms remain supported for compatibility.</p>
+          <p>Use Friendly `jtml 2` for new apps, tutorials, Studio, docs, examples, and AI-authored code. The Classic backend remains available for migration and artifacts.</p>
         </article>
         <article>
           <h2>State</h2>
@@ -46,18 +46,10 @@ page class "profile"
 const limit = 10
 get doubled = count * 2
 count += 1</code></pre>
-          <p>`let` is mutable, `const` is immutable, `get` tracks dependencies, and compound assignment is supported.</p>
+          <p>`let` is mutable, `const` is immutable, and `get` tracks dependencies through the semantic graph.</p>
         </article>
         <article>
-          <h2>Conditional Values</h2>
-          <pre><code>get label = saved ? "Saved" : "Unsaved"
-
-button disabled saved
-  show saved ? "Done" : "Save"</code></pre>
-          <p>Use `condition ? valueA : valueB` anywhere an expression is accepted.</p>
-        </article>
-        <article>
-          <h2>Events</h2>
+          <h2>Actions</h2>
           <pre><code>when add
   count += 1
 
@@ -65,22 +57,64 @@ button "Add one" click add</code></pre>
           <p>Friendly event sugar calls JTML actions without user JavaScript.</p>
         </article>
         <article>
-          <h2>HTML Parity</h2>
-          <pre><code>label for "email" aria-label "Email"
-  show "Email"
+          <h2>Fetch</h2>
+          <pre><code>let users = fetch "/api/users" stale keep retry 2
 
-input "Email" id "email" required
+page
+  if users.loading
+    text "Loading..."
+  for user in users.data
+    text user.name</code></pre>
+          <p>Fetch values expose loading, data, error, stale, retry, and request metadata.</p>
+        </article>
+        <article>
+          <h2>Routes</h2>
+          <pre><code>route "/" as Home
+route "/user/:id" as User
+route "*" as NotFound
 
-my-widget data-mode "compact"
-  show "Custom element"</code></pre>
-          <p>Hyphenated attributes, keyword-shaped names, custom elements, and void elements are supported.</p>
+link "Open user" to "/user/42"</code></pre>
+          <p>Routes are hash-based today, with params, layouts, guards, active links, lazy route loads, and redirects.</p>
+        </article>
+        <article>
+          <h2>Semantic UI</h2>
+          <pre><code>theme
+  color primary "#2563eb"
+
+panel title "Usage" pad lg shadow md
+  grid cols 4 gap md
+    metric "Users" total "Active" tone good</code></pre>
+          <p>Semantic primitives lower to ordinary HTML and generated classes while remaining visible to tooling.</p>
+        </article>
+        <article>
+          <h2>Media And Graphics</h2>
+          <pre><code>file "Choose image" accept "image/*" into selected
+image src selected.preview alt selected.name
+chart bar data rows by label value total
+scene3d "Product" scene model into sceneState</code></pre>
+          <p>JTML includes media bindings, SVG-first chart/shape aliases, and 3D canvas mounts with host renderer hooks.</p>
+        </article>
+        <article>
+          <h2>Interop</h2>
+          <pre><code>extern notify from "host.notify"
+html raw "&lt;host-widget&gt;&lt;/host-widget&gt;"
+css raw
+  host-widget { display: block; }</code></pre>
+          <p>Escape hatches are explicit and reported by lint/semantic tooling for production review.</p>
+        </article>
+        <article>
+          <h2>Keyword Index</h2>
+          <pre><code>let const get when make fetch route guard
+theme panel grid metric image chart scene3d
+extern html raw css raw</code></pre>
+          <p>Run <code>jtml keywords --json</code> for the machine-readable mini-reference used by editor tooling, and see the full Friendly keyword index in <a href="./language-reference.md">language-reference.md</a>.</p>
         </article>
       </section>
     </main>
 
     <footer class="site-footer">
       <span>JTML</span>
-      <span>See docs/language-reference.md for the full versioned reference.</span>
+      <span>See docs/reference/language-reference.md for the full versioned reference.</span>
     </footer>
   </body>
 </html>

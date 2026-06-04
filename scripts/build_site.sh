@@ -8,8 +8,8 @@ rm -rf "$out_dir"
 mkdir -p "$out_dir"
 
 cp -R "$repo_root/site/." "$out_dir/"
-cp "$repo_root/docs/language-reference.md" "$out_dir/language-reference.md"
-cp "$repo_root/docs/deployment.md" "$out_dir/deployment.md"
+cp "$repo_root/docs/reference/language-reference.md" "$out_dir/language-reference.md"
+cp "$repo_root/docs/tooling/deployment.md" "$out_dir/deployment.md"
 cp "$repo_root/README.md" "$out_dir/README.md"
 cp "$repo_root/ROADMAP.md" "$out_dir/ROADMAP.md"
 

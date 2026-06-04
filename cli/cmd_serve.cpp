@@ -11,6 +11,7 @@
 #include "jtml/fix.h"
 #include "jtml/interpreter.h"
 #include "jtml/linter.h"
+#include "jtml/semantic.h"
 #include "jtml/transpiler.h"
 #include "httplib.h"
 #include "json.hpp"
@@ -19,16 +20,25 @@
 #include <atomic>
 #include <cctype>
 #include <chrono>
+#include <cerrno>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
+
+#ifndef _WIN32
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#endif
 
 namespace jtml::cli {
 
@@ -58,6 +68,27 @@ std::vector<std::unique_ptr<ASTNode>> parseProgramFromNormalizedSource(const std
 
 std::vector<std::unique_ptr<ASTNode>> parseProgramFromSource(const std::string& code) {
     return parseProgramFromNormalizedSource(jtml::normalizeSourceSyntax(code));
+}
+
+nlohmann::json lintDiagnosticsWithSemanticWarnings(
+    const std::vector<LintDiagnostic>& diagnostics,
+    const std::vector<std::unique_ptr<ASTNode>>& program,
+    const std::string& source) {
+    auto out = lintDiagnosticsToJson(diagnostics);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto usage = jtml::analyzeSemanticUsage(semantic);
+    for (const auto& warning : usage.warnings) {
+        out.push_back({
+            {"severity", "warning"},
+            {"code", warning.code},
+            {"message", warning.message},
+            {"line", 0},
+            {"column", 0},
+            {"hint", ""},
+            {"example", ""},
+        });
+    }
+    return out;
 }
 
 std::string withInitialBindings(std::string html, const std::string& bindingsJson) {
@@ -112,6 +143,56 @@ bool looksLikeEmail(const std::string& email) {
     const auto at = email.find('@');
     const auto dot = email.find('.', at == std::string::npos ? 0 : at + 1);
     return at != std::string::npos && at > 0 && dot != std::string::npos && dot + 1 < email.size();
+}
+
+#ifndef _WIN32
+bool canBindTcpPortIPv4(int port) {
+    int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) return true;
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_port = htons(static_cast<uint16_t>(port));
+    const bool busy = ::connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0;
+    ::close(fd);
+    return !busy;
+}
+
+bool canBindTcpPortIPv6(int port) {
+    int fd = ::socket(AF_INET6, SOCK_STREAM, 0);
+    if (fd < 0) return true; // IPv6 may be unavailable; IPv4 still protects us.
+    sockaddr_in6 addr{};
+    addr.sin6_family = AF_INET6;
+    addr.sin6_addr = in6addr_loopback;
+    addr.sin6_port = htons(static_cast<uint16_t>(port));
+    const bool busy = ::connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0;
+    ::close(fd);
+    return !busy;
+}
+
+bool canBindTcpPort(int port) {
+    return canBindTcpPortIPv4(port) && canBindTcpPortIPv6(port);
+}
+#else
+bool canBindTcpPort(int) {
+    // Windows builds still rely on the underlying server listen failures.
+    return true;
+}
+#endif
+
+void ensureServePortsAvailable(int httpPort, int wsPort, const std::string& commandName) {
+    if (!canBindTcpPort(httpPort)) {
+        throw std::runtime_error(
+            commandName + " cannot start: HTTP port " + std::to_string(httpPort) +
+            " is already in use. Stop the existing server or choose another port with `--port " +
+            std::to_string(httpPort + 1) + "`.");
+    }
+    if (wsPort > 0 && !canBindTcpPort(wsPort)) {
+        throw std::runtime_error(
+            commandName + " cannot start: WebSocket port " + std::to_string(wsPort) +
+            " is already in use. Stop the existing server or choose another HTTP port with `--port " +
+            std::to_string(httpPort + 1) + "`.");
+    }
 }
 
 std::string displayNameFromEmail(const std::string& email) {
@@ -378,16 +459,19 @@ std::vector<StudioDoc> loadStudioDocs(const std::filesystem::path& root) {
 
     const std::vector<std::pair<std::string, std::string>> curated = {
         {"README.md", "Overview"},
-        {"language-reference.md", "Reference"},
-        {"ai-authoring-contract.md", "AI native"},
-        {"media-graphics-roadmap.md", "Media"},
-        {"jtml-competitive-features-roadmap.md", "Roadmap"},
-        {"jtml-friendly-grammar-and-implementation-plan.md", "Language"},
-        {"runtime-http-contract.md", "Runtime"},
-        {"language-server.md", "Tooling"},
-        {"deployment.md", "Deployment"},
-        {"embedding-c-api.md", "Interop"},
-        {"jtml-element-dictionary.md", "Elements"},
+        {"reference/language-reference.md", "Reference"},
+        {"reference/jtml-element-dictionary.md", "Reference"},
+        {"reference/ai-authoring-contract.md", "AI native"},
+        {"architecture/observable-first-architecture-roadmap.md", "Architecture"},
+        {"architecture/studio-redesign-proposal.md", "Studio"},
+        {"roadmaps/next-priorities.md", "Roadmap"},
+        {"roadmaps/jtml-competitive-features-roadmap.md", "Roadmap"},
+        {"roadmaps/media-graphics-roadmap.md", "Media"},
+        {"roadmaps/3d-custom-interfaces-roadmap.md", "Media"},
+        {"tooling/runtime-http-contract.md", "Runtime"},
+        {"tooling/language-server.md", "Tooling"},
+        {"tooling/deployment.md", "Deployment"},
+        {"tooling/embedding-c-api.md", "Interop"},
     };
 
     for (const auto& [filename, category] : curated) {
@@ -410,6 +494,7 @@ static void serveOnce(const std::vector<std::unique_ptr<ASTNode>>& program,
     JtmlTranspiler transpiler;
     InterpreterConfig cfg;
     cfg.wsPort = static_cast<uint16_t>(port + 80);
+    ensureServePortsAvailable(port, cfg.wsPort, "jtml serve");
     transpiler.setWebSocketPort(cfg.wsPort);
     std::string html = transpiler.transpile(program);
 
@@ -433,11 +518,13 @@ static void serveOnce(const std::vector<std::unique_ptr<ASTNode>>& program,
             res.set_content("Not found", "text/plain");
         }
     });
-
     std::cout << "jtml serve: http://localhost:" << port
               << "  (WebSocket on " << cfg.wsPort << ")\n" << std::flush;
     SilenceStdout silence;
-    svr.listen("0.0.0.0", port);
+    if (!svr.listen("0.0.0.0", port)) {
+        throw std::runtime_error("jtml serve cannot start: HTTP listener failed on 0.0.0.0:" +
+                                 std::to_string(port));
+    }
 }
 
 /* ── `jtml serve --watch` ────────────────────────────────── */
@@ -448,6 +535,7 @@ static void serveWatching(const std::string& inputFile, int port, SyntaxMode syn
     JtmlTranspiler transpiler;
     InterpreterConfig cfg;
     cfg.wsPort = static_cast<uint16_t>(port + 80);
+    ensureServePortsAvailable(port, cfg.wsPort, "jtml serve --watch");
     transpiler.setWebSocketPort(cfg.wsPort);
     std::unique_ptr<Interpreter> interpreter;
     {
@@ -513,7 +601,10 @@ static void serveWatching(const std::string& inputFile, int port, SyntaxMode syn
               << "  (WebSocket on " << cfg.wsPort << ")\n"
               << "Watching: " << inputFile << "\n" << std::flush;
     SilenceStdout silence;
-    svr.listen("0.0.0.0", port);
+    if (!svr.listen("0.0.0.0", port)) {
+        throw std::runtime_error("jtml serve --watch cannot start: HTTP listener failed on 0.0.0.0:" +
+                                 std::to_string(port));
+    }
     stopFlag.store(true);
     if (watcher.joinable()) watcher.join();
 }
@@ -527,6 +618,7 @@ static void serveStudio(int port) {
     InterpreterConfig cfg;
     cfg.wsPort         = static_cast<uint16_t>(port + 80);
     cfg.startWebSocket = true;
+    ensureServePortsAvailable(port, cfg.wsPort, "jtml studio");
     static std::unique_ptr<Interpreter> interpreter;
     if (!interpreter) {
         SilenceStdout silence;
@@ -613,7 +705,12 @@ static void serveStudio(int port) {
                 html = withInitialBindings(std::move(html), interpreter->getBindingsJSON());
             }
             res.set_content(
-                nlohmann::json{{"ok",true},{"html",html},{"classic",classic},{"diagnostics",lintDiagnosticsToJson(diags)}}.dump(),
+                nlohmann::json{
+                    {"ok", true},
+                    {"html", html},
+                    {"classic", classic},
+                    {"diagnostics", lintDiagnosticsWithSemanticWarnings(diags, program, code)}
+                }.dump(),
                 "application/json");
         } catch (const std::exception& e) {
             res.set_content(errorResponseJson(e.what()).dump(), "application/json");
@@ -676,7 +773,10 @@ static void serveStudio(int port) {
             JtmlLinter linter;
             auto diags = linter.lint(program);
             res.set_content(
-                nlohmann::json{{"ok",true},{"diagnostics",lintDiagnosticsToJson(diags)}}.dump(),
+                nlohmann::json{
+                    {"ok", true},
+                    {"diagnostics", lintDiagnosticsWithSemanticWarnings(diags, program, code)}
+                }.dump(),
                 "application/json");
         } catch (const std::exception& e) {
             res.set_content(errorResponseJson(e.what()).dump(), "application/json");
@@ -704,7 +804,12 @@ static void serveStudio(int port) {
                 html = withInitialBindings(std::move(html), interpreter->getBindingsJSON());
             }
             res.set_content(
-                nlohmann::json{{"ok",true},{"html",html},{"classic",classic},{"diagnostics",lintDiagnosticsToJson(diags)}}.dump(),
+                nlohmann::json{
+                    {"ok", true},
+                    {"html", html},
+                    {"classic", classic},
+                    {"diagnostics", lintDiagnosticsWithSemanticWarnings(diags, program, code)}
+                }.dump(),
                 "application/json");
         } catch (const std::exception& e) {
             res.set_content(errorResponseJson(e.what()).dump(), "application/json");
@@ -743,7 +848,10 @@ static void serveStudio(int port) {
     std::cout << std::flush;
 
     SilenceStdout silence;
-    svr.listen("0.0.0.0", port);
+    if (!svr.listen("0.0.0.0", port)) {
+        throw std::runtime_error("jtml studio cannot start: HTTP listener failed on 0.0.0.0:" +
+                                 std::to_string(port));
+    }
 }
 
 } // namespace

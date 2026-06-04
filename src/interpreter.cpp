@@ -1,6 +1,8 @@
 // jtml_interpreter.cpp
 #include "jtml/interpreter.h"
+#include "jtml/attribute_classifier.h"
 #include "jtml/friendly.h"
+#include "jtml/semantic.h"
 
 #include <algorithm>
 #include <cctype>
@@ -16,16 +18,6 @@ bool eventCarriesBrowserValue(const std::string& eventType) {
            eventType == "onChange" ||
            eventType == "onKeyUp" ||
            eventType == "onScroll";
-}
-
-bool isSupportedEventAttribute(const std::string& attrName) {
-    return attrName == "onClick" ||
-           attrName == "onInput" ||
-           attrName == "onChange" ||
-           attrName == "onKeyUp" ||
-           attrName == "onMouseOver" ||
-           attrName == "onScroll" ||
-           attrName == "onSubmit";
 }
 
 void assignLoopIterator(const std::shared_ptr<JTML::Environment>& env,
@@ -1073,11 +1065,56 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
 
     componentInstances.clear();
     componentDefinitions.clear();
-    for (const auto& node : program) {
-        if (!node) continue;
-        collectComponentDefinitions(*node, componentDefinitions);
-        collectComponentInstances(*node, componentInstances);
+
+    const auto semantic = jtml::analyzeSemanticProgram(program);
+    if (!semantic.componentDefinitions.empty() || !semantic.componentInstances.empty()) {
+        for (const auto& semanticDef : semantic.componentDefinitions) {
+            RuntimeComponentDefinition def;
+            def.name = semanticDef.name;
+            def.sourceLine = semanticDef.sourceLine;
+            def.params = semanticDef.params;
+            def.body = hexDecode(semanticDef.bodyHex);
+
+            auto existing = std::find_if(componentDefinitions.begin(), componentDefinitions.end(),
+                [&](const RuntimeComponentDefinition& current) {
+                    return current.name == def.name;
+                });
+            if (existing == componentDefinitions.end()) componentDefinitions.push_back(std::move(def));
+        }
+
+        auto propertiesToMap = [](const std::vector<jtml::SemanticProperty>& properties) {
+            std::map<std::string, std::string> out;
+            for (const auto& property : properties) {
+                out[property.name] = property.value;
+            }
+            return out;
+        };
+
+        for (const auto& semanticInstance : semantic.componentInstances) {
+            RuntimeComponentInstance instance;
+            instance.id = semanticInstance.id;
+            instance.component = semanticInstance.component;
+            instance.role = semanticInstance.role.empty() ? "component" : semanticInstance.role;
+            instance.sourceLine = semanticInstance.sourceLine;
+            instance.instanceID = static_cast<JTML::InstanceID>(semanticInstance.instanceId);
+            if (instance.instanceID == 0) {
+                instance.instanceID = parseInstanceId("", instance.id);
+            }
+            if (instance.instanceID == 0) {
+                instance.instanceID = static_cast<JTML::InstanceID>(componentInstances.size() + 1);
+            }
+            instance.params = propertiesToMap(semanticInstance.params);
+            instance.locals = propertiesToMap(semanticInstance.locals);
+            componentInstances.push_back(std::move(instance));
+        }
+    } else {
+        for (const auto& node : program) {
+            if (!node) continue;
+            collectComponentDefinitions(*node, componentDefinitions);
+            collectComponentInstances(*node, componentInstances);
+        }
     }
+
     for (auto& instance : componentInstances) {
         auto byId = existingById.find(instance.id);
         if (byId != existingById.end()) {
@@ -1127,7 +1164,8 @@ void Interpreter::interpretElementAttributes(const JtmlElementNode& elem) {
     for (const auto& attr : elem.attributes) {
 
         const std::string& attrName = attr.key;
-        if (isSupportedEventAttribute(attrName)) {
+        const auto classification = classifyJtmlAttribute(attr);
+        if (classification.kind == JtmlAttributeKind::Event) {
             const TranspiledBinding* transpiledBinding = transpiler.getAttributeBinding(attr);
             const std::unique_ptr<ExpressionStatementNode>& attrValue = attr.value;
             std::string derivedVarName;
@@ -1153,7 +1191,7 @@ void Interpreter::interpretElementAttributes(const JtmlElementNode& elem) {
             // Register the binding
             globalEnv->registerBinding(binding);
 
-        } else {
+        } else if (classification.kind == JtmlAttributeKind::Reactive) {
             const TranspiledBinding* transpiledBinding = transpiler.getAttributeBinding(attr);
             const std::unique_ptr<ExpressionStatementNode>& attrValue = attr.value;
             // Register attribute bindings similar to content bindings

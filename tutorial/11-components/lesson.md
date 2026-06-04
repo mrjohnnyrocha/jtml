@@ -2,6 +2,8 @@
 
 Components start with `make` and are called with an uppercase name:
 
+<!-- studio:playground -->
+
 ```jtml
 make Counter label
   let count = 0

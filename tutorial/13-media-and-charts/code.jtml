@@ -1,19 +1,15 @@
 jtml 2
 
-let revenue = [
-  { "month": "Jan", "sales": 12 },
-  { "month": "Feb", "sales": 18 },
-  { "month": "Mar", "sales": 9  },
-  { "month": "Apr", "sales": 24 },
-  { "month": "May", "sales": 30 }
-]
+let revenue = [{"month":"Jan","sales":12},{"month":"Feb","sales":18},{"month":"Mar","sales":9},{"month":"Apr","sales":24},{"month":"May","sales":30}]
 
 let progress = 0
-let opacity  = 0
 
-timeline intro duration 1000 easing ease-out
-  animate progress from 0 to 100
-  animate opacity  from 0 to 1
+when advance
+  if progress < 100
+    progress += 25
+
+when resetProgress
+  progress = 0
 
 style
   main
@@ -60,22 +56,24 @@ style
     overflow: visible
 
 page
-  h1 "Media, Charts & Animation"
+  h1 "Media, Charts, and Graphics"
 
   box class "card"
     h2 "Bar chart"
-    chart bar data revenue by month value sales label "Monthly Sales" color "#0f766e" axis x label "Month" axis y label "Sales ($k)" grid width "560" height "260"
+    chart bar data revenue by month value sales label "Monthly Sales" color "#0f766e"
 
   box class "card"
-    h2 "Line chart"
-    chart line data revenue by month value sales label "Sales trend" color "#2563eb" axis x label "Month" axis y label "Sales" legend width "560" height "260"
+    h2 "Vector graphic"
+    graphic aria-label "Sales trend" width "560" height "180" viewBox "0 0 560 180"
+      line x1 "40" y1 "150" x2 "520" y2 "150" stroke "#94a3b8" stroke-width "2"
+      path d "M50 120 C130 65 190 150 260 70 C340 10 410 52 510 26" fill "none" stroke "#2563eb" stroke-width "4"
+      dot cx "510" cy "26" r "7" fill "#111827"
 
   box class "card"
-    h2 "Timeline animation"
-    p "Progress: {progress}%  Opacity: {opacity}"
+    h2 "Interactive progress"
+    p "Progress: {progress}%"
     box class "bar-track"
       box class "bar-fill" style "width: {progress}%"
     box class "row"
-      button "Play" click intro.play
-      button "Pause" click intro.pause
-      button "Reset" click intro.reset
+      button "Advance" click advance
+      button "Reset" click resetProgress

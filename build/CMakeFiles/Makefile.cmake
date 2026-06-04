@@ -103,6 +103,7 @@ set(CMAKE_MAKEFILE_PRODUCTS
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/jtml_core.dir/DependInfo.cmake"
   "CMakeFiles/jtml_c.dir/DependInfo.cmake"
+  "CMakeFiles/jtml_cli_lib.dir/DependInfo.cmake"
   "CMakeFiles/jtml_cli.dir/DependInfo.cmake"
   "tests/CMakeFiles/jtml_tests.dir/DependInfo.cmake"
   "_deps/googletest-build/googlemock/CMakeFiles/gmock.dir/DependInfo.cmake"

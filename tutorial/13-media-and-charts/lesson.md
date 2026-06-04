@@ -1,6 +1,8 @@
-# 13. Media, Charts, and Animation
+# 13. Media, Charts, and Graphics
 
-JTML handles media, data visualisation, and animation declaratively — the same way it handles state.
+JTML handles media and data visualisation declaratively — the same way it handles state.
+
+<!-- studio:playground -->
 
 ## File and drop inputs
 
@@ -25,9 +27,9 @@ page
   p "{assets.length} files"
 ```
 
-## Image processing
+## Image processing roadmap
 
-`let name = image src resize W H [fit cover|contain|fill]` processes an image in the browser using canvas and exposes the result as `name.preview`:
+Image processing is planned for the browser runtime. The target shape is:
 
 ```jtml
 let photo = ""
@@ -39,51 +41,45 @@ page
     image src thumb.preview alt "Thumbnail"
 ```
 
-Also available: `crop x y w h` and `filter grayscale|blur|brightness|contrast|sepia|invert|saturate amount N`.
+Planned operations include `crop x y w h` and filters such as `grayscale`, `blur`, `brightness`, `contrast`, `sepia`, `invert`, and `saturate`.
 
 ## Charts
 
-`chart bar` and `chart line` render accessible SVG from any array of objects:
+`chart bar` renders accessible SVG from any array of objects:
 
 ```jtml
 let data = [{"month":"Jan","sales":12}, {"month":"Feb","sales":18}]
 
 page
   chart bar data data by month value sales label "Sales" color "#0f766e"
-    axis x label "Month"
-    axis y label "Sales ($k)"
-    grid
-    legend
 ```
 
-Chart options:
+Current chart options:
 
 | Option | Effect |
 |--------|--------|
-| `axis x label "..."` | X-axis label below the chart |
-| `axis y label "..."` | Y-axis label rotated left |
-| `grid` | Horizontal grid lines at tick marks |
-| `legend` | Coloured legend key |
-| `stacked` | Stack bars (bar charts only) |
 | `color "#hex"` | Bar or line colour |
-| `width N height N` | SVG dimensions in px |
+| `label "..."` | Accessible chart label |
 
-## Media controllers
+Line charts, axes, grid, legends, stacked bars, and explicit dimensions are roadmap items. Use `graphic`, `path`, `line`, and `dot` when you need custom vector visuals today.
 
-`into` on `video` or `audio` exposes reactive playback state:
+## Media controls
+
+Use `video` and `audio` when you want standards-based browser controls:
 
 ```jtml
 page
-  video src "/demo.mp4" controls into player
-  p "Time: {player.currentTime} / {player.duration}"
-  button "Play"  click player.play
-  button "Pause" click player.pause
-  button "Restart" click player.seek(0)
+  video src "/demo.mp4" controls poster "/poster.jpg"
+  audio src "/intro.mp3" controls
 ```
 
-## Timeline animations
+Reactive media controllers such as `player.play`, `player.pause`, and
+`player.currentTime` are on the runtime hardening roadmap. Keep production
+examples on native controls or host extern actions until that slice lands.
 
-`timeline name duration N [easing E] [autoplay] [repeat]` creates a reactive animation controller. Child `animate var from A to B` statements drive state on each frame:
+## Timeline animations roadmap
+
+Timeline animation syntax is planned. The target shape is:
 
 ```jtml
 let progress = 0
@@ -100,14 +96,13 @@ page
   p "Progress: {progress}%"
 ```
 
-Easing options: `linear`, `ease-in`, `ease-out`, `ease-in-out`.
-Add `repeat` to loop. Add `autoplay` to start on page load.
+Until that lands, model simple interactions with `when` actions and state updates, as shown in the lesson code.
 
 ## What to try
 
 Edit the code on the right to:
 
-1. Change the chart type from `bar` to `line`.
-2. Add `axis x label "Month"` to the chart.
-3. Increase the timeline duration to 2000 and add `repeat`.
-4. Add a second `animate` line for a different variable.
+1. Change the chart colour.
+2. Adjust the `path` in the vector graphic.
+3. Change the progress step from 25 to 10.
+4. Add a second progress bar with a different state variable.

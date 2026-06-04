@@ -127,11 +127,11 @@
       "patterns": [
         {
           "name": "keyword.control.jtml",
-          "match": "\\b(if|else|while|for|in|break|continue|try|except|then|return|throw)\\b"
+          "match": "\\b(if|else|while|for|in|break|continue|try|catch|except|finally|then|return|throw)\\b"
         },
         {
           "name": "storage.type.jtml",
-          "match": "\\b(define|const|derive|unbind|store|show|function|async|subscribe|unsubscribe|to|from|object|derives|import|main|let|get|when|make|page|route|layout|slot|fetch|use|export|effect|redirect|refresh|guard|extern|into|link|text|box|image|item|list|ordered)\\b"
+          "match": "\\b(define|const|derive|unbind|store|show|function|async|subscribe|unsubscribe|to|from|object|derives|import|main|let|get|when|make|page|route|layout|load|slot|fetch|method|body|cache|credentials|use|export|effect|style|theme|redirect|refresh|guard|require|invalidate|timeout|retry|stale|lazy|keep|extern|html|css|raw|into|click|input|change|submit|hover|scroll|focus|blur|keyup|keydown|key-up|key-down|dragover|drop|dblclick|double-click|link|navlink|text|box|image|video|audio|embed|file|dropzone|canvas|svg|graphic|group|bar|dot|line|path|polyline|polygon|chart|scene3d|item|list|ordered|checkbox|app|shell|topbar|sidebar|content|panel|card|grid|stack|cluster|split|toolbar|tabs|tab|alert|badge|modal|drawer|toast|loading|error|empty|field|metric|spacer|cols|gap|pad|radius|shadow|tone|align|justify|width|surface|timeline|animate|resize|crop|filter|axis|legend|stacked|duration|easing|autoplay|repeat|activeRoute|activeRouteName)\\b"
         }
       ]
     },

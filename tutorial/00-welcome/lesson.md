@@ -4,6 +4,8 @@ JTML is a small reactive language for HTML pages. You write what the page is, JT
 
 This is the language's home page. Edit the code on the right and press **Run** to see the page rebuild. The same code is canonical Friendly JTML — what `jtml fmt` produces.
 
+<!-- studio:playground -->
+
 The lessons below walk through the language piece by piece:
 
 - **0. Welcome** — you are here.
@@ -19,12 +21,13 @@ The lessons below walk through the language piece by piece:
 - **10. Routes** — local SPA navigation, params, and links.
 - **11. Components** — reusable UI with isolated instance state.
 - **12. Compatibility and tooling** — when to use Friendly JTML 2, when Classic matters, and how Studio/CLI fit together.
+- **13. Media and graphics** — files, native media, charts, vector graphics, and 3D host integration.
 
 When you finish the lessons:
 
-- Read the **AI authoring contract** in `docs/ai-authoring-contract.md`.
+- Read the **AI authoring contract** in `docs/reference/ai-authoring-contract.md`.
 - Browse the **example gallery** with `jtml examples`.
-- See the **language reference** in `docs/language-reference.md`.
+- See the **language reference** in `docs/reference/language-reference.md`.
 - Format any file with `jtml fmt file.jtml -w`.
 - Lint any file with `jtml lint file.jtml`.
 - Build a static page with `jtml build file.jtml --out dist`.

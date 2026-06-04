@@ -27,3 +27,4 @@ out/
 
 # Local agent/tooling worktrees
 .claude/
+build/

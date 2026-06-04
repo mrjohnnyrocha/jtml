@@ -12,6 +12,7 @@ enum class SyntaxMode {
 };
 
 bool isFriendlySyntax(const std::string& source);
+bool isJtlCoreSyntax(const std::string& source);
 bool looksLikeFriendlySyntax(const std::string& source);
 struct FriendlyClassicResult {
     std::string classicSource;

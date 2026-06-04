@@ -2,14 +2,16 @@
 
 Version: 0.1.0-dev
 
-JTML is a compact syntax for building reactive HTML pages. It keeps HTML's
-element and attribute model, then adds state, derived values, actions, events,
-components, modules, async data, routing, stores, effects, tooling, and a small
-runtime contract.
+JTML is the web/app dialect of the planned JTL language family. JTML is a
+compact syntax for building reactive HTML pages: it keeps HTML's element and
+attribute model, then adds state, derived values, actions, events, components,
+modules, async data, routing, stores, effects, tooling, and a small runtime
+contract.
 
 ## Files
 
-JTML source files use `.jtml`.
+JTML source files use `.jtml`. Experimental core-language files can use `.jtl`
+and the `jtl 1` header while the JTL core language is being designed.
 
 Friendly JTML 2 is the canonical authoring dialect. Start a file with `jtml 2`:
 
@@ -41,6 +43,22 @@ interpolated strings (`"Hello {name}"`), ternaries (`condition ? a : b`),
 arrays, dictionaries, dotted reads, index reads, function calls, and compound
 assignment.
 
+For core-language experiments without web UI, start with `jtl 1`:
+
+```jtl
+jtl 1
+
+let total = 0
+get doubled = total * 2
+
+when add amount
+  total += amount
+```
+
+Current status: `jtl 1` lowers through the same Friendly pipeline as `jtml 2`.
+It is the first compatibility slice for the future core language, not yet a
+separate general-purpose runtime.
+
 ## Friendly Keyword Index
 
 Use this as the compact, copyable mini-reference for the public language
@@ -50,7 +68,7 @@ recommended spelling for new apps.
 
 | Area | Keywords and forms |
 | --- | --- |
-| file/version | `jtml 2` |
+| file/version | `jtml 2`, experimental `jtl 1` |
 | state and values | `let`, `const`, `get`, `show`, `true`, `false` |
 | actions and effects | `when`, `effect`, `redirect`, `refresh`, `invalidate`, `extern` |
 | control flow | `if`, `else`, `for`, `in`, `while`, `break`, `continue`, `try`, `catch`, `finally`, `return`, `throw` |
@@ -90,6 +108,7 @@ recommended spelling for new apps.
 | Need | Choose | Why |
 | --- | --- | --- |
 | New app/page/component | Friendly `jtml 2` | Canonical public dialect |
+| Core-language experiment | Experimental `jtl 1` | Shared Friendly pipeline today; planned JTL core later |
 | AI-authored code | Friendly `jtml 2` | Fewer tokens, fewer delimiters, clearer intent |
 | Existing old `.jtml` file | Compatibility backend or `jtml migrate` | Preserve compatibility, migrate when ready |
 | Compiler/runtime artifact inspection | Compatibility IR | This is the lowered backend form |
@@ -322,6 +341,17 @@ tabs tab alert badge modal drawer toast loading error empty field metric spacer
 navlink
 ```
 
+The canonical machine-readable catalog is available from:
+
+```sh
+jtml ui --json
+```
+
+It reports each primitive's category, lowered HTML role, common modifiers, and
+description, plus supported modifier values and theme token kinds. Treat this
+CLI output as the source of truth for Studio/reference surfaces, editor
+plugins, and AI authoring prompts.
+
 Implemented modifiers:
 
 ```text
@@ -330,10 +360,29 @@ cols gap pad radius shadow tone align justify width surface
 
 The most stable modifiers today are `cols`, `gap`, `pad`, `radius`, `shadow`,
 and `tone`. `metric "Label" value "Caption" tone good` is a compact primitive
-for dashboard-style values. `jtml explain --json` reports modifier intent in
-`semantic.uiModifiers`, and `jtml lint` warns on obvious mismatches such as
-`cols` outside `grid` or `tone` on structural layout primitives. Raw scoped
-CSS remains available when the semantic surface is not expressive enough:
+for dashboard-style values. `jtml explain --json` reports the visual surface in
+`semantic.ui` with primitive names, primitive-use facts, modifiers, theme token
+counts, style block counts, and escape-hatch counts. Use
+`semantic.ui.authorThemeTokens` for the tokens written in the source `theme`
+block; `semantic.ui.themeTokens` includes generated CSS token references for
+compatibility with earlier tooling. The compatibility key
+`semantic.uiModifiers` is also preserved. `semantic.ui.uses` reports whether a
+primitive has title text, `aria-label`, a usable label, form controls, action
+bindings, route targets, tab children, or dismiss actions. `jtml lint` warns on obvious
+mismatches such as `cols` outside `grid`, `tone` on structural layout
+primitives, unsupported modifier values such as `gap huge`, unlabeled semantic
+surfaces/overlays such as `panel` or `modal` without `title` or `aria-label`,
+modal/drawer overlays without a close-like action, `field` without a control or
+usable label, `tabs` without a `tab`, and `tab` without an action or route
+target. Raw scoped CSS remains available when the semantic surface is not
+expressive enough:
+
+Several primitives also lower with accessibility defaults: `modal` and
+`drawer` emit `role="dialog"`, `aria-modal="true"`, and `tabindex="-1"`;
+`alert` and `error` emit `role="alert"`; `toast`, `loading`, and `empty` emit
+`role="status"` plus `aria-live="polite"`; `loading` also emits
+`aria-busy="true"`; `tabs` emits `role="tablist"`; and `tab` emits
+`role="tab"` plus `type="button"`.
 
 ```jtml
 style

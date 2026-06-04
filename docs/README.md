@@ -10,6 +10,7 @@ start here, then follow the section folders.
 | [`../README.md`](../README.md) | Project overview, build/run commands, and the fastest path into Studio. |
 | [`../ROADMAP.md`](../ROADMAP.md) | Current product direction and phase-level status. |
 | [`architecture/observable-first-architecture-roadmap.md`](architecture/observable-first-architecture-roadmap.md) | Architecture thesis: Friendly source, typed AST, semantic IR, observable graph, and multiple backends. |
+| [`architecture/language-family-design.md`](architecture/language-family-design.md) | Consolidated JTML/JTL design: dialect boundaries, semantic core, interop, and enterprise goals. |
 | [`roadmaps/next-priorities.md`](roadmaps/next-priorities.md) | The immediate implementation order after the semantic cleanup slice. |
 | [`reference/language-reference.md`](reference/language-reference.md) | The user-facing language reference for Friendly JTML 2 and the compatibility backend. |
 | [`reference/ai-authoring-contract.md`](reference/ai-authoring-contract.md) | Rules for AI systems generating or editing runnable JTML. |
@@ -18,6 +19,7 @@ The compact machine-readable language surface is available from the CLI:
 
 ```sh
 jtml keywords --json
+jtml ui --json
 ```
 
 ## Folder Map
@@ -43,6 +45,7 @@ jtml keywords --json
 | Document | Use it for |
 | --- | --- |
 | [`architecture/observable-first-architecture-roadmap.md`](architecture/observable-first-architecture-roadmap.md) | Semantic IR and observable-graph dependency order. |
+| [`architecture/language-family-design.md`](architecture/language-family-design.md) | How JTL core and JTML web/app syntax should evolve together without splitting the architecture into scattered plans. |
 | [`architecture/studio-redesign-proposal.md`](architecture/studio-redesign-proposal.md) | Product/design RFC for Studio as the main JTML home and learning hub. |
 
 ## Roadmaps

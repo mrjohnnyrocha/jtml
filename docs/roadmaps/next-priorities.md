@@ -53,8 +53,40 @@ Implementation slices:
 3. ✅ Keep raw `style` and raw CSS as escape hatches.
 4. ✅ Add first lints for impossible visual combinations: `cols` outside
    `grid`, and `tone` on structural layout primitives.
-5. Update Studio samples to use the primitives consistently.
-6. Expand primitives into a documented, versioned component kit.
+5. ✅ Expose the semantic UI surface through `jtml explain --json` as
+   `semantic.ui`, including authored theme token counts separately from
+   generated CSS token references, while preserving the older
+   `semantic.uiModifiers` key for tool compatibility.
+6. ✅ Studio sample migration shipped across the embedded Explorer set:
+   basics, data/state, navigation, media/graphics, and composition examples now
+   use `theme`, `panel`, `stack`, `grid`, `card`, `metric`, `toolbar`, `alert`,
+   `loading`, and `error` where appropriate, with regression tests that parse,
+   lint, transpile, and assert semantic UI coverage.
+7. ✅ Expand primitives into a documented, versioned component-kit surface:
+   `jtml ui [--json]` now exposes the canonical primitive, modifier, and theme
+   token catalog used by docs, tests, Studio examples, and AI/tooling prompts.
+8. ✅ First catalog-backed visual lint shipped: `jtml lint` now warns on
+   unsupported semantic UI modifier values such as `cols 9`, `gap huge`, or
+   `tone loud`.
+9. ✅ First accessibility-oriented primitive lint shipped: semantic surfaces and
+   overlays now warn when `panel`, `card`, `modal`, `drawer`, or `toast` lack
+   `title` or `aria-label`.
+10. ✅ First form/navigation semantic lint shipped: `field` now warns without
+    an input-like control, `tabs` warns without a `tab`, and `tab` warns
+    without an action or route target.
+11. ✅ First overlay behavior lint shipped: `modal` and `drawer` now warn
+    without a close/dismiss/cancel/hide action. Next: extend this into keyboard
+    semantics, focus behavior, and form submission contracts.
+12. ✅ First semantic accessibility defaults shipped: `modal`/`drawer`,
+    `alert`, `error`, `toast`, `loading`, `empty`, `tabs`, and `tab` now lower
+    with sensible platform roles/live-region attributes. Overlays are focusable
+    with `tabindex="-1"`, `loading` exposes busy state, and `tab` uses
+    `type="button"` to avoid accidental form submission. Next: add richer
+    keyboard behavior on top of those stable roles.
+13. ✅ Field label semantics shipped: `semantic.ui.uses` now separates
+    `hasControl` from `hasLabel`, and `jtml lint` reports
+    `JTML_UI_FIELD_UNLABELED` when a field wraps a control without a usable
+    label.
 
 ## 2. Browser-Local Production Runtime
 
@@ -181,8 +213,8 @@ Implementation slices:
 2. Add a docs index view that mirrors `docs/README.md`.
 3. Keep tutorial notebook mode as the default learning mode.
 4. Move compatibility IR behind diagnostics, not primary authoring.
-5. Make every Studio example use the same semantic styling system once P1
-   lands.
+5. ✅ Make every embedded Studio example use the same semantic styling system
+   where normal UI is being demonstrated.
 6. ✅ Add a canonical language catalog and `jtml keywords --json`; keep README,
    reference docs, Studio mini-reference, VS Code grammar, and LSP completions
    aligned with that catalog instead of independent keyword folklore.

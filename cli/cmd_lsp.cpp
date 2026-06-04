@@ -324,6 +324,8 @@ nlohmann::json completionItems() {
 
     items.push_back(completionItem(
         "jtml 2", 14, "Friendly JTML file header", "jtml 2\n\n$0", true));
+    items.push_back(completionItem(
+        "jtl 1", 14, "Experimental JTL core file header", "jtl 1\n\n$0", true));
     pushItem("page", 14, "Root page block", "page\n  $0", true);
     pushItem("let", 14, "Reactive state declaration", "let ${1:name} = ${2:value}", true);
     pushItem("get", 14, "Derived value declaration", "get ${1:name} = ${2:expression}", true);
@@ -366,7 +368,8 @@ nlohmann::json completionItems() {
 
 std::map<std::string, std::string> hoverDocs() {
     return {
-        {"jtml", "`jtml 2` enables Friendly JTML syntax for this file."},
+        {"jtml", "`jtml 2` enables Friendly JTML web/app syntax for this file."},
+        {"jtl", "`jtl 1` marks an experimental JTL core-language file that currently lowers through the Friendly pipeline."},
         {"let", "`let name = value` declares reactive state."},
         {"get", "`get name = expression` declares a derived value."},
         {"when", "`when action` declares an action that can be called from events."},

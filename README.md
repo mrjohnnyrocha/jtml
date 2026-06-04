@@ -2,6 +2,11 @@
 
 JTML is a small C++ runtime and transpiler for a reactive HTML-oriented language.
 
+Longer term, **JTL** is the planned core language and **JTML** is its web/app
+dialect. The current implementation accepts experimental `jtl 1` files through
+the same Friendly pipeline so core-language examples can begin to share the
+typed AST, semantic IR, and observable graph with JTML.
+
 ## Syntax
 
 The canonical source dialect is Friendly JTML 2. Start files with `jtml 2`,
@@ -34,6 +39,23 @@ Friendly syntax is the format used by the tutorial, Studio samples, AI
 authoring contract, formatter, and bundled app examples. The Classic-compatible
 backend remains supported for existing files, migration, embedding, and
 compiler artifacts, but it is not the public authoring style for new apps.
+
+For core-language experiments without web UI, use `jtl 1`:
+
+```jtl
+jtl 1
+
+let total = 0
+get doubled = total * 2
+
+when add amount
+  total += amount
+```
+
+This is an early compatibility slice: `jtl 1` currently lowers through the
+Friendly pipeline. A dedicated core runtime, `fn` functions, tests, standard
+library, and Python/JS/native interop are planned in
+`docs/architecture/language-family-design.md`.
 
 Hyphenated attributes such as `data-page` and `aria-label` are supported.
 Keyword-shaped attributes such as `for` are supported in element position, and
@@ -187,6 +209,7 @@ Check your install:
 ```sh
 ./build/jtml --version
 ./build/jtml keywords
+./build/jtml ui
 ```
 
 Create a starter page:
@@ -255,6 +278,8 @@ Semantic styling first slice is available through `theme`, UI primitives such
 as `shell`, `panel`, `grid`, `card`, `metric`, and utility modifiers such as
 `gap`, `pad`, `shadow`, `tone`, and `cols`. These lower to ordinary HTML,
 generated CSS, and semantic IR counts in `jtml explain`.
+Run `jtml ui --json` for the canonical primitive/modifier/theme-token catalog
+used by docs, Studio examples, and tooling.
 Use scoped `style` for page-local CSS, and explicit `css raw` / `html raw`
 only when integrating trusted host widgets, custom elements, or third-party
 surfaces that need direct platform markup. These escape hatches are reported

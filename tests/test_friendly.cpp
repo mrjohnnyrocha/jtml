@@ -28,10 +28,14 @@ std::string normalizeOk(const std::string& src) {
 
 TEST(FriendlySyntax, HeaderEnablesAutoMode) {
     EXPECT_TRUE(jtml::isFriendlySyntax("jtml 2\npage\n  h1 \"Hi\"\n"));
+    EXPECT_TRUE(jtml::isFriendlySyntax("jtl 1\nlet count = 0\n"));
+    EXPECT_TRUE(jtml::isJtlCoreSyntax("jtl 1\nlet count = 0\n"));
+    EXPECT_FALSE(jtml::isJtlCoreSyntax("jtml 2\npage\n  h1 \"Hi\"\n"));
     EXPECT_FALSE(jtml::isFriendlySyntax("define count = 0\\\\\n"));
 }
 
 TEST(FriendlySyntax, LooksLikeFriendlyDetectsMoreKeywords) {
+    EXPECT_TRUE(jtml::looksLikeFriendlySyntax("jtl 1\nlet count = 0\n"));
     EXPECT_TRUE(jtml::looksLikeFriendlySyntax("let count = 0\n"));
     EXPECT_TRUE(jtml::looksLikeFriendlySyntax("const PI = 3.14\n"));
     EXPECT_TRUE(jtml::looksLikeFriendlySyntax("when save\n  let x = 1\n"));
@@ -48,6 +52,26 @@ TEST(FriendlySyntax, LooksLikeFriendlyDetectsMoreKeywords) {
     EXPECT_TRUE(jtml::looksLikeFriendlySyntax("store auth\n  let user = \"Ada\"\n"));
     EXPECT_TRUE(jtml::looksLikeFriendlySyntax("export make Card\n  text \"Hi\"\n"));
     EXPECT_FALSE(jtml::looksLikeFriendlySyntax("define count = 0\\\\\n"));
+}
+
+TEST(FriendlySyntax, JtlCoreHeaderLowersThroughFriendlyPipeline) {
+    std::string classic = normalizeOk(
+        "jtl 1\n"
+        "\n"
+        "let total = 0\n"
+        "get doubled = total * 2\n"
+        "\n"
+        "when add amount\n"
+        "  total += amount\n"
+        "\n"
+        "if doubled > 2\n"
+        "  show doubled\n");
+
+    EXPECT_NE(classic.find("define total = 0\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("derive doubled = total * 2\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("function add(amount)\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("total += amount\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("if (doubled > 2)\\\\"), std::string::npos);
 }
 
 TEST(FriendlySyntax, RawHtmlAndCssEscapeHatchesLowerAndTranspile) {
@@ -188,6 +212,64 @@ TEST(FriendlySyntax, ThemeAndUiPrimitivesLowerToSemanticHtmlAndCss) {
     EXPECT_NE(html.find("class=\"jtml-metric jtml-tone-good\""), std::string::npos);
     EXPECT_NE(html.find("--jtml-color-primary: #155e75;"), std::string::npos);
     EXPECT_NE(html.find("[data-jtml-app] .jtml-panel"), std::string::npos);
+}
+
+TEST(FriendlySyntax, OverlayPrimitivesSupportTitleSugar) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "when closeModal\n"
+        "  let open = false\n"
+        "page\n"
+        "  modal title \"Confirm action\"\n"
+        "    button \"Close\" click closeModal\n"
+        "  drawer title \"Filters\"\n"
+        "    button \"Hide\" click closeModal\n"
+        "  toast title \"Saved\"\n"
+        "    text \"Your changes were saved.\"\n");
+
+    EXPECT_NE(classic.find("@section class=\"jtml-modal\" data-jtml-ui=\"modal\" role=\"dialog\" aria-modal=\"true\" tabindex=\"-1\"\\\\"),
+              std::string::npos) << classic;
+    EXPECT_NE(classic.find("@aside class=\"jtml-drawer\" data-jtml-ui=\"drawer\" role=\"dialog\" aria-modal=\"true\" tabindex=\"-1\"\\\\"),
+              std::string::npos) << classic;
+    EXPECT_NE(classic.find("@div class=\"jtml-toast\" data-jtml-ui=\"toast\" role=\"status\" aria-live=\"polite\"\\\\"),
+              std::string::npos) << classic;
+    EXPECT_NE(classic.find("show \"Confirm action\"\\\\"), std::string::npos) << classic;
+    EXPECT_NE(classic.find("show \"Filters\"\\\\"), std::string::npos) << classic;
+    EXPECT_NE(classic.find("show \"Saved\"\\\\"), std::string::npos) << classic;
+}
+
+TEST(FriendlySyntax, NavigationPrimitivesEmitAccessibilityRoles) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "when choose\n"
+        "  let selected = \"usage\"\n"
+        "page\n"
+        "  tabs\n"
+        "    tab \"Usage\" click choose\n");
+
+    EXPECT_NE(classic.find("@div class=\"jtml-tabs\" data-jtml-ui=\"tabs\" role=\"tablist\"\\\\"),
+              std::string::npos) << classic;
+    EXPECT_NE(classic.find("@button class=\"jtml-tab\" data-jtml-ui=\"tab\" role=\"tab\" type=\"button\" onClick=choose()\\\\"),
+              std::string::npos) << classic;
+}
+
+TEST(FriendlySyntax, FeedbackPrimitivesEmitAccessibilityRoles) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "page\n"
+        "  alert \"Saved\"\n"
+        "  error \"Failed\"\n"
+        "  loading \"Loading users\"\n"
+        "  empty \"No users yet\"\n");
+
+    EXPECT_NE(classic.find("@div class=\"jtml-alert\" data-jtml-ui=\"alert\" role=\"alert\"\\\\"),
+              std::string::npos) << classic;
+    EXPECT_NE(classic.find("@div class=\"jtml-error\" data-jtml-ui=\"error\" role=\"alert\"\\\\"),
+              std::string::npos) << classic;
+    EXPECT_NE(classic.find("@div class=\"jtml-loading\" data-jtml-ui=\"loading\" role=\"status\" aria-live=\"polite\" aria-busy=\"true\"\\\\"),
+              std::string::npos) << classic;
+    EXPECT_NE(classic.find("@div class=\"jtml-empty\" data-jtml-ui=\"empty\" role=\"status\" aria-live=\"polite\"\\\\"),
+              std::string::npos) << classic;
 }
 
 TEST(FriendlySyntax, RoutesExpandToRoutedSectionsAndRuntime) {

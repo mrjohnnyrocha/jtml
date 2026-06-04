@@ -364,7 +364,7 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
     for (size_t i = 0; i < sourceLines.size(); ++i) {
         std::string line = sourceLines[i];
         const std::string text = trimCopy(stripLineComment(line));
-        if (text == "jtml 2") continue;
+        if (text == "jtml 2" || text == "jtl 1") continue;
 
         FriendlyUseSpec use;
         if (parseFriendlyUseLine(line, use)) {
@@ -527,6 +527,7 @@ std::string versionString() {
         << "  jtml doctor            verify local toolkit layout\n"
         << "  jtml generate \"desc\"   print an AI-ready component starter\n"
         << "  jtml keywords [--json] print the canonical Friendly keyword catalog\n"
+        << "  jtml ui [--json]       print the semantic UI primitive catalog\n"
         << "  jtml explain <file>    explain a JTML source file\n"
         << "  jtml suggest <file>    suggest production refactors\n"
         << "  jtml lsp               run the Language Server Protocol over stdio\n"

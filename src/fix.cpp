@@ -30,7 +30,7 @@ bool hasFriendlyHeader(const std::vector<std::string>& lines) {
     for (const auto& line : lines) {
         std::string text = ltrim(line);
         if (text.empty()) continue;
-        return startsWith(text, "jtml 2");
+        return startsWith(text, "jtml 2") || startsWith(text, "jtl 1");
     }
     return false;
 }

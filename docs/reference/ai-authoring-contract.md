@@ -293,7 +293,17 @@ Use modifiers where they match the primitive. `cols` belongs on `grid`;
 `tone` belongs on content surfaces such as `panel`, `card`, `metric`, `alert`,
 `badge`, or `toast`, not structural layout primitives such as `shell` or
 `content`. `jtml lint` reports `JTML_UI_COLS_ON_NON_GRID` and
-`JTML_UI_TONE_ON_LAYOUT` when generated code crosses those boundaries.
+`JTML_UI_TONE_ON_LAYOUT` when generated code crosses those boundaries. Labeled
+semantic surfaces are preferred: write `panel title "Usage"` or add
+`aria-label`; overlays can use `modal title "Confirm"` or
+`drawer title "Filters"`. Form and navigation primitives should be wired, not
+decorative: `field` should wrap an input-like control and include visible text,
+`aria-label`, `title`, `placeholder`, or another clear label; `tabs` should
+contain `tab` children, and each `tab` should trigger an action or route target.
+`modal` and `drawer` should include an obvious close/dismiss/cancel/hide
+action. Do not manually add default platform roles unless overriding them:
+`modal`/`drawer`, `alert`, `error`, `toast`, `loading`, `empty`, `tabs`, and
+`tab` already lower to sensible accessibility roles and safe button defaults.
 
 Use `style` when a primitive or modifier cannot express the design.
 

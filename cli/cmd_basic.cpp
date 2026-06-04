@@ -106,6 +106,7 @@ nlohmann::json semanticNodeCountsToJson(const jtml::SemanticProgram& semantic) {
         {"components", semantic.components.size()},
         {"stores",     semantic.stores.size()},
         {"uiPrimitives", semantic.uiPrimitives.size()},
+        {"authorThemeTokens", semantic.authorThemeTokenCount},
         {"themeTokens", semantic.themeTokenCount},
         {"rawStyleAttributes", semantic.rawStyleAttributeCount},
         {"semanticPrimitiveRawStyleAttributes", semantic.semanticPrimitiveRawStyleCount},
@@ -138,6 +139,40 @@ nlohmann::json semanticUiModifiersToJson(const jtml::SemanticProgram& semantic) 
         });
     }
     return out;
+}
+
+nlohmann::json semanticUiUsesToJson(const jtml::SemanticProgram& semantic) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& use : semantic.uiUses) {
+        out.push_back({
+            {"primitive", use.primitive},
+            {"tagName", use.tagName},
+            {"hasTitle", use.hasTitle},
+            {"hasAriaLabel", use.hasAriaLabel},
+            {"hasLabel", use.hasLabel},
+            {"hasControl", use.hasControl},
+            {"hasActionBinding", use.hasActionBinding},
+            {"hasNavigationTarget", use.hasNavigationTarget},
+            {"hasTabChild", use.hasTabChild},
+            {"hasDismissAction", use.hasDismissAction},
+        });
+    }
+    return out;
+}
+
+nlohmann::json semanticUiToJson(const jtml::SemanticProgram& semantic) {
+    return {
+        {"primitives", listJson(semantic.uiPrimitives)},
+        {"uses", semanticUiUsesToJson(semantic)},
+        {"modifiers", semanticUiModifiersToJson(semantic)},
+        {"authorThemeTokens", semantic.authorThemeTokenCount},
+        {"themeTokens", semantic.themeTokenCount},
+        {"styleBlocks", semantic.styleBlocks},
+        {"rawStyleAttributes", semantic.rawStyleAttributeCount},
+        {"semanticPrimitiveRawStyleAttributes", semantic.semanticPrimitiveRawStyleCount},
+        {"rawCssBlocks", semantic.rawCssBlocks},
+        {"rawHtmlBlocks", semantic.rawHtmlBlocks},
+    };
 }
 
 nlohmann::json semanticRouteRecordsToJson(const jtml::SemanticProgram& semantic) {
@@ -812,6 +847,75 @@ int cmdKeywords(const Options& o) {
     return 0;
 }
 
+int cmdUi(const Options& o) {
+    const auto& ui = jtml::semanticUiCatalog();
+
+    if (o.json) {
+        nlohmann::json primitives = nlohmann::json::array();
+        for (const auto& primitive : ui.primitives) {
+            primitives.push_back({
+                {"name", primitive.name},
+                {"category", primitive.category},
+                {"lowersTo", primitive.lowersTo},
+                {"commonModifiers", primitive.commonModifiers},
+                {"description", primitive.description},
+            });
+        }
+
+        nlohmann::json modifiers = nlohmann::json::array();
+        for (const auto& modifier : ui.modifiers) {
+            modifiers.push_back({
+                {"name", modifier.name},
+                {"appliesTo", modifier.appliesTo},
+                {"values", modifier.values},
+                {"description", modifier.description},
+            });
+        }
+
+        std::cout << nlohmann::json{
+            {"dialect", "Friendly JTML 2"},
+            {"sourceOfTruth", "Semantic UI is the canonical visual-intent layer; raw CSS remains an escape hatch"},
+            {"primitives", primitives},
+            {"modifiers", modifiers},
+            {"themeTokenKinds", ui.themeTokenKinds},
+        }.dump(2) << "\n";
+        return 0;
+    }
+
+    std::cout << "Friendly JTML 2 semantic UI catalog\n"
+              << "Semantic UI expresses visual intent. Use raw CSS for host/platform escape hatches.\n\n";
+
+    std::map<std::string, std::vector<const jtml::SemanticUiPrimitiveSpec*>> primitivesByCategory;
+    for (const auto& primitive : ui.primitives) {
+        primitivesByCategory[primitive.category].push_back(&primitive);
+    }
+    for (const auto& [category, primitives] : primitivesByCategory) {
+        std::cout << category << ":\n";
+        for (const auto* primitive : primitives) {
+            std::cout << "  " << primitive->name << " -> " << primitive->lowersTo
+                      << "  " << primitive->description << "\n";
+        }
+    }
+
+    std::cout << "\nmodifiers:\n";
+    for (const auto& modifier : ui.modifiers) {
+        std::cout << "  " << modifier.name << " (" << modifier.appliesTo << "): ";
+        for (size_t i = 0; i < modifier.values.size(); ++i) {
+            if (i > 0) std::cout << ' ';
+            std::cout << modifier.values[i];
+        }
+        std::cout << "\n";
+    }
+
+    std::cout << "\ntheme token kinds:\n  ";
+    for (size_t i = 0; i < ui.themeTokenKinds.size(); ++i) {
+        if (i > 0) std::cout << ' ';
+        std::cout << ui.themeTokenKinds[i];
+    }
+    std::cout << "\n";
+    return 0;
+}
+
 int cmdExplain(const Options& o) {
     const std::string source = readFile(o.inputFile);
 
@@ -864,6 +968,7 @@ int cmdExplain(const Options& o) {
                 {"components", semantic.components.size()},
                 {"stores",     semantic.stores.size()},
                 {"uiPrimitives", semantic.uiPrimitives.size()},
+                {"authorThemeTokens", semantic.authorThemeTokenCount},
                 {"themeTokens", semantic.themeTokenCount},
                 {"rawStyleAttributes", semantic.rawStyleAttributeCount},
                 {"semanticPrimitiveRawStyleAttributes", semantic.semanticPrimitiveRawStyleCount},
@@ -884,6 +989,7 @@ int cmdExplain(const Options& o) {
                 {"fetchRecords", semanticFetchRecordsToJson(semantic)},
                 {"componentDefinitions", semanticComponentDefinitionsToJson(semantic)},
                 {"componentInstances", semanticComponentInstancesToJson(semantic)},
+                {"ui", semanticUiToJson(semantic)},
                 {"uiModifiers", semanticUiModifiersToJson(semantic)},
                 {"dependencies", semanticEdgesToJson(semantic)},
                 {"sourceOfTruth", "typed AST -> semantic analysis -> observable graph"}
@@ -939,6 +1045,7 @@ int cmdExplain(const Options& o) {
     metric("externs",    static_cast<int>(semantic.externs.size()));
     metric("timelines",  semantic.timelineCount);
     metric("ui primitives", static_cast<int>(semantic.uiPrimitives.size()));
+    metric("author theme", semantic.authorThemeTokenCount);
     metric("theme tokens", semantic.themeTokenCount);
     metric("components", static_cast<int>(semantic.components.size()));
     metric("stores",     static_cast<int>(semantic.stores.size()));
@@ -958,6 +1065,28 @@ int cmdExplain(const Options& o) {
             std::cout << "  ... " << (semantic.dependencies.size() - limit)
                       << " more edge" << (semantic.dependencies.size() - limit == 1 ? "" : "s")
                       << " in `--json`\n";
+        }
+    }
+
+    if (!semantic.uiPrimitives.empty() || !semantic.uiModifiers.empty() ||
+        semantic.themeTokenCount > 0 || semantic.styleBlocks > 0) {
+        std::cout << "\nSemantic UI:\n";
+        if (!semantic.uiPrimitives.empty()) {
+            std::cout << "  primitives: " << joinDisplay(semantic.uiPrimitives) << "\n";
+        }
+        if (!semantic.uiModifiers.empty()) {
+            std::cout << "  modifiers:\n";
+            for (const auto& modifier : semantic.uiModifiers) {
+                std::cout << "    - " << modifier.primitive << " "
+                          << modifier.modifier << " " << modifier.value << "\n";
+            }
+        }
+        if (semantic.themeTokenCount > 0) {
+            std::cout << "  author theme tokens: " << semantic.authorThemeTokenCount << "\n";
+            std::cout << "  generated theme token references: " << semantic.themeTokenCount << "\n";
+        }
+        if (semantic.styleBlocks > 0) {
+            std::cout << "  generated/style blocks: " << semantic.styleBlocks << "\n";
         }
     }
 

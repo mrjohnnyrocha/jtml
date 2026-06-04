@@ -35,6 +35,7 @@ int cmdExamples (const Options& o);   // list bundled examples
 int cmdDoctor   (const Options& o);   // verify local toolkit layout
 int cmdGenerate (const Options& o);   // print AI-native generation prompt + starter
 int cmdKeywords (const Options& o);   // print the canonical Friendly keyword catalog
+int cmdUi       (const Options& o);   // print the semantic UI primitive catalog
 int cmdExplain  (const Options& o);   // explain a JTML source file
 int cmdSuggest  (const Options& o);   // suggest refactors for a JTML source file
 int cmdLsp      (const Options& o);   // Language Server Protocol over stdio

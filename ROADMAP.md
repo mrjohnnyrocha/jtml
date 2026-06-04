@@ -1,10 +1,12 @@
 # JTML Roadmap
 
-JTML should be an observable-first UI language over the full web platform:
-apps read like documents but behave like reactive software. Friendly JTML is
-the default authoring dialect, Classic remains the compatibility/lowering
-layer, and WebSocket/live rendering is one backend rather than the definition
-of the language.
+JTL is the planned core language; JTML is its web/app dialect. Together they
+should form an observable-first language family over the full web platform:
+apps read like documents but behave like reactive software, while core logic
+can grow toward Python-like productivity. Friendly JTML is the default web
+authoring dialect, experimental `jtl 1` marks core-language experiments,
+Classic remains the compatibility/lowering layer, and WebSocket/live rendering
+is one backend rather than the definition of the language.
 
 The durable architecture target is:
 
@@ -16,6 +18,8 @@ Backends should include static HTML, browser-local JavaScript runtime, live
 server/WebSocket runtime, custom elements, and framework exports. The full
 architecture thesis lives in
 [`docs/architecture/observable-first-architecture-roadmap.md`](docs/architecture/observable-first-architecture-roadmap.md).
+The consolidated JTML/JTL language-family design lives in
+[`docs/architecture/language-family-design.md`](docs/architecture/language-family-design.md).
 The near-term implementation order lives in
 [`docs/roadmaps/next-priorities.md`](docs/roadmaps/next-priorities.md).
 
@@ -131,9 +135,10 @@ The current focus is the semantic-core transition:
 - P2 component instances: keep the existing metadata bridge stable while moving
   beyond source expansion as the semantic truth.
 - P3 semantic styling: ✅ First slice. `theme`, UI primitives, utility
-  modifiers, generated stylesheet, semantic primitive/theme counts, and raw
-  CSS escape hatch are now available. Next: lints, richer primitives, and
-  Studio sample migration.
+  modifiers, generated stylesheet, semantic primitive/theme counts, the
+  structured `jtml explain --json` `semantic.ui` contract, and raw CSS escape
+  hatch are now available. Next: richer primitives, Studio sample migration,
+  and a documented component kit.
 - P4 browser-local production runtime: `jtml build --target browser --out dist`
   should run local reactivity without WebSockets.
 - P5 live backend on the same graph: `jtml serve` remains valuable for Studio,

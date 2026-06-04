@@ -1,4 +1,5 @@
 #include "jtml/semantic.h"
+#include "jtml/language_catalog.h"
 
 #include <algorithm>
 #include <cctype>
@@ -15,6 +16,13 @@ std::string trimCopy(std::string value) {
     auto notSpace = [](unsigned char ch) { return !std::isspace(ch); };
     value.erase(value.begin(), std::find_if(value.begin(), value.end(), notSpace));
     value.erase(std::find_if(value.rbegin(), value.rend(), notSpace).base(), value.end());
+    return value;
+}
+
+std::string lowerCopy(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) {
+        return static_cast<char>(std::tolower(ch));
+    });
     return value;
 }
 
@@ -355,6 +363,7 @@ struct SemanticSets {
     std::set<std::string> imports;
     std::set<std::string> externs;
     std::set<std::string> uiPrimitives;
+    std::set<std::tuple<std::string, std::string, bool, bool, bool, bool, bool, bool, bool, bool>> uiUses;
     std::set<std::tuple<std::string, std::string, std::string>> uiModifiers;
     std::set<std::tuple<std::string, std::string, std::string>> edges;
     AttributeKindCounts attributes;
@@ -363,6 +372,7 @@ struct SemanticSets {
     int styleBlocks = 0;
     int rawCssBlocks = 0;
     int rawHtmlBlocks = 0;
+    int authorThemeTokenCount = 0;
     int themeTokenCount = 0;
     int timelineCount = 0;
 };
@@ -451,6 +461,126 @@ void addSemanticUiModifiers(SemanticSets& out,
         out.uiModifiers.insert({primitive, modifier, value});
         addEdge(out, "primitive:" + primitive, modifier + ":" + value, "modifies");
     }
+}
+
+bool elementHasSemanticTitle(const JtmlElementNode& elem) {
+    std::string value;
+    if (attributeLiteral(elem, "title", value)) return true;
+    for (const auto& child : elem.content) {
+        if (!child || child->getType() != ASTNodeType::JtmlElement) continue;
+        const auto& childElem = static_cast<const JtmlElementNode&>(*child);
+        std::string classValue;
+        if (childElem.tagName == "h2" &&
+            attributeLiteral(childElem, "class", classValue) &&
+            classValue.find("jtml-panel-title") != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool expressionHasUserText(const ExpressionStatementNode* expr) {
+    if (!expr) return false;
+    const auto text = trimCopy(expr->toString());
+    return !text.empty() && text != "\"\"" && text != "''";
+}
+
+bool elementHasLabelText(const JtmlElementNode& elem) {
+    std::string value;
+    if (attributeLiteral(elem, "title", value) ||
+        attributeLiteral(elem, "aria-label", value) ||
+        attributeLiteral(elem, "placeholder", value) ||
+        attributeLiteral(elem, "alt", value)) {
+        return !trimCopy(value).empty();
+    }
+    for (const auto& child : elem.content) {
+        if (!child) continue;
+        if (child->getType() == ASTNodeType::ShowStatement) {
+            const auto& show = static_cast<const ShowStatementNode&>(*child);
+            if (expressionHasUserText(show.expr.get())) return true;
+        }
+        if (child->getType() == ASTNodeType::JtmlElement &&
+            elementHasLabelText(static_cast<const JtmlElementNode&>(*child))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool elementHasControl(const JtmlElementNode& elem) {
+    static const std::set<std::string> controlTags = {
+        "input", "select", "textarea"
+    };
+    if (controlTags.count(elem.tagName) > 0) return true;
+    for (const auto& child : elem.content) {
+        if (!child || child->getType() != ASTNodeType::JtmlElement) continue;
+        if (elementHasControl(static_cast<const JtmlElementNode&>(*child))) return true;
+    }
+    return false;
+}
+
+bool elementHasActionBinding(const JtmlElementNode& elem) {
+    for (const auto& attr : elem.attributes) {
+        const auto classified = classifyJtmlAttribute(attr);
+        if (classified.kind == JtmlAttributeKind::Event && attr.value) return true;
+    }
+    for (const auto& child : elem.content) {
+        if (!child || child->getType() != ASTNodeType::JtmlElement) continue;
+        if (elementHasActionBinding(static_cast<const JtmlElementNode&>(*child))) return true;
+    }
+    return false;
+}
+
+bool looksLikeDismissAction(const std::string& name) {
+    const auto lower = lowerCopy(name);
+    return lower.find("close") != std::string::npos ||
+           lower.find("dismiss") != std::string::npos ||
+           lower.find("cancel") != std::string::npos ||
+           lower.find("hide") != std::string::npos;
+}
+
+bool elementHasDismissAction(const JtmlElementNode& elem) {
+    for (const auto& attr : elem.attributes) {
+        const auto classified = classifyJtmlAttribute(attr);
+        if (classified.kind == JtmlAttributeKind::Event && attr.value &&
+            looksLikeDismissAction(expressionName(attr.value.get()))) {
+            return true;
+        }
+        if ((attr.key == "data-jtml-dismiss" || attr.key == "data-dismiss" ||
+             attr.key == "aria-controls") &&
+            attr.value) {
+            return true;
+        }
+    }
+    for (const auto& child : elem.content) {
+        if (!child || child->getType() != ASTNodeType::JtmlElement) continue;
+        if (elementHasDismissAction(static_cast<const JtmlElementNode&>(*child))) return true;
+    }
+    return false;
+}
+
+bool elementHasNavigationTarget(const JtmlElementNode& elem) {
+    std::string value;
+    if (attributeLiteral(elem, "data-jtml-href", value) ||
+        attributeLiteral(elem, "href", value)) {
+        return true;
+    }
+    for (const auto& child : elem.content) {
+        if (!child || child->getType() != ASTNodeType::JtmlElement) continue;
+        if (elementHasNavigationTarget(static_cast<const JtmlElementNode&>(*child))) return true;
+    }
+    return false;
+}
+
+bool elementHasPrimitiveChild(const JtmlElementNode& elem, const std::string& primitive) {
+    for (const auto& child : elem.content) {
+        if (!child || child->getType() != ASTNodeType::JtmlElement) continue;
+        const auto& childElem = static_cast<const JtmlElementNode&>(*child);
+        std::string value;
+        if (attributeLiteral(childElem, "data-jtml-ui", value) && value == primitive) return true;
+        if (elementHasPrimitiveChild(childElem, primitive)) return true;
+    }
+    return false;
 }
 
 void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const std::string& context) {
@@ -574,6 +704,19 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
         insertSorted(out.uiPrimitives, primitiveName);
         addEdge(out, "ui:@" + elem.tagName, "primitive:" + primitiveName, "uses");
         addSemanticUiModifiers(out, primitiveName, elem);
+        std::string ariaLabel;
+        out.uiUses.insert({
+            primitiveName,
+            elem.tagName,
+            elementHasSemanticTitle(elem),
+            attributeLiteral(elem, "aria-label", ariaLabel),
+            elementHasLabelText(elem),
+            elementHasControl(elem),
+            elementHasActionBinding(elem),
+            elementHasNavigationTarget(elem),
+            elementHasPrimitiveChild(elem, "tab"),
+            elementHasDismissAction(elem)
+        });
     }
     if (elem.tagName == "style") {
         for (const auto& child : elem.content) {
@@ -700,16 +843,54 @@ void collectFromNodes(const std::vector<std::unique_ptr<ASTNode>>& nodes,
     }
 }
 
+int leadingSpaceCount(const std::string& raw) {
+    int count = 0;
+    for (char c : raw) {
+        if (c == ' ') {
+            ++count;
+        } else if (c == '\t') {
+            count += 2;
+        } else {
+            break;
+        }
+    }
+    return count;
+}
+
+bool isThemeTokenLine(const std::vector<std::string>& tokens) {
+    if (tokens.empty()) return false;
+    static const std::set<std::string> tokenKinds = {
+        "color", "space", "radius", "shadow", "font"
+    };
+    return tokenKinds.count(tokens[0]) > 0 && tokens.size() >= 3;
+}
+
 void collectFriendlySourceFallback(const std::string& source, SemanticSets& out) {
     std::istringstream input(source);
     std::string raw;
+    bool insideTheme = false;
+    int themeIndent = -1;
     while (std::getline(input, raw)) {
         std::string line = trimCopy(stripInlineComment(raw));
-        if (line.empty() || line == "jtml 2") continue;
+        if (line.empty() || line == "jtml 2" || line == "jtl 1") continue;
         auto tokens = words(line);
         if (tokens.empty()) continue;
 
         const std::string head = tokens[0];
+        const int indent = leadingSpaceCount(raw);
+        if (insideTheme && indent <= themeIndent) {
+            insideTheme = false;
+            themeIndent = -1;
+        }
+        if (head == "theme") {
+            insideTheme = true;
+            themeIndent = indent;
+            continue;
+        }
+        if (insideTheme && isThemeTokenLine(tokens)) {
+            ++out.authorThemeTokenCount;
+            continue;
+        }
         const auto second = [&]() {
             return tokens.size() > 1 ? cleanIdentifier(tokens[1]) : std::string{};
         };
@@ -764,6 +945,26 @@ std::vector<SemanticUiModifier> modifiersToVector(
         modifiers.push_back({std::get<0>(modifier), std::get<1>(modifier), std::get<2>(modifier)});
     }
     return modifiers;
+}
+
+std::vector<SemanticUiUse> uiUsesToVector(
+    const std::set<std::tuple<std::string, std::string, bool, bool, bool, bool, bool, bool, bool, bool>>& values) {
+    std::vector<SemanticUiUse> uses;
+    for (const auto& use : values) {
+        uses.push_back({
+            std::get<0>(use),
+            std::get<1>(use),
+            std::get<2>(use),
+            std::get<3>(use),
+            std::get<4>(use),
+            std::get<5>(use),
+            std::get<6>(use),
+            std::get<7>(use),
+            std::get<8>(use),
+            std::get<9>(use),
+        });
+    }
+    return uses;
 }
 
 std::vector<SemanticRoute> routesToVector(
@@ -866,6 +1067,7 @@ SemanticProgram analyzeSemanticProgram(
     semantic.imports = toVector(sets.imports);
     semantic.externs = toVector(sets.externs);
     semantic.uiPrimitives = toVector(sets.uiPrimitives);
+    semantic.uiUses = uiUsesToVector(sets.uiUses);
     semantic.uiModifiers = modifiersToVector(sets.uiModifiers);
     semantic.dependencies = edgesToVector(sets.edges);
     semantic.attributes = sets.attributes;
@@ -874,6 +1076,7 @@ SemanticProgram analyzeSemanticProgram(
     semantic.styleBlocks = sets.styleBlocks;
     semantic.rawCssBlocks = sets.rawCssBlocks;
     semantic.rawHtmlBlocks = sets.rawHtmlBlocks;
+    semantic.authorThemeTokenCount = sets.authorThemeTokenCount;
     semantic.themeTokenCount = sets.themeTokenCount;
     semantic.timelineCount = sets.timelineCount;
     return semantic;
@@ -987,6 +1190,14 @@ bool isLayoutPrimitive(const std::string& primitive) {
         "cluster", "split", "toolbar", "tabs", "spacer"
     };
     return names.count(primitive) > 0;
+}
+
+const SemanticUiModifierSpec* semanticUiModifierSpec(const std::string& name) {
+    const auto& modifiers = semanticUiCatalog().modifiers;
+    const auto it = std::find_if(modifiers.begin(), modifiers.end(), [&](const auto& modifier) {
+        return modifier.name == name;
+    });
+    return it == modifiers.end() ? nullptr : &*it;
 }
 
 } // namespace
@@ -1161,6 +1372,51 @@ SemanticUsageReport analyzeSemanticUsage(const SemanticProgram& semantic) {
             "extern actions call host-provided browser functions; review the target window path and keep the boundary explicit"
         });
     }
+    for (const auto& use : semantic.uiUses) {
+        const bool labeled = use.hasTitle || use.hasAriaLabel;
+        if ((use.primitive == "panel" || use.primitive == "card") && !labeled) {
+            report.warnings.push_back({
+                "JTML_UI_SURFACE_UNLABELED",
+                "semantic " + use.primitive + " should usually have title \"...\" or aria-label \"...\" so sections are understandable in large apps"
+            });
+        }
+        if ((use.primitive == "modal" || use.primitive == "drawer" || use.primitive == "toast") && !labeled) {
+            report.warnings.push_back({
+                "JTML_UI_OVERLAY_UNLABELED",
+                "semantic " + use.primitive + " needs title \"...\" or aria-label \"...\" so the overlay has an accessible name"
+            });
+        }
+        if ((use.primitive == "modal" || use.primitive == "drawer") && !use.hasDismissAction) {
+            report.warnings.push_back({
+                "JTML_UI_OVERLAY_WITHOUT_DISMISS",
+                "semantic " + use.primitive + " should expose a close, dismiss, cancel, or hide action so users can leave the overlay"
+            });
+        }
+        if (use.primitive == "field" && !use.hasControl) {
+            report.warnings.push_back({
+                "JTML_UI_FIELD_WITHOUT_CONTROL",
+                "semantic field should wrap an input, checkbox, file, dropzone, select, or textarea control"
+            });
+        }
+        if (use.primitive == "field" && use.hasControl && !use.hasLabel) {
+            report.warnings.push_back({
+                "JTML_UI_FIELD_UNLABELED",
+                "semantic field should include visible text, aria-label, title, placeholder, or another clear label for its control"
+            });
+        }
+        if (use.primitive == "tabs" && !use.hasTabChild) {
+            report.warnings.push_back({
+                "JTML_UI_TABS_EMPTY",
+                "semantic tabs should contain at least one tab child so navigation structure is explicit"
+            });
+        }
+        if (use.primitive == "tab" && !use.hasActionBinding && !use.hasNavigationTarget) {
+            report.warnings.push_back({
+                "JTML_UI_TAB_WITHOUT_ACTION",
+                "semantic tab should trigger an action or route target; otherwise it behaves like a decorative button"
+            });
+        }
+    }
     for (const auto& modifier : semantic.uiModifiers) {
         if (modifier.modifier == "cols" && modifier.primitive != "grid") {
             report.warnings.push_back({
@@ -1173,6 +1429,22 @@ SemanticUsageReport analyzeSemanticUsage(const SemanticProgram& semantic) {
                 "JTML_UI_TONE_ON_LAYOUT",
                 "tone is intended for content surfaces such as card, panel, metric, alert, badge, or toast; use theme colors or surface modifiers for layout primitive " + modifier.primitive
             });
+        }
+        if (const auto* spec = semanticUiModifierSpec(modifier.modifier)) {
+            if (!spec->values.empty() &&
+                std::find(spec->values.begin(), spec->values.end(), modifier.value) == spec->values.end()) {
+                std::ostringstream allowed;
+                for (size_t i = 0; i < spec->values.size(); ++i) {
+                    if (i > 0) allowed << ", ";
+                    allowed << spec->values[i];
+                }
+                report.warnings.push_back({
+                    "JTML_UI_INVALID_MODIFIER_VALUE",
+                    "modifier " + modifier.modifier + " on " + modifier.primitive +
+                        " uses unsupported value \"" + modifier.value +
+                        "\"; expected one of: " + allowed.str()
+                });
+            }
         }
     }
 

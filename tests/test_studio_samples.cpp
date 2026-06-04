@@ -127,6 +127,79 @@ TEST(StudioSamples, CoversProductionFeatureFamilies) {
     }
 }
 
+TEST(StudioSamples, CoreSamplesUseSemanticUiPrimitives) {
+    const auto samples = extractStudioSamples();
+    const std::set<std::string> coreNames = {
+        "counter.jtml",
+        "form.jtml",
+        "dashboard.jtml",
+        "fetch.jtml",
+        "store.jtml",
+        "effects.jtml",
+    };
+
+    std::map<std::string, std::string> byName;
+    for (const auto& sample : samples) {
+        byName[sample.name] = sample.code;
+    }
+
+    for (const auto& name : coreNames) {
+        ASSERT_TRUE(byName.count(name)) << "missing Studio sample: " << name;
+        const auto& code = byName[name];
+        EXPECT_NE(code.find("theme\n"), std::string::npos) << name;
+        EXPECT_NE(code.find("panel title"), std::string::npos) << name;
+        EXPECT_NE(code.find("metric "), std::string::npos) << name;
+        EXPECT_NE(code.find("stack gap"), std::string::npos) << name;
+    }
+}
+
+TEST(StudioSamples, NavigationSamplesUseSemanticPanels) {
+    const auto samples = extractStudioSamples();
+    const std::set<std::string> navigationNames = {
+        "routes.jtml",
+        "redirect.jtml",
+    };
+
+    std::map<std::string, std::string> byName;
+    for (const auto& sample : samples) {
+        byName[sample.name] = sample.code;
+    }
+
+    for (const auto& name : navigationNames) {
+        ASSERT_TRUE(byName.count(name)) << "missing Studio sample: " << name;
+        const auto& code = byName[name];
+        EXPECT_NE(code.find("theme\n"), std::string::npos) << name;
+        EXPECT_NE(code.find("panel title"), std::string::npos) << name;
+        EXPECT_NE(code.find("stack gap"), std::string::npos) << name;
+        EXPECT_NE(code.find("route "), std::string::npos) << name;
+    }
+}
+
+TEST(StudioSamples, MediaAndCompositionSamplesUseSemanticUiPrimitives) {
+    const auto samples = extractStudioSamples();
+    const std::set<std::string> names = {
+        "media.jtml",
+        "charts.jtml",
+        "animation.jtml",
+        "components.jtml",
+    };
+
+    std::map<std::string, std::string> byName;
+    for (const auto& sample : samples) {
+        byName[sample.name] = sample.code;
+    }
+
+    for (const auto& name : names) {
+        ASSERT_TRUE(byName.count(name)) << "missing Studio sample: " << name;
+        const auto& code = byName[name];
+        EXPECT_NE(code.find("theme\n"), std::string::npos) << name;
+        EXPECT_NE(code.find("panel title"), std::string::npos) << name;
+        EXPECT_NE(code.find("card"), std::string::npos) << name;
+        EXPECT_NE(code.find("grid cols"), std::string::npos) << name;
+        EXPECT_NE(code.find("stack gap"), std::string::npos) << name;
+    }
+}
+
 TEST(StudioShell, HighlightsModernFriendlySyntax) {
     const auto shellPath = std::filesystem::path(JTML_SOURCE_DIR) / "cli" / "studio_shell.cpp";
     const std::string shell = readFile(shellPath);
@@ -168,6 +241,7 @@ TEST(LanguageSurface, MiniReferenceAndEditorGrammarCoverModernKeywords) {
 TEST(LanguageSurface, ToolingDocsPointToKeywordCatalog) {
     const auto root = std::filesystem::path(JTML_SOURCE_DIR);
     const std::string docsIndex = readFile(root / "docs" / "README.md");
+    const std::string reference = readFile(root / "docs" / "reference" / "language-reference.md");
     const std::string aiContract = readFile(root / "docs" / "reference" / "ai-authoring-contract.md");
     const std::string lspGuide = readFile(root / "docs" / "tooling" / "language-server.md");
     const std::string cliUsage = readFile(root / "cli" / "util.cpp");
@@ -175,7 +249,10 @@ TEST(LanguageSurface, ToolingDocsPointToKeywordCatalog) {
     for (const auto& text : {docsIndex, aiContract, lspGuide}) {
         EXPECT_NE(text.find("jtml keywords --json"), std::string::npos);
     }
+    EXPECT_NE(docsIndex.find("jtml ui --json"), std::string::npos);
+    EXPECT_NE(reference.find("jtml ui --json"), std::string::npos);
     EXPECT_NE(cliUsage.find("jtml keywords [--json]"), std::string::npos);
+    EXPECT_NE(cliUsage.find("jtml ui [--json]"), std::string::npos);
 }
 
 TEST(StudioShell, SeparatesNavigationWorkspaceAndDocumentTools) {
@@ -198,6 +275,15 @@ TEST(StudioShell, SeparatesNavigationWorkspaceAndDocumentTools) {
     EXPECT_NE(shell.find("selectLesson(0)"), std::string::npos);
     EXPECT_NE(shell.find("workspace:"), std::string::npos);
     EXPECT_EQ(shell.find("prompt("), std::string::npos);
+}
+
+TEST(StudioShell, SidebarSearchRevealsFullExampleLibrary) {
+    const auto shellPath = std::filesystem::path(JTML_SOURCE_DIR) / "cli" / "studio_shell.cpp";
+    const std::string shell = readFile(shellPath);
+
+    EXPECT_NE(shell.find("const pinnedTemplates = new Set"), std::string::npos);
+    EXPECT_NE(shell.find("if (!query && !pinnedTemplates.has(s.name)) return;"), std::string::npos);
+    EXPECT_NE(shell.find("SAMPLES.forEach((s, i) =>"), std::string::npos);
 }
 
 TEST(StudioShell, DefaultsToFriendlyAndHtmlArtifacts) {

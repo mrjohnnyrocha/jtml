@@ -59,6 +59,14 @@ bool startsWith(const std::string& s, const std::string& prefix) {
     return s.rfind(prefix, 0) == 0;
 }
 
+bool isFriendlyHeader(const std::string& text) {
+    return text == "jtml 2" || text == "jtl 1";
+}
+
+bool isJtlHeader(const std::string& text) {
+    return text == "jtl 1";
+}
+
 std::string stripFriendlyLineComment(const std::string& line) {
     char quoteChar = '\0';
     int braceDepth = 0;
@@ -325,7 +333,7 @@ std::vector<Line> collectLines(const std::string& source) {
         if (text.empty() || startsWith(text, "//") || startsWith(text, "#")) {
             continue;
         }
-        if (!skippedHeader && text == "jtml 2") {
+        if (!skippedHeader && isFriendlyHeader(text)) {
             skippedHeader = true;
             continue;
         }
@@ -458,6 +466,38 @@ const std::map<std::string, std::pair<std::string, std::string>>& uiPrimitives()
 
 bool isUiPrimitive(const std::string& tag) {
     return uiPrimitives().count(tag) > 0;
+}
+
+bool supportsPrimitiveTitle(const std::string& tag) {
+    static const std::set<std::string> titled = {
+        "panel", "card", "modal", "drawer", "toast"
+    };
+    return titled.count(tag) > 0;
+}
+
+std::vector<std::pair<std::string, std::string>> primitiveDefaultAttributes(const std::string& tag) {
+    if (tag == "modal" || tag == "drawer") {
+        return {{"role", quote("dialog")}, {"aria-modal", quote("true")}, {"tabindex", quote("-1")}};
+    }
+    if (tag == "toast") {
+        return {{"role", quote("status")}, {"aria-live", quote("polite")}};
+    }
+    if (tag == "alert" || tag == "error") {
+        return {{"role", quote("alert")}};
+    }
+    if (tag == "loading" || tag == "empty") {
+        if (tag == "loading") {
+            return {{"role", quote("status")}, {"aria-live", quote("polite")}, {"aria-busy", quote("true")}};
+        }
+        return {{"role", quote("status")}, {"aria-live", quote("polite")}};
+    }
+    if (tag == "tabs") {
+        return {{"role", quote("tablist")}};
+    }
+    if (tag == "tab") {
+        return {{"role", quote("tab")}, {"type", quote("button")}};
+    }
+    return {};
 }
 
 std::string primitiveClass(const std::string& tag) {
@@ -2155,6 +2195,9 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
     if (primitive) {
         className = primitiveClass(friendlyTag);
         attrs.push_back("data-jtml-ui=" + quote(friendlyTag));
+        for (const auto& attr : primitiveDefaultAttributes(friendlyTag)) {
+            attrs.push_back(attr.first + "=" + attr.second);
+        }
     }
 
     // Inject default attributes from element aliases (e.g. checkbox → type="checkbox")
@@ -2246,7 +2289,7 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
             className = appendClassToken(className, unquote(tokens[i++]));
             continue;
         }
-        if (primitive && key == "title" && (friendlyTag == "panel" || friendlyTag == "card")) {
+        if (primitive && key == "title" && supportsPrimitiveTitle(friendlyTag)) {
             if (i >= tokens.size()) {
                 throw std::runtime_error("Expected title after '" + friendlyTag + " title' at line " + std::to_string(lineNumber));
             }
@@ -2342,7 +2385,18 @@ bool isFriendlySyntax(const std::string& source) {
     while (std::getline(in, raw)) {
         std::string text = trim(raw);
         if (text.empty() || startsWith(text, "//") || startsWith(text, "#")) continue;
-        return text == "jtml 2";
+        return isFriendlyHeader(text);
+    }
+    return false;
+}
+
+bool isJtlCoreSyntax(const std::string& source) {
+    std::istringstream in(source);
+    std::string raw;
+    while (std::getline(in, raw)) {
+        std::string text = trim(raw);
+        if (text.empty() || startsWith(text, "//") || startsWith(text, "#")) continue;
+        return isJtlHeader(text);
     }
     return false;
 }
@@ -2353,7 +2407,7 @@ bool looksLikeFriendlySyntax(const std::string& source) {
     while (std::getline(in, raw)) {
         std::string text = trim(stripFriendlyLineComment(raw));
         if (text.empty() || startsWith(text, "//") || startsWith(text, "#")) continue;
-        if (text == "jtml 2") return true;
+        if (isFriendlyHeader(text)) return true;
         auto tokens = splitTokens(text);
         if (tokens.empty()) continue;
         const std::string& head = tokens[0];
@@ -2374,7 +2428,7 @@ std::string formatFriendlySource(const std::string& source) {
     std::vector<std::pair<int, std::string>> rows;
     std::istringstream in(source);
     std::string raw;
-    bool sawHeader = false;
+    std::string header;
     int indentUnit = 0;
 
     while (std::getline(in, raw)) {
@@ -2395,8 +2449,8 @@ std::string formatFriendlySource(const std::string& source) {
                 break;
             }
         }
-        if (text == "jtml 2") {
-            sawHeader = true;
+        if (isFriendlyHeader(text)) {
+            header = text;
             rows.push_back({0, text});
             continue;
         }
@@ -2409,11 +2463,11 @@ std::string formatFriendlySource(const std::string& source) {
     if (indentUnit <= 0 || indentUnit > 8) indentUnit = 2;
 
     std::ostringstream out;
-    if (!sawHeader) {
+    if (header.empty()) {
         out << "jtml 2\n\n";
     }
 
-    bool previousBlank = !sawHeader;
+    bool previousBlank = header.empty();
     bool wroteAny = false;
     for (const auto& [indent, text] : rows) {
         if (text.empty()) {

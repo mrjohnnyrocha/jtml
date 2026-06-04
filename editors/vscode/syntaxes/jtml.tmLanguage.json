@@ -1,7 +1,7 @@
 {
   "name": "JTML",
   "scopeName": "source.jtml",
-  "fileTypes": ["jtml"],
+  "fileTypes": ["jtml", "jtl"],
   "patterns": [
     { "include": "#comments" },
     { "include": "#strings" },
@@ -51,7 +51,7 @@
       ]
     },
     "friendly-version": {
-      "match": "^\\s*(jtml)\\s+(2)\\b",
+      "match": "^\\s*(jtml|jtl)\\s+(2|1)\\b",
       "captures": {
         "1": { "name": "keyword.other.version.jtml" },
         "2": { "name": "constant.numeric.version.jtml" }

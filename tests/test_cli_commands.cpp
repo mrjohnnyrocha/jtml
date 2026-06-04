@@ -254,6 +254,36 @@ TEST(CliKeywords, JsonReportsCanonicalFriendlyCatalog) {
     EXPECT_NE(compatibility.find("function"), std::string::npos);
 }
 
+TEST(CliUi, JsonReportsSemanticUiCatalog) {
+    jtml::cli::Options opts;
+    opts.json = true;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdUi(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+    const auto report = nlohmann::json::parse(result.out);
+
+    EXPECT_EQ(report["dialect"], "Friendly JTML 2");
+    EXPECT_NE(report["sourceOfTruth"].get<std::string>().find("Semantic UI"),
+              std::string::npos);
+    EXPECT_GE(report["primitives"].size(), 12u);
+    EXPECT_GE(report["modifiers"].size(), 8u);
+
+    const std::string primitives = report["primitives"].dump();
+    EXPECT_NE(primitives.find("\"panel\""), std::string::npos);
+    EXPECT_NE(primitives.find("\"metric\""), std::string::npos);
+    EXPECT_NE(primitives.find("\"toolbar\""), std::string::npos);
+    EXPECT_NE(primitives.find("\"dialog\""), std::string::npos);
+
+    const std::string modifiers = report["modifiers"].dump();
+    EXPECT_NE(modifiers.find("\"cols\""), std::string::npos);
+    EXPECT_NE(modifiers.find("\"tone\""), std::string::npos);
+    EXPECT_NE(modifiers.find("\"danger\""), std::string::npos);
+
+    const std::string tokens = report["themeTokenKinds"].dump();
+    EXPECT_NE(tokens.find("color"), std::string::npos);
+    EXPECT_NE(tokens.find("shadow"), std::string::npos);
+}
+
 TEST(CliLint, RawEscapeHatchesAreVisibleWarnings) {
     const auto file = writeTempJtml(
         "raw-escape-hatches",
@@ -295,6 +325,161 @@ TEST(CliLint, SemanticUiModifierWarningsAreVisible) {
     EXPECT_EQ(result.code, 0);
     EXPECT_NE(result.err.find("JTML_UI_COLS_ON_NON_GRID"), std::string::npos) << result.err;
     EXPECT_NE(result.err.find("JTML_UI_TONE_ON_LAYOUT"), std::string::npos) << result.err;
+}
+
+TEST(CliLint, SemanticUiInvalidModifierValuesAreVisible) {
+    const auto file = writeTempJtml(
+        "semantic-ui-invalid-values",
+        "jtml 2\n"
+        "page\n"
+        "  grid cols 9 gap huge\n"
+        "    card tone loud\n"
+        "      text \"Invalid visual tokens\"\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = file.string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdLint(opts); });
+    EXPECT_EQ(result.code, 0);
+    EXPECT_NE(result.err.find("JTML_UI_INVALID_MODIFIER_VALUE"), std::string::npos)
+        << result.err;
+    EXPECT_NE(result.err.find("expected one of"), std::string::npos) << result.err;
+}
+
+TEST(CliLint, SemanticUiAccessibilityWarningsAreVisible) {
+    const auto file = writeTempJtml(
+        "semantic-ui-accessibility",
+        "jtml 2\n"
+        "page\n"
+        "  panel\n"
+        "    text \"Needs a label\"\n"
+        "  modal\n"
+        "    text \"Needs a label too\"\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = file.string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdLint(opts); });
+    EXPECT_EQ(result.code, 0);
+    EXPECT_NE(result.err.find("JTML_UI_SURFACE_UNLABELED"), std::string::npos)
+        << result.err;
+    EXPECT_NE(result.err.find("JTML_UI_OVERLAY_UNLABELED"), std::string::npos)
+        << result.err;
+    EXPECT_NE(result.err.find("JTML_UI_OVERLAY_WITHOUT_DISMISS"), std::string::npos)
+        << result.err;
+}
+
+TEST(CliLint, SemanticUiFormAndTabWarningsAreVisible) {
+    const auto file = writeTempJtml(
+        "semantic-ui-form-tabs",
+        "jtml 2\n"
+        "page\n"
+        "  field\n"
+        "    text \"No input yet\"\n"
+        "  tabs\n"
+        "    text \"No tab yet\"\n"
+        "  tab \"Loose tab\"\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = file.string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdLint(opts); });
+    EXPECT_EQ(result.code, 0);
+    EXPECT_NE(result.err.find("JTML_UI_FIELD_WITHOUT_CONTROL"), std::string::npos)
+        << result.err;
+    EXPECT_NE(result.err.find("JTML_UI_TABS_EMPTY"), std::string::npos)
+        << result.err;
+    EXPECT_NE(result.err.find("JTML_UI_TAB_WITHOUT_ACTION"), std::string::npos)
+        << result.err;
+}
+
+TEST(CliLint, SemanticUiFieldLabelWarningIsVisible) {
+    const auto file = writeTempJtml(
+        "semantic-ui-field-label",
+        "jtml 2\n"
+        "let email = \"\"\n"
+        "page\n"
+        "  field\n"
+        "    input into email\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = file.string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdLint(opts); });
+    EXPECT_EQ(result.code, 0);
+    EXPECT_NE(result.err.find("JTML_UI_FIELD_UNLABELED"), std::string::npos)
+        << result.err;
+}
+
+TEST(CliExplain, TextReportsSemanticUiPrimitivesAndModifiers) {
+    const auto file = writeTempJtml(
+        "semantic-ui-explain",
+        "jtml 2\n"
+        "theme\n"
+        "  color primary \"#2563eb\"\n"
+        "page\n"
+        "  panel title \"Usage\" pad lg shadow md\n"
+        "    grid cols 2 gap md\n"
+        "      metric \"Users\" 42 \"Active\" tone good\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = file.string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdExplain(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+    EXPECT_NE(result.out.find("Semantic UI:"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("primitives: grid, metric, panel"), std::string::npos)
+        << result.out;
+    EXPECT_NE(result.out.find("- grid cols 2"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("- metric tone good"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("author theme tokens:"), std::string::npos) << result.out;
+}
+
+TEST(CliExplain, JsonReportsSemanticUiSurface) {
+    const auto file = writeTempJtml(
+        "semantic-ui-json",
+        "jtml 2\n"
+        "theme\n"
+        "  color primary \"#2563eb\"\n"
+        "  space md 12\n"
+        "page\n"
+        "  panel title \"Usage\" pad lg shadow md\n"
+        "    grid cols 2 gap md\n"
+        "      metric \"Users\" 42 \"Active\" tone good\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = file.string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.json = true;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdExplain(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+    const auto report = nlohmann::json::parse(result.out);
+    ASSERT_TRUE(report["semantic"].contains("ui")) << report.dump(2);
+    const auto ui = report["semantic"]["ui"];
+    EXPECT_NE(ui["primitives"].dump().find("panel"), std::string::npos) << report.dump(2);
+    EXPECT_NE(ui["primitives"].dump().find("grid"), std::string::npos) << report.dump(2);
+    EXPECT_NE(ui["primitives"].dump().find("metric"), std::string::npos) << report.dump(2);
+    EXPECT_EQ(ui["authorThemeTokens"].get<int>(), 2);
+    EXPECT_GE(ui["themeTokens"].get<int>(), ui["authorThemeTokens"].get<int>());
+    EXPECT_GE(ui["styleBlocks"].get<int>(), 1);
+    EXPECT_NE(ui["uses"].dump().find("\"primitive\":\"panel\""), std::string::npos)
+        << report.dump(2);
+    EXPECT_NE(ui["uses"].dump().find("\"hasTitle\":true"), std::string::npos)
+        << report.dump(2);
+    EXPECT_NE(ui["uses"].dump().find("\"hasLabel\""), std::string::npos)
+        << report.dump(2);
+    EXPECT_NE(ui["uses"].dump().find("\"hasTabChild\""), std::string::npos)
+        << report.dump(2);
+    EXPECT_NE(ui["modifiers"].dump().find("\"modifier\":\"cols\""), std::string::npos)
+        << report.dump(2);
+    EXPECT_NE(ui["modifiers"].dump().find("\"modifier\":\"tone\""), std::string::npos)
+        << report.dump(2);
 }
 
 TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {

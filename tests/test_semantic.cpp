@@ -1,4 +1,5 @@
 #include "jtml/friendly.h"
+#include "jtml/language_catalog.h"
 #include "jtml/lexer.h"
 #include "jtml/parser.h"
 #include "jtml/semantic.h"
@@ -167,11 +168,37 @@ TEST(SemanticProgram, CapturesSemanticStylingPrimitives) {
     EXPECT_TRUE(hasModifier(semantic, "grid", "gap", "md"));
     EXPECT_TRUE(hasModifier(semantic, "metric", "tone", "good"));
     EXPECT_GE(semantic.styleBlocks, 1);
+    EXPECT_EQ(semantic.authorThemeTokenCount, 2);
     EXPECT_GE(semantic.themeTokenCount, 2);
     EXPECT_TRUE(hasEdge(semantic, "ui:@section", "primitive:panel", "uses"));
     EXPECT_TRUE(hasEdge(semantic, "ui:@div", "primitive:grid", "uses"));
     EXPECT_TRUE(hasEdge(semantic, "ui:@article", "primitive:metric", "uses"));
     EXPECT_TRUE(hasEdge(semantic, "primitive:grid", "cols:2", "modifies"));
+}
+
+TEST(SemanticUiCatalog, ListsImplementedPrimitiveKitAndModifiers) {
+    const auto& ui = jtml::semanticUiCatalog();
+
+    auto primitiveNamed = [&](const std::string& name) {
+        return std::find_if(ui.primitives.begin(), ui.primitives.end(), [&](const auto& primitive) {
+            return primitive.name == name;
+        }) != ui.primitives.end();
+    };
+    auto modifierNamed = [&](const std::string& name) {
+        return std::find_if(ui.modifiers.begin(), ui.modifiers.end(), [&](const auto& modifier) {
+            return modifier.name == name;
+        }) != ui.modifiers.end();
+    };
+
+    EXPECT_TRUE(primitiveNamed("panel"));
+    EXPECT_TRUE(primitiveNamed("grid"));
+    EXPECT_TRUE(primitiveNamed("metric"));
+    EXPECT_TRUE(primitiveNamed("modal"));
+    EXPECT_TRUE(modifierNamed("cols"));
+    EXPECT_TRUE(modifierNamed("tone"));
+    EXPECT_TRUE(modifierNamed("surface"));
+    EXPECT_TRUE(contains(ui.themeTokenKinds, "color"));
+    EXPECT_TRUE(contains(ui.themeTokenKinds, "shadow"));
 }
 
 TEST(SemanticProgram, ComponentDefinitionsExposeOwnedSemantics) {
@@ -253,6 +280,171 @@ TEST(SemanticProgram, WarnsOnMismatchedSemanticUiModifiers) {
     }));
     EXPECT_TRUE(std::any_of(usage.warnings.begin(), usage.warnings.end(), [](const auto& warning) {
         return warning.code == "JTML_UI_TONE_ON_LAYOUT";
+    }));
+}
+
+TEST(SemanticProgram, WarnsOnInvalidSemanticUiModifierValues) {
+    const std::string source =
+        "jtml 2\n"
+        "page\n"
+        "  grid cols 9 gap huge\n"
+        "    card tone loud\n"
+        "      text \"Invalid visual tokens\"\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto usage = jtml::analyzeSemanticUsage(semantic);
+
+    EXPECT_TRUE(hasModifier(semantic, "grid", "cols", "9"));
+    EXPECT_TRUE(hasModifier(semantic, "grid", "gap", "huge"));
+    EXPECT_TRUE(hasModifier(semantic, "card", "tone", "loud"));
+
+    const auto invalidValueWarnings = std::count_if(
+        usage.warnings.begin(),
+        usage.warnings.end(),
+        [](const auto& warning) {
+            return warning.code == "JTML_UI_INVALID_MODIFIER_VALUE";
+        });
+    EXPECT_EQ(invalidValueWarnings, 3);
+}
+
+TEST(SemanticProgram, WarnsOnUnlabeledSemanticUiSurfacesAndOverlays) {
+    const std::string source =
+        "jtml 2\n"
+        "page\n"
+        "  panel\n"
+        "    text \"Missing label\"\n"
+        "  card\n"
+        "    text \"Also missing label\"\n"
+        "  modal\n"
+        "    text \"Confirm\"\n"
+        "  drawer aria-label \"Filters\"\n"
+        "    text \"Labeled overlay\"\n"
+        "  panel title \"Usage\"\n"
+        "    text \"Labeled surface\"\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto usage = jtml::analyzeSemanticUsage(semantic);
+
+    EXPECT_GE(semantic.uiUses.size(), 5u);
+    EXPECT_TRUE(std::any_of(semantic.uiUses.begin(), semantic.uiUses.end(), [](const auto& use) {
+        return use.primitive == "panel" && use.hasTitle;
+    }));
+    EXPECT_TRUE(std::any_of(semantic.uiUses.begin(), semantic.uiUses.end(), [](const auto& use) {
+        return use.primitive == "drawer" && use.hasAriaLabel;
+    }));
+
+    const auto surfaceWarnings = std::count_if(
+        usage.warnings.begin(),
+        usage.warnings.end(),
+        [](const auto& warning) {
+            return warning.code == "JTML_UI_SURFACE_UNLABELED";
+        });
+    const auto overlayWarnings = std::count_if(
+        usage.warnings.begin(),
+        usage.warnings.end(),
+        [](const auto& warning) {
+            return warning.code == "JTML_UI_OVERLAY_UNLABELED";
+        });
+    EXPECT_EQ(surfaceWarnings, 2);
+    EXPECT_EQ(overlayWarnings, 1);
+}
+
+TEST(SemanticProgram, WarnsOnOverlayWithoutDismissAction) {
+    const std::string source =
+        "jtml 2\n"
+        "let open = true\n"
+        "when closeModal\n"
+        "  open = false\n"
+        "page\n"
+        "  modal title \"Confirm\"\n"
+        "    text \"Missing exit\"\n"
+        "  drawer aria-label \"Filters\"\n"
+        "    button \"Close\" click closeModal\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto usage = jtml::analyzeSemanticUsage(semantic);
+
+    EXPECT_TRUE(std::any_of(semantic.uiUses.begin(), semantic.uiUses.end(), [](const auto& use) {
+        return use.primitive == "drawer" && use.hasDismissAction;
+    }));
+    EXPECT_TRUE(std::any_of(semantic.uiUses.begin(), semantic.uiUses.end(), [](const auto& use) {
+        return use.primitive == "modal" && use.hasTitle && !use.hasDismissAction;
+    }));
+    EXPECT_TRUE(std::any_of(usage.warnings.begin(), usage.warnings.end(), [](const auto& warning) {
+        return warning.code == "JTML_UI_OVERLAY_WITHOUT_DISMISS";
+    }));
+}
+
+TEST(SemanticProgram, WarnsOnUnwiredSemanticUiFormsAndTabs) {
+    const std::string source =
+        "jtml 2\n"
+        "let email = \"\"\n"
+        "let selected = \"overview\"\n"
+        "when choose\n"
+        "  selected = \"overview\"\n"
+        "page\n"
+        "  field\n"
+        "    text \"Missing control\"\n"
+        "  field\n"
+        "    input \"Email\" into email\n"
+        "  tabs\n"
+        "    text \"Missing tab child\"\n"
+        "  tabs\n"
+        "    tab \"Overview\" click choose\n"
+        "  tab \"Decorative\"\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto usage = jtml::analyzeSemanticUsage(semantic);
+
+    EXPECT_TRUE(std::any_of(semantic.uiUses.begin(), semantic.uiUses.end(), [](const auto& use) {
+        return use.primitive == "field" && use.hasControl;
+    }));
+    EXPECT_TRUE(std::any_of(semantic.uiUses.begin(), semantic.uiUses.end(), [](const auto& use) {
+        return use.primitive == "tabs" && use.hasTabChild;
+    }));
+    EXPECT_TRUE(std::any_of(semantic.uiUses.begin(), semantic.uiUses.end(), [](const auto& use) {
+        return use.primitive == "tab" && use.hasActionBinding;
+    }));
+
+    EXPECT_TRUE(std::any_of(usage.warnings.begin(), usage.warnings.end(), [](const auto& warning) {
+        return warning.code == "JTML_UI_FIELD_WITHOUT_CONTROL";
+    }));
+    EXPECT_TRUE(std::any_of(usage.warnings.begin(), usage.warnings.end(), [](const auto& warning) {
+        return warning.code == "JTML_UI_TABS_EMPTY";
+    }));
+    EXPECT_TRUE(std::any_of(usage.warnings.begin(), usage.warnings.end(), [](const auto& warning) {
+        return warning.code == "JTML_UI_TAB_WITHOUT_ACTION";
+    }));
+}
+
+TEST(SemanticProgram, WarnsOnUnlabeledFieldControl) {
+    const std::string source =
+        "jtml 2\n"
+        "let name = \"\"\n"
+        "let email = \"\"\n"
+        "page\n"
+        "  field\n"
+        "    input into name\n"
+        "  field\n"
+        "    text \"Email\"\n"
+        "    input into email\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto usage = jtml::analyzeSemanticUsage(semantic);
+
+    EXPECT_TRUE(std::any_of(semantic.uiUses.begin(), semantic.uiUses.end(), [](const auto& use) {
+        return use.primitive == "field" && use.hasControl && use.hasLabel;
+    }));
+    EXPECT_TRUE(std::any_of(semantic.uiUses.begin(), semantic.uiUses.end(), [](const auto& use) {
+        return use.primitive == "field" && use.hasControl && !use.hasLabel;
+    }));
+    EXPECT_TRUE(std::any_of(usage.warnings.begin(), usage.warnings.end(), [](const auto& warning) {
+        return warning.code == "JTML_UI_FIELD_UNLABELED";
     }));
 }
 

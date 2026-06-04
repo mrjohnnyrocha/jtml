@@ -30,6 +30,19 @@ struct SemanticUiModifier {
     std::string value;
 };
 
+struct SemanticUiUse {
+    std::string primitive;
+    std::string tagName;
+    bool hasTitle = false;
+    bool hasAriaLabel = false;
+    bool hasLabel = false;
+    bool hasControl = false;
+    bool hasActionBinding = false;
+    bool hasNavigationTarget = false;
+    bool hasTabChild = false;
+    bool hasDismissAction = false;
+};
+
 struct SemanticRoute {
     std::string path;
     std::string component;
@@ -96,6 +109,7 @@ struct SemanticProgram {
     std::vector<std::string> imports;
     std::vector<std::string> externs;
     std::vector<std::string> uiPrimitives;
+    std::vector<SemanticUiUse> uiUses;
     std::vector<SemanticUiModifier> uiModifiers;
     std::vector<SemanticEdge> dependencies;
     AttributeKindCounts attributes;
@@ -104,6 +118,7 @@ struct SemanticProgram {
     int styleBlocks = 0;
     int rawCssBlocks = 0;
     int rawHtmlBlocks = 0;
+    int authorThemeTokenCount = 0;
     int themeTokenCount = 0;
     int timelineCount = 0;
 };

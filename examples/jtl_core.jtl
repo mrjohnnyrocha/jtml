@@ -1,0 +1,11 @@
+jtl 1
+
+let total = 0
+get doubled = total * 2
+
+when add amount
+  total += amount
+
+if doubled >= 0
+  show "Total: {total}"
+  show "Doubled: {doubled}"

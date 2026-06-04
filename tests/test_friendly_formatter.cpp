@@ -85,6 +85,20 @@ TEST(FriendlyFormatter, SourceFormatterAddsHeaderForFriendlyBody) {
     EXPECT_NE(formatted.find("  h1 \"Counter\"\n"), std::string::npos);
 }
 
+TEST(FriendlyFormatter, SourceFormatterPreservesJtlCoreHeader) {
+    std::string formatted = jtml::formatFriendlySource(
+        "jtl 1\n"
+        "\n"
+        "let total = 0\n"
+        "    when add\n"
+        "        total += 1\n");
+
+    EXPECT_EQ(formatted.substr(0, 6), "jtl 1\n");
+    EXPECT_NE(formatted.find("let total = 0\n"), std::string::npos);
+    EXPECT_NE(formatted.find("  when add\n"), std::string::npos);
+    EXPECT_EQ(formatted.find("jtml 2"), std::string::npos);
+}
+
 // ---------------------------------------------------------------------------
 // Keyword translations
 // ---------------------------------------------------------------------------

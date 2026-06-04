@@ -1,6 +1,7 @@
 #include "jtml/fix.h"
 
 #include <gtest/gtest.h>
+#include <string>
 
 TEST(Fix, AddsFriendlyHeaderForFriendlySource) {
     auto fixed = jtml::fixSource("page\n  h1 \"Hello\"\n", jtml::SyntaxMode::Auto);
@@ -16,6 +17,14 @@ TEST(Fix, ReplacesTabsAndTrimsWhitespace) {
 
     EXPECT_TRUE(fixed.changed);
     EXPECT_EQ(fixed.source, "jtml 2\n\npage\n  h1 \"Hello\"\n");
+}
+
+TEST(Fix, KeepsJtlCoreHeader) {
+    auto fixed = jtml::fixSource("jtl 1\n\nlet count = 0   ", jtml::SyntaxMode::Auto);
+
+    EXPECT_TRUE(fixed.changed);
+    EXPECT_EQ(fixed.source, "jtl 1\n\nlet count = 0\n");
+    EXPECT_EQ(fixed.source.find("jtml 2"), std::string::npos);
 }
 
 TEST(Fix, DoesNotAddFriendlyHeaderToClassicSource) {

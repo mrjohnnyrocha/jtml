@@ -1119,7 +1119,8 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
             <div class="ref-sec">
               <p class="ref-sec-label">Which syntax should I choose?</p>
               <table class="ref-table"><tbody>
-                <tr><td><code>jtml 2</code></td><td><strong>Default for new code.</strong> Indentation-based Friendly syntax for humans, AI agents, Studio, docs, examples, and tutorials.</td></tr>
+                <tr><td><code>jtml 2</code></td><td><strong>Default for web/app code.</strong> Indentation-based Friendly syntax for humans, AI agents, Studio, docs, examples, and tutorials.</td></tr>
+                <tr><td><code>jtl 1</code></td><td>Experimental core-language header for logic-first examples. Currently lowers through the same Friendly pipeline.</td></tr>
                 <tr><td><code>Compatibility backend</code></td><td>Support layer for older files, compiler artifacts, generated output, migration targets, and low-level embedding.</td></tr>
                 <tr><td><code>jtml migrate old.jtml -o new.jtml</code></td><td>Convert most Classic files into Friendly JTML 2.</td></tr>
                 <tr><td><code>Artifacts → Compatibility IR</code></td><td>Shows the lowered backend form. Inspect it for debugging, but do not copy it for new apps.</td></tr>
@@ -1193,7 +1194,8 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
             <div class="ref-sec">
               <p class="ref-sec-label">Friendly basics (jtml 2)</p>
               <table class="ref-table"><tbody>
-                <tr><td><code>jtml 2</code></td><td>Enable friendly (indentation-based) syntax</td></tr>
+                <tr><td><code>jtml 2</code></td><td>Enable Friendly web/app syntax</td></tr>
+                <tr><td><code>jtl 1</code></td><td>Enable experimental JTL core syntax through the Friendly pipeline</td></tr>
                 <tr><td><code>let x = expr</code></td><td>Reactive mutable variable</td></tr>
                 <tr><td><code>get x = expr</code></td><td>Derived (computed) value — updates automatically</td></tr>
                 <tr><td><code>const x = expr</code></td><td>Immutable constant</td></tr>
@@ -1423,7 +1425,7 @@ CodeMirror.defineSimpleMode("jtml", {
     /* HTML-style attributes */
     { regex: /\b(?:style|class|id|type|href|src|placeholder|value|disabled|required|readonly|checked|selected|name|method|body|cache|credentials|action|target|rel|alt|title|role|width|height|viewBox|viewbox|fill|stroke|x|y|cx|cy|r|x1|y1|x2|y2|d|points|stroke-width|stroke-linecap|stroke-linejoin|stroke-dasharray|opacity|fill-opacity|stroke-opacity|rx|ry|scene|camera|renderer|min|max|step|pattern|tabindex|autocomplete|autofocus|multiple|accept|capture|enctype|for|poster|controls|autoplay|muted|loop|preload|playsinline|loading|decoding|active-class|aria-label|aria-describedby|aria-hidden|data-jtml-dropzone|data-jtml-media-controller|data-jtml-chart|data-jtml-chart-data|data-jtml-chart-by|data-jtml-chart-value|data-jtml-chart-color|data-jtml-chart-axis-x|data-jtml-chart-axis-y|data-jtml-chart-legend|data-jtml-chart-grid|data-jtml-chart-stacked|data-jtml-timeline|data-jtml-timeline-duration|data-jtml-timeline-easing|data-jtml-timeline-animates|data-jtml-image-proc|data-jtml-image-src|data-jtml-image-into|data-jtml-scene3d|data-jtml-scene|data-jtml-camera|data-jtml-controls|data-jtml-renderer|data-jtml-scene3d-controller|data-jtml-fetch|data-url|data-method|data-timeout-ms|data-retry|data-stale|data-lazy|data-jtml-route-load|data-jtml-route-guard|data-jtml-guard-var|data-jtml-guard-redirect|data-jtml-invalidate-action|data-jtml-invalidate-fetches)\b/, token: "jtml-attr" },
     /* JTML keywords */
-    { regex: /\b(?:define|const|derive|show|if|else|while|for|in|break|continue|try|except|then|return|throw|async|subscribe|unsubscribe|to|from|store|unbind|object|derives|import|main|jtml|let|get|when|make|page|route|layout|load|guard|require|slot|fetch|catch|finally|use|export|effect|redirect|refresh|invalidate|timeout|retry|stale|lazy|keep|extern|html|css|raw|into|link|navlink|text|box|image|video|audio|embed|file|dropzone|canvas|svg|graphic|group|bar|dot|line|path|polyline|polygon|chart|scene3d|item|list|ordered|theme|app|shell|topbar|sidebar|content|panel|card|metric|stack|cluster|split|toolbar|tabs|tab|alert|badge|modal|drawer|toast|loading|error|empty|field|spacer|cols|gap|pad|radius|shadow|tone|align|justify|width|surface|timeline|animate|resize|crop|filter|axis|legend|grid|stacked|duration|easing|autoplay|repeat|activeRoute|activeRouteName)\b/, token: "jtml-kw" },
+    { regex: /\b(?:define|const|derive|show|if|else|while|for|in|break|continue|try|except|then|return|throw|async|subscribe|unsubscribe|to|from|store|unbind|object|derives|import|main|jtml|jtl|let|get|when|make|page|route|layout|load|guard|require|slot|fetch|catch|finally|use|export|effect|redirect|refresh|invalidate|timeout|retry|stale|lazy|keep|extern|html|css|raw|into|link|navlink|text|box|image|video|audio|embed|file|dropzone|canvas|svg|graphic|group|bar|dot|line|path|polyline|polygon|chart|scene3d|item|list|ordered|theme|app|shell|topbar|sidebar|content|panel|card|metric|stack|cluster|split|toolbar|tabs|tab|alert|badge|modal|drawer|toast|loading|error|empty|field|spacer|cols|gap|pad|radius|shadow|tone|align|justify|width|surface|timeline|animate|resize|crop|filter|axis|legend|grid|stacked|duration|easing|autoplay|repeat|activeRoute|activeRouteName)\b/, token: "jtml-kw" },
     /* Literals */
     { regex: /\b(?:true|false)\b/, token: "atom" },
     { regex: /\b\d+(?:\.\d+)?\b/, token: "number" },
@@ -1475,23 +1477,18 @@ when decrement
 when reset
   count = 0
 
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
 style
   main
     font-family: system-ui
-    max-width: 560px
+    max-width: 620px
     margin: 48px auto
     padding: 0 20px
-    display: grid
-    gap: 16px
-  h1
-    margin: 0
-    font-size: 28px
-  .stats
-    color: #64707a
-    font-size: 15px
-  .controls
-    display: flex
-    gap: 8px
   button
     padding: 10px 18px
     border-radius: 6px
@@ -1504,12 +1501,15 @@ style
     border-color: transparent
 
 page
-  h1 "Counter"
-  p class "stats" "Count: {count} — doubled: {doubled}"
-  box class "controls"
-    button "+" class "primary" click increment
-    button "−" click decrement
-    button "Reset" click reset`
+  panel title "Counter" pad lg shadow md
+    stack gap md
+      grid cols 2 gap md
+        metric "Count" count "Current value" tone primary
+        metric "Doubled" doubled "Derived from count" tone good
+      toolbar
+        button "+" class "primary" click increment
+        button "−" click decrement
+        button "Reset" click reset`
   },
   {
     name: "form.jtml",
@@ -1542,31 +1542,18 @@ when resetForm
   submitted = false
   status = "Ready."
 
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
 style
   main
     font-family: system-ui
-    max-width: 520px
+    max-width: 760px
     margin: 48px auto
-    padding: 32px
-    background: white
-    border-radius: 12px
-    box-shadow: 0 4px 24px rgba(0,0,0,.08)
-    display: grid
-    gap: 16px
-  h1
-    margin: 0
-    font-size: 22px
-  p
-    margin: 0
-    color: #64707a
-    font-size: 14px
-  .field
-    display: grid
-    gap: 6px
-  label
-    font-size: 13px
-    font-weight: 700
-    color: #334155
+    padding: 0 20px
   input, select
     padding: 10px 12px
     border: 1px solid #d8d4c8
@@ -1580,10 +1567,6 @@ style
     gap: 8px
   .terms input
     width: auto
-  .actions
-    display: flex
-    gap: 10px
-    flex-wrap: wrap
   button
     padding: 11px 20px
     background: white
@@ -1597,57 +1580,33 @@ style
     background: #0f766e
     color: white
     border-color: #0f766e
-  .notice
-    padding: 12px 14px
-    border-radius: 8px
-    background: #ecfdf5
-    border: 1px solid #99f6e4
-    color: #115e59
-  .summary
-    display: grid
-    grid-template-columns: repeat(3, 1fr)
-    gap: 8px
-  .summary div
-    border: 1px solid #e8e4dc
-    border-radius: 8px
-    padding: 10px
-    background: #f8fafc
-  .summary strong
-    display: block
-    font-size: 20px
 
 page
-  h1 "Newsletter"
-  p label
-  box class "summary"
-    div
-      strong "{subscribers}"
-      text "current"
-    div
-      strong plan
-      text "plan"
-    div
-      strong "{audience}"
-      text "after save"
-  box style "display: grid; gap: 14px"
-    box class "field"
-      label "Email"
-      input type "text" placeholder "you@example.com" into email required
-    box class "field"
-      label "Plan"
-      select into plan
-        option "Free" value "Free"
-        option "Pro" value "Pro" selected
-        option "Enterprise" value "Enterprise"
-    label class "terms"
-      checkbox into accepted
-      text "I accept product updates."
-    box class "actions"
-      button "Subscribe" class "primary" click submit
-      button "Reset" type "button" click resetForm
-  p class "notice" status
-  if submitted
-    p "Saved subscriber: {email} on {plan}."`
+  panel title "Newsletter" pad lg shadow md
+    stack gap md
+      text label
+      grid cols 3 gap md
+        metric "Subscribers" subscribers "current" tone primary
+        metric "Plan" plan "selected" tone good
+        metric "Audience" audience "after save" tone warn
+      field
+        text "Email"
+        input type "text" placeholder "you@example.com" into email required
+      field
+        text "Plan"
+        select into plan
+          option "Free" value "Free"
+          option "Pro" value "Pro" selected
+          option "Enterprise" value "Enterprise"
+      label class "terms"
+        checkbox into accepted
+        text "I accept product updates."
+      toolbar
+        button "Subscribe" class "primary" click submit
+        button "Reset" type "button" click resetForm
+      alert "{status}" tone good
+      if submitted
+        alert "Saved subscriber: {email} on {plan}." tone primary`
   },
   {
     name: "dashboard.jtml",
@@ -1686,55 +1645,18 @@ when resetQuarter
   health = 87
   incidents = 2
 
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
 style
   main
     font-family: system-ui
     max-width: 920px
     margin: 40px auto
     padding: 0 16px
-    display: grid
-    gap: 18px
-  h1
-    margin: 0
-  .cards
-    display: grid
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))
-    gap: 14px
-  article
-    background: white
-    border: 1px solid #e8e4dc
-    border-radius: 10px
-    padding: 18px 20px
-    display: grid
-    gap: 6px
-    min-width: 0
-  .label
-    font-size: 12px
-    color: #64707a
-    text-transform: uppercase
-    letter-spacing: .05em
-    margin: 0
-  .value
-    font-size: 28px
-    font-weight: 700
-    margin: 0
-  .status
-    color: #0f766e
-    font-weight: 800
-  .actions
-    display: flex
-    gap: 10px
-    flex-wrap: wrap
-  .insight
-    border: 1px solid #bfdbfe
-    background: #eff6ff
-    color: #1e3a8a
-    border-radius: 10px
-    padding: 14px 16px
-    display: grid
-    gap: 4px
-  .insight strong
-    color: #172554
   button
     padding: 10px 18px
     background: white
@@ -1750,41 +1672,24 @@ style
     border-color: #0f766e
 
 page
-  h1 "Dashboard"
-  box class "cards"
-    article
-      p class "label" "Revenue"
-      p class "value" "USD {revenue}k"
-    article
-      p class "label" "Customers"
-      p class "value" "{customers}"
-    article
-      p class "label" "Avg / customer"
-      p class "value" "{avg}"
-    article
-      p class "label" "Open trials"
-      p class "value" "{trials}"
-    article
-      p class "label" "Health"
-      p class "value" "{health}%"
-    article
-      p class "label" "Status"
-      p class "value status" "{score}"
-    article
-      p class "label" "Incidents"
-      p class "value" "{incidents}"
-    article
-      p class "label" "Runway score"
-      p class "value" "{runway}"
-  box class "insight"
-    strong "Operator note"
-    p "Close deals to grow revenue, reduce churn to improve health, and reset to replay the quarter."
-  chart bar data report by month value mrr label "MRR" color "#0f766e" axis x label "Month" axis y label "MRR ($k)" grid legend width "760" height "260"
-  box class "actions"
-    button "Add trials" click addTrial
-    button "Close deal" class "primary" click closeDeal
-    button "Reduce churn" click reduceChurn
-    button "Reset quarter" click resetQuarter`
+  stack gap lg
+    panel title "Dashboard" pad lg shadow md
+      grid cols 4 gap md
+        metric "Revenue" "USD {revenue}k" "MRR" tone primary
+        metric "Customers" customers "Active" tone good
+        metric "Avg / customer" avg "USD" tone warn
+        metric "Open trials" trials "Pipeline"
+        metric "Health" "{health}%" score tone good
+        metric "Incidents" incidents "Open" tone danger
+        metric "Conversion" conversion "Customers / trial"
+        metric "Runway" runway "Score"
+      alert "Close deals to grow revenue, reduce churn to improve health, and reset to replay the quarter." tone primary
+      chart bar data report by month value mrr label "MRR" color "#0f766e" axis x label "Month" axis y label "MRR ($k)" grid legend width "760" height "260"
+      toolbar
+        button "Add trials" click addTrial
+        button "Close deal" class "primary" click closeDeal
+        button "Reduce churn" click reduceChurn
+        button "Reset quarter" click resetQuarter`
   },
   {
     name: "fetch.jtml",
@@ -1804,37 +1709,18 @@ when saveLocal
 when clearSaved
   saved = false
 
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
 style
   main
     font-family: system-ui
     max-width: 680px
     margin: 48px auto
     padding: 0 20px
-    display: grid
-    gap: 14px
-  h1
-    margin: 0
-  .toolbar
-    display: flex
-    gap: 10px
-    flex-wrap: wrap
-  .user-card
-    padding: 14px 16px
-    background: white
-    border: 1px solid #e8e4dc
-    border-radius: 8px
-    display: grid
-    gap: 4px
-  .loading
-    color: #64707a
-  .error
-    color: #b42318
-  .notice
-    padding: 10px 12px
-    background: #ecfdf5
-    border: 1px solid #99f6e4
-    border-radius: 8px
-    color: #115e59
   button
     padding: 8px 14px
     background: white
@@ -1852,22 +1738,25 @@ style
     font-size: 13px
 
 page
-  h1 "Users"
-  p class "meta" "Endpoint: /api/users · stale keep · timeout 2500ms · retry 2"
-  box class "toolbar"
-    button "Load users" class "primary" click saveLocal
-    button "Save + invalidate" click saveLocal
-    button "Clear saved flag" click clearSaved
-  if users.loading
-    p class "loading" "Loading…"
-  if saved
-    p class "notice" "Saved locally; users fetch was invalidated."
-  for user in users.data
-    div class "user-card"
-      strong "{user.name}"
-      p "{user.email}"
-  if users.error
-    p class "error" "Error: {users.error}"`
+  panel title "Users" pad lg shadow md
+    stack gap md
+      p class "meta" "Endpoint: /api/users · stale keep · timeout 2500ms · retry 2"
+      toolbar
+        button "Load users" class "primary" click saveLocal
+        button "Save + invalidate" click saveLocal
+        button "Clear saved flag" click clearSaved
+      metric "Saved flag" saved "Invalidates users" tone primary
+      if users.loading
+        loading "Loading users..."
+      if saved
+        alert "Saved locally; users fetch was invalidated." tone good
+      grid cols 2 gap md
+        for user in users.data
+          card
+            strong "{user.name}"
+            p "{user.email}"
+      if users.error
+        error "Error: {users.error}"`
   },
   {
     name: "fetch-post.jtml",
@@ -1979,33 +1868,18 @@ store auth
     let role = "viewer"
     let loggedIn = false
 
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
 style
   main
     font-family: system-ui
-    max-width: 560px
+    max-width: 680px
     margin: 48px auto
     padding: 0 20px
-    display: grid
-    gap: 14px
-  h1
-    margin: 0
-  .badge
-    padding: 8px 12px
-    background: #ecfdf5
-    border: 1px solid #6ee7b7
-    border-radius: 6px
-    font-size: 14px
-    color: #065f46
-  .panel
-    border: 1px solid #e8e4dc
-    border-radius: 10px
-    padding: 16px
-    background: white
-    display: grid
-    gap: 8px
-  .muted
-    color: #64707a
-    font-size: 14px
   input
     padding: 10px 14px
     border: 1px solid #d1cfc9
@@ -2021,19 +1895,28 @@ style
     font-size: 14px
 
 page
-  h1 "Auth Store"
-  p class "muted" "Store state is shared and keeps its own actions."
-  if auth.loggedIn
-    box class "panel"
-      p class "badge" "Signed in as {auth.user}"
-      p "Role: {auth.role}"
-      p "Sessions opened: {auth.sessions}"
-      button "Logout" click auth.logout
-  else
-    box class "panel"
-      input type "text" placeholder "Your name" into name
-      p "Next role: admin"
-      button "Login" click auth.login`
+  panel title "Auth Store" pad lg shadow md
+    stack gap md
+      alert "Store state is shared and keeps its own actions." tone primary
+      grid cols 3 gap md
+        metric "User" auth.user "shared field" tone primary
+        metric "Role" auth.role "store-owned" tone good
+        metric "Sessions" auth.sessions "opened" tone warn
+      if auth.loggedIn
+        card tone good
+          alert "Signed in as {auth.user}" tone good
+          text "Role: {auth.role}"
+          text "Sessions opened: {auth.sessions}"
+          toolbar
+            button "Logout" click auth.logout
+      else
+        card
+          field
+            text "Name"
+            input type "text" placeholder "Your name" into name
+          text "Next role: admin"
+          toolbar
+            button "Login" click auth.login`
   },
   {
     name: "effects.jtml",
@@ -2063,34 +1946,18 @@ when saveSnapshot
   saves += 1
   last = "Snapshot {saves}: count {count}"
 
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
 style
   main
     font-family: system-ui
-    max-width: 480px
+    max-width: 680px
     margin: 48px auto
     padding: 0 20px
-    display: grid
-    gap: 12px
-  h1
-    margin: 0
-  .log
-    padding: 12px 16px
-    background: #f0fdf4
-    border: 1px solid #86efac
-    border-radius: 8px
-    font-size: 14px
-    color: #166534
-  .panel
-    border: 1px solid #e8e4dc
-    border-radius: 10px
-    padding: 16px
-    background: white
-    display: grid
-    gap: 8px
-  .controls
-    display: flex
-    gap: 8px
-    flex-wrap: wrap
   button
     padding: 10px 16px
     border-radius: 6px
@@ -2098,16 +1965,17 @@ style
     font-size: 14px
 
 page
-  h1 "Effects"
-  box class "panel"
-    p "Count: {count}"
-    p "Direction: {direction}"
-    p "Saved snapshots: {saves}"
-    p class "log" "Last effect: {last}"
-    box class "controls"
-      button "+ Increment" click increment
-      button "- Decrement" click decrement
-      button "Save snapshot" click saveSnapshot`
+  panel title "Effects" pad lg shadow md
+    stack gap md
+      grid cols 3 gap md
+        metric "Count" count "watched by effect" tone primary
+        metric "Direction" direction "derived by effect" tone good
+        metric "Snapshots" saves "manual saves" tone warn
+      alert "Last effect: {last}" tone good
+      toolbar
+        button "+ Increment" click increment
+        button "- Decrement" click decrement
+        button "Save snapshot" click saveSnapshot`
   },
   {
     name: "routes.jtml",
@@ -2124,6 +1992,12 @@ let routeMode = "hash router"
 
 guard "/dashboard" require token else "/login"
 
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
 make Nav
   style
     .shell
@@ -2131,12 +2005,9 @@ make Nav
       max-width: 720px
       margin: 44px auto
       padding: 0 20px
-      display: grid
-      gap: 16px
     nav
       display: flex
       gap: 12px
-      margin-bottom: 16px
       flex-wrap: wrap
     nav a
       color: #0f766e
@@ -2147,16 +2018,6 @@ make Nav
     nav a.active
       background: #ccfbf1
       font-weight: 600
-    .route-card
-      border: 1px solid #e8e4dc
-      border-radius: 12px
-      padding: 18px
-      background: white
-      display: grid
-      gap: 10px
-    .muted
-      color: #64707a
-      margin: 0
   nav
     link "Home" to "/" active-class "active"
     link "Dashboard" to "/dashboard" active-class "active"
@@ -2164,39 +2025,44 @@ make Nav
 
 make Home
   page class "shell"
-    Nav
-    box class "route-card"
-      h1 "Home"
-      p "Routes render components without a page refresh."
-      p class "muted" "Mode: {routeMode}. Token is prefilled so the protected route opens."
-      link "Open dashboard" to "/dashboard"
+    stack gap md
+      Nav
+      panel title "Home" pad lg shadow md
+        stack gap md
+          text "Routes render components without a page refresh."
+          alert "Mode: {routeMode}. Token is prefilled so the protected route opens." tone primary
+          link "Open dashboard" to "/dashboard"
 
 make Dashboard
   page class "shell"
-    Nav
-    box class "route-card"
-      h1 "Dashboard"
-      p "Protected route: token is present."
-      if users.loading
-        p "Loading dashboard data..."
-      for user in users.data
-        p "{user.name}"
-      link "Back home" to "/"
+    stack gap md
+      Nav
+      panel title "Dashboard" pad lg shadow md
+        stack gap md
+          alert "Protected route: token is present." tone good
+          if users.loading
+            loading "Loading dashboard data..."
+          grid cols 2 gap md
+            for user in users.data
+              card
+                text "{user.name}"
+          link "Back home" to "/"
 
 make Login
   page class "shell"
-    Nav
-    box class "route-card"
-      h1 "Login"
-      p "If token were empty, the guard would redirect /dashboard here."
-      link "Back home" to "/"
+    stack gap md
+      Nav
+      panel title "Login" pad lg shadow md
+        stack gap md
+          alert "If token were empty, the guard would redirect /dashboard here." tone warn
+          link "Back home" to "/"
 
 make NotFound
   page class "shell"
-    Nav
-    box class "route-card"
-      h1 "Not found"
-      p "No route matched the current path."
+    stack gap md
+      Nav
+      panel title "Not found" pad lg shadow md
+        empty "No route matched the current path."
 
 route "/" as Home
 route "/dashboard" as Dashboard load users
@@ -2212,21 +2078,33 @@ route "*" as NotFound`
 when openDashboard
   redirect "/dashboard"
 
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
 make Home
-  page style "font-family: system-ui; max-width: 560px; margin: 48px auto; padding: 0 20px; display: grid; gap: 12px"
-    h1 "Welcome"
-    p "This action navigates without a full page load."
-    button "Open dashboard" click openDashboard
+  page style "font-family: system-ui; max-width: 560px; margin: 48px auto; padding: 0 20px"
+    panel title "Welcome" pad lg shadow md
+      stack gap md
+        text "This action navigates without a full page load."
+        toolbar
+          button "Open dashboard" click openDashboard
 
 make Dashboard
-  page style "font-family: system-ui; max-width: 560px; margin: 48px auto; padding: 0 20px; display: grid; gap: 12px"
-    h1 "Dashboard"
-    link "Back home" to "/"
+  page style "font-family: system-ui; max-width: 560px; margin: 48px auto; padding: 0 20px"
+    panel title "Dashboard" pad lg shadow md
+      stack gap md
+        alert "Redirect landed here through route state." tone good
+        link "Back home" to "/"
 
 make NotFound
-  page style "font-family: system-ui; max-width: 560px; margin: 48px auto; padding: 0 20px; display: grid; gap: 12px"
-    h1 "Not found"
-    link "Home" to "/"
+  page style "font-family: system-ui; max-width: 560px; margin: 48px auto; padding: 0 20px"
+    panel title "Not found" pad lg shadow md
+      stack gap md
+        empty "No route matched the current path."
+        link "Home" to "/"
 
 route "/" as Home
 route "/dashboard" as Dashboard
@@ -2247,26 +2125,18 @@ when clearMedia
   selectedImage = ""
   assets = []
 
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
 style
   main
     font-family: system-ui
     max-width: 920px
     margin: 40px auto
     padding: 0 20px
-    display: grid
-    gap: 18px
-  .grid
-    display: grid
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))
-    gap: 14px
-  article
-    border: 1px solid #e8e4dc
-    border-radius: 10px
-    padding: 16px
-    background: white
-    display: grid
-    gap: 10px
-    min-width: 0
   .hero
     grid-column: 1 / -1
     display: grid
@@ -2298,52 +2168,54 @@ style
     font-weight: 700
 
 page
-  h1 "Media"
-  p "Files become previewable JTML state; images, video, audio, canvas, and SVG stay standards-based."
-  box class "grid"
-    article class "hero"
-      box
-        h2 "Image pipeline"
-        p "Upload an image to turn the file into state with name and preview URL."
-        file "Choose image" accept "image/*" into selectedImage
-        button "Clear media state" click clearMedia
-      box
-        if selectedImage
-          p "Selected: {selectedImage.name}"
-          image src selectedImage.preview alt selectedImage.name
-        else
-          p "Fallback preview"
-          image src sampleImage alt "Generated JTML preview"
-    article
-      h2 "Dropzone"
-      dropzone "Drop media files" accept "image/*,video/*,audio/*" into assets
-      p "Assets: {assets.length}"
-      for asset in assets
-        if asset.preview
-          image src asset.preview alt asset.name
-        else
-          p asset.name
-    article
-      h2 "Media controllers"
-      p "Video and audio elements expose controller state with into."
-      p "Use video src mediaUrl controls into player, then call player.play, player.pause, or player.seek."
-      p "Studio avoids bundling heavy demo media, so uploads are the live path here."
-    article
-      h2 "Graphic"
-      graphic aria-label "Simple bars" width "320" height "120" viewBox "0 0 320 120"
-        bar x "20" y "40" width "70" height "60" fill "#0f766e"
-        bar x "120" y "20" width "70" height "80" fill "#2563eb"
-        bar x "220" y "60" width "70" height "40" fill "#9333ea"
-        dot cx "255" cy "48" r "10" fill "#111827"
-        line x1 "20" y1 "104" x2 "300" y2 "104" stroke "#475569" stroke-width "2"
-        path d "M20 92 C90 20 180 120 300 40" fill "none" stroke "#9333ea" stroke-width "3"
-    article
-      h2 "Chart"
-      chart bar data revenue by month value total label "Revenue by month" color "#2563eb" axis x label "Month" axis y label "Revenue ($k)" grid legend
-    article
-      h2 "3D scene"
-      scene3d "Interactive product scene" scene productScene camera orbit controls orbit renderer "three" width "640" height "360"
-      p "3D hosts can attach Three.js/WebGPU through window.jtml3d.render(canvas, spec)."`
+  panel title "Media" pad lg shadow md
+    stack gap md
+      alert "Files become previewable JTML state; images, video, audio, canvas, and SVG stay standards-based." tone primary
+      grid cols 2 gap md
+        card class "hero"
+          stack gap md
+            h2 "Image pipeline"
+            text "Upload an image to turn the file into state with name and preview URL."
+            file "Choose image" accept "image/*" into selectedImage
+            toolbar
+              button "Clear media state" click clearMedia
+          stack gap md
+            if selectedImage
+              alert "Selected: {selectedImage.name}" tone good
+              image src selectedImage.preview alt selectedImage.name
+            else
+              text "Fallback preview"
+              image src sampleImage alt "Generated JTML preview"
+        card
+          h2 "Dropzone"
+          dropzone "Drop media files" accept "image/*,video/*,audio/*" into assets
+          metric "Assets" assets.length "selected" tone primary
+          for asset in assets
+            if asset.preview
+              image src asset.preview alt asset.name
+            else
+              text asset.name
+        card
+          h2 "Media controllers"
+          text "Video and audio elements expose controller state with into."
+          text "Use video src mediaUrl controls into player, then call player.play, player.pause, or player.seek."
+          alert "Studio avoids bundling heavy demo media, so uploads are the live path here." tone warn
+        card
+          h2 "Graphic"
+          graphic aria-label "Simple bars" width "320" height "120" viewBox "0 0 320 120"
+            bar x "20" y "40" width "70" height "60" fill "#0f766e"
+            bar x "120" y "20" width "70" height "80" fill "#2563eb"
+            bar x "220" y "60" width "70" height "40" fill "#9333ea"
+            dot cx "255" cy "48" r "10" fill "#111827"
+            line x1 "20" y1 "104" x2 "300" y2 "104" stroke "#475569" stroke-width "2"
+            path d "M20 92 C90 20 180 120 300 40" fill "none" stroke "#9333ea" stroke-width "3"
+        card
+          h2 "Chart"
+          chart bar data revenue by month value total label "Revenue by month" color "#2563eb" axis x label "Month" axis y label "Revenue ($k)" grid legend
+        card
+          h2 "3D scene"
+          scene3d "Interactive product scene" scene productScene camera orbit controls orbit renderer "three" width "640" height "360"
+          text "3D hosts can attach Three.js/WebGPU through window.jtml3d.render(canvas, spec)."`
   },
   {
     name: "charts.jtml",
@@ -2355,26 +2227,18 @@ let revenue = [{ "month": "Jan", "sales": 12, "expenses": 8 }, { "month": "Feb",
 
 let traffic = [{ "day": "Mon", "visits": 420 }, { "day": "Tue", "visits": 680 }, { "day": "Wed", "visits": 540 }, { "day": "Thu", "visits": 790 }, { "day": "Fri", "visits": 610 }, { "day": "Sat", "visits": 320 }, { "day": "Sun", "visits": 210 }]
 
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
 style
   main
     font-family: system-ui
     max-width: 860px
     margin: 40px auto
     padding: 0 24px
-    display: grid
-    gap: 24px
-  h1
-    margin: 0
-    font-size: 26px
-  .charts
-    display: grid
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr))
-    gap: 20px
-  article
-    border: 1px solid #e8e4dc
-    border-radius: 10px
-    padding: 16px
-    background: white
   h2
     margin: 0 0 12px
     font-size: 15px
@@ -2383,21 +2247,22 @@ style
     overflow: visible
 
 page
-  h1 "Charts"
-  p "JTML charts render to accessible SVG. Both bar and line types support axes, labels, legend, and grid."
-  box class "charts"
-    article
-      h2 "Bar chart with axes and grid"
-      chart bar data revenue by month value sales label "Monthly Sales" color "#0f766e" axis x label "Month" axis y label "Sales ($k)" grid width "380" height "240"
-    article
-      h2 "Line chart with legend"
-      chart line data traffic by day value visits label "Weekly Traffic" color "#2563eb" axis x label "Day" axis y label "Visits" legend width "380" height "240"
-    article
-      h2 "Bar chart — expenses"
-      chart bar data revenue by month value expenses label "Monthly Expenses" color "#b42318" axis y label "Expenses ($k)" grid legend width "380" height "240"
-    article
-      h2 "Line chart — smoothed traffic"
-      chart line data traffic by day value visits label "Traffic trend" color "#9333ea" grid axis x label "Day of week" width "380" height "240"`
+  panel title "Charts" pad lg shadow md
+    stack gap md
+      alert "JTML charts render to accessible SVG. Both bar and line types support axes, labels, legend, and grid." tone primary
+      grid cols 2 gap md
+        card
+          h2 "Bar chart with axes and grid"
+          chart bar data revenue by month value sales label "Monthly Sales" color "#0f766e" axis x label "Month" axis y label "Sales ($k)" grid width "380" height "240"
+        card
+          h2 "Line chart with legend"
+          chart line data traffic by day value visits label "Weekly Traffic" color "#2563eb" axis x label "Day" axis y label "Visits" legend width "380" height "240"
+        card
+          h2 "Bar chart — expenses"
+          chart bar data revenue by month value expenses label "Monthly Expenses" color "#b42318" axis y label "Expenses ($k)" grid legend width "380" height "240"
+        card
+          h2 "Line chart — smoothed traffic"
+          chart line data traffic by day value visits label "Traffic trend" color "#9333ea" grid axis x label "Day of week" width "380" height "240"`
   },
   {
     name: "animation.jtml",
@@ -2409,6 +2274,12 @@ let progress = 0
 let opacity = 0
 let scale = 0
 let playing = false
+
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
 
 when advance
   if progress < 100
@@ -2435,15 +2306,6 @@ style
     max-width: 640px
     margin: 40px auto
     padding: 0 24px
-    display: grid
-    gap: 24px
-  h1
-    margin: 0
-    font-size: 26px
-  .controls
-    display: flex
-    gap: 10px
-    flex-wrap: wrap
   button
     padding: 8px 18px
     border: 1px solid #d1d5db
@@ -2470,38 +2332,31 @@ style
     border-radius: 999px
     background: #0f766e
     transition: all .2s ease-out
-  .card
-    border: 1px solid #e8e4dc
-    border-radius: 10px
-    padding: 20px
-    background: white
-    display: grid
-    gap: 12px
-  .stat
-    font-size: 48px
-    font-weight: 800
-    color: #0f766e
 
 page
-  h1 "Animation"
-  box class "card"
-    h2 "Interactive motion state"
-    p "progress: {progress}%  opacity: {opacity}%  scale: {scale}%"
-    box class "bar-track"
-      box class "bar-fill" style "width: {progress}%"
-    box class "orb" aria-label "Animated preview" style "opacity: {opacity}%; width: {scale}px; height: {scale}px"
-    box class "controls"
-      button "Advance" click advance
-      button "Complete" click completeMotion
-      button "Reset" click resetMotion
-  box class "card"
-    h2 "State-driven CSS"
-    p "JTML can bind state into styles while CSS handles motion smoothly."
-    box class "stat" "{progress}%"
-    if playing
-      p "Motion is in progress."
-    else
-      p "Motion is idle."`
+  panel title "Animation" pad lg shadow md
+    stack gap md
+      alert "JTML drives visible state. CSS owns the transition details." tone primary
+      grid cols 3 gap md
+        metric "Progress" progress "percent" tone primary
+        metric "Opacity" opacity "percent" tone neutral
+        metric "Scale" scale "pixels" tone good
+      card
+        stack gap md
+          h2 "Motion preview"
+          box class "bar-track"
+            box class "bar-fill" style "width: {progress}%"
+          box class "orb" aria-label "Animated preview" style "opacity: {opacity}%; width: {scale}px; height: {scale}px"
+          toolbar
+            button "Advance" click advance
+            button "Complete" click completeMotion
+            button "Reset" click resetMotion
+      card
+        h2 "State-driven CSS"
+        if playing
+          alert "Motion is in progress." tone good
+        else
+          alert "Motion is idle." tone neutral`
   },
   {
     name: "components.jtml",
@@ -2518,36 +2373,25 @@ make Counter label
   when reset
     count = 0
 
-  box class "card"
-    h2 label
-    p "Count: {count}"
-    box class "row"
-      button "+ Increment" click add
-      button "Reset" click reset
+  card title label
+    stack gap md
+      metric "Count" count "local state" tone primary
+      toolbar
+        button "+ Increment" click add
+        button "Reset" click reset
+
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
 
 style
   main
     font-family: system-ui
-    max-width: 480px
+    max-width: 620px
     margin: 48px auto
     padding: 0 20px
-    display: grid
-    gap: 16px
-  h1
-    margin: 0
-  .card
-    border: 1px solid #e8e4dc
-    border-radius: 10px
-    padding: 18px
-    display: grid
-    gap: 10px
-    background: white
-  .card h2
-    margin: 0
-    font-size: 16px
-  .row
-    display: flex
-    gap: 8px
   button
     padding: 9px 16px
     border-radius: 6px
@@ -2555,9 +2399,12 @@ style
     cursor: pointer
 
 page
-  h1 "Component Isolation"
-  Counter "Counter A"
-  Counter "Counter B"`
+  panel title "Component Isolation" pad lg shadow md
+    stack gap md
+      alert "Each Counter call receives its own local state and actions." tone primary
+      grid cols 2 gap md
+        Counter "Counter A"
+        Counter "Counter B"`
   }
 ];
 
@@ -3161,7 +3008,7 @@ function renderSidebar() {
   const seen = {};
   const pinnedTemplates = new Set(["counter.jtml", "form.jtml", "dashboard.jtml", "fetch.jtml", "routes.jtml", "media.jtml", "components.jtml"]);
   SAMPLES.forEach((s, i) => {
-    if (!pinnedTemplates.has(s.name)) return;
+    if (!query && !pinnedTemplates.has(s.name)) return;
     if (!matches((s.label || "") + " " + s.name + " " + (s.category || ""))) return;
     const cat = s.category || "basics";
     if (!seen[cat]) {

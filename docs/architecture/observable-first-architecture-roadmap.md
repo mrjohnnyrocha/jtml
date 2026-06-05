@@ -117,8 +117,11 @@ must understand real components. Current progress: semantic component
 definition/instance records are available to `jtml explain`, browser-local
 manifests, and live runtime registration. Component definitions now expose
 params, local state, local derived values, local actions, local effects, event
-bindings, slot presence, source line, and encoded body payload. The remaining
-architectural step is direct non-expanded component execution.
+bindings, slot presence, body/root-template counts, source line, encoded body
+payload, and a semantic `runtimePlan`. Component instances expose their owning
+runtime environment and validate local action dispatch through that definition.
+The remaining architectural step is direct non-expanded component template
+execution.
 
 ### P3: Semantic Styling
 

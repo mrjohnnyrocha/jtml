@@ -144,14 +144,16 @@ evaluate all top-level declarations.
 
 ## Fetch
 
-Every fetch UI should handle loading and error states.
+Every fetch UI should handle loading and error states. For production data,
+prefer explicit stale/retry/revalidation behavior instead of bare fetches.
 
 ```jtml
-let users = fetch "/api/users" timeout 2500 retry 2 stale keep refresh reloadUsers
+let users = fetch "/api/users" timeout 2500 retry 2 stale keep group people key "users" dedupe every 30000 refresh reloadUsers
+let teams = fetch "/api/teams" group people lazy
 
 when saveUser
   let saved = true
-  invalidate users
+  invalidate group people
 
 page
   button "Reload" click reloadUsers
@@ -168,9 +170,9 @@ page
 For route-only data, prefer lazy fetches:
 
 ```jtml
-let users = fetch "/api/users" lazy stale keep
+let users = fetch "/api/users/{id}" key id dedupe lazy stale keep
 
-route "/users" as Users load users
+route "/users/:id" as Users load users
 ```
 
 For writes, use explicit request options:
@@ -205,6 +207,7 @@ page
     line x1 "20" y1 "104" x2 "300" y2 "104" stroke "#475569" stroke-width "2"
     path d "M20 90 C90 20 180 120 300 40" fill "none" stroke "#9333ea" stroke-width "3"
   chart bar data rows by label value total label "Revenue" color "#2563eb"
+  chart line data rows by label values total forecast series "Actual,Forecast" colors "#2563eb,#9333ea" legend grid max 100 ticks 5 export svg csv
   scene3d "Product preview" scene productScene camera orbit controls orbit renderer "three" into sceneState width "640" height "360"
 ```
 
@@ -304,6 +307,10 @@ contain `tab` children, and each `tab` should trigger an action or route target.
 action. Do not manually add default platform roles unless overriding them:
 `modal`/`drawer`, `alert`, `error`, `toast`, `loading`, `empty`, `tabs`, and
 `tab` already lower to sensible accessibility roles and safe button defaults.
+For ordinary action buttons, write `button "Save" click save`; JTML adds
+`type="button"` automatically. Inside `form submit action`, use a plain
+`button "Submit"` for the form submit button, or write an explicit `type submit`
+when a clicked button should intentionally submit the form.
 
 Use `style` when a primitive or modifier cannot express the design.
 
@@ -367,7 +374,7 @@ In Studio, use:
 1. Format
 2. Run
 3. Inspect Diagnostics
-4. Inspect Classic/HTML Artifacts
+4. Inspect Compatibility/HTML Artifacts
 
 Machine-readable repair tools should prefer JSON diagnostics:
 

@@ -1,6 +1,6 @@
 jtml 2
 
-let revenue = [{"month":"Jan","sales":12},{"month":"Feb","sales":18},{"month":"Mar","sales":9},{"month":"Apr","sales":24},{"month":"May","sales":30}]
+let revenue = [{"month":"Jan","sales":12,"expenses":7},{"month":"Feb","sales":18,"expenses":9},{"month":"Mar","sales":9,"expenses":6},{"month":"Apr","sales":24,"expenses":12},{"month":"May","sales":30,"expenses":16}]
 
 let progress = 0
 
@@ -59,8 +59,12 @@ page
   h1 "Media, Charts, and Graphics"
 
   box class "card"
-    h2 "Bar chart"
-    chart bar data revenue by month value sales label "Monthly Sales" color "#0f766e"
+    h2 "Grouped chart"
+    chart bar data revenue by month values sales expenses series "Sales,Expenses" colors "#0f766e,#b42318" label "Revenue split" axis x label "Month" axis y label "$k" grid legend max 35 ticks 5 annotate "Launch" at "Apr" value sales color "#9333ea" export svg png csv
+
+  box class "card"
+    h2 "Stacked chart"
+    chart bar data revenue by month values sales expenses series "Sales,Expenses" colors "#0f766e,#b42318" label "Stacked revenue" axis x label "Month" axis y label "$k" grid legend stacked max 50 ticks 6
 
   box class "card"
     h2 "Vector graphic"
@@ -68,6 +72,7 @@ page
       line x1 "40" y1 "150" x2 "520" y2 "150" stroke "#94a3b8" stroke-width "2"
       path d "M50 120 C130 65 190 150 260 70 C340 10 410 52 510 26" fill "none" stroke "#2563eb" stroke-width "4"
       dot cx "510" cy "26" r "7" fill "#111827"
+      svgtext x "44" y "28" fill "#334155" font-size "14" "Annotated SVG"
 
   box class "card"
     h2 "Interactive progress"

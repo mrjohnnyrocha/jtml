@@ -388,6 +388,39 @@ TEST(FriendlySyntax, BrowserLocalManifestCarriesRouteTable) {
     EXPECT_NE(html.find("collectRouteBindings();"), std::string::npos) << html;
 }
 
+TEST(FriendlySyntax, BrowserLocalFetchUrlsInterpolateRouteParamsAtRequestTime) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "let user = fetch \"/api/users/{id}\" lazy stale keep\n"
+        "route \"/user/:id\" as UserProfile load user\n"
+        "make UserProfile id\n"
+        "  page\n"
+        "    show user.loading\n"
+        "    show user.url\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+
+    EXPECT_NE(html.find("\"fetches\":[{\"name\":\"user\",\"url\":\"/api/users/{id}\""),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("{\"path\":\"/user/:id\",\"name\":\"UserProfile\",\"params\":[\"id\"],\"load\":[\"user\"]}"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function resolveFetchUrl(url)"), std::string::npos) << html;
+    EXPECT_NE(html.find("const resolvedUrl = resolveFetchUrl(url);"), std::string::npos) << html;
+    EXPECT_NE(html.find("const response = await fetch(resolvedUrl, options);"), std::string::npos) << html;
+    EXPECT_NE(html.find("resolveFetchUrl: resolveFetchUrl"), std::string::npos) << html;
+    EXPECT_NE(html.find("clientState[name] = Object.prototype.hasOwnProperty.call(params, name) ? params[name] : '';"),
+              std::string::npos) << html;
+}
+
 TEST(FriendlySyntax, RouteAwareLinksLowerToHashLinks) {
     std::string classic = normalizeOk(
         "jtml 2\n"
@@ -425,7 +458,7 @@ TEST(FriendlySyntax, RouteCanLoadLazyFetchesWhenMatched) {
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("function registerFetchBinding(record, lazy)"), std::string::npos);
     EXPECT_NE(html.find("}, marker.getAttribute('data-lazy') === 'true');"), std::string::npos);
-    EXPECT_NE(html.find("if (!lazy) __jtml_fetch_fns[name]()"), std::string::npos);
+    EXPECT_NE(html.find("if (!lazy) __jtml_fetch_fns[name](false)"), std::string::npos);
     EXPECT_NE(html.find("function runRouteLoads(route)"), std::string::npos);
     EXPECT_NE(html.find("runRouteLoads(route)"), std::string::npos);
 }
@@ -689,6 +722,84 @@ TEST(FriendlySyntax, InvalidateRefreshesFetchAfterActionDispatch) {
     EXPECT_NE(html.find("await runInvalidations(fnName)"), std::string::npos);
 }
 
+TEST(FriendlySyntax, InvalidateGroupsAndAllRefreshFetchSets) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "let users = fetch \"/api/users\" group people lazy\n"
+        "let teams = fetch \"/api/teams\" group people lazy\n"
+        "let audit = fetch \"/api/audit\" group ops lazy\n"
+        "when savePeople\n"
+        "  invalidate group people\n"
+        "when resetEverything\n"
+        "  invalidate all\n"
+        "page\n"
+        "  button \"Save\" click savePeople\n"
+        "  button \"Reset\" click resetEverything\n");
+
+    EXPECT_NE(classic.find("data-group=\"people\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-jtml-invalidate-action=\"savePeople\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-jtml-invalidate-groups=\"people\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-jtml-invalidate-action=\"resetEverything\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-jtml-invalidate-all=\"true\""), std::string::npos) << classic;
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("\"group\":\"people\""), std::string::npos) << html;
+    EXPECT_NE(html.find("const __jtml_fetch_groups = {}"), std::string::npos) << html;
+    EXPECT_NE(html.find("fetchGroups: __jtml_fetch_groups"), std::string::npos) << html;
+    EXPECT_NE(html.find("__jtml_fetch_groups[group]"), std::string::npos) << html;
+    EXPECT_NE(html.find("const names = new Set(Array.isArray(spec) ? spec : (spec.fetches || []));"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("Object.keys(__jtml_fetch_fns).forEach(function (name) { names.add(name); });"),
+              std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, FetchCacheKeysDedupeAndTimedRevalidationReachBrowserRuntime) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "let userId = \"42\"\n"
+        "let user = fetch \"/api/users/{userId}\" key userId dedupe every 30000 background stale keep group people lazy refresh reloadUser\n"
+        "page\n"
+        "  button \"Reload\" click reloadUser\n"
+        "  text user.data.name\n");
+
+    EXPECT_NE(classic.find("data-cache-key-expr=\"userId\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-revalidate-ms=\"30000\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-dedupe=\"true\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-background=\"true\""), std::string::npos) << classic;
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("\"cacheKeyExpr\":\"userId\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"revalidateMs\":\"30000\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"dedupe\":true"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"background\":true"), std::string::npos) << html;
+    EXPECT_NE(html.find("function resolveFetchKey(name, resolvedUrl, method, bodyExpr, cacheKeyExpr)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("previous.hasData && previous.key === resolvedKey"), std::string::npos) << html;
+    EXPECT_NE(html.find("const __jtml_fetch_timers = {}"), std::string::npos) << html;
+    EXPECT_NE(html.find("setInterval(function ()"), std::string::npos) << html;
+    EXPECT_NE(html.find("document.hidden"), std::string::npos) << html;
+    EXPECT_NE(html.find("return __jtml_fetch_fns[name](true);"), std::string::npos) << html;
+    EXPECT_NE(html.find("fetchTimers: __jtml_fetch_timers"), std::string::npos) << html;
+}
+
 TEST(FriendlySyntax, EffectLowersToSubscriptionFunction) {
     std::string classic = normalizeOk(
         "jtml 2\n"
@@ -724,7 +835,7 @@ TEST(FriendlySyntax, StoreBlockLowersToSharedDictionaryState) {
     EXPECT_NE(classic.find("auth.user = \"\"\\\\"), std::string::npos);
     EXPECT_NE(classic.find("auth.token = \"\"\\\\"), std::string::npos);
     EXPECT_NE(classic.find("show auth.user\\\\"), std::string::npos);
-    EXPECT_NE(classic.find("@button onClick=auth_logout()\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("@button onClick=auth_logout() type=\"button\"\\\\"), std::string::npos);
 
     Lexer lex(classic);
     auto tokens = lex.tokenize();
@@ -788,7 +899,7 @@ TEST(FriendlySyntax, PageElementsEventsAndInputLowerToClassic) {
     EXPECT_NE(classic.find("@main class=\"app\"\\\\"), std::string::npos);
     EXPECT_NE(classic.find("@input placeholder=\"Email\" value=email onInput=setEmail() required\\\\"),
               std::string::npos);
-    EXPECT_NE(classic.find("@button onClick=save()\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("@button onClick=save() type=\"button\"\\\\"), std::string::npos);
     EXPECT_NE(classic.find("function setEmail(value)\\\\"), std::string::npos);
 }
 
@@ -808,7 +919,7 @@ TEST(FriendlySyntax, ReadableEventAliasesLowerToClassicEvents) {
 
     EXPECT_NE(classic.find("@input placeholder=\"Search\" onKeyDown=handleKey()\\\\"),
               std::string::npos) << classic;
-    EXPECT_NE(classic.find("@button onDblClick=handleDouble()\\\\"), std::string::npos)
+    EXPECT_NE(classic.find("@button onDblClick=handleDouble() type=\"button\"\\\\"), std::string::npos)
         << classic;
     EXPECT_NE(classic.find("data-jtml-dropzone=\"true\""), std::string::npos) << classic;
     EXPECT_NE(classic.find("onDragOver=handleDrop()"), std::string::npos) << classic;
@@ -1184,7 +1295,8 @@ TEST(FriendlySyntax, GraphicAliasesLowerToAccessibleSvgShapes) {
         "    line x1 \"20\" y1 \"104\" x2 \"300\" y2 \"104\" stroke \"#475569\" stroke-width \"2\"\n"
         "    path d \"M20 90 C90 20 180 120 300 40\" fill \"none\" stroke \"#9333ea\" stroke-width \"3\"\n"
         "    polyline points \"20,20 70,50 120,30\" fill \"none\" stroke \"#111827\"\n"
-        "    polygon points \"240,24 292,112 188,112\" fill \"#f59e0b\" opacity \"0.7\"\n");
+        "    polygon points \"240,24 292,112 188,112\" fill \"#f59e0b\" opacity \"0.7\"\n"
+        "    svgtext x \"20\" y \"24\" fill \"#334155\" font-size \"14\" \"Revenue\"\n");
 
     EXPECT_NE(classic.find("@svg role=\"img\" aria-label=\"Revenue chart\" width=\"320\" height=\"120\" viewBox=\"0 0 320 120\"\\\\"),
               std::string::npos);
@@ -1199,6 +1311,10 @@ TEST(FriendlySyntax, GraphicAliasesLowerToAccessibleSvgShapes) {
     EXPECT_NE(classic.find("@polyline points=\"20,20 70,50 120,30\" fill=\"none\" stroke=\"#111827\"\\\\"),
               std::string::npos);
     EXPECT_NE(classic.find("@polygon points=\"240,24 292,112 188,112\" fill=\"#f59e0b\" opacity=\"0.7\"\\\\"),
+              std::string::npos);
+    EXPECT_NE(classic.find("@text x=\"20\" y=\"24\" fill=\"#334155\" font-size=\"14\"\\\\"),
+              std::string::npos);
+    EXPECT_NE(classic.find("show \"Revenue\"\\\\"),
               std::string::npos);
 }
 
@@ -1228,6 +1344,46 @@ TEST(FriendlySyntax, ChartBarLowersToRuntimeRenderedSvg) {
     EXPECT_NE(html.find("data-jtml-chart=\"bar\""), std::string::npos);
     EXPECT_NE(html.find("function renderCharts()"), std::string::npos);
     EXPECT_NE(html.find("normalizeChartRows"), std::string::npos);
+}
+
+TEST(FriendlySyntax, MultiSeriesChartsLowerAndRenderAsGroupedStackedAndLine) {
+    const std::string classic = normalizeOk(
+        "jtml 2\n"
+        "let revenue = [{ \"month\": \"Jan\", \"sales\": 12, \"expenses\": 7 }, { \"month\": \"Feb\", \"sales\": 18, \"expenses\": 9 }]\n"
+        "page\n"
+        "  chart bar data revenue by month values sales expenses series \"Sales,Expenses\" colors \"#0f766e,#b42318\" label \"Revenue split\" stacked legend grid max 40 ticks 5 annotate \"Launch\" at \"Feb\" value sales color \"#9333ea\" export svg png csv\n"
+        "  chart line data revenue by month values sales expenses series \"Sales,Expenses\" colors \"#0f766e,#2563eb\" label \"Revenue trend\" legend\n");
+
+    EXPECT_NE(classic.find("data-jtml-chart=\"bar\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-jtml-chart-values=\"sales,expenses\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-jtml-chart-series=\"Sales,Expenses\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-jtml-chart-colors=\"#0f766e,#b42318\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-jtml-chart-stacked=\"true\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-jtml-chart-max=40"), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-jtml-chart-ticks=5"), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-jtml-chart-annotations=\"Launch|Feb|sales|#9333ea\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-jtml-chart-export=\"svg,png,csv\""), std::string::npos) << classic;
+    EXPECT_NE(classic.find("data-jtml-chart=\"line\""), std::string::npos) << classic;
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+    JtmlTranspiler transpiler;
+    const std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("data-jtml-chart-values=\"sales,expenses\""), std::string::npos) << html;
+    EXPECT_NE(html.find("const valueFields = splitCsv"), std::string::npos) << html;
+    EXPECT_NE(html.find("const series = valueFields.map"), std::string::npos) << html;
+    EXPECT_NE(html.find("rowValues[index].forEach"), std::string::npos) << html;
+    EXPECT_NE(html.find("series.forEach(function (s, seriesIndex)"), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-chart-max=\"40.000000000000000\""), std::string::npos) << html;
+    EXPECT_NE(html.find("const requestedTicks = Math.max"), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-chart-annotations=\"Launch|Feb|sales|#9333ea\""), std::string::npos) << html;
+    EXPECT_NE(html.find("const annotations = parseAnnotations"), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-chart-export=\"svg,png,csv\""), std::string::npos) << html;
+    EXPECT_NE(html.find("function syncChartExportControls"), std::string::npos) << html;
+    EXPECT_NE(html.find("downloadChartBlob"), std::string::npos) << html;
 }
 
 TEST(FriendlySyntax, Scene3DLowersToCanvasMountWithFallbackRuntime) {
@@ -1368,6 +1524,23 @@ TEST(FriendlySyntax, FormWithSubmitEvent) {
         "    button \"Login\"\n");
 
     EXPECT_NE(classic.find("@form onSubmit=loginUser()\\\\"), std::string::npos);
+}
+
+TEST(FriendlySyntax, ActionButtonsDefaultToSafeButtonType) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "when save\n"
+        "  show \"saved\"\n"
+        "when login\n"
+        "  show \"login\"\n"
+        "page\n"
+        "  button \"Save\" click save\n"
+        "  button \"Submit\" click login type submit\n");
+
+    EXPECT_NE(classic.find("@button onClick=save() type=\"button\"\\\\"), std::string::npos)
+        << classic;
+    EXPECT_NE(classic.find("@button onClick=login() type=submit\\\\"), std::string::npos)
+        << classic;
 }
 
 // ---------------------------------------------------------------------------
@@ -1686,11 +1859,18 @@ TEST(FriendlySyntax, InterpreterRegistersComponentInstancesAndLocalState) {
     EXPECT_EQ(state["componentDefinitions"][0]["name"], "Counter");
     ASSERT_EQ(state["componentDefinitions"][0]["params"].size(), 1);
     EXPECT_EQ(state["componentDefinitions"][0]["params"][0], "label");
+    EXPECT_EQ(state["componentDefinitions"][0]["runtimePlan"]["mode"], "semantic-instance");
+    EXPECT_EQ(state["componentDefinitions"][0]["runtimePlan"]["actions"][0], "add");
+    EXPECT_EQ(state["componentDefinitions"][0]["runtimePlan"]["state"][0], "count");
+    EXPECT_EQ(state["componentDefinitions"][0]["rootTemplateNodeCount"], 1);
     EXPECT_NE(state["componentDefinitions"][0]["body"].get<std::string>().find("let count = 0"),
               std::string::npos);
     ASSERT_TRUE(state.contains("components")) << state.dump(2);
     ASSERT_EQ(state["components"].size(), 2);
     EXPECT_EQ(state["components"][0]["component"], "Counter");
+    EXPECT_EQ(state["components"][0]["runtime"]["mode"], "semantic-instance");
+    EXPECT_EQ(state["components"][0]["runtime"]["ready"], true);
+    EXPECT_EQ(state["components"][0]["runtime"]["actions"][0], "add");
     EXPECT_EQ(state["components"][0]["locals"]["count"]["value"], 0);
     EXPECT_EQ(state["components"][0]["locals"]["add"]["function"], true);
     EXPECT_EQ(state["components"][1]["locals"]["count"]["value"], 0);
@@ -1711,6 +1891,11 @@ TEST(FriendlySyntax, InterpreterRegistersComponentInstancesAndLocalState) {
     state = nlohmann::json::parse(interpreter.getStateJSON());
     EXPECT_EQ(state["components"][0]["locals"]["count"]["value"], 1);
     EXPECT_EQ(state["components"][1]["locals"]["count"]["value"], 1);
+
+    ASSERT_FALSE(interpreter.dispatchComponentAction(
+        components[1]["id"].get<std::string>(), "missing", nlohmann::json::array(),
+        bindings, error));
+    EXPECT_NE(error.find("available actions"), std::string::npos) << error;
 }
 
 TEST(FriendlySyntax, DerivedBindingsCanBeRedefinedDuringStudioReloads) {

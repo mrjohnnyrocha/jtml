@@ -118,7 +118,7 @@ TEST(CliExplain, JsonReportsObservableDepthAndStoreActions) {
         "jtml 2\n"
         "\n"
         "let token = \"ok\"\n"
-        "let users = fetch \"/api/users\"\n"
+        "let users = fetch \"/api/users\" group people key token dedupe every 30000 background\n"
         "css raw\n"
         "  third-party-card { display: block; }\n"
         "extern notify from \"host.notify\"\n"
@@ -174,6 +174,11 @@ TEST(CliExplain, JsonReportsObservableDepthAndStoreActions) {
     EXPECT_EQ(report["semantic"]["fetchRecords"][0]["name"], "users");
     EXPECT_EQ(report["semantic"]["fetchRecords"][0]["url"], "/api/users");
     EXPECT_EQ(report["semantic"]["fetchRecords"][0]["method"], "GET");
+    EXPECT_EQ(report["semantic"]["fetchRecords"][0]["group"], "people");
+    EXPECT_EQ(report["semantic"]["fetchRecords"][0]["cacheKeyExpr"], "token");
+    EXPECT_EQ(report["semantic"]["fetchRecords"][0]["revalidateMs"], "30000");
+    EXPECT_TRUE(report["semantic"]["fetchRecords"][0]["dedupe"]);
+    EXPECT_TRUE(report["semantic"]["fetchRecords"][0]["background"]);
     ASSERT_EQ(report["semantic"]["componentDefinitions"].size(), 1u) << report.dump(2);
     EXPECT_EQ(report["semantic"]["componentDefinitions"][0]["name"], "Home");
     EXPECT_NE(report["semantic"]["componentDefinitions"][0]["localState"].dump().find("open"),

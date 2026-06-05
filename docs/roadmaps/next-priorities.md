@@ -81,8 +81,9 @@ Implementation slices:
     `alert`, `error`, `toast`, `loading`, `empty`, `tabs`, and `tab` now lower
     with sensible platform roles/live-region attributes. Overlays are focusable
     with `tabindex="-1"`, `loading` exposes busy state, and `tab` uses
-    `type="button"` to avoid accidental form submission. Next: add richer
-    keyboard behavior on top of those stable roles.
+    `type="button"` to avoid accidental form submission. Ordinary clicked
+    buttons now also default to `type="button"` unless the author explicitly
+    sets a type. Next: add richer keyboard behavior on top of those stable roles.
 13. ✅ Field label semantics shipped: `semantic.ui.uses` now separates
     `hasControl` from `hasLabel`, and `jtml lint` reports
     `JTML_UI_FIELD_UNLABELED` when a field wraps a control without a usable
@@ -132,6 +133,15 @@ Implementation slices:
    core plus `status`, `ok`, `url`, `method`, and `updatedAt` metadata; stale
    UI is only marked stale after a previous successful response exists;
    `window.jtml` exposes named fetch refresh hooks for devtools and demos.
+   Fetch URLs now interpolate browser-local state at request time, so route
+   params such as `{id}` work with `route "/user/:id" as User load user`.
+   Fetch invalidation groups now let larger apps write `fetch ... group name`,
+   `invalidate group name`, or `invalidate all` instead of wiring every fetch
+   by hand. Fetch cache identity and timed revalidation controls now let
+   authors write `fetch ... key expr dedupe every 30000 background`, giving
+   browser-local fetches explicit request identity, duplicate-request skipping,
+   and interval revalidation that pauses on hidden tabs unless background
+   refresh is explicitly requested.
 4. ✅ Bridge hash routing and fetches toward graph/runtime ownership: browser-local builds
    now emit a compiler route manifest, and the browser runtime collects a live
    route registry from that manifest when available. It publishes
@@ -142,7 +152,8 @@ Implementation slices:
    browser-local route manifest emission consumes those semantic records instead
    of running its own lowered-AST route scan. The semantic IR also exposes
    structured `fetchRecords` with URL, method, body expression, refresh action,
-   cache, credentials, timeout, retry, stale, and lazy metadata; browser-local
+   cache, credentials, timeout, retry, stale, group, key, dedupe, timed
+   revalidation, background, and lazy metadata; browser-local
    fetch registration now starts from those records and falls back to DOM markers
    only for compatibility. The semantic IR now also exposes structured
    `componentDefinitions` and `componentInstances`, giving explain/tooling a
@@ -152,8 +163,13 @@ Implementation slices:
 5. ✅ Align `jtml serve` with the same graph for component metadata: the live
    interpreter now registers runtime component definitions and instances from
    semantic records first, falling back to lowered DOM marker scans only for
-   compatibility. Next slice: move instance execution ownership beyond source
-   expansion while keeping this manifest/runtime contract stable.
+   compatibility. Component definitions and instances now also expose semantic
+   runtime plans: local state/actions/derived/effects, event bindings, slot/body
+   shape, owning environment ids, and semantic action validation are available
+   through browser manifests, `/api/state`, `/api/components`, and
+   `/api/component-definitions`. Next slice: render component templates directly
+   from non-expanded component definitions while keeping this manifest/runtime
+   contract stable.
 6. Add parity tests comparing browser-local output and live runtime behavior.
 
 ## 3. Interop And Escape Hatches
@@ -195,13 +211,16 @@ Implementation slices:
    records.
 2. ✅ Preserve first-slice component-owned semantics in `ComponentDefinition`:
    params, local state, local derived values, local actions, local effects,
-   event bindings, body payload, source line, and slot presence. These now
-   appear in `jtml explain --json` and browser-local component manifests.
+   event bindings, body payload, body/root-template counts, source line, slot
+   presence, and a semantic runtime plan. These now appear in
+   `jtml explain --json`, browser-local component manifests, and live runtime
+   component definition responses.
 3. ✅ Make `jtml explain` and browser/live runtime registries consume component
    records before compatibility marker scans.
 4. Preserve emitted custom events/slots as explicit authoring syntax once the
    component API grows beyond implicit `slot` insertion and DOM event bindings.
-5. Gradually move runtime execution away from source-expanded components.
+5. Gradually move runtime execution toward direct non-expanded component
+   template rendering.
 
 ## 5. Studio And Docs As Product Surface
 

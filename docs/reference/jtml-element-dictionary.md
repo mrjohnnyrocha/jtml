@@ -9,8 +9,8 @@ Core aliases such as `page`, `box`, `text`, `link`, `image`, `video`, `audio`,
 implemented by the Friendly normalizer (`src/friendly.cpp`) and covered by the
 test suite. Standards-based raw/custom element fallback also allows HTML,
 canvas, SVG-compatible, and custom-element tags to pass through when JTML does
-not have a dedicated alias yet. Planned aliases are explicitly marked as
-roadmap items.
+not have a dedicated alias yet. Planned aliases are explicitly marked in their
+own roadmap sections.
 
 ## Design Goal
 
@@ -83,14 +83,16 @@ Elements for embedding non-textual assets.
 | `line` | `<line>` | SVG line shape for axes, connectors, and diagrams. | `line x1 "0" y1 "0" x2 "100" y2 "40"` |
 | `path` | `<path>` | SVG path shape for curves and custom marks. | `path d "M0 80 C40 10 80 120 120 40"` |
 | `polyline`, `polygon` | `<polyline>`, `<polygon>` | SVG point-list shape aliases. | `polyline points "0,0 50,40 100,10"` |
+| `svgtext` | `<text>` | SVG text label that avoids conflicting with JTML's paragraph `text` alias. | `svgtext x "20" y "24" "Revenue"` |
 | `group` | `<g>` | SVG grouping container. | `group class "series"` |
-| `chart` | `<svg data-jtml-chart>` | Runtime-rendered accessible SVG chart from JTML state or fetch data. | `chart bar data rows by label value total` |
+| `chart` | `<svg data-jtml-chart>` | Runtime-rendered accessible SVG bar/line chart from JTML state or fetch data, including axes, grid, legends, grouped series, stacked bars, scale controls, annotations, and browser-local export controls. | `chart bar data rows by label values sales expenses series "Sales,Expenses" legend max 100 ticks 5 annotate "Launch" at "Q2" value sales export svg csv` |
 | `scene3d` | `<canvas data-jtml-scene3d>` | 3D renderer mount with fallback, host hook, and optional `into` state. | `scene3d "Product" scene model camera orbit into sceneState` |
 | `svg` and SVG child tags | `<svg>` etc. | Standards-based vector graphics through raw element fallback. | `svg width "200" height "120"` |
 
 Planned media/graphics aliases live in
 [`../roadmaps/media-graphics-roadmap.md`](../roadmaps/media-graphics-roadmap.md):
-richer chart, 3D scene graph, and media-processing primitives are still roadmap items.
+3D scene graph authoring, richer image/video processing, richer chart mark
+styling, and additional graphics primitives remain roadmap items.
 
 ## 5. JTML Native Directives
 

@@ -45,13 +45,14 @@ Planned operations include `crop x y w h` and filters such as `grayscale`, `blur
 
 ## Charts
 
-`chart bar` renders accessible SVG from any array of objects:
+`chart bar` and `chart line` render accessible SVG from any array of objects:
 
 ```jtml
-let data = [{"month":"Jan","sales":12}, {"month":"Feb","sales":18}]
+let data = [{"month":"Jan","sales":12,"expenses":7}, {"month":"Feb","sales":18,"expenses":9}]
 
 page
   chart bar data data by month value sales label "Sales" color "#0f766e"
+  chart line data data by month values sales expenses series "Sales,Expenses" colors "#0f766e,#b42318" legend grid max 20 ticks 5 annotate "Launch" at "Feb" value sales export svg csv
 ```
 
 Current chart options:
@@ -59,9 +60,20 @@ Current chart options:
 | Option | Effect |
 |--------|--------|
 | `color "#hex"` | Bar or line colour |
+| `values sales expenses` | Render multiple numeric fields |
+| `series "Sales,Expenses"` | Label each series in the legend |
+| `colors "#0f766e,#b42318"` | Colour each series |
 | `label "..."` | Accessible chart label |
+| `axis x/y label "..."` | Axis labels |
+| `grid` | Grid lines |
+| `legend` | Series legend |
+| `stacked` | Stack multi-series bar segments |
+| `min 0`, `max 100`, `ticks 5` | Stable chart scale and tick count |
+| `annotate "Launch" at "Feb" value sales` | Mark a row/series point |
+| `export svg png csv` | Add browser-local chart export buttons |
 
-Line charts, axes, grid, legends, stacked bars, and explicit dimensions are roadmap items. Use `graphic`, `path`, `line`, and `dot` when you need custom vector visuals today.
+Use `graphic`, `path`, `line`, `dot`, and `svgtext` when you need custom vector
+visuals or annotations that go beyond the native chart helper.
 
 ## Media controls
 
@@ -73,9 +85,17 @@ page
   audio src "/intro.mp3" controls
 ```
 
-Reactive media controllers such as `player.play`, `player.pause`, and
-`player.currentTime` are on the runtime hardening roadmap. Keep production
-examples on native controls or host extern actions until that slice lands.
+Reactive media controllers expose browser-side state and actions:
+
+```jtml
+page
+  video src "/demo.mp4" controls into player
+  button "Play" click player.play
+  button "Pause" click player.pause
+```
+
+Use native controls for normal playback and controller actions when the UI
+needs its own buttons, scrubbers, or telemetry.
 
 ## Timeline animations roadmap
 

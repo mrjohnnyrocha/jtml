@@ -202,6 +202,11 @@ nlohmann::json semanticFetchRecordsToJson(const jtml::SemanticProgram& semantic)
             {"timeoutMs", fetch.timeoutMs},
             {"retryCount", fetch.retryCount},
             {"stalePolicy", fetch.stalePolicy},
+            {"group", fetch.group},
+            {"cacheKeyExpr", fetch.cacheKeyExpr},
+            {"revalidateMs", fetch.revalidateMs},
+            {"dedupe", fetch.dedupe},
+            {"background", fetch.background},
             {"lazy", fetch.lazy},
         });
     }
@@ -227,6 +232,9 @@ nlohmann::json semanticComponentDefinitionsToJson(const jtml::SemanticProgram& s
             {"eventBindings", definition.eventBindings},
             {"bodyHex", definition.bodyHex},
             {"hasSlot", definition.hasSlot},
+            {"bodyNodeCount", definition.bodyNodeCount},
+            {"rootTemplateNodeCount", definition.rootTemplateNodeCount},
+            {"slotCount", definition.slotCount},
             {"sourceLine", definition.sourceLine},
         });
     }

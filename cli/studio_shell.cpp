@@ -1221,6 +1221,11 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
                 <tr><td><code>graphic aria-label "Chart"</code></td><td><code>&lt;svg role="img"&gt;</code> for declarative graphics</td></tr>
                 <tr><td><code>bar</code> / <code>dot</code> / <code>group</code></td><td><code>&lt;rect&gt;</code> / <code>&lt;circle&gt;</code> / <code>&lt;g&gt;</code></td></tr>
                 <tr><td><code>chart bar data rows by label value total</code></td><td>Accessible SVG bar chart rendered from JTML state/fetch data</td></tr>
+                <tr><td><code>chart line data rows by day value visits</code></td><td>Accessible SVG line chart for trends</td></tr>
+                <tr><td><code>values sales expenses</code></td><td>Render multiple fields as grouped bars or multiple lines</td></tr>
+                <tr><td><code>series "Sales,Expenses" colors "#0f766e,#b42318"</code></td><td>Label and colour multi-series charts</td></tr>
+                <tr><td><code>stacked</code></td><td>Stack multi-series bar segments per row</td></tr>
+                <tr><td><code>export svg png csv</code></td><td>Add browser-local chart export buttons</td></tr>
                 <tr><td><code>scene3d "Product" scene model camera orbit into sceneState</code></td><td>Canvas 3D mount with fallback, state binding, and <code>window.jtml3d.render</code> host hook</td></tr>
                 <tr><td><code>canvas id "chart" width "800"</code></td><td>Raw drawing surface; use <code>extern</code> today</td></tr>
                 <tr><td><code>checkbox "Label" into flag</code></td><td><code>&lt;input type=checkbox&gt;</code></td></tr>
@@ -1237,9 +1242,14 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
                 <tr><td><code>fetch … credentials "include"</code></td><td>Send cookies/credentials when needed</td></tr>
                 <tr><td><code>fetch … timeout 2500 retry 2</code></td><td>Abort slow requests and retry failures</td></tr>
                 <tr><td><code>fetch … stale keep</code></td><td>Keep previous data during refresh/error</td></tr>
+                <tr><td><code>fetch … group people</code></td><td>Register related fetches for grouped invalidation</td></tr>
+                <tr><td><code>fetch … key id dedupe</code></td><td>Give the request a logical identity and skip duplicate loaded requests</td></tr>
+                <tr><td><code>fetch … every 30000</code></td><td>Timed revalidation while the page is visible</td></tr>
+                <tr><td><code>fetch … background</code></td><td>Keep timed revalidation active in hidden tabs</td></tr>
                 <tr><td><code>fetch … lazy</code></td><td>Register a fetch without starting it immediately</td></tr>
                 <tr><td><code>fetch … refresh reload</code></td><td>Wire a <code>reload</code> action to re-trigger the fetch</td></tr>
                 <tr><td><code>invalidate data</code></td><td>Inside an action, refresh a named fetch after the action runs</td></tr>
+                <tr><td><code>invalidate group people</code></td><td>Refresh all fetches in a named group after an action runs</td></tr>
                 <tr><td><code>if data.loading</code></td><td>Show loading state</td></tr>
                 <tr><td><code>for item in data.data</code></td><td>Iterate fetched array</td></tr>
                 <tr><td><code>if data.error</code></td><td>Show error message</td></tr>
@@ -1423,9 +1433,9 @@ CodeMirror.defineSimpleMode("jtml", {
     /* Event attributes and Friendly event sugar */
     { regex: /\b(?:onClick|onInput|onMouseOver|onScroll|onChange|onFocus|onBlur|onKeyDown|onKeyUp|onKeyPress|onSubmit|onDblClick|click|input|change|submit|focus|blur|keydown|keyup|key-down|key-up|keypress|dblclick|double-click|dragover|drop|mouseover|scroll)\b/, token: "jtml-event" },
     /* HTML-style attributes */
-    { regex: /\b(?:style|class|id|type|href|src|placeholder|value|disabled|required|readonly|checked|selected|name|method|body|cache|credentials|action|target|rel|alt|title|role|width|height|viewBox|viewbox|fill|stroke|x|y|cx|cy|r|x1|y1|x2|y2|d|points|stroke-width|stroke-linecap|stroke-linejoin|stroke-dasharray|opacity|fill-opacity|stroke-opacity|rx|ry|scene|camera|renderer|min|max|step|pattern|tabindex|autocomplete|autofocus|multiple|accept|capture|enctype|for|poster|controls|autoplay|muted|loop|preload|playsinline|loading|decoding|active-class|aria-label|aria-describedby|aria-hidden|data-jtml-dropzone|data-jtml-media-controller|data-jtml-chart|data-jtml-chart-data|data-jtml-chart-by|data-jtml-chart-value|data-jtml-chart-color|data-jtml-chart-axis-x|data-jtml-chart-axis-y|data-jtml-chart-legend|data-jtml-chart-grid|data-jtml-chart-stacked|data-jtml-timeline|data-jtml-timeline-duration|data-jtml-timeline-easing|data-jtml-timeline-animates|data-jtml-image-proc|data-jtml-image-src|data-jtml-image-into|data-jtml-scene3d|data-jtml-scene|data-jtml-camera|data-jtml-controls|data-jtml-renderer|data-jtml-scene3d-controller|data-jtml-fetch|data-url|data-method|data-timeout-ms|data-retry|data-stale|data-lazy|data-jtml-route-load|data-jtml-route-guard|data-jtml-guard-var|data-jtml-guard-redirect|data-jtml-invalidate-action|data-jtml-invalidate-fetches)\b/, token: "jtml-attr" },
+    { regex: /\b(?:style|class|id|type|href|src|placeholder|value|disabled|required|readonly|checked|selected|name|method|body|cache|credentials|action|target|rel|alt|title|role|width|height|viewBox|viewbox|fill|stroke|x|y|cx|cy|r|x1|y1|x2|y2|d|points|stroke-width|stroke-linecap|stroke-linejoin|stroke-dasharray|opacity|fill-opacity|stroke-opacity|rx|ry|text-anchor|dominant-baseline|font-size|font-weight|font-family|scene|camera|renderer|min|max|step|pattern|tabindex|autocomplete|autofocus|multiple|accept|capture|enctype|for|poster|controls|autoplay|muted|loop|preload|playsinline|loading|decoding|active-class|aria-label|aria-describedby|aria-hidden|data-jtml-dropzone|data-jtml-media-controller|data-jtml-chart|data-jtml-chart-data|data-jtml-chart-by|data-jtml-chart-value|data-jtml-chart-values|data-jtml-chart-series|data-jtml-chart-color|data-jtml-chart-colors|data-jtml-chart-axis-x|data-jtml-chart-axis-y|data-jtml-chart-legend|data-jtml-chart-grid|data-jtml-chart-stacked|data-jtml-chart-min|data-jtml-chart-max|data-jtml-chart-ticks|data-jtml-chart-annotations|data-jtml-chart-export|data-jtml-timeline|data-jtml-timeline-duration|data-jtml-timeline-easing|data-jtml-timeline-animates|data-jtml-image-proc|data-jtml-image-src|data-jtml-image-into|data-jtml-scene3d|data-jtml-scene|data-jtml-camera|data-jtml-controls|data-jtml-renderer|data-jtml-scene3d-controller|data-jtml-fetch|data-url|data-method|data-timeout-ms|data-retry|data-stale|data-group|data-cache-key-expr|data-revalidate-ms|data-dedupe|data-background|data-lazy|data-jtml-route-load|data-jtml-route-guard|data-jtml-guard-var|data-jtml-guard-redirect|data-jtml-invalidate-action|data-jtml-invalidate-fetches|data-jtml-invalidate-groups|data-jtml-invalidate-all)\b/, token: "jtml-attr" },
     /* JTML keywords */
-    { regex: /\b(?:define|const|derive|show|if|else|while|for|in|break|continue|try|except|then|return|throw|async|subscribe|unsubscribe|to|from|store|unbind|object|derives|import|main|jtml|jtl|let|get|when|make|page|route|layout|load|guard|require|slot|fetch|catch|finally|use|export|effect|redirect|refresh|invalidate|timeout|retry|stale|lazy|keep|extern|html|css|raw|into|link|navlink|text|box|image|video|audio|embed|file|dropzone|canvas|svg|graphic|group|bar|dot|line|path|polyline|polygon|chart|scene3d|item|list|ordered|theme|app|shell|topbar|sidebar|content|panel|card|metric|stack|cluster|split|toolbar|tabs|tab|alert|badge|modal|drawer|toast|loading|error|empty|field|spacer|cols|gap|pad|radius|shadow|tone|align|justify|width|surface|timeline|animate|resize|crop|filter|axis|legend|grid|stacked|duration|easing|autoplay|repeat|activeRoute|activeRouteName)\b/, token: "jtml-kw" },
+    { regex: /\b(?:define|const|derive|show|if|else|while|for|in|break|continue|try|except|then|return|throw|async|subscribe|unsubscribe|to|from|store|unbind|object|derives|import|main|jtml|jtl|let|get|when|make|page|route|layout|load|guard|require|slot|fetch|catch|finally|use|export|effect|redirect|refresh|invalidate|timeout|retry|stale|lazy|keep|group|key|cache-key|cacheKey|dedupe|every|revalidate|background|extern|html|css|raw|into|link|navlink|text|box|image|video|audio|embed|file|dropzone|canvas|svg|graphic|bar|dot|line|path|polyline|polygon|svgtext|chart|scene3d|item|list|ordered|theme|app|shell|topbar|sidebar|content|panel|card|metric|stack|cluster|split|toolbar|tabs|tab|alert|badge|modal|drawer|toast|loading|error|empty|field|spacer|cols|gap|pad|radius|shadow|tone|align|justify|width|surface|timeline|animate|resize|crop|filter|axis|legend|grid|stacked|values|series|colors|min|max|ticks|annotate|duration|easing|autoplay|repeat|activeRoute|activeRouteName)\b/, token: "jtml-kw" },
     /* Literals */
     { regex: /\b(?:true|false)\b/, token: "atom" },
     { regex: /\b\d+(?:\.\d+)?\b/, token: "number" },
@@ -1700,11 +1710,15 @@ page
 // Fetches /api/users (or any JSON endpoint).
 // Swap the URL for a real endpoint in your project.
 let saved = false
-let users = fetch "/api/users" timeout 2500 retry 2 stale keep
+let users = fetch "/api/users" timeout 2500 retry 2 stale keep group people key "users" dedupe every 30000 refresh reloadUsers
+let teams = fetch "/api/teams" group people lazy
 
 when saveLocal
   saved = true
-  invalidate users
+  invalidate group people
+
+when reloadEverything
+  invalidate all
 
 when clearSaved
   saved = false
@@ -1742,8 +1756,9 @@ page
     stack gap md
       p class "meta" "Endpoint: /api/users · stale keep · timeout 2500ms · retry 2"
       toolbar
-        button "Load users" class "primary" click saveLocal
-        button "Save + invalidate" click saveLocal
+        button "Reload users" class "primary" click reloadUsers
+        button "Save + invalidate group" click saveLocal
+        button "Invalidate all" click reloadEverything
         button "Clear saved flag" click clearSaved
       metric "Saved flag" saved "Invalidates users" tone primary
       if users.loading
@@ -2209,6 +2224,7 @@ page
             dot cx "255" cy "48" r "10" fill "#111827"
             line x1 "20" y1 "104" x2 "300" y2 "104" stroke "#475569" stroke-width "2"
             path d "M20 92 C90 20 180 120 300 40" fill "none" stroke "#9333ea" stroke-width "3"
+            svgtext x "20" y "24" fill "#334155" font-size "14" "Revenue"
         card
           h2 "Chart"
           chart bar data revenue by month value total label "Revenue by month" color "#2563eb" axis x label "Month" axis y label "Revenue ($k)" grid legend
@@ -2225,7 +2241,7 @@ page
 
 let revenue = [{ "month": "Jan", "sales": 12, "expenses": 8 }, { "month": "Feb", "sales": 18, "expenses": 10 }, { "month": "Mar", "sales": 9, "expenses": 7 }, { "month": "Apr", "sales": 24, "expenses": 14 }, { "month": "May", "sales": 30, "expenses": 16 }, { "month": "Jun", "sales": 22, "expenses": 11 }]
 
-let traffic = [{ "day": "Mon", "visits": 420 }, { "day": "Tue", "visits": 680 }, { "day": "Wed", "visits": 540 }, { "day": "Thu", "visits": 790 }, { "day": "Fri", "visits": 610 }, { "day": "Sat", "visits": 320 }, { "day": "Sun", "visits": 210 }]
+let traffic = [{ "day": "Mon", "visits": 420, "signups": 18 }, { "day": "Tue", "visits": 680, "signups": 28 }, { "day": "Wed", "visits": 540, "signups": 21 }, { "day": "Thu", "visits": 790, "signups": 34 }, { "day": "Fri", "visits": 610, "signups": 25 }, { "day": "Sat", "visits": 320, "signups": 12 }, { "day": "Sun", "visits": 210, "signups": 8 }]
 
 theme
   color primary "#0f766e"
@@ -2249,20 +2265,20 @@ style
 page
   panel title "Charts" pad lg shadow md
     stack gap md
-      alert "JTML charts render to accessible SVG. Both bar and line types support axes, labels, legend, and grid." tone primary
+      alert "JTML charts render to accessible SVG. Bar and line charts support axes, labels, legends, grid lines, grouped series, and stacked bars." tone primary
       grid cols 2 gap md
         card
-          h2 "Bar chart with axes and grid"
-          chart bar data revenue by month value sales label "Monthly Sales" color "#0f766e" axis x label "Month" axis y label "Sales ($k)" grid width "380" height "240"
+          h2 "Grouped revenue"
+          chart bar data revenue by month values sales expenses series "Sales,Expenses" colors "#0f766e,#b42318" label "Revenue split" axis x label "Month" axis y label "$k" grid legend max 40 ticks 5 annotate "Launch" at "Apr" value sales color "#9333ea" export svg png csv width "380" height "240"
         card
-          h2 "Line chart with legend"
-          chart line data traffic by day value visits label "Weekly Traffic" color "#2563eb" axis x label "Day" axis y label "Visits" legend width "380" height "240"
+          h2 "Multi-series trend"
+          chart line data traffic by day values visits signups series "Visits,Signups" colors "#2563eb,#9333ea" label "Traffic and signups" axis x label "Day" axis y label "Count" grid legend annotate "Peak" at "Thu" value visits export svg csv width "380" height "240"
         card
-          h2 "Bar chart — expenses"
-          chart bar data revenue by month value expenses label "Monthly Expenses" color "#b42318" axis y label "Expenses ($k)" grid legend width "380" height "240"
+          h2 "Stacked revenue"
+          chart bar data revenue by month values sales expenses series "Sales,Expenses" colors "#0f766e,#b42318" label "Stacked revenue" axis x label "Month" axis y label "$k" grid legend stacked max 50 ticks 6 width "380" height "240"
         card
-          h2 "Line chart — smoothed traffic"
-          chart line data traffic by day value visits label "Traffic trend" color "#9333ea" grid axis x label "Day of week" width "380" height "240"`
+          h2 "Single-series baseline"
+          chart line data traffic by day value visits label "Visit trend" color "#475569" grid axis x label "Day of week" width "380" height "240"`
   },
   {
     name: "animation.jtml",

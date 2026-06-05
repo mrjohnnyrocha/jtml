@@ -61,6 +61,11 @@ struct SemanticFetch {
     std::string timeoutMs;
     std::string retryCount;
     std::string stalePolicy;
+    std::string group;
+    std::string cacheKeyExpr;
+    std::string revalidateMs;
+    bool dedupe = false;
+    bool background = false;
     bool lazy = false;
 };
 
@@ -79,6 +84,9 @@ struct SemanticComponentDefinition {
     std::vector<std::string> eventBindings;
     std::string bodyHex;
     bool hasSlot = false;
+    int bodyNodeCount = 0;
+    int rootTemplateNodeCount = 0;
+    int slotCount = 0;
     int sourceLine = 0;
 };
 

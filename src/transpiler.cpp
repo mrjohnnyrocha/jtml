@@ -645,6 +645,11 @@ std::string JtmlTranspiler::generateClientManifest(const std::vector<std::unique
                 << ",\"timeoutMs\":" << jsonString(fetch.timeoutMs)
                 << ",\"retryCount\":" << jsonString(fetch.retryCount)
                 << ",\"stalePolicy\":" << jsonString(fetch.stalePolicy.empty() ? "clear" : fetch.stalePolicy)
+                << ",\"group\":" << jsonString(fetch.group)
+                << ",\"cacheKeyExpr\":" << jsonString(fetch.cacheKeyExpr)
+                << ",\"revalidateMs\":" << jsonString(fetch.revalidateMs)
+                << ",\"dedupe\":" << (fetch.dedupe ? "true" : "false")
+                << ",\"background\":" << (fetch.background ? "true" : "false")
                 << ",\"lazy\":" << (fetch.lazy ? "true" : "false")
                 << "}";
     }
@@ -667,6 +672,9 @@ std::string JtmlTranspiler::generateClientManifest(const std::vector<std::unique
                              << ",\"eventBindings\":" << stringVectorJson(definition.eventBindings)
                              << ",\"bodyHex\":" << jsonString(definition.bodyHex)
                              << ",\"hasSlot\":" << (definition.hasSlot ? "true" : "false")
+                             << ",\"bodyNodeCount\":" << definition.bodyNodeCount
+                             << ",\"rootTemplateNodeCount\":" << definition.rootTemplateNodeCount
+                             << ",\"slotCount\":" << definition.slotCount
                              << ",\"sourceLine\":" << definition.sourceLine
                              << "}";
     }
@@ -873,6 +881,20 @@ std::string JtmlTranspiler::generateScriptBlock() {
               localEffects: Array.isArray(record.localEffects) ? record.localEffects.slice() : [],
               eventBindings: Array.isArray(record.eventBindings) ? record.eventBindings.slice() : [],
               hasSlot: !!record.hasSlot,
+              bodyNodeCount: Number(record.bodyNodeCount || 0),
+              rootTemplateNodeCount: Number(record.rootTemplateNodeCount || 0),
+              slotCount: Number(record.slotCount || 0),
+              runtimePlan: {
+                mode: 'semantic-instance',
+                ownsEnvironment: true,
+                bodyNodeCount: Number(record.bodyNodeCount || 0),
+                rootTemplateNodeCount: Number(record.rootTemplateNodeCount || 0),
+                slotCount: Number(record.slotCount || 0),
+                actions: Array.isArray(record.localActions) ? record.localActions.slice() : [],
+                state: Array.isArray(record.localState) ? record.localState.slice() : [],
+                derived: Array.isArray(record.localDerived) ? record.localDerived.slice() : [],
+                effects: Array.isArray(record.localEffects) ? record.localEffects.slice() : []
+              },
               sourceLine: Number(record.sourceLine || 0),
               body: decodeHex(record.bodyHex || ''),
               element: componentDefinitionElementFor(record.name || '')
@@ -887,10 +909,40 @@ std::string JtmlTranspiler::generateScriptBlock() {
               params: String(el.getAttribute('data-jtml-component-def-params') || '').split(';').filter(Boolean),
               sourceLine: Number(el.getAttribute('data-jtml-source-line') || 0),
               body: decodeHex(el.getAttribute('data-jtml-component-body-hex') || ''),
+              runtimePlan: {
+                mode: 'expanded-compatibility',
+                ownsEnvironment: true,
+                bodyNodeCount: 0,
+                rootTemplateNodeCount: 0,
+                slotCount: 0,
+                actions: [],
+                state: [],
+                derived: [],
+                effects: []
+              },
               element: el
             };
           });
         }
+        componentInstances.forEach(function (instance) {
+          const definition = componentDefinitions.find(function (item) {
+            return item.name === instance.component;
+          }) || {};
+          instance.runtime = {
+            mode: 'semantic-instance',
+            ownsEnvironment: true,
+            ready: !!instance.id,
+            environmentId: instance.instanceId,
+            definition: instance.component,
+            actions: Array.isArray(definition.localActions) ? definition.localActions.slice() : [],
+            state: Array.isArray(definition.localState) ? definition.localState.slice() : [],
+            derived: Array.isArray(definition.localDerived) ? definition.localDerived.slice() : [],
+            effects: Array.isArray(definition.localEffects) ? definition.localEffects.slice() : [],
+            hasSlot: !!definition.hasSlot,
+            bodyNodeCount: Number(definition.bodyNodeCount || 0),
+            rootTemplateNodeCount: Number(definition.rootTemplateNodeCount || 0)
+          };
+        });
         window.__jtml_components = componentInstances;
         window.__jtml_component_definitions = componentDefinitions;
         window.jtml = Object.assign(window.jtml || {}, {
@@ -1352,6 +1404,8 @@ std::string JtmlTranspiler::generateScriptBlock() {
       const __jtml_refresh_fns = {};
       const __jtml_fetch_fns = {};
       const __jtml_invalidate_fns = {};
+      const __jtml_fetch_groups = {};
+      const __jtml_fetch_timers = {};
 
       function createFetchState(previous, patch) {
         previous = previous || {};
@@ -1365,13 +1419,42 @@ std::string JtmlTranspiler::generateScriptBlock() {
           status: 0,
           ok: false,
           url: '',
+          key: '',
           method: 'GET',
           updatedAt: 0
         }, previous, patch || {});
       }
 
-      async function executeFetch(name, url, method, bodyExpr, cachePolicy, credentialsPolicy, timeoutMs, retryCount, stalePolicy) {
+      function resolveFetchUrl(url) {
+        return String(url || '').replace(/\{([^{}]+)\}/g, function (match, expr) {
+          const result = evaluateClientExpression(expr);
+          if (!result.found || result.value == null) return '';
+          return encodeURIComponent(renderTemplateValue(result.value));
+        });
+      }
+
+      function resolveFetchKey(name, resolvedUrl, method, bodyExpr, cacheKeyExpr) {
+        if (cacheKeyExpr) {
+          const result = evaluateClientExpression(cacheKeyExpr);
+          if (result.found) return String(renderTemplateValue(result.value));
+          return String(cacheKeyExpr);
+        }
+        const body = bodyExpr ? evaluateClientBodyExpression(bodyExpr) : { found: false, value: '' };
+        return JSON.stringify({
+          name: name,
+          url: resolvedUrl,
+          method: method,
+          body: body.found ? body.value : bodyExpr
+        });
+      }
+
+      async function executeFetch(name, url, method, bodyExpr, cachePolicy, credentialsPolicy, timeoutMs, retryCount, stalePolicy, cacheKeyExpr, dedupe, force) {
+        const resolvedUrl = resolveFetchUrl(url);
         const previous = createFetchState(clientState[name], {});
+        const resolvedKey = resolveFetchKey(name, resolvedUrl, method, bodyExpr, cacheKeyExpr);
+        if (dedupe && !force && previous.hasData && previous.key === resolvedKey && previous.url === resolvedUrl && previous.method === method) {
+          return previous;
+        }
         const keepStale = stalePolicy === 'keep';
         const hasPreviousData = !!previous.hasData;
         clientState[name] = createFetchState(previous, {
@@ -1381,7 +1464,8 @@ std::string JtmlTranspiler::generateScriptBlock() {
           stale: keepStale && hasPreviousData,
           hasData: keepStale && hasPreviousData,
           ok: false,
-          url: url,
+          url: resolvedUrl,
+          key: resolvedKey,
           method: method
         });
         applyClientState();
@@ -1405,7 +1489,7 @@ std::string JtmlTranspiler::generateScriptBlock() {
               options.headers = Object.assign({ 'content-type': 'application/json' }, options.headers || {});
               options.body = JSON.stringify(body.found ? body.value : bodyExpr);
             }
-            const response = await fetch(url, options);
+            const response = await fetch(resolvedUrl, options);
             lastStatus = response.status;
             if (timeoutId) clearTimeout(timeoutId);
             const type = response.headers.get('content-type') || '';
@@ -1420,7 +1504,8 @@ std::string JtmlTranspiler::generateScriptBlock() {
               hasData: true,
               status: response.status,
               ok: true,
-              url: url,
+              url: resolvedUrl,
+              key: resolvedKey,
               method: method,
               updatedAt: Date.now()
             });
@@ -1444,7 +1529,8 @@ std::string JtmlTranspiler::generateScriptBlock() {
             hasData: keepStale && hasPreviousData,
             status: lastStatus,
             ok: false,
-            url: url,
+            url: resolvedUrl,
+            key: resolvedKey,
             method: method,
             updatedAt: Date.now()
           });
@@ -1464,15 +1550,30 @@ std::string JtmlTranspiler::generateScriptBlock() {
         const timeoutMs = record.timeoutMs || '';
         const retryCount = record.retryCount || '';
         const stalePolicy = record.stalePolicy || 'clear';
-        __jtml_fetch_fns[name] = function () {
-          return executeFetch(name, url, method, bodyExpr, cachePolicy, credentialsPolicy, timeoutMs, retryCount, stalePolicy);
+        const group = record.group || '';
+        const cacheKeyExpr = record.cacheKeyExpr || '';
+        const revalidateMs = Math.max(0, Number(record.revalidateMs || 0) || 0);
+        const dedupe = !!record.dedupe;
+        const background = !!record.background;
+        __jtml_fetch_fns[name] = function (force) {
+          return executeFetch(name, url, method, bodyExpr, cachePolicy, credentialsPolicy, timeoutMs, retryCount, stalePolicy, cacheKeyExpr, dedupe, !!force);
         };
+        if (group) {
+          if (!__jtml_fetch_groups[group]) __jtml_fetch_groups[group] = [];
+          if (__jtml_fetch_groups[group].indexOf(name) === -1) __jtml_fetch_groups[group].push(name);
+        }
         if (refreshAction) {
           __jtml_refresh_fns[refreshAction] = function () {
-            return __jtml_fetch_fns[name]();
+            return __jtml_fetch_fns[name](true);
           };
         }
-        if (!lazy) __jtml_fetch_fns[name]();
+        if (revalidateMs > 0 && !__jtml_fetch_timers[name]) {
+          __jtml_fetch_timers[name] = setInterval(function () {
+            if (!background && typeof document !== 'undefined' && document.hidden) return;
+            if (__jtml_fetch_fns[name]) __jtml_fetch_fns[name](true);
+          }, revalidateMs);
+        }
+        if (!lazy) __jtml_fetch_fns[name](false);
       }
 
       function startFetchBindings() {
@@ -1493,13 +1594,22 @@ std::string JtmlTranspiler::generateScriptBlock() {
             credentials: marker.getAttribute('data-credentials') || '',
             timeoutMs: marker.getAttribute('data-timeout-ms') || '',
             retryCount: marker.getAttribute('data-retry') || '',
-            stalePolicy: marker.getAttribute('data-stale') || 'clear'
+            stalePolicy: marker.getAttribute('data-stale') || 'clear',
+            group: marker.getAttribute('data-group') || '',
+            cacheKeyExpr: marker.getAttribute('data-cache-key-expr') || '',
+            revalidateMs: marker.getAttribute('data-revalidate-ms') || '',
+            dedupe: marker.getAttribute('data-dedupe') === 'true',
+            background: marker.getAttribute('data-background') === 'true'
           }, marker.getAttribute('data-lazy') === 'true');
         });
         window.jtml = Object.assign(window.jtml || {}, {
           fetches: __jtml_fetch_fns,
+          fetchGroups: __jtml_fetch_groups,
+          fetchTimers: __jtml_fetch_timers,
+          resolveFetchUrl: resolveFetchUrl,
+          resolveFetchKey: resolveFetchKey,
           refreshFetch: function (name) {
-            if (__jtml_fetch_fns[name]) return __jtml_fetch_fns[name]();
+            if (__jtml_fetch_fns[name]) return __jtml_fetch_fns[name](true);
             return Promise.reject(new Error('Unknown JTML fetch: ' + name));
           }
         });
@@ -1582,12 +1692,129 @@ std::string JtmlTranspiler::generateScriptBlock() {
         return [];
       }
 
+      function sanitizeChartFileName(value) {
+        return String(value || 'jtml-chart')
+          .toLowerCase()
+          .replace(/[^a-z0-9_-]+/g, '-')
+          .replace(/^-+|-+$/g, '') || 'jtml-chart';
+      }
+
+      function chartDownloadName(svg, extension) {
+        const label = svg.getAttribute('aria-label') || svg.getAttribute('data-jtml-chart') || 'jtml-chart';
+        return sanitizeChartFileName(label) + '.' + extension;
+      }
+
+      function downloadChartBlob(filename, type, content) {
+        const blob = content instanceof Blob ? content : new Blob([content], { type: type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      }
+
+      function serializeChartSvg(svg) {
+        const clone = svg.cloneNode(true);
+        clone.removeAttribute('data-jtml-chart-rendered');
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        return new XMLSerializer().serializeToString(clone);
+      }
+
+      function exportChartCsv(svg, rows, byField, series) {
+        const escapeCsv = function (value) {
+          const text = value == null ? '' : String(value);
+          return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+        };
+        const headers = [byField].concat(series.map(function (s) { return s.field; }));
+        const lines = [headers.map(escapeCsv).join(',')];
+        rows.forEach(function (row, index) {
+          const label = row && row[byField] != null ? row[byField] : String(index + 1);
+          lines.push([label].concat(series.map(function (s) {
+            return row && row[s.field] != null ? row[s.field] : '';
+          })).map(escapeCsv).join(','));
+        });
+        downloadChartBlob(chartDownloadName(svg, 'csv'), 'text/csv;charset=utf-8', lines.join('\n') + '\n');
+      }
+
+      function exportChartPng(svg) {
+        const source = serializeChartSvg(svg);
+        const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = function () {
+          const canvas = document.createElement('canvas');
+          const width = Math.max(160, Number(svg.getAttribute('width') || 640) || 640);
+          const height = Math.max(120, Number(svg.getAttribute('height') || 320) || 320);
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(function (pngBlob) {
+            URL.revokeObjectURL(url);
+            if (pngBlob) downloadChartBlob(chartDownloadName(svg, 'png'), 'image/png', pngBlob);
+          }, 'image/png');
+        };
+        img.onerror = function () {
+          URL.revokeObjectURL(url);
+          reportStatus('error', 'Chart PNG export failed');
+        };
+        img.src = url;
+      }
+
+      function syncChartExportControls(svg, formats, rows, byField, series) {
+        const marker = 'data-jtml-chart-export-controls';
+        let controls = svg.nextElementSibling && svg.nextElementSibling.hasAttribute(marker)
+          ? svg.nextElementSibling
+          : null;
+        if (!formats.length) {
+          if (controls) controls.remove();
+          return;
+        }
+        if (!controls) {
+          controls = document.createElement('div');
+          controls.setAttribute(marker, 'true');
+          controls.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 16px;';
+          svg.insertAdjacentElement('afterend', controls);
+        }
+        controls.innerHTML = '';
+        formats.forEach(function (format) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = 'Export ' + format.toUpperCase();
+          button.style.cssText = 'font:600 12px system-ui,sans-serif;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;padding:6px 10px;cursor:pointer;';
+          button.addEventListener('click', function () {
+            if (format === 'svg') {
+              downloadChartBlob(chartDownloadName(svg, 'svg'), 'image/svg+xml;charset=utf-8', serializeChartSvg(svg));
+            } else if (format === 'png') {
+              exportChartPng(svg);
+            } else if (format === 'csv') {
+              exportChartCsv(svg, rows, byField, series);
+            }
+          });
+          controls.appendChild(button);
+        });
+      }
+
       function renderCharts() {
         document.querySelectorAll('svg[data-jtml-chart]').forEach(function (svg) {
           const type = svg.getAttribute('data-jtml-chart') || 'bar';
           const dataExpr = svg.getAttribute('data-jtml-chart-data') || '';
           const byField = svg.getAttribute('data-jtml-chart-by') || 'label';
           const valueField = svg.getAttribute('data-jtml-chart-value') || 'value';
+          const splitCsv = function (value) {
+            return String(value || '').split(',').map(function (item) { return item.trim(); }).filter(Boolean);
+          };
+          const valueFields = splitCsv(svg.getAttribute('data-jtml-chart-values') || valueField || 'value');
+          const seriesLabels = splitCsv(svg.getAttribute('data-jtml-chart-series') || '').map(function (label, index) {
+            return label || valueFields[index] || ('Series ' + (index + 1));
+          });
+          const chartColors = splitCsv(svg.getAttribute('data-jtml-chart-colors') || '');
           const data = evaluateClientExpression(dataExpr);
           if (!data.found) return;
           const rows = normalizeChartRows(data.value);
@@ -1598,6 +1825,24 @@ std::string JtmlTranspiler::generateScriptBlock() {
           const showLegend = svg.getAttribute('data-jtml-chart-legend') === 'true';
           const showGrid   = svg.getAttribute('data-jtml-chart-grid') === 'true';
           const isStacked  = svg.getAttribute('data-jtml-chart-stacked') === 'true';
+          const scaleMinAttr = svg.getAttribute('data-jtml-chart-min');
+          const scaleMaxAttr = svg.getAttribute('data-jtml-chart-max');
+          const tickCountAttr = svg.getAttribute('data-jtml-chart-ticks');
+          const parseAnnotations = function (value) {
+            return String(value || '').split(';').map(function (entry) {
+              const parts = entry.split('|');
+              return {
+                label: (parts[0] || '').trim(),
+                at: (parts[1] || '').trim(),
+                field: (parts[2] || '').trim(),
+                color: (parts[3] || '').trim()
+              };
+            }).filter(function (item) { return item.label && item.at; });
+          };
+          const annotations = parseAnnotations(svg.getAttribute('data-jtml-chart-annotations') || '');
+          const exportFormats = splitCsv(svg.getAttribute('data-jtml-chart-export') || '').filter(function (format) {
+            return format === 'svg' || format === 'png' || format === 'csv';
+          });
           const padLeft  = axisYLabel ? 60 : 48;
           const padRight = showLegend ? 130 : 20;
           const padTop   = 20;
@@ -1606,22 +1851,56 @@ std::string JtmlTranspiler::generateScriptBlock() {
           const innerW = Math.max(1, width - pad.left - pad.right);
           const innerH = Math.max(1, height - pad.top - pad.bottom);
           const color = svg.getAttribute('data-jtml-chart-color') || '#0f766e';
-          const values = rows.map(function (row) {
-            return Math.max(0, Number(row && row[valueField]) || 0);
+          const palette = chartColors.length ? chartColors : [
+            color, '#2563eb', '#b42318', '#9333ea', '#f59e0b', '#0891b2', '#16a34a'
+          ];
+          const series = valueFields.map(function (field, index) {
+            return {
+              field: field,
+              label: seriesLabels[index] || field || ('Series ' + (index + 1)),
+              color: palette[index % palette.length]
+            };
+          });
+          const rowValues = rows.map(function (row) {
+            return series.map(function (s) {
+              return Number(row && row[s.field]) || 0;
+            });
+          });
+          const values = rowValues.reduce(function (all, row) { return all.concat(row); }, []);
+          const stackedValues = rowValues.map(function (row) {
+            return row.reduce(function (sum, value) { return sum + value; }, 0);
           });
           const maxValue = Math.max(1, Math.max.apply(null, values.length ? values : [1]));
+          const minValue = Math.min(0, Math.min.apply(null, values.length ? values : [0]));
+          const explicitMin = scaleMinAttr !== null && scaleMinAttr !== '' && Number.isFinite(Number(scaleMinAttr))
+            ? Number(scaleMinAttr)
+            : minValue;
+          const inferredMaxValue = type === 'bar' && isStacked
+            ? Math.max(1, Math.max.apply(null, stackedValues.length ? stackedValues : [1]))
+            : maxValue;
+          const explicitMax = scaleMaxAttr !== null && scaleMaxAttr !== '' && Number.isFinite(Number(scaleMaxAttr))
+            ? Number(scaleMaxAttr)
+            : null;
+          const scaleMaxValue = explicitMax !== null ? Math.max(explicitMin + 1, explicitMax) : inferredMaxValue;
           // Compute a clean tick interval
-          const rawStep = maxValue / 4;
+          const requestedTicks = Math.max(2, Math.min(10, Math.round(Number(tickCountAttr || 5) || 5)));
+          const rawRange = Math.max(1, scaleMaxValue - explicitMin);
+          const rawStep = rawRange / (requestedTicks - 1);
           const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep || 1)));
           const niceStep = Math.ceil(rawStep / magnitude) * magnitude || 1;
-          const niceMax = Math.ceil(maxValue / niceStep) * niceStep || niceStep;
+          const niceMax = explicitMax !== null ? scaleMaxValue : (Math.ceil(scaleMaxValue / niceStep) * niceStep || niceStep);
+          const niceMin = explicitMin;
+          const niceRange = Math.max(1, niceMax - niceMin);
+          const scaleRatio = function (value) {
+            return Math.max(0, Math.min(1, (value - niceMin) / niceRange));
+          };
 
           let html = '';
           // Grid lines and Y-axis ticks
-          const tickCount = Math.min(6, Math.round(niceMax / niceStep));
+          const tickCount = requestedTicks - 1;
           for (let t = 0; t <= tickCount; t++) {
-            const tv = t * niceStep;
-            const ty = (pad.top + innerH) - (tv / niceMax) * innerH;
+            const tv = niceMin + t * (niceRange / Math.max(1, tickCount));
+            const ty = (pad.top + innerH) - scaleRatio(tv) * innerH;
             if (showGrid && t > 0) {
               html += '<line x1="' + pad.left + '" y1="' + ty.toFixed(1) + '" x2="' + (width - pad.right) + '" y2="' + ty.toFixed(1) + '" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3"/>';
             }
@@ -1645,64 +1924,112 @@ std::string JtmlTranspiler::generateScriptBlock() {
             html += '<text x="' + (width / 2) + '" y="' + (height / 2) + '" text-anchor="middle" fill="#64748b" font-size="14">No chart data</text>';
           }
           if (type === 'bar') {
-            const gap = rows.length > 1 ? Math.max(2, Math.round(innerW / rows.length * 0.15)) : 0;
-            const barW = rows.length ? Math.max(2, (innerW - gap * (rows.length - 1)) / rows.length) : innerW;
+            const groupGap = rows.length > 1 ? Math.max(6, Math.round(innerW / Math.max(1, rows.length) * 0.14)) : 0;
+            const groupW = rows.length ? Math.max(2, (innerW - groupGap * (rows.length - 1)) / rows.length) : innerW;
             rows.forEach(function (row, index) {
-              const value = values[index];
-              const barH = Math.round((value / niceMax) * innerH);
-              const x = pad.left + index * (barW + gap);
-              const y = height - pad.bottom - barH;
               const label = row && row[byField] != null ? row[byField] : String(index + 1);
-              html += '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + barH.toFixed(2) + '" fill="' + escapeSvgText(color) + '" rx="2"/>';
-              const xLabel = x + barW / 2;
+              const xGroup = pad.left + index * (groupW + groupGap);
+              const xLabel = xGroup + groupW / 2;
+              if (isStacked) {
+                let stackedY = height - pad.bottom;
+                rowValues[index].forEach(function (value, seriesIndex) {
+                  const barH = Math.round(scaleRatio(value) * innerH);
+                  stackedY -= barH;
+                  const barW = Math.max(2, groupW * 0.72);
+                  const x = xGroup + (groupW - barW) / 2;
+                  html += '<rect x="' + x.toFixed(2) + '" y="' + stackedY.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + barH.toFixed(2) + '" fill="' + escapeSvgText(series[seriesIndex].color) + '" rx="2"/>';
+                });
+              } else {
+                const barGap = series.length > 1 ? 2 : 0;
+                const barW = Math.max(2, (groupW - barGap * (series.length - 1)) / Math.max(1, series.length));
+                rowValues[index].forEach(function (value, seriesIndex) {
+                  const barH = Math.round(scaleRatio(value) * innerH);
+                  const x = xGroup + seriesIndex * (barW + barGap);
+                  const y = height - pad.bottom - barH;
+                  html += '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + barH.toFixed(2) + '" fill="' + escapeSvgText(series[seriesIndex].color) + '" rx="2"/>';
+                  if (series.length === 1 && barH > 14) {
+                    html += '<text x="' + (x + barW / 2).toFixed(2) + '" y="' + Math.max(pad.top + 12, y - 4).toFixed(2) + '" text-anchor="middle" fill="#334155" font-size="11">' + escapeSvgText(value) + '</text>';
+                  }
+                });
+              }
               const truncLabel = String(label).length > 8 ? String(label).slice(0, 7) + '…' : String(label);
               html += '<text x="' + xLabel.toFixed(2) + '" y="' + (height - pad.bottom + 14) + '" text-anchor="middle" fill="#334155" font-size="11">' + escapeSvgText(truncLabel) + '</text>';
-              if (barH > 14) {
-                html += '<text x="' + xLabel.toFixed(2) + '" y="' + Math.max(pad.top + 12, y - 4).toFixed(2) + '" text-anchor="middle" fill="#334155" font-size="11">' + escapeSvgText(value) + '</text>';
-              }
             });
           } else if (type === 'line') {
             const stepX = rows.length > 1 ? innerW / (rows.length - 1) : innerW;
-            let points = '';
-            rows.forEach(function (row, index) {
-              const value = values[index];
-              const x = (pad.left + (rows.length > 1 ? index * stepX : innerW / 2)).toFixed(2);
-              const y = (height - pad.bottom - (value / niceMax) * innerH).toFixed(2);
-              if (index === 0) points += 'M' + x + ' ' + y;
-              else points += ' L' + x + ' ' + y;
+            series.forEach(function (s, seriesIndex) {
+              let points = '';
+              rows.forEach(function (row, index) {
+                const value = rowValues[index][seriesIndex];
+                const x = (pad.left + (rows.length > 1 ? index * stepX : innerW / 2)).toFixed(2);
+                const y = (height - pad.bottom - scaleRatio(value) * innerH).toFixed(2);
+                if (index === 0) points += 'M' + x + ' ' + y;
+                else points += ' L' + x + ' ' + y;
+              });
+              if (rows.length > 1 && series.length === 1) {
+                const firstX = pad.left.toFixed(2);
+                const lastX  = (pad.left + innerW).toFixed(2);
+                const baseY  = (height - pad.bottom).toFixed(2);
+                html += '<path d="' + points + ' L' + lastX + ' ' + baseY + ' L' + firstX + ' ' + baseY + ' Z" fill="' + escapeSvgText(s.color) + '" fill-opacity="0.12"/>';
+              }
+              html += '<path d="' + points + '" fill="none" stroke="' + escapeSvgText(s.color) + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+              rows.forEach(function (row, index) {
+                const value = rowValues[index][seriesIndex];
+                const x = (pad.left + (rows.length > 1 ? index * stepX : innerW / 2)).toFixed(2);
+                const y = (height - pad.bottom - scaleRatio(value) * innerH).toFixed(2);
+                html += '<circle cx="' + x + '" cy="' + y + '" r="4" fill="' + escapeSvgText(s.color) + '" stroke="#fff" stroke-width="1.5"/>';
+              });
             });
-            // Fill area under line
-            if (rows.length > 1) {
-              const firstX = pad.left.toFixed(2);
-              const lastX  = (pad.left + innerW).toFixed(2);
-              const baseY  = (height - pad.bottom).toFixed(2);
-              html += '<path d="' + points + ' L' + lastX + ' ' + baseY + ' L' + firstX + ' ' + baseY + ' Z" fill="' + escapeSvgText(color) + '" fill-opacity="0.12"/>';
-            }
-            html += '<path d="' + points + '" fill="none" stroke="' + escapeSvgText(color) + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
             rows.forEach(function (row, index) {
-              const value = values[index];
-              const x = (pad.left + (rows.length > 1 ? index * stepX : innerW / 2)).toFixed(2);
-              const y = (height - pad.bottom - (value / niceMax) * innerH).toFixed(2);
-              const label = row && row[byField] != null ? row[byField] : String(index + 1);
-              html += '<circle cx="' + x + '" cy="' + y + '" r="4" fill="' + escapeSvgText(color) + '" stroke="#fff" stroke-width="1.5"/>';
               if (rows.length <= 16) {
+                const x = (pad.left + (rows.length > 1 ? index * stepX : innerW / 2)).toFixed(2);
+                const label = row && row[byField] != null ? row[byField] : String(index + 1);
                 const truncLabel = String(label).length > 8 ? String(label).slice(0, 7) + '…' : String(label);
                 html += '<text x="' + x + '" y="' + (height - pad.bottom + 14) + '" text-anchor="middle" fill="#334155" font-size="11">' + escapeSvgText(truncLabel) + '</text>';
               }
+            });
+          }
+          if (annotations.length && rows.length) {
+            const lineStepX = rows.length > 1 ? innerW / (rows.length - 1) : innerW;
+            const barGroupGap = rows.length > 1 ? Math.max(6, Math.round(innerW / Math.max(1, rows.length) * 0.14)) : 0;
+            const barGroupW = rows.length ? Math.max(2, (innerW - barGroupGap * (rows.length - 1)) / rows.length) : innerW;
+            annotations.forEach(function (annotation) {
+              const rowIndex = rows.findIndex(function (row) {
+                return String(row && row[byField] != null ? row[byField] : '') === annotation.at;
+              });
+              if (rowIndex < 0) return;
+              const seriesIndex = Math.max(0, series.findIndex(function (s) {
+                return s.field === annotation.field || s.label === annotation.field;
+              }));
+              const value = rowValues[rowIndex] && rowValues[rowIndex][seriesIndex] != null
+                ? rowValues[rowIndex][seriesIndex]
+                : 0;
+              const x = type === 'bar'
+                ? pad.left + rowIndex * (barGroupW + barGroupGap) + barGroupW / 2
+                : pad.left + (rows.length > 1 ? rowIndex * lineStepX : innerW / 2);
+              const y = height - pad.bottom - scaleRatio(value) * innerH;
+              const noteColor = annotation.color || (series[seriesIndex] && series[seriesIndex].color) || '#111827';
+              const labelY = Math.max(pad.top + 12, y - 12);
+              html += '<line x1="' + x.toFixed(2) + '" y1="' + pad.top + '" x2="' + x.toFixed(2) + '" y2="' + (height - pad.bottom) + '" stroke="' + escapeSvgText(noteColor) + '" stroke-width="1" stroke-dasharray="4,4" opacity="0.72"/>';
+              html += '<circle cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) + '" r="4.5" fill="' + escapeSvgText(noteColor) + '" stroke="#fff" stroke-width="1.5"/>';
+              html += '<text x="' + Math.min(width - pad.right - 4, x + 8).toFixed(2) + '" y="' + labelY.toFixed(2) + '" fill="' + escapeSvgText(noteColor) + '" font-size="11" font-weight="600">' + escapeSvgText(annotation.label) + '</text>';
             });
           }
           // Legend
           if (showLegend && rows.length > 0) {
             const lx = width - pad.right + 12;
             let ly = pad.top + 10;
-            const field = svg.getAttribute('aria-label') || valueField;
-            html += '<rect x="' + lx + '" y="' + ly + '" width="12" height="12" fill="' + escapeSvgText(color) + '" rx="2"/>';
-            html += '<text x="' + (lx + 16) + '" y="' + (ly + 10) + '" fill="#334155" font-size="12">' + escapeSvgText(field) + '</text>';
+            series.forEach(function (s) {
+              html += '<rect x="' + lx + '" y="' + ly + '" width="12" height="12" fill="' + escapeSvgText(s.color) + '" rx="2"/>';
+              html += '<text x="' + (lx + 16) + '" y="' + (ly + 10) + '" fill="#334155" font-size="12">' + escapeSvgText(s.label) + '</text>';
+              ly += 18;
+            });
           }
           if (svg.dataset.jtmlChartRendered !== html) {
             svg.innerHTML = html;
             svg.dataset.jtmlChartRendered = html;
           }
+          syncChartExportControls(svg, exportFormats, rows, byField, series);
         });
       }
 
@@ -1957,14 +2284,28 @@ std::string JtmlTranspiler::generateScriptBlock() {
             .split(',')
             .map(function (name) { return name.trim(); })
             .filter(Boolean);
-          if (actionName && fetches.length) __jtml_invalidate_fns[actionName] = fetches;
+          const groups = String(meta.getAttribute('data-jtml-invalidate-groups') || '')
+            .split(',')
+            .map(function (name) { return name.trim(); })
+            .filter(Boolean);
+          const all = meta.getAttribute('data-jtml-invalidate-all') === 'true';
+          if (actionName && (fetches.length || groups.length || all)) {
+            __jtml_invalidate_fns[actionName] = { fetches: fetches, groups: groups, all: all };
+          }
         });
       }
 
       async function runInvalidations(actionName) {
-        const fetches = __jtml_invalidate_fns[actionName] || [];
-        for (const name of fetches) {
-          if (__jtml_fetch_fns[name]) await __jtml_fetch_fns[name]();
+        const spec = __jtml_invalidate_fns[actionName] || {};
+        const names = new Set(Array.isArray(spec) ? spec : (spec.fetches || []));
+        (spec.groups || []).forEach(function (group) {
+          (__jtml_fetch_groups[group] || []).forEach(function (name) { names.add(name); });
+        });
+        if (spec.all) {
+          Object.keys(__jtml_fetch_fns).forEach(function (name) { names.add(name); });
+        }
+        for (const name of names) {
+          if (__jtml_fetch_fns[name]) await __jtml_fetch_fns[name](true);
         }
       }
 

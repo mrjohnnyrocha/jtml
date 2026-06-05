@@ -56,8 +56,8 @@ void classify(Diagnostic& diagnostic) {
     if (text.find("unsupported fetch option") != std::string::npos ||
         text.find("fetch") != std::string::npos) {
         diagnostic.code = "JTML_FETCH";
-        diagnostic.hint = "Use supported fetch options such as `method`, `body`, `cache`, `credentials`, and `refresh`.";
-        diagnostic.example = "let users = fetch \"/api/users\" method \"GET\"";
+        diagnostic.hint = "Use supported fetch options such as `method`, `body`, `cache`, `credentials`, `timeout`, `retry`, `stale`, `group`, `key`, `dedupe`, `every`, `lazy`, and `refresh`.";
+        diagnostic.example = "let users = fetch \"/api/users\" timeout 2500 retry 2 stale keep group people key \"users\" dedupe refresh reloadUsers";
         return;
     }
     if (text.find("type mismatch") != std::string::npos ||

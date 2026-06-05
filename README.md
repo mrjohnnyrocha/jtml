@@ -138,7 +138,8 @@ state: let const get show
 actions: when effect store extern redirect refresh invalidate
 components: make slot export use
 flow: if else for in while break continue try catch finally return throw
-data: fetch method body cache credentials timeout retry stale keep lazy load
+data: fetch method body cache credentials timeout retry stale keep group key
+      cache-key cacheKey dedupe every revalidate background lazy load
 routes: route layout guard require activeRoute activeRouteName
 forms/events: into click input change submit hover scroll focus blur keyup
         keydown key-up key-down dragover drop dblclick double-click
@@ -148,9 +149,10 @@ styles: theme style css raw app shell topbar sidebar content panel card grid
         align justify width surface
 elements/media: page link navlink text box image video audio embed file
         dropzone canvas svg graphic group bar dot line path polyline polygon
-        chart scene3d checkbox list ordered item
-media helpers: timeline animate resize crop filter axis legend stacked duration
-        easing autoplay repeat
+        svgtext chart scene3d checkbox list ordered item
+media helpers: timeline animate resize crop filter axis legend grid stacked
+        values series colors min max ticks annotate export duration easing
+        autoplay repeat
 ```
 
 Classic compatibility also reserves the backend forms `element`, `define`,
@@ -332,8 +334,8 @@ A VS Code extension lives under `editors/vscode/`. It ships Friendly JTML 2 synt
 
 JTML supports standards-based media today with `image`, `video`, `audio`,
 `embed`, `file`, `dropzone`, SVG-first `graphic`/`bar`/`dot`/`line`/`path`,
-accessible
-`chart bar data rows by label value total`, and `scene3d` 3D mount points, plus raw `canvas`/SVG-compatible tags and
+accessible `chart bar` / `chart line` helpers with axes, legends, grid lines,
+grouped series, stacked bars, and export controls, and `scene3d` 3D mount points, plus raw `canvas`/SVG-compatible tags and
 explicit `extern`, `html raw`, and `css raw` bridges for host-provided graphics
 or media libraries.
 `video/audio ... into name` exposes playback state and client actions such as

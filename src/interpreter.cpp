@@ -54,6 +54,12 @@ nlohmann::json varValueToJson(const std::shared_ptr<JTML::VarValue>& value) {
     return value->toString();
 }
 
+nlohmann::json stringVectorToJson(const std::vector<std::string>& values) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& value : values) out.push_back(value);
+    return out;
+}
+
 std::shared_ptr<JTML::VarValue> jsonToVarValue(const nlohmann::json& value,
                                                const std::shared_ptr<JTML::Environment>& env) {
     if (value.is_boolean()) return std::make_shared<JTML::VarValue>(value.get<bool>());
@@ -379,9 +385,21 @@ std::string Interpreter::getStateJSON() {
             {"component", instance.component},
             {"role", instance.role},
             {"instance", instance.instanceID},
+            {"runtimeReady", instance.runtimeReady},
             {"sourceLine", instance.sourceLine},
             {"params", instance.params},
             {"locals", locals},
+            {"runtime", {
+                {"mode", "semantic-instance"},
+                {"ownsEnvironment", true},
+                {"ready", instance.runtimeReady},
+                {"environmentId", instance.environment ? instance.environment->instanceID : instance.instanceID},
+                {"definition", instance.component},
+                {"actions", stringVectorToJson(instance.actionNames)},
+                {"state", stringVectorToJson(instance.stateNames)},
+                {"derived", stringVectorToJson(instance.derivedNames)},
+                {"effects", stringVectorToJson(instance.effectNames)},
+            }},
         });
     }
     return out.dump();
@@ -403,6 +421,27 @@ std::string Interpreter::getComponentDefinitionsJSON() {
             {"sourceLine", def.sourceLine},
             {"params", def.params},
             {"body", def.body},
+            {"localState", stringVectorToJson(def.localState)},
+            {"localDerived", stringVectorToJson(def.localDerived)},
+            {"localActions", stringVectorToJson(def.localActions)},
+            {"localEffects", stringVectorToJson(def.localEffects)},
+            {"eventBindings", stringVectorToJson(def.eventBindings)},
+            {"hasSlot", def.hasSlot},
+            {"bodyNodeCount", def.bodyNodeCount},
+            {"rootTemplateNodeCount", def.rootTemplateNodeCount},
+            {"slotCount", def.slotCount},
+            {"runtimePlan", {
+                {"mode", "semantic-instance"},
+                {"ownsEnvironment", true},
+                {"actions", stringVectorToJson(def.localActions)},
+                {"state", stringVectorToJson(def.localState)},
+                {"derived", stringVectorToJson(def.localDerived)},
+                {"effects", stringVectorToJson(def.localEffects)},
+                {"bodyNodeCount", def.bodyNodeCount},
+                {"rootTemplateNodeCount", def.rootTemplateNodeCount},
+                {"slotCount", def.slotCount},
+                {"hasSlot", def.hasSlot},
+            }},
         });
     }
     return out.dump();
@@ -495,10 +534,31 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
         return false;
     }
 
+    auto hasDeclaredAction = [&](const std::string& name) {
+        if (instance->actionNames.empty()) return true;
+        return std::find(instance->actionNames.begin(), instance->actionNames.end(), name) != instance->actionNames.end();
+    };
+    if (!hasDeclaredAction(actionName)) {
+        nlohmann::json available = stringVectorToJson(instance->actionNames);
+        errorOut = "Component action not declared on " + componentId + "." + actionName +
+                   "; available actions: " + available.dump();
+        return false;
+    }
+
+    std::string runtimeActionName = actionName;
+    auto loweredIt = instance->locals.find(actionName);
+    if (loweredIt != instance->locals.end()) runtimeActionName = loweredIt->second;
+
     JTML::CompositeKey actionKey{instance->environment->instanceID, actionName};
     auto fn = instance->environment->getFunction(actionKey);
+    if (!fn && runtimeActionName != actionName) {
+        actionKey = JTML::CompositeKey{instance->environment->instanceID, runtimeActionName};
+        fn = instance->environment->getFunction(actionKey);
+    }
     if (!fn) {
-        errorOut = "Component action not found: " + componentId + "." + actionName;
+        nlohmann::json available = stringVectorToJson(instance->actionNames);
+        errorOut = "Component action not found: " + componentId + "." + actionName +
+                   "; available actions: " + available.dump();
         return false;
     }
 
@@ -1017,6 +1077,12 @@ void Interpreter::attachComponentEnvironment(RuntimeComponentInstance& instance)
             renderer.get());
     }
     instance.environment->setRenderer(renderer.get());
+    if (const auto* definition = findComponentDefinition(instance.component)) {
+        instance.stateNames = definition->localState;
+        instance.derivedNames = definition->localDerived;
+        instance.actionNames = definition->localActions;
+        instance.effectNames = definition->localEffects;
+    }
 
     for (const auto& [paramName, paramValue] : instance.params) {
         JTML::CompositeKey paramKey{instance.environment->instanceID, paramName};
@@ -1052,6 +1118,7 @@ void Interpreter::attachComponentEnvironment(RuntimeComponentInstance& instance)
             instance.environment->functions[localPublicKey] = fnIt->second;
         }
     }
+    instance.runtimeReady = true;
 }
 
 void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<ASTNode>>& program) {
@@ -1074,6 +1141,15 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
             def.sourceLine = semanticDef.sourceLine;
             def.params = semanticDef.params;
             def.body = hexDecode(semanticDef.bodyHex);
+            def.localState = semanticDef.localState;
+            def.localDerived = semanticDef.localDerived;
+            def.localActions = semanticDef.localActions;
+            def.localEffects = semanticDef.localEffects;
+            def.eventBindings = semanticDef.eventBindings;
+            def.hasSlot = semanticDef.hasSlot;
+            def.bodyNodeCount = semanticDef.bodyNodeCount;
+            def.rootTemplateNodeCount = semanticDef.rootTemplateNodeCount;
+            def.slotCount = semanticDef.slotCount;
 
             auto existing = std::find_if(componentDefinitions.begin(), componentDefinitions.end(),
                 [&](const RuntimeComponentDefinition& current) {
@@ -1127,6 +1203,16 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
         }
         attachComponentEnvironment(instance);
     }
+}
+
+const Interpreter::RuntimeComponentDefinition*
+Interpreter::findComponentDefinition(const std::string& name) const {
+    auto definitionIt = std::find_if(
+        componentDefinitions.begin(), componentDefinitions.end(),
+        [&](const RuntimeComponentDefinition& definition) {
+            return definition.name == name;
+        });
+    return definitionIt == componentDefinitions.end() ? nullptr : &(*definitionIt);
 }
 
 Interpreter::RuntimeComponentInstance* Interpreter::findComponentInstance(const std::string& id) {

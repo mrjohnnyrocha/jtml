@@ -22,6 +22,7 @@ const std::map<std::string, std::string>& reverseTagMap() {
         {"a",      "link"},
         {"img",    "image"},
         {"iframe", "embed"},
+        {"text",   "svgtext"},
         {"ul",     "list"},
         {"ol",     "list"},
         {"li",     "item"},
@@ -51,6 +52,13 @@ std::string unquoteFormatted(const std::string& value) {
         return value.substr(1, value.size() - 2);
     }
     return value;
+}
+
+std::string trimFormatted(std::string value) {
+    const auto begin = value.find_first_not_of(" \t\r\n");
+    if (begin == std::string::npos) return "";
+    const auto end = value.find_last_not_of(" \t\r\n");
+    return value.substr(begin, end - begin + 1);
 }
 
 // Tags that pass through (keep their HTML name in friendly syntax).
@@ -450,9 +458,14 @@ void JtmlFriendlyFormatter::formatElement(const JtmlElementNode& elem) {
         std::string chartData;
         std::string chartBy;
         std::string chartValue;
+        std::string chartValues;
         std::string chartLabel;
         std::string chartColor;
+        std::string chartColors;
+        std::string chartSeries;
         std::string chartAxisX, chartAxisY, chartLegend, chartGrid, chartStacked;
+        std::string chartMin, chartMax, chartTicks, chartExport;
+        std::string chartAnnotations;
         for (const auto& attr : elem.attributes) {
             if (!attr.value) continue;
             const std::string value = formatExpr(*attr.value);
@@ -460,26 +473,73 @@ void JtmlFriendlyFormatter::formatElement(const JtmlElementNode& elem) {
             else if (attr.key == "data-jtml-chart-data") chartData = unquoteFormatted(value);
             else if (attr.key == "data-jtml-chart-by") chartBy = unquoteFormatted(value);
             else if (attr.key == "data-jtml-chart-value") chartValue = unquoteFormatted(value);
+            else if (attr.key == "data-jtml-chart-values") chartValues = unquoteFormatted(value);
             else if (attr.key == "aria-label") chartLabel = value;
             else if (attr.key == "data-jtml-chart-color") chartColor = value;
+            else if (attr.key == "data-jtml-chart-colors") chartColors = unquoteFormatted(value);
+            else if (attr.key == "data-jtml-chart-series") chartSeries = unquoteFormatted(value);
             else if (attr.key == "data-jtml-chart-axis-x") chartAxisX = unquoteFormatted(value);
             else if (attr.key == "data-jtml-chart-axis-y") chartAxisY = unquoteFormatted(value);
             else if (attr.key == "data-jtml-chart-legend") chartLegend = unquoteFormatted(value);
             else if (attr.key == "data-jtml-chart-grid")   chartGrid   = unquoteFormatted(value);
             else if (attr.key == "data-jtml-chart-stacked") chartStacked = unquoteFormatted(value);
+            else if (attr.key == "data-jtml-chart-min") chartMin = value;
+            else if (attr.key == "data-jtml-chart-max") chartMax = value;
+            else if (attr.key == "data-jtml-chart-ticks") chartTicks = value;
+            else if (attr.key == "data-jtml-chart-export") chartExport = unquoteFormatted(value);
+            else if (attr.key == "data-jtml-chart-annotations") chartAnnotations = unquoteFormatted(value);
         }
         if (!chartType.empty()) {
             out << "chart " << chartType;
             if (!chartData.empty())    out << " data " << chartData;
             if (!chartBy.empty())      out << " by " << chartBy;
             if (!chartValue.empty())   out << " value " << chartValue;
+            if (!chartValues.empty()) {
+                out << " values";
+                std::stringstream fields(chartValues);
+                std::string field;
+                while (std::getline(fields, field, ',')) {
+                    if (!field.empty()) out << " " << field;
+                }
+            }
             if (!chartLabel.empty())   out << " label " << chartLabel;
             if (!chartColor.empty())   out << " color " << chartColor;
+            if (!chartColors.empty())  out << " colors \"" << chartColors << "\"";
+            if (!chartSeries.empty())  out << " series \"" << chartSeries << "\"";
             if (!chartAxisX.empty())   out << " axis x label \"" << chartAxisX << "\"";
             if (!chartAxisY.empty())   out << " axis y label \"" << chartAxisY << "\"";
             if (chartLegend == "true") out << " legend";
             if (chartGrid == "true")   out << " grid";
             if (chartStacked == "true") out << " stacked";
+            if (!chartMin.empty()) out << " min " << chartMin;
+            if (!chartMax.empty()) out << " max " << chartMax;
+            if (!chartTicks.empty()) out << " ticks " << chartTicks;
+            if (!chartExport.empty()) {
+                out << " export";
+                std::stringstream formats(chartExport);
+                std::string format;
+                while (std::getline(formats, format, ',')) {
+                    format = trimFormatted(format);
+                    if (!format.empty()) out << " " << format;
+                }
+            }
+            if (!chartAnnotations.empty()) {
+                std::stringstream notes(chartAnnotations);
+                std::string note;
+                while (std::getline(notes, note, ';')) {
+                    std::vector<std::string> parts;
+                    std::stringstream noteParts(note);
+                    std::string part;
+                    while (std::getline(noteParts, part, '|')) {
+                        parts.push_back(part);
+                    }
+                    if (parts.size() >= 2 && !parts[0].empty() && !parts[1].empty()) {
+                        out << " annotate \"" << parts[0] << "\" at \"" << parts[1] << "\"";
+                        if (parts.size() >= 3 && !parts[2].empty()) out << " value " << parts[2];
+                        if (parts.size() >= 4 && !parts[3].empty()) out << " color \"" << parts[3] << "\"";
+                    }
+                }
+            }
             out << "\n";
             return;
         }

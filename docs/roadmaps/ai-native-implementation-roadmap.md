@@ -133,12 +133,16 @@ Status: ongoing.
      hidden runtime definition marker, and the interpreter/C ABI/HTTP API expose
      original component contracts through `componentDefinitions` /
      `/api/component-definitions`.
+   - Shipped semantic runtime plan: component definitions now report local
+     state/actions/derived/effects, event bindings, slot/body shape, and a
+     `runtimePlan`; component instances report their owning runtime environment
+     and validate dispatched actions against the semantic component definition.
    - Shipped runtime tooling API: `/api/components` exposes the registry
      directly and `/api/component-action` dispatches local component actions by
      instance id.
-   - Next: replace compatibility source expansion with non-expanded component
-     AST execution. The runtime regression smoke (see "Runtime Regression
-     Smoke" below) now pins per-instance isolation through
+   - Next: replace compatibility source expansion with direct non-expanded
+     component template execution. The runtime regression smoke (see "Runtime
+     Regression Smoke" below) now pins per-instance isolation through
      `POST /api/component-action`, providing a safety net for that rewrite.
    - Preserve current `data-jtml-instance` DevTools marker.
 
@@ -149,8 +153,19 @@ Status: ongoing.
    - Shipped route data first slice: `fetch ... lazy` registers a fetch without
      starting it, and `route "/path" as Page load fetchName` triggers it when
      the route matches.
-   - Next: URL interpolation from route params and richer cache invalidation
-     groups.
+   - Shipped route-param URL interpolation: fetch URLs such as
+     `"/api/users/{id}"` resolve from browser-local state when the request
+     starts, so route loads use the current params and refresh/invalidation
+     uses the latest state.
+   - Shipped cache invalidation groups: `fetch ... group name` registers group
+     membership, `invalidate group name` revalidates all fetches in the group,
+     and `invalidate all` revalidates every registered fetch after the action
+     dispatches.
+   - Shipped cache identity and background revalidation controls:
+     `fetch ... key expr dedupe every 30000 background` gives browser-local
+     fetch nodes a stable logical key, skips duplicate already-loaded route or
+     initial requests when requested, and supports interval revalidation that
+     pauses on hidden tabs unless `background` is declared.
 
 3. Routing hardening.
    - Shipped: params, wildcard, active links, guards, redirects, `activeRoute`.
@@ -333,10 +348,11 @@ paths surfaced through [`../tooling/runtime-http-contract.md`](../tooling/runtim
 4. **Stores** — `bindings.state.auth` carries user-authored fields
    (`user`, `token`) through SSR.
 5. **Component isolation** — two `Counter` instances boot with independent
-   `count = 0`, and `POST /api/component-action` on instance 1 leaves
-   instance 2 untouched (the canonical safety net for Phase 4.1's planned
-   replacement of compatibility source expansion with non-expanded
-   component AST execution).
+   `count = 0`, component definitions expose semantic runtime plans, and
+   `POST /api/component-action` on instance 1 leaves instance 2 untouched
+   (the canonical safety net for Phase 4.1's planned replacement of
+   compatibility source expansion with direct non-expanded component template
+   execution).
 6. **CSS hex colours in `style` blocks** — `#d8d4c9` round-trips through
    the Friendly-to-Classic lowering without being stripped or normalised.
 7. **Studio `/api/run`** — the same transpiler reaches Studio previews,
@@ -398,14 +414,26 @@ charts, annotated screenshots, simple simulations, and audio/video workflows.
    - ✅ First slice shipped: `graphic aria-label "Chart"` lowers to
      accessible SVG, with `bar`, `dot`, `line`, `path`, `polyline`, `polygon`,
      and `group` lowering to standard SVG shape tags.
-   - Next syntax: SVG text, axes, legends, and richer chart primitives.
+   - ✅ Chart axis/legend primitives and richer chart rendering shipped through
+     `chart ... axis x/y label`, `legend`, `grid`, `chart line`,
+     multi-series `values ... series "A,B" colors "#a,#b"` metadata, and
+     scale controls with `min`, `max`, and `ticks`.
+   - ✅ SVG text primitive shipped as `svgtext`, lowering to SVG `<text>`.
+   - ✅ First-class chart annotations shipped with `annotate "Label" at "X"
+     value field`.
+   - ✅ Chart export controls shipped with `export svg png csv`.
+   - Next syntax: richer mark styling and optional host renderers.
    - Default to accessible SVG for static export and predictable rendering.
 6. Add chart primitives after graphics.
    - ✅ First slice shipped: `chart bar data rows by month value total`
      lowers to accessible SVG metadata and the browser runtime renders bars
      from state or fetch results.
-   - Next syntax: axes, legends, line charts, grouped/stacked bars, richer
-     scale controls, and static export helpers.
+   - ✅ Second slice shipped: `chart line`, grouped multi-series bars, stacked
+     bars, multi-series line charts, legends, grid lines, and axis labels.
+   - ✅ Third slice shipped: chart scale controls via `min`, `max`, and `ticks`.
+   - ✅ Fourth slice shipped: chart annotations with row/series markers.
+   - ✅ Fifth slice shipped: browser-local chart export controls.
+   - Next syntax: richer mark styling and optional host renderers.
 7. Add 3D and highly customized interface mounts.
    - ✅ First slice shipped: `scene3d "Product" scene productScene camera orbit`
      lowers to an accessible canvas mount.

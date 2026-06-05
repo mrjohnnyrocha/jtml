@@ -73,16 +73,16 @@ recommended spelling for new apps.
 | actions and effects | `when`, `effect`, `redirect`, `refresh`, `invalidate`, `extern` |
 | control flow | `if`, `else`, `for`, `in`, `while`, `break`, `continue`, `try`, `catch`, `finally`, `return`, `throw` |
 | components and modules | `make`, `slot`, `export`, `use`, component calls such as `Card "Title"` |
-| async data | `fetch`, `method`, `body`, `cache`, `credentials`, `timeout`, `retry`, `stale`, `keep`, `lazy` |
+| async data | `fetch`, `method`, `body`, `cache`, `credentials`, `timeout`, `retry`, `stale`, `keep`, `group`, `key`, `dedupe`, `every`, `background`, `lazy` |
 | routes | `route`, `layout`, `load`, `guard`, `require`, `activeRoute`, `activeRouteName` |
 | forms/events | `into`, `click`, `input`, `change`, `submit`, `hover`, `scroll`, `focus`, `blur`, `keyup`, `keydown`, `key-up`, `key-down`, `dragover`, `drop`, `dblclick`, `double-click` |
 | common elements | `page`, `link`, `navlink`, `text`, `box`, `checkbox`, `list`, `ordered`, `item` |
 | media | `image`, `video`, `audio`, `embed`, `file`, `dropzone` |
-| graphics | `canvas`, `svg`, `graphic`, `group`, `bar`, `dot`, `line`, `path`, `polyline`, `polygon`, `chart`, `scene3d` |
+| graphics | `canvas`, `svg`, `graphic`, `group`, `bar`, `dot`, `line`, `path`, `polyline`, `polygon`, `svgtext`, `chart`, `scene3d` |
 | semantic UI | `theme`, `app`, `shell`, `topbar`, `sidebar`, `content`, `panel`, `card`, `grid`, `stack`, `cluster`, `split`, `toolbar`, `tabs`, `tab`, `alert`, `badge`, `modal`, `drawer`, `toast`, `loading`, `error`, `empty`, `field`, `metric`, `spacer` |
 | UI modifiers | `cols`, `gap`, `pad`, `radius`, `shadow`, `tone`, `align`, `justify`, `width`, `surface` |
 | style/interop escape hatches | `style`, `css raw`, `html raw` |
-| media helpers | `timeline`, `animate`, `resize`, `crop`, `filter`, `axis`, `legend`, `stacked`, `duration`, `easing`, `autoplay`, `repeat` |
+| media helpers | `timeline`, `animate`, `resize`, `crop`, `filter`, `axis`, `legend`, `grid`, `stacked`, `values`, `series`, `colors`, `min`, `max`, `ticks`, `annotate`, `export`, `duration`, `easing`, `autoplay`, `repeat` |
 
 Compatibility/backend keywords remain supported for older files and lowered
 artifacts: `element`, `@tag`, `define`, `derive`, `unbind`, `function`,
@@ -142,6 +142,7 @@ page
   status,
   ok,
   url,
+  key,
   method,
   updatedAt
 }
@@ -151,17 +152,19 @@ The stable common fields are `loading`, `data`, `error`, `stale`, `attempts`,
 and `hasData`; browser-local builds also expose request metadata for
 diagnostics, retry UI, and future devtools. Fetch supports simple GET requests,
 JSON request bodies for non-GET calls, browser cache/credentials policies,
-timeout, retry, stale data policy, and a `refresh` action that re-triggers the
-fetch client-side without a server round-trip:
+timeout, retry, stale data policy, optional fetch groups, cache keys, dedupe,
+timed revalidation, and a `refresh` action that re-triggers the fetch
+client-side without a server round-trip:
 
 ```jtml
 let login = fetch "/api/login" method "POST" body { email: email } cache "no-store" credentials "include"
 
-let posts = fetch "/api/posts" timeout 2500 retry 2 stale keep refresh reloadPosts
+let posts = fetch "/api/posts" timeout 2500 retry 2 stale keep group content key "posts" dedupe every 30000 refresh reloadPosts
+let comments = fetch "/api/comments" group content lazy
 
 when savePost
   let saved = true
-  invalidate posts
+  invalidate group content
 
 page
   button "Reload" click reloadPosts
@@ -176,17 +179,37 @@ refresh/loading and after an error; `stale clear` is the default. The runtime
 sets `hasData` after a successful response and sets `stale` only when preserved
 data exists, which keeps first-load UI honest. Use `invalidate posts` inside a
 `when` action to refresh one or more named fetches after the action has
-dispatched. That is the mutation-friendly form: the action runs first, then the
-browser revalidates the listed fetch bindings.
+dispatched. Use `fetch ... group content` plus `invalidate group content` when
+a mutation should refresh a family of related fetches. Use `invalidate all`
+sparingly for broad reset flows. These are mutation-friendly forms: the action
+runs first, then the browser revalidates the selected fetch bindings.
+
+Use `key expr` when a fetch's logical identity is different from the literal
+URL string, for example `key id` with route parameters or `key searchQuery` for
+search results. `cache-key` and `cacheKey` are accepted aliases for authors and
+tools that prefer a more explicit option name. When `dedupe` is present, an
+already-loaded fetch with the same resolved URL, method, and key skips
+duplicate initial or route-triggered requests. Explicit refreshes,
+`invalidate`, and timed revalidation still force a network request. Use
+`every 30000` or `revalidate 30000` to refresh a fetch on an interval. Timed
+revalidation pauses while the document is hidden unless the fetch also declares
+`background`.
 
 Use `lazy` when a fetch should be registered but not started immediately.
 Route declarations can then load it only when the route matches:
 
 ```jtml
-let users = fetch "/api/users" lazy stale keep
+let user = fetch "/api/users/{id}" lazy stale keep
 
-route "/users" as Users load users
+route "/user/:id" as UserProfile load user
 ```
+
+Fetch URLs can interpolate browser-local state with `{name}` placeholders. This
+is especially useful with route params: when `#/user/42` matches
+`route "/user/:id"`, the runtime sets `id = "42"` before running route loads,
+so the fetch above requests `/api/users/42`. Placeholders are resolved when the
+request starts, not when the page boots, so refreshed or invalidated fetches use
+the latest state.
 
 The browser runtime handles simple dotted reads such as `users.loading`,
 `users.data`, `login.data.user`, and `user.name` inside loop templates. Missing
@@ -194,9 +217,14 @@ nested data is falsey while a fetch is still loading, so `if login.data.user`
 can safely render its fallback until the response arrives.
 
 For custom browser tooling, `window.jtml.fetches` exposes the registered fetch
-functions by name and `window.jtml.refreshFetch("users")` refreshes a specific
-fetch node. This is an escape hatch for demos, diagnostics, and devtools; app
-code should prefer `refresh actionName` and `invalidate fetchName`.
+functions by name, `window.jtml.fetchGroups` exposes fetch group membership,
+`window.jtml.fetchTimers` exposes active timed revalidation handles, and
+`window.jtml.refreshFetch("users")` refreshes a specific fetch node.
+`window.jtml.resolveFetchUrl(url)` and `window.jtml.resolveFetchKey(...)`
+apply the same interpolation and cache-key logic that fetch nodes use. These
+APIs are escape hatches for demos, diagnostics, and devtools; app code should
+prefer `refresh actionName`, `invalidate fetchName`, `invalidate group
+groupName`, or `invalidate all`.
 
 Friendly routes map hash paths to components:
 
@@ -384,6 +412,11 @@ Several primitives also lower with accessibility defaults: `modal` and
 `aria-busy="true"`; `tabs` emits `role="tablist"`; and `tab` emits
 `role="tab"` plus `type="button"`.
 
+Action buttons also get a safe browser default: `button "Save" click save`
+lowers with `type="button"` so it does not accidentally submit a surrounding
+form. Plain buttons inside `form submit action` remain submit controls, and an
+explicit `type submit`, `type reset`, or `type button` always wins.
+
 ```jtml
 style
   .custom-widget
@@ -485,6 +518,7 @@ page
     dot cx "250" cy "55" r "12" fill "#111827"
     line x1 "20" y1 "104" x2 "300" y2 "104" stroke "#475569" stroke-width "2"
     path d "M20 90 C90 20 180 120 300 40" fill "none" stroke "#9333ea" stroke-width "3"
+    svgtext x "20" y "24" fill "#334155" font-size "14" "Revenue"
   chart bar data revenue by month value total label "Revenue by month" color "#2563eb"
   scene3d "Product scene" scene productScene camera orbit controls orbit renderer "three" into sceneState width "640" height "360"
   text "Renderer status: {sceneState.status}"
@@ -495,14 +529,25 @@ page
 ```
 
 `graphic` lowers to accessible SVG with `role "img"`. `bar`, `dot`, `line`,
-`path`, `polyline`, `polygon`, and `group` lower to standard SVG shape tags for
-AI-friendly chart and diagram authoring. Raw SVG tags remain available when you
-need exact SVG vocabulary.
+`path`, `polyline`, `polygon`, `svgtext`, and `group` lower to standard SVG
+shape tags for AI-friendly chart and diagram authoring. Raw SVG tags remain
+available when you need exact SVG vocabulary.
 
 `chart bar data rows by label value total` lowers to an accessible SVG bar
-chart. `data` points at an array-like JTML value or a fetch result's `.data`;
-`by` names the label field; `value` names the numeric field. The browser
-runtime renders the bars whenever state or fetched data changes.
+chart. `chart line ...` renders an SVG trend line. `data` points at an
+array-like JTML value or a fetch result's `.data`; `by` names the label field;
+`value` names the numeric field. For multi-series charts, use `values` followed
+by one or more numeric fields, plus optional `series` and `colors` comma lists:
+
+```jtml
+chart bar data revenue by month values sales expenses series "Sales,Expenses" colors "#0f766e,#b42318" stacked legend max 50 ticks 6 annotate "Launch" at "Apr" value sales color "#9333ea" export svg png csv
+chart line data traffic by day values visits signups series "Visits,Signups" colors "#2563eb,#9333ea" legend max 1000 ticks 5 annotate "Peak" at "Thu" value visits export svg csv
+```
+
+Bar charts render grouped series by default; `stacked` stacks each row's
+series. The browser runtime renders charts whenever state or fetched data
+changes. `export svg png csv` adds browser-local export buttons generated from
+the rendered SVG and the chart's semantic data rows.
 
 `scene3d` lowers to an accessible `<canvas>` mount with `data-jtml-scene3d`.
 Core JTML intentionally does not bundle Three.js, WebGPU, or a physics engine.
@@ -515,7 +560,11 @@ and `height` as reactive JTML state. Host renderers can call
 
 This is the current production escape hatch for Canvas, WebGL, Web Audio,
 Three.js, ffmpeg-backed processing, maps, charting SDKs, and specialized media
-libraries. Image processing and richer chart primitives are planned in
+libraries. Native charts cover bar/line charts, axes, legends, grid lines,
+grouped series, stacked bars, multi-series lines, explicit `min` / `max` scale
+bounds, `ticks`, and semantic chart annotations with `annotate "Label" at
+"X" value field`, plus `export svg png csv` controls. Image processing and deeper graphics
+primitives are tracked in
 [`../roadmaps/media-graphics-roadmap.md`](../roadmaps/media-graphics-roadmap.md).
 
 First-slice browser image processing is available through derived image
@@ -649,6 +698,9 @@ The wrapper also carries `data-jtml-component`, `data-jtml-instance-id`,
 `data-jtml-component-params`, and `data-jtml-component-locals`. On load, the
 browser runtime publishes these as `window.__jtml_components` and
 `window.jtml.getComponentInstances()`, then emits `jtml:components-ready`.
+Each component instance also exposes a `runtime` record describing the semantic
+definition, owning environment id, local state, local actions, local derived
+values, and effects.
 The interpreter also executes each wrapper inside a runtime component
 environment. Local values, actions, element bindings, event handlers, and dirty
 recalculation resolve through the owning instance, so repeated components keep
@@ -661,7 +713,11 @@ compatibility bridge toward non-expanded runtime component AST execution.
 The compiler also preserves each original `make Component` contract as a hidden
 definition marker. Tools can read those definitions through `/api/state`
 (`componentDefinitions`), `/api/component-definitions`, or the C ABI
-`jtml_component_definitions`.
+`jtml_component_definitions`. Definitions include a `runtimePlan` with local
+state/actions/derived/effects, event bindings, slot/body shape, and the planned
+semantic instance mode. The current renderer still emits compatibility-expanded
+DOM, but tooling no longer needs to reverse-engineer component ownership from
+that DOM.
 
 Relative imports are resolved relative to the importing file, parsed once per
 compile graph, and cycles are reported as errors. Bare package imports such as

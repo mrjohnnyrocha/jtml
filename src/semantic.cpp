@@ -156,6 +156,9 @@ struct ComponentBodySummary {
     std::set<std::string> localEffects;
     std::set<std::string> eventBindings;
     bool hasSlot = false;
+    int bodyNodeCount = 0;
+    int rootTemplateNodeCount = 0;
+    int slotCount = 0;
 };
 
 const std::set<std::string>& friendlyEventNames() {
@@ -172,6 +175,12 @@ std::string componentBodyLineText(const std::string& encodedLine) {
     return trimCopy(colon == std::string::npos ? encodedLine : encodedLine.substr(colon + 1));
 }
 
+int componentBodyLineIndent(const std::string& encodedLine) {
+    const auto colon = encodedLine.find(':');
+    if (colon == std::string::npos) return 0;
+    return parseIntLiteral(encodedLine.substr(0, colon));
+}
+
 ComponentBodySummary summarizeComponentBody(const std::string& bodyHex) {
     ComponentBodySummary summary;
     const std::string body = hexDecode(bodyHex);
@@ -180,8 +189,16 @@ ComponentBodySummary summarizeComponentBody(const std::string& bodyHex) {
     while (std::getline(input, raw)) {
         const std::string text = componentBodyLineText(raw);
         if (text.empty()) continue;
+        ++summary.bodyNodeCount;
         const auto tokens = words(text);
         if (tokens.empty()) continue;
+        if (componentBodyLineIndent(raw) == 0) {
+            const std::string head = tokens[0];
+            if (head != "let" && head != "const" && head != "get" &&
+                head != "when" && head != "effect" && head != "slot") {
+                ++summary.rootTemplateNodeCount;
+            }
+        }
         const std::string head = tokens[0];
         if ((head == "let" || head == "const") && tokens.size() > 1) {
             summary.localState.insert(cleanIdentifier(tokens[1]));
@@ -193,6 +210,7 @@ ComponentBodySummary summarizeComponentBody(const std::string& bodyHex) {
             summary.localEffects.insert(cleanIdentifier(tokens[1]));
         } else if (head == "slot") {
             summary.hasSlot = true;
+            ++summary.slotCount;
         }
 
         for (size_t i = 0; i + 1 < tokens.size(); ++i) {
@@ -351,13 +369,14 @@ struct SemanticSets {
     std::set<std::string> actions;
     std::set<std::string> components;
     std::set<std::tuple<std::string, std::string, std::string, std::string, std::string,
-                        std::string, std::string, std::string, bool, int>> componentDefinitions;
+                        std::string, std::string, std::string, bool, int, int, int, int>> componentDefinitions;
     std::set<std::tuple<std::string, std::string, int, std::string, std::string, std::string, int>> componentInstances;
     std::set<std::string> routes;
     std::set<std::tuple<std::string, std::string, std::string, std::string>> routeRecords;
     std::set<std::string> fetches;
     std::set<std::tuple<std::string, std::string, std::string, std::string, std::string,
-                        std::string, std::string, std::string, std::string, std::string, bool>> fetchRecords;
+                        std::string, std::string, std::string, std::string, std::string, std::string,
+                        std::string, std::string, bool, bool, bool>> fetchRecords;
     std::set<std::string> stores;
     std::set<std::string> effects;
     std::set<std::string> imports;
@@ -616,6 +635,11 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
         std::string timeoutMs;
         std::string retryCount;
         std::string stalePolicy;
+        std::string group;
+        std::string cacheKeyExpr;
+        std::string revalidateMs;
+        std::string dedupeValue;
+        std::string backgroundValue;
         std::string lazyValue;
         attributeLiteral(elem, "data-url", url);
         attributeLiteral(elem, "data-method", method);
@@ -626,9 +650,15 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
         attributeLiteral(elem, "data-timeout-ms", timeoutMs);
         attributeLiteral(elem, "data-retry", retryCount);
         attributeLiteral(elem, "data-stale", stalePolicy);
+        attributeLiteral(elem, "data-group", group);
+        attributeLiteral(elem, "data-cache-key-expr", cacheKeyExpr);
+        attributeLiteral(elem, "data-revalidate-ms", revalidateMs);
+        attributeLiteral(elem, "data-dedupe", dedupeValue);
+        attributeLiteral(elem, "data-background", backgroundValue);
         attributeLiteral(elem, "data-lazy", lazyValue);
         out.fetchRecords.insert({value, url, method, bodyExpr, refreshAction, cache, credentials,
-                                 timeoutMs, retryCount, stalePolicy, lazyValue == "true"});
+                                 timeoutMs, retryCount, stalePolicy, group, cacheKeyExpr, revalidateMs,
+                                 dedupeValue == "true", backgroundValue == "true", lazyValue == "true"});
         if (attributeLiteral(elem, "data-refresh-action", refreshAction)) {
             addEdge(out, "fetch:" + value, refreshAction, "refresh-action");
         }
@@ -678,6 +708,9 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
             joinValues(toVector(summary.eventBindings)),
             bodyHex,
             summary.hasSlot,
+            summary.bodyNodeCount,
+            summary.rootTemplateNodeCount,
+            summary.slotCount,
             parseIntLiteral(sourceLine)
         });
     } else if (attributeLiteral(elem, "data-jtml-component", value)) {
@@ -983,7 +1016,8 @@ std::vector<SemanticRoute> routesToVector(
 
 std::vector<SemanticFetch> fetchesToVector(
     const std::set<std::tuple<std::string, std::string, std::string, std::string, std::string,
-                              std::string, std::string, std::string, std::string, std::string, bool>>& values) {
+                              std::string, std::string, std::string, std::string, std::string, std::string,
+                              std::string, std::string, bool, bool, bool>>& values) {
     std::vector<SemanticFetch> fetches;
     for (const auto& fetch : values) {
         fetches.push_back({
@@ -998,6 +1032,11 @@ std::vector<SemanticFetch> fetchesToVector(
             std::get<8>(fetch),
             std::get<9>(fetch),
             std::get<10>(fetch),
+            std::get<11>(fetch),
+            std::get<12>(fetch),
+            std::get<13>(fetch),
+            std::get<14>(fetch),
+            std::get<15>(fetch),
         });
     }
     return fetches;
@@ -1005,7 +1044,7 @@ std::vector<SemanticFetch> fetchesToVector(
 
 std::vector<SemanticComponentDefinition> componentDefinitionsToVector(
     const std::set<std::tuple<std::string, std::string, std::string, std::string, std::string,
-                              std::string, std::string, std::string, bool, int>>& values) {
+                              std::string, std::string, std::string, bool, int, int, int, int>>& values) {
     std::vector<SemanticComponentDefinition> definitions;
     for (const auto& definition : values) {
         definitions.push_back({
@@ -1019,6 +1058,9 @@ std::vector<SemanticComponentDefinition> componentDefinitionsToVector(
             std::get<7>(definition),
             std::get<8>(definition),
             std::get<9>(definition),
+            std::get<10>(definition),
+            std::get<11>(definition),
+            std::get<12>(definition),
         });
     }
     return definitions;

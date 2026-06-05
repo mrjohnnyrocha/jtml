@@ -255,6 +255,10 @@ TEST(SemanticProgram, ComponentDefinitionManifestsExposeOwnedSemantics) {
     EXPECT_NE(html.find("\"localActions\":[\"add\"]"), std::string::npos) << html;
     EXPECT_NE(html.find("\"eventBindings\":[\"add\"]"), std::string::npos) << html;
     EXPECT_NE(html.find("\"hasSlot\":true"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"bodyNodeCount\":"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"rootTemplateNodeCount\":1"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"slotCount\":1"), std::string::npos) << html;
+    EXPECT_NE(html.find("runtimePlan: {"), std::string::npos) << html;
     EXPECT_NE(html.find("localState: Array.isArray(record.localState)"), std::string::npos)
         << html;
 }
@@ -536,7 +540,7 @@ TEST(SemanticProgram, CapturesFetchOptionsInStructuredRecords) {
         "jtml 2\n"
         "\n"
         "let email = \"ada@example.com\"\n"
-        "let login = fetch \"/api/login\" method \"POST\" body { email: email } cache \"no-store\" credentials \"include\" timeout 2500 retry 2 stale keep lazy refresh reloadLogin\n"
+        "let login = fetch \"/api/login\" method \"POST\" body { email: email } cache \"no-store\" credentials \"include\" timeout 2500 retry 2 stale keep group auth key email dedupe every 30000 background lazy refresh reloadLogin\n"
         "\n"
         "page\n"
         "  button \"Retry\" click reloadLogin\n";
@@ -554,6 +558,11 @@ TEST(SemanticProgram, CapturesFetchOptionsInStructuredRecords) {
     EXPECT_EQ(login->timeoutMs, "2500");
     EXPECT_EQ(login->retryCount, "2");
     EXPECT_EQ(login->stalePolicy, "keep");
+    EXPECT_EQ(login->group, "auth");
+    EXPECT_EQ(login->cacheKeyExpr, "email");
+    EXPECT_EQ(login->revalidateMs, "30000");
+    EXPECT_TRUE(login->dedupe);
+    EXPECT_TRUE(login->background);
     EXPECT_EQ(login->refreshAction, "reloadLogin");
     EXPECT_TRUE(login->lazy);
     EXPECT_TRUE(hasEdge(semantic, "fetch:login", "reloadLogin", "refresh-action"));

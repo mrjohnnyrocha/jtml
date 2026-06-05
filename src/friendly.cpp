@@ -380,9 +380,12 @@ const std::set<std::string>& commonAttributes() {
         "data-jtml-route-params", "data-jtml-route-load", "data-jtml-link", "aria-label",
         "aria-describedby", "aria-hidden", "data-jtml-dropzone", "data-jtml-media-controller",
         "data-jtml-chart", "data-jtml-chart-data", "data-jtml-chart-by",
-        "data-jtml-chart-value", "data-jtml-chart-color",
+        "data-jtml-chart-value", "data-jtml-chart-values", "data-jtml-chart-series",
+        "data-jtml-chart-color", "data-jtml-chart-colors",
         "data-jtml-chart-axis-x", "data-jtml-chart-axis-y", "data-jtml-chart-legend",
-        "data-jtml-chart-grid", "data-jtml-chart-stacked",
+        "data-jtml-chart-grid", "data-jtml-chart-stacked", "data-jtml-chart-min",
+        "data-jtml-chart-max", "data-jtml-chart-ticks", "data-jtml-chart-annotations",
+        "data-jtml-chart-export",
         "data-jtml-timeline", "data-jtml-timeline-duration", "data-jtml-timeline-easing",
         "data-jtml-timeline-animates", "data-jtml-timeline-autoplay", "data-jtml-timeline-repeat",
         "data-jtml-image-proc", "data-jtml-image-src", "data-jtml-image-into",
@@ -396,7 +399,7 @@ const std::set<std::string>& commonAttributes() {
         "width", "height", "viewBox", "viewbox", "fill", "stroke", "x", "y", "cx", "cy", "r",
         "x1", "y1", "x2", "y2", "d", "points", "stroke-width", "stroke-linecap",
         "stroke-linejoin", "stroke-dasharray", "opacity", "fill-opacity", "stroke-opacity",
-        "rx", "ry",
+        "rx", "ry", "text-anchor", "dominant-baseline", "font-size", "font-weight", "font-family",
         "min", "max", "step", "pattern", "rows", "cols"
     };
     return names;
@@ -426,6 +429,7 @@ const std::map<std::string, ElementAlias>& elementAliases() {
         {"path",     {"path",   {}}},
         {"polyline", {"polyline", {}}},
         {"polygon",  {"polygon", {}}},
+        {"svgtext",  {"text",   {}}},
         {"file",     {"input",  {{"type", "\"file\""}}}},
         {"dropzone", {"input",  {{"type", "\"file\""}, {"data-jtml-dropzone", "\"true\""}, {"multiple", ""}}}},
         {"checkbox", {"input",  {{"type", "\"checkbox\""}}}},
@@ -509,6 +513,13 @@ std::string appendClassToken(std::string existing, const std::string& token) {
     if (token.empty()) return existing;
     if (existing.empty()) return token;
     return existing + " " + token;
+}
+
+bool hasAttributeNamed(const std::vector<std::string>& attrs, const std::string& name) {
+    for (const auto& attr : attrs) {
+        if (attr == name || attr.rfind(name + "=", 0) == 0) return true;
+    }
+    return false;
 }
 
 std::string semanticUiStyles() {
@@ -953,6 +964,11 @@ struct FetchSpec {
     std::string timeoutMs;
     std::string retryCount;
     std::string stalePolicy;
+    std::string groupName;
+    std::string cacheKeyExpr;
+    std::string revalidateMs;
+    bool dedupe = false;
+    bool background = false;
     bool lazy = false;
 };
 
@@ -1086,6 +1102,40 @@ FetchSpec parseFetchSpec(const std::vector<std::string>& tokens, size_t start, i
             }
             spec.stalePolicy = quote(policy);
             i += 2;
+            continue;
+        }
+        if (tokens[i] == "group") {
+            if (i + 1 >= tokens.size()) {
+                throw std::runtime_error("Expected group name after 'group' at line " + std::to_string(lineNumber));
+            }
+            spec.groupName = unquote(tokens[i + 1]);
+            i += 2;
+            continue;
+        }
+        if (tokens[i] == "key" || tokens[i] == "cache-key" || tokens[i] == "cacheKey") {
+            if (i + 1 >= tokens.size()) {
+                throw std::runtime_error("Expected expression after fetch '" + tokens[i] + "' at line " + std::to_string(lineNumber));
+            }
+            spec.cacheKeyExpr = friendlyExpression(tokens[i + 1]);
+            i += 2;
+            continue;
+        }
+        if (tokens[i] == "every" || tokens[i] == "revalidate") {
+            if (i + 1 >= tokens.size()) {
+                throw std::runtime_error("Expected milliseconds after fetch '" + tokens[i] + "' at line " + std::to_string(lineNumber));
+            }
+            spec.revalidateMs = tokens[i + 1];
+            i += 2;
+            continue;
+        }
+        if (tokens[i] == "dedupe") {
+            spec.dedupe = true;
+            i += 1;
+            continue;
+        }
+        if (tokens[i] == "background") {
+            spec.background = true;
+            i += 1;
             continue;
         }
         if (tokens[i] == "lazy") {
@@ -1996,6 +2046,9 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
     std::string dataExpr;
     std::string byField;
     std::string valueField;
+    std::vector<std::string> valueFields;
+    std::vector<std::string> seriesLabels;
+    std::vector<std::string> seriesColors;
     std::string label = "\"Chart\"";
     std::string width = "\"640\"";
     std::string height = "\"320\"";
@@ -2006,11 +2059,23 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
     std::string legendStr;
     std::string gridStr;
     std::string stackedStr;
+    std::string minValue;
+    std::string maxValue;
+    std::string tickCount;
+    std::vector<std::string> exportFormats;
+    struct ChartAnnotation {
+        std::string label;
+        std::string at;
+        std::string valueField;
+        std::string color;
+    };
+    std::vector<ChartAnnotation> annotations;
     std::vector<std::string> passthroughAttrs;
 
     static const std::set<std::string> chartKeywords = {
-        "data", "by", "value", "label", "aria-label", "width", "height",
-        "viewBox", "viewbox", "color", "axis", "legend", "grid", "stacked"
+        "data", "by", "value", "values", "series", "colors", "label", "aria-label",
+        "width", "height", "viewBox", "viewbox", "color", "axis", "legend", "grid",
+        "stacked", "min", "max", "ticks", "annotate", "export"
     };
 
     size_t i = 1;
@@ -2030,6 +2095,35 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
         if (key == "data") { dataExpr = requireValue("data"); continue; }
         if (key == "by")   { byField = requireValue("by"); continue; }
         if (key == "value") { valueField = requireValue("value"); continue; }
+        if (key == "values") {
+            while (i < tokens.size() && !chartKeywords.count(tokens[i])) {
+                valueFields.push_back(unquote(tokens[i++]));
+            }
+            if (valueFields.empty()) {
+                throw std::runtime_error("Expected one or more fields after chart values at line " + std::to_string(lineNumber));
+            }
+            continue;
+        }
+        if (key == "series") {
+            const std::string raw = unquote(requireValue("series"));
+            std::stringstream ss(raw);
+            std::string item;
+            while (std::getline(ss, item, ',')) {
+                item = trim(item);
+                if (!item.empty()) seriesLabels.push_back(item);
+            }
+            continue;
+        }
+        if (key == "colors") {
+            const std::string raw = unquote(requireValue("colors"));
+            std::stringstream ss(raw);
+            std::string item;
+            while (std::getline(ss, item, ',')) {
+                item = trim(item);
+                if (!item.empty()) seriesColors.push_back(item);
+            }
+            continue;
+        }
         if (key == "label" || key == "aria-label") {
             label = friendlyExpression(requireValue(key)); continue;
         }
@@ -2066,6 +2160,46 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
             continue;
         }
         if (key == "stacked") { stackedStr = "\"true\""; continue; }
+        if (key == "min") { minValue = friendlyExpression(requireValue("min")); continue; }
+        if (key == "max") { maxValue = friendlyExpression(requireValue("max")); continue; }
+        if (key == "ticks") { tickCount = friendlyExpression(requireValue("ticks")); continue; }
+        if (key == "export") {
+            while (i < tokens.size() && !chartKeywords.count(tokens[i])) {
+                const std::string format = unquote(tokens[i++]);
+                if (format == "svg" || format == "png" || format == "csv") {
+                    exportFormats.push_back(format);
+                    continue;
+                }
+                throw std::runtime_error("Unsupported chart export format '" + format + "' at line " + std::to_string(lineNumber) + "; supported: svg, png, csv");
+            }
+            if (exportFormats.empty()) {
+                throw std::runtime_error("Expected one or more formats after chart export at line " + std::to_string(lineNumber));
+            }
+            continue;
+        }
+        if (key == "annotate") {
+            ChartAnnotation annotation;
+            annotation.label = unquote(requireValue("annotate"));
+            if (i >= tokens.size() || tokens[i] != "at") {
+                throw std::runtime_error("Expected 'at <label>' after chart annotate at line " + std::to_string(lineNumber));
+            }
+            ++i;
+            annotation.at = unquote(requireValue("annotate at"));
+            while (i < tokens.size() && (tokens[i] == "value" || tokens[i] == "color")) {
+                const std::string noteKey = tokens[i++];
+                if (noteKey == "value") {
+                    annotation.valueField = unquote(requireValue("annotate value"));
+                    continue;
+                }
+                if (noteKey == "color") {
+                    annotation.color = unquote(requireValue("annotate color"));
+                    continue;
+                }
+                throw std::runtime_error("Unknown chart annotate option '" + noteKey + "' at line " + std::to_string(lineNumber));
+            }
+            annotations.push_back(annotation);
+            continue;
+        }
         if (i >= tokens.size()) {
             passthroughAttrs.push_back(key);
         } else {
@@ -2076,9 +2210,35 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
     if (type != "bar" && type != "line") {
         throw std::runtime_error("Unsupported chart type '" + type + "' at line " + std::to_string(lineNumber) + "; supported: bar, line");
     }
-    if (dataExpr.empty() || byField.empty() || valueField.empty()) {
-        throw std::runtime_error("Expected 'chart " + type + " data <rows> by <field> value <field>' at line " + std::to_string(lineNumber));
+    if (dataExpr.empty() || byField.empty() || (valueField.empty() && valueFields.empty())) {
+        throw std::runtime_error("Expected 'chart " + type + " data <rows> by <field> value <field>' or 'values <field...>' at line " + std::to_string(lineNumber));
     }
+
+    auto joinCsv = [](const std::vector<std::string>& values) {
+        std::ostringstream out;
+        for (size_t index = 0; index < values.size(); ++index) {
+            if (index) out << ",";
+            out << values[index];
+        }
+        return out.str();
+    };
+    auto escapeAnnotationPart = [](std::string value) {
+        for (char& ch : value) {
+            if (ch == '|' || ch == ';') ch = ' ';
+        }
+        return value;
+    };
+    auto joinAnnotations = [&](const std::vector<ChartAnnotation>& values) {
+        std::ostringstream out;
+        for (size_t index = 0; index < values.size(); ++index) {
+            if (index) out << ";";
+            out << escapeAnnotationPart(values[index].label) << "|"
+                << escapeAnnotationPart(values[index].at) << "|"
+                << escapeAnnotationPart(values[index].valueField) << "|"
+                << escapeAnnotationPart(values[index].color);
+        }
+        return out.str();
+    };
 
     std::ostringstream open;
     open << "@svg role=\"img\" aria-label=" << label
@@ -2090,11 +2250,19 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
          << " width=" << width
          << " height=" << height
          << " viewBox=" << viewBox;
+    if (!valueFields.empty()) open << " data-jtml-chart-values=" << quote(joinCsv(valueFields));
+    if (!seriesLabels.empty()) open << " data-jtml-chart-series=" << quote(joinCsv(seriesLabels));
+    if (!seriesColors.empty()) open << " data-jtml-chart-colors=" << quote(joinCsv(seriesColors));
     if (!axisXLabel.empty()) open << " data-jtml-chart-axis-x=" << axisXLabel;
     if (!axisYLabel.empty()) open << " data-jtml-chart-axis-y=" << axisYLabel;
     if (!legendStr.empty())  open << " data-jtml-chart-legend=" << legendStr;
     if (!gridStr.empty())    open << " data-jtml-chart-grid=" << gridStr;
     if (!stackedStr.empty()) open << " data-jtml-chart-stacked=" << stackedStr;
+    if (!minValue.empty())   open << " data-jtml-chart-min=" << minValue;
+    if (!maxValue.empty())   open << " data-jtml-chart-max=" << maxValue;
+    if (!tickCount.empty())  open << " data-jtml-chart-ticks=" << tickCount;
+    if (!annotations.empty()) open << " data-jtml-chart-annotations=" << quote(joinAnnotations(annotations));
+    if (!exportFormats.empty()) open << " data-jtml-chart-export=" << quote(joinCsv(exportFormats));
     for (const auto& attr : passthroughAttrs) open << " " << attr;
     open << "\\\\";
     result.openLine = open.str();
@@ -2213,6 +2381,7 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
     const bool isInputLike = (resolvedTag == "input" || resolvedTag == "textarea");
     const bool isFileLike = (friendlyTag == "file" || friendlyTag == "dropzone");
     const bool isScene3d = (friendlyTag == "scene3d");
+    bool hasEventBinding = false;
 
     if (shouldTreatAsInlineText(resolvedTag, tokens, i)) {
         if (isFileLike || isScene3d) {
@@ -2268,6 +2437,7 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
             if (i >= tokens.size()) {
                 throw std::runtime_error("Expected action after event '" + key + "' at line " + std::to_string(lineNumber));
             }
+            hasEventBinding = true;
             attrs.push_back(classicEventName(key) + "=" + actionCall(tokens[i++]));
             continue;
         }
@@ -2347,6 +2517,13 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
             attrs.push_back(key);
             continue;
         }
+        if (key == "type") {
+            if (i >= tokens.size()) {
+                throw std::runtime_error("Expected value after 'type' at line " + std::to_string(lineNumber));
+            }
+            attrs.push_back("type=" + friendlyExpression(tokens[i++]));
+            continue;
+        }
         // A quoted literal that has no following attribute value is inline text,
         // not a standalone attribute. Emit it as a show statement.
         if (isQuoted(key) &&
@@ -2361,6 +2538,10 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
             continue;
         }
         attrs.push_back(key + "=" + friendlyExpression(tokens[i++]));
+    }
+
+    if (resolvedTag == "button" && hasEventBinding && !hasAttributeNamed(attrs, "type")) {
+        attrs.push_back("type=\"button\"");
     }
 
     if (!className.empty()) {
@@ -2519,6 +2700,8 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
     std::map<std::string, std::string> redirectActions;
     // Maps action name → fetch names refreshed after the action runs.
     std::map<std::string, std::vector<std::string>> invalidateActions;
+    std::map<std::string, std::vector<std::string>> invalidateGroups;
+    std::set<std::string> invalidateAllActions;
     // Guard declarations: path → {guardVar, redirectPath}
     struct GuardDecl { std::string var; std::string redirect; };
     std::vector<std::pair<std::string, GuardDecl>> guardDecls;
@@ -2665,6 +2848,21 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
                 }
                 if (!fetch.stalePolicy.empty()) {
                     marker += " data-stale=" + fetch.stalePolicy;
+                }
+                if (!fetch.groupName.empty()) {
+                    marker += " data-group=" + quote(fetch.groupName);
+                }
+                if (!fetch.cacheKeyExpr.empty()) {
+                    marker += " data-cache-key-expr=" + quote(fetch.cacheKeyExpr);
+                }
+                if (!fetch.revalidateMs.empty()) {
+                    marker += " data-revalidate-ms=" + quote(fetch.revalidateMs);
+                }
+                if (fetch.dedupe) {
+                    marker += " data-dedupe=\"true\"";
+                }
+                if (fetch.background) {
+                    marker += " data-background=\"true\"";
                 }
                 if (fetch.lazy) {
                     marker += " data-lazy=\"true\"";
@@ -2856,18 +3054,33 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
             redirectActions[actionName] = tokens[1];
         } else if (head == "invalidate") {
             if (tokens.size() < 2) {
-                throw std::runtime_error("Expected 'invalidate fetchName [fetchName...]' at line " + std::to_string(line.number));
+                throw std::runtime_error("Expected 'invalidate fetchName [fetchName...]', 'invalidate group groupName', or 'invalidate all' at line " + std::to_string(line.number));
             }
             const std::string actionName = activeActionName();
             if (actionName.empty()) {
                 throw std::runtime_error("'invalidate' can only be used inside a 'when' action at line " + std::to_string(line.number));
             }
-            auto& names = invalidateActions[actionName];
-            for (size_t i = 1; i < tokens.size(); ++i) {
-                if (tokens[i] == ",") continue;
-                std::string name = tokens[i];
-                if (!name.empty() && name.back() == ',') name.pop_back();
-                if (!name.empty()) names.push_back(name);
+            if (tokens[1] == "all") {
+                invalidateAllActions.insert(actionName);
+            } else if (tokens[1] == "group") {
+                if (tokens.size() < 3) {
+                    throw std::runtime_error("Expected group name after 'invalidate group' at line " + std::to_string(line.number));
+                }
+                auto& groups = invalidateGroups[actionName];
+                for (size_t i = 2; i < tokens.size(); ++i) {
+                    if (tokens[i] == ",") continue;
+                    std::string name = unquote(tokens[i]);
+                    if (!name.empty() && name.back() == ',') name.pop_back();
+                    if (!name.empty()) groups.push_back(name);
+                }
+            } else {
+                auto& names = invalidateActions[actionName];
+                for (size_t i = 1; i < tokens.size(); ++i) {
+                    if (tokens[i] == ",") continue;
+                    std::string name = tokens[i];
+                    if (!name.empty() && name.back() == ',') name.pop_back();
+                    if (!name.empty()) names.push_back(name);
+                }
             }
         } else if (head == "timeline") {
             // timeline name [duration N] [easing E] [autoplay] [repeat]
@@ -2970,15 +3183,34 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
     // Emit meta elements for action-driven fetch invalidation. Unlike
     // `refresh action`, these run after the action has dispatched so mutation
     // handlers can update state/server data before the fetch is retried.
-    for (const auto& [actionName, fetchNames] : invalidateActions) {
-        if (fetchNames.empty()) continue;
+    std::set<std::string> invalidateActionNames;
+    for (const auto& [actionName, _] : invalidateActions) invalidateActionNames.insert(actionName);
+    for (const auto& [actionName, _] : invalidateGroups) invalidateActionNames.insert(actionName);
+    for (const auto& actionName : invalidateAllActions) invalidateActionNames.insert(actionName);
+    for (const auto& actionName : invalidateActionNames) {
+        const auto fetchIt = invalidateActions.find(actionName);
+        const auto groupIt = invalidateGroups.find(actionName);
+        const std::vector<std::string> fetchNames =
+            fetchIt == invalidateActions.end() ? std::vector<std::string>{} : fetchIt->second;
+        const std::vector<std::string> groupNames =
+            groupIt == invalidateGroups.end() ? std::vector<std::string>{} : groupIt->second;
         std::ostringstream joined;
         for (size_t i = 0; i < fetchNames.size(); ++i) {
             if (i > 0) joined << ",";
             joined << fetchNames[i];
         }
+        std::ostringstream groups;
+        for (size_t i = 0; i < groupNames.size(); ++i) {
+            if (i > 0) groups << ",";
+            groups << groupNames[i];
+        }
         out << "@meta data-jtml-invalidate-action=" << quote(actionName)
-            << " data-jtml-invalidate-fetches=" << quote(joined.str()) << "\\\\\n";
+            << " data-jtml-invalidate-fetches=" << quote(joined.str())
+            << " data-jtml-invalidate-groups=" << quote(groups.str());
+        if (invalidateAllActions.count(actionName)) {
+            out << " data-jtml-invalidate-all=\"true\"";
+        }
+        out << "\\\\\n";
     }
 
     // Emit meta elements for route guards so the browser runtime can

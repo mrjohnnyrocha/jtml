@@ -128,6 +128,11 @@ private:
         std::map<std::string, std::string> params;
         std::map<std::string, std::string> locals;
         std::shared_ptr<JTML::Environment> environment;
+        bool runtimeReady = false;
+        std::vector<std::string> stateNames;
+        std::vector<std::string> derivedNames;
+        std::vector<std::string> actionNames;
+        std::vector<std::string> effectNames;
     };
 
     struct RuntimeComponentDefinition {
@@ -135,6 +140,15 @@ private:
         int sourceLine = 0;
         std::vector<std::string> params;
         std::string body;
+        std::vector<std::string> localState;
+        std::vector<std::string> localDerived;
+        std::vector<std::string> localActions;
+        std::vector<std::string> localEffects;
+        std::vector<std::string> eventBindings;
+        bool hasSlot = false;
+        int bodyNodeCount = 0;
+        int rootTemplateNodeCount = 0;
+        int slotCount = 0;
     };
 
     std::vector<RuntimeComponentInstance> componentInstances;
@@ -186,6 +200,7 @@ private:
     void collectComponentInstances(const ASTNode& node, std::vector<RuntimeComponentInstance>& out);
     void collectComponentDefinitions(const ASTNode& node, std::vector<RuntimeComponentDefinition>& out);
     void attachComponentEnvironment(RuntimeComponentInstance& instance);
+    const RuntimeComponentDefinition* findComponentDefinition(const std::string& name) const;
     RuntimeComponentInstance* findComponentInstance(const std::string& id);
     RuntimeComponentInstance* findComponentInstanceForElement(const JtmlElementNode& elem);
     std::shared_ptr<JTML::Environment> environmentForInstance(JTML::InstanceID instanceID) const;

@@ -97,6 +97,17 @@ only need component boundaries.
       "locals": {
         "count": { "lowered": "__Counter_1_count", "kind": "normal", "value": 0 },
         "add": { "lowered": "__Counter_1_add", "function": true, "arity": 0 }
+      },
+      "runtime": {
+        "mode": "semantic-instance",
+        "ownsEnvironment": true,
+        "ready": true,
+        "environmentId": "Counter_1",
+        "definition": "Counter",
+        "state": ["count"],
+        "actions": ["add"],
+        "derived": [],
+        "effects": []
       }
     }
   ]
@@ -108,7 +119,8 @@ only need component boundaries.
 Returns the component definition registry preserved from Friendly `make`
 declarations. This is the migration bridge toward non-expanded runtime
 `ComponentInstance` execution: tools can inspect the original component
-contract even while the renderer still emits compatibility-expanded DOM.
+contract and semantic runtime plan even while the renderer still emits
+compatibility-expanded DOM.
 
 ```json
 {
@@ -118,6 +130,26 @@ contract even while the renderer still emits compatibility-expanded DOM.
       "name": "Counter",
       "sourceLine": 2,
       "params": ["label"],
+      "bodyNodeCount": 4,
+      "rootTemplateNodeCount": 1,
+      "slotCount": 0,
+      "localState": ["count"],
+      "localActions": ["add"],
+      "localDerived": [],
+      "localEffects": [],
+      "eventBindings": ["add"],
+      "runtimePlan": {
+        "mode": "semantic-instance",
+        "ownsEnvironment": true,
+        "state": ["count"],
+        "actions": ["add"],
+        "derived": [],
+        "effects": [],
+        "bodyNodeCount": 4,
+        "rootTemplateNodeCount": 1,
+        "slotCount": 0,
+        "hasSlot": false
+      },
       "body": "0:let count = 0\n0:when add\n2:count += 1\n0:box\n2:show count\n"
     }
   ]

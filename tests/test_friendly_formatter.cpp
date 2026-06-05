@@ -317,6 +317,24 @@ TEST(FriendlyFormatter, ChartReverseMapsToFriendlyChartSyntax) {
     EXPECT_EQ(friendly.find("data-jtml-chart"), std::string::npos);
 }
 
+TEST(FriendlyFormatter, SvgTextReverseMapsToFriendlySvgTextAlias) {
+    std::string friendly = classicToFriendly(
+        "@text x=\"20\" y=\"24\" fill=\"#334155\" font-size=\"14\"\\\\\n"
+        "    show \"Revenue\"\\\\\n"
+        "#\n");
+    EXPECT_NE(friendly.find("svgtext x \"20\" y \"24\" fill \"#334155\" font-size \"14\""),
+              std::string::npos);
+    EXPECT_NE(friendly.find("show \"Revenue\""), std::string::npos);
+}
+
+TEST(FriendlyFormatter, MultiSeriesChartReverseMapsToFriendlyChartSyntax) {
+    std::string friendly = classicToFriendly(
+        "@svg role=\"img\" aria-label=\"Revenue split\" data-jtml-chart=\"bar\" data-jtml-chart-data=\"rows\" data-jtml-chart-by=\"month\" data-jtml-chart-value=\"\" data-jtml-chart-values=\"sales,expenses\" data-jtml-chart-series=\"Sales,Expenses\" data-jtml-chart-colors=\"#0f766e,#b42318\" data-jtml-chart-stacked=\"true\" data-jtml-chart-legend=\"true\" data-jtml-chart-max=40 data-jtml-chart-ticks=5 data-jtml-chart-export=\"svg,png,csv\" data-jtml-chart-annotations=\"Launch|Feb|sales|#9333ea\" width=\"640\" height=\"320\" viewBox=\"0 0 640 320\"\\\\\n"
+        "#\n");
+    EXPECT_NE(friendly.find("chart bar data rows by month values sales expenses label \"Revenue split\" colors \"#0f766e,#b42318\" series \"Sales,Expenses\" legend stacked max 40 ticks 5 export svg png csv annotate \"Launch\" at \"Feb\" value sales color \"#9333ea\""), std::string::npos);
+    EXPECT_EQ(friendly.find("data-jtml-chart-values"), std::string::npos);
+}
+
 TEST(FriendlyFormatter, Scene3DReverseMapsToFriendlySceneSyntax) {
     std::string friendly = classicToFriendly(
         "@canvas data-jtml-scene3d=\"true\" role=\"img\" aria-label=\"Product model\" data-jtml-scene=\"productScene\" data-jtml-camera=\"orbit\" data-jtml-controls=\"orbit\" data-jtml-renderer=\"three\" data-jtml-scene3d-controller=\"sceneState\" width=\"640\" height=\"360\"\\\\\n"

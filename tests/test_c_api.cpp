@@ -77,6 +77,9 @@ TEST(CApi, LoadsRuntimeAndDispatchesComponentActions) {
     ASSERT_EQ(definitions.size(), 1);
     EXPECT_EQ(definitions[0]["name"], "Counter");
     EXPECT_EQ(definitions[0]["params"][0], "label");
+    EXPECT_EQ(definitions[0]["runtimePlan"]["mode"], "semantic-instance");
+    EXPECT_EQ(definitions[0]["runtimePlan"]["actions"][0], "add");
+    EXPECT_EQ(definitions[0]["runtimePlan"]["state"][0], "count");
 
     CStr bindings;
     CStr actionError;

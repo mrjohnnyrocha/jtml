@@ -86,8 +86,8 @@ The near-term implementation order lives in
   active links, guards, and `activeRoute`. ✅
 - Scoped Friendly `style` blocks under `[data-jtml-app]`. ✅
 - Runtime component-instance bridge with per-instance state/action metadata,
-  `/api/components`, `/api/component-definitions`, and component action
-  dispatch. ✅
+  semantic runtime plans, `/api/components`, `/api/component-definitions`, and
+  component action dispatch. ✅
 - Studio as the language home: examples, tutorials, docs, compiler artifacts,
   diagnostics, linter, fixer, formatter, export, local version snapshots,
   autosaved drafts, and command palette. ✅
@@ -131,9 +131,13 @@ The current focus is the semantic-core transition:
   browser component registry consumes those records before DOM marker fallback.
   ✅ Live-backend alignment slice: the interpreter now registers runtime
   component definitions/instances from the same semantic records first, using
-  lowered DOM marker scans only as a compatibility fallback.
-- P2 component instances: keep the existing metadata bridge stable while moving
-  beyond source expansion as the semantic truth.
+  lowered DOM marker scans only as a compatibility fallback. ✅ Runtime-plan
+  slice: component definitions now carry local state/actions/derived/effects,
+  event bindings, slot/body shape, and a `runtimePlan`; component instances
+  expose their owning runtime environment and validate actions against that
+  semantic definition before dispatch.
+- P2 component instances: keep the existing runtime-plan bridge stable while
+  moving beyond source expansion as the semantic truth.
 - P3 semantic styling: ✅ First slice. `theme`, UI primitives, utility
   modifiers, generated stylesheet, semantic primitive/theme counts, the
   structured `jtml explain --json` `semantic.ui` contract, and raw CSS escape
@@ -153,7 +157,8 @@ Priority order after the semantic usage cleanup is:
 1. Semantic styling and UI primitives.
 2. Browser-local production runtime.
 3. Interop and full web-platform escape hatches.
-4. Direct component-instance semantics where those slices expose weak ownership.
+4. Direct non-expanded component template execution where those slices expose
+   weak ownership.
 5. Studio/docs hardening on top of the same semantics.
 
 In parallel, keep Friendly JTML as the only default authoring dialect, keep the

@@ -238,12 +238,16 @@ chart bar data revenue by month value total
   color "#0f766e"
 ```
 
-The first implemented chart slice is `chart bar data rows by label value total`
-with optional `label`, `width`, `height`, `viewBox`, and `color`. It compiles
-to accessible SVG metadata and the browser runtime renders bars from local
-state, store state, or fetch results. Later chart syntax should add explicit
-axis, legend, scale, stacked/grouped bars, line charts, and static export
-helpers. The linter should keep requiring labels and sensible fallbacks.
+The implemented chart slices include `chart bar data rows by label value total`,
+`chart line ...`, axis labels, legends, grid lines, grouped multi-series bars,
+stacked bars, multi-series lines via `values`, `series`, and `colors`,
+`svgtext` labels for custom SVG annotation, first-class scale controls with
+`min`, `max`, and `ticks`, chart-native `annotate` markers, and
+browser-local `export svg png csv` controls.
+Charts compile to accessible SVG metadata and the browser runtime renders from
+local state, store state, or fetch results. Later chart syntax should add richer
+mark/annotation controls and optional host package renderers. The linter should keep
+requiring labels and sensible fallbacks.
 
 ### Animation And Timelines
 
@@ -331,8 +335,10 @@ Studio should grow a media/graphics workbench:
    `bar`, `dot`, `line`, `path`, `polyline`, `polygon`, and `group` aliases.
 6. ✅ Add accessible `chart bar data rows by label value total` backed by the
    browser SVG renderer.
-7. Add SVG text, axes, legends, and richer chart primitives backed by the same
-   SVG renderer.
+7. ✅ Add axes, legends, line charts, grouped bars, stacked bars,
+   multi-series chart primitives, `svgtext` annotation labels, scale controls,
+   first-class chart annotations, and browser-local chart export controls backed
+   by the same SVG renderer. Next: richer mark styling.
 8. ✅ Add `scene3d` canvas mounts with host renderer contract and fallback.
 9. ✅ Add `scene3d ... into sceneState`, host `spec.update(...)`, and first
    production lints for dimensions and renderer names.

@@ -1,0 +1,80 @@
+[
+  {
+    "name": "counter.jtml",
+    "label": "Counter",
+    "category": "basics",
+    "file": "counter.jtml"
+  },
+  {
+    "name": "form.jtml",
+    "label": "Form",
+    "category": "basics",
+    "file": "form.jtml"
+  },
+  {
+    "name": "dashboard.jtml",
+    "label": "Dashboard",
+    "category": "basics",
+    "file": "dashboard.jtml"
+  },
+  {
+    "name": "fetch.jtml",
+    "label": "Fetch",
+    "category": "data",
+    "file": "fetch.jtml"
+  },
+  {
+    "name": "fetch-post.jtml",
+    "label": "POST fetch",
+    "category": "data",
+    "file": "fetch-post.jtml"
+  },
+  {
+    "name": "store.jtml",
+    "label": "Store",
+    "category": "data",
+    "file": "store.jtml"
+  },
+  {
+    "name": "effects.jtml",
+    "label": "Effects",
+    "category": "data",
+    "file": "effects.jtml"
+  },
+  {
+    "name": "routes.jtml",
+    "label": "Routes",
+    "category": "navigation",
+    "file": "routes.jtml"
+  },
+  {
+    "name": "redirect.jtml",
+    "label": "Redirect",
+    "category": "navigation",
+    "file": "redirect.jtml"
+  },
+  {
+    "name": "media.jtml",
+    "label": "Media",
+    "category": "media",
+    "file": "media.jtml"
+  },
+  {
+    "name": "charts.jtml",
+    "label": "Charts",
+    "category": "media",
+    "file": "charts.jtml"
+  },
+  {
+    "name": "animation.jtml",
+    "label": "Animation",
+    "category": "media",
+    "file": "animation.jtml"
+  },
+  {
+    "name": "components.jtml",
+    "label": "Components",
+    "category": "composition",
+    "file": "components.jtml"
+  }
+]

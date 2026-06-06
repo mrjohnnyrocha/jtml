@@ -364,6 +364,14 @@ Everything needed before public deployment is available from the repo:
 scripts/verify_all.sh
 ```
 
+`jtml doctor --json` is also the current readiness contract. It reports local
+toolkit checks, stable/first-slice/experimental feature tiers, required
+verification gates, and the honest platform status: JTML is enterprise-relevant
+but not enterprise-ready yet. Treat `scripts/verify_all.sh` as the local
+predeploy gate; direct non-expanded component execution, browser-local parity,
+Studio content externalization, and internal module boundaries remain the next
+architecture hardening targets.
+
 The future public site content is in `site/`, including `site/tools.html` for
 the editor, runner, tutorial, studio, tester, and release-tooling overview.
 

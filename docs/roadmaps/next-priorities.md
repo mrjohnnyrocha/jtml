@@ -8,6 +8,12 @@ The next work should keep following the same rule:
 Friendly JTML -> typed AST -> semantic IR -> observable graph -> backends
 ```
 
+Honest maturity rule: JTML is enterprise-relevant, not enterprise-ready. New
+features should either strengthen semantic ownership, improve browser/live
+runtime parity, or remove monolithic/embedded implementation debt. `jtml
+doctor --json` reports the current stable/first-slice/experimental tiers and
+the verification gates expected before release work.
+
 ## 1. Semantic Styling And UI Primitives
 
 Status: first slice implemented. `theme`, semantic UI primitives, utility
@@ -238,8 +244,75 @@ Implementation slices:
    reference docs, Studio mini-reference, VS Code grammar, and LSP completions
    aligned with that catalog instead of independent keyword folklore.
 
+## 6. Platform Modularization And Governance
+
+Status: planned next hardening lane. This is the enterprise-readiness lane, not
+a new feature family.
+
+Why now:
+
+- `friendly.cpp`, `interpreter.cpp`, `transpiler.cpp`, and
+  `cli/studio_shell.cpp` still carry too many responsibilities.
+- Studio examples/docs/reference content should become external data consumed
+  by the shell, not long embedded literals.
+- The language needs internal contracts that a larger team can reason about:
+  semantic IR, runtime components, browser runtime, emitters, diagnostics, LSP,
+  package tooling, and Studio product surface.
+
+Target internal shape:
+
+```text
+src/
+  core/
+  friendly/
+  semantic/
+  runtime/
+    browser/
+    live/
+    components/
+    fetch/
+    routes/
+  emit/
+  interop/
+  studio/
+  lsp/
+```
+
+Implementation slices:
+
+1. ✅ Keep `jtml doctor --json` as the readiness and governance status
+   contract.
+2. ✅ First Studio content externalization slice: playground samples now live in
+   `studio/samples/manifest.json` plus `.jtml` files and are served through
+   `/api/studio/samples`; the embedded shell list remains only as a fallback.
+3. ✅ First Studio reference externalization slice: the mini-reference now lives
+   in `studio/reference/catalog.json`, is served through
+   `/api/studio/reference`, and renders into the Studio Reference panel while
+   keeping fallback markup in the shell.
+4. ✅ First Studio sidebar catalog slice: sample category labels and pinned
+   template names now live in `studio/sidebar/catalog.json` and are served
+   through `/api/studio/sidebar`.
+5. Split semantic UI and language catalogs into reusable data/loader surfaces
+   consumed by CLI, docs, Studio, LSP, and lint.
+6. ✅ First browser runtime emitter split: the generated browser/live runtime
+   script now lives behind `jtml::emitBrowserRuntimeScript()` in
+   `src/browser_runtime_emitter.cpp`, leaving `src/transpiler.cpp` focused on
+   HTML/manifest emission while keeping the public `JtmlTranspiler` API stable.
+7. ✅ First client manifest emitter split: the browser-local manifest now lives
+   behind `jtml::emitClientManifestScript()` in
+   `src/client_manifest_emitter.cpp`, and shared expression serialization moved
+   to `src/expression_source.cpp`. `src/transpiler.cpp` is now primarily the
+   HTML emitter and delegates runtime script plus manifest generation.
+   Next: split browser-local runtime data planning away from the manifest
+   JSON writer, then use that plan for direct component instance execution.
+7. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
+   same catalog endpoint pattern.
+8. Add security, compatibility, deprecation, contribution, benchmark, and
+   release-policy docs once the internal contracts stop moving every slice.
+
 ## Decision
 
-Do semantic styling first, then browser-local runtime, then interop. Component
-instance semantics should proceed in parallel only where a styling or runtime
-slice exposes weak component ownership.
+Do semantic styling, browser-local runtime parity, direct component template
+execution, and platform modularization in a balanced loop. Interop and export
+targets should follow once the browser/local runtime contract is stable enough
+that external hosts are not binding to transitional behavior.

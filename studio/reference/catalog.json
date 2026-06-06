@@ -1,0 +1,378 @@
+[
+  {
+    "title": "Which syntax should I choose?",
+    "rows": [
+      {
+        "term": "jtml 2",
+        "description": "Default for web and app code. Friendly, indentation-based syntax for humans, AI agents, Studio, docs, examples, and tutorials."
+      },
+      {
+        "term": "jtl 1",
+        "description": "Experimental logic-first header. It currently lowers through the Friendly pipeline while the larger JTL design is still being shaped."
+      },
+      {
+        "term": "Compatibility backend",
+        "description": "Support layer for older files, generated artifacts, migration targets, embedding, and low-level regression tests."
+      },
+      {
+        "term": "jtml migrate old.jtml -o new.jtml",
+        "description": "Convert most compatibility-form files into Friendly JTML 2."
+      },
+      {
+        "term": "Artifacts -> Compatibility IR",
+        "description": "Debugging output only. New apps should be authored in Friendly JTML."
+      }
+    ]
+  },
+  {
+    "title": "State and values",
+    "rows": [
+      {
+        "term": "let x = expr",
+        "description": "Reactive mutable variable."
+      },
+      {
+        "term": "const x = expr",
+        "description": "Immutable value."
+      },
+      {
+        "term": "get x = expr",
+        "description": "Derived value that recomputes from observed dependencies."
+      },
+      {
+        "term": "show \"Hello {name}\"",
+        "description": "Render text with interpolation."
+      },
+      {
+        "term": "ok ? a : b",
+        "description": "Conditional expression."
+      },
+      {
+        "term": "count += 1",
+        "description": "Compound state update."
+      },
+      {
+        "term": "{ \"key\": value }",
+        "description": "Dictionary literal."
+      },
+      {
+        "term": "[a, b, c]",
+        "description": "Array literal."
+      }
+    ]
+  },
+  {
+    "title": "Actions and events",
+    "rows": [
+      {
+        "term": "when save",
+        "description": "Define an action handler."
+      },
+      {
+        "term": "button \"Save\" click save",
+        "description": "Bind a button click to an action."
+      },
+      {
+        "term": "input placeholder \"Email\" into email",
+        "description": "Two-way input binding."
+      },
+      {
+        "term": "form submit save",
+        "description": "Bind form submission."
+      },
+      {
+        "term": "click, input, change, submit",
+        "description": "Preferred Friendly event names."
+      },
+      {
+        "term": "onClick, onInput, onSubmit",
+        "description": "Compatibility event names are still accepted."
+      }
+    ]
+  },
+  {
+    "title": "Flow",
+    "rows": [
+      {
+        "term": "if condition",
+        "description": "Render or execute a conditional block."
+      },
+      {
+        "term": "else",
+        "description": "Fallback branch after an if block."
+      },
+      {
+        "term": "for item in items",
+        "description": "Iterate arrays or fetch result arrays."
+      },
+      {
+        "term": "while condition",
+        "description": "Loop while a condition remains true."
+      },
+      {
+        "term": "break / continue",
+        "description": "Loop control."
+      },
+      {
+        "term": "try / catch / finally",
+        "description": "Error handling syntax in Friendly source."
+      }
+    ]
+  },
+  {
+    "title": "Elements and media",
+    "rows": [
+      {
+        "term": "page",
+        "description": "Root main element."
+      },
+      {
+        "term": "box / text / link",
+        "description": "div, paragraph, and anchor aliases."
+      },
+      {
+        "term": "image src \"url\" alt \"Logo\"",
+        "description": "Accessible image."
+      },
+      {
+        "term": "video src \"demo.mp4\" controls into player",
+        "description": "Video element plus reactive media controller state."
+      },
+      {
+        "term": "audio src \"intro.mp3\" controls into playback",
+        "description": "Audio element plus reactive media controller state."
+      },
+      {
+        "term": "file \"Choose image\" accept \"image/*\" into selected",
+        "description": "File metadata and preview URL binding."
+      },
+      {
+        "term": "dropzone \"Drop media\" accept \"image/*\" into assets",
+        "description": "Drag/drop file input with multiple-file state."
+      }
+    ]
+  },
+  {
+    "title": "Graphics and advanced surfaces",
+    "rows": [
+      {
+        "term": "graphic aria-label \"Chart\"",
+        "description": "Accessible SVG surface."
+      },
+      {
+        "term": "bar / dot / line / path / svgtext",
+        "description": "Declarative SVG shape aliases."
+      },
+      {
+        "term": "chart bar data rows by label value total",
+        "description": "Accessible SVG bar chart from JTML state or fetch data."
+      },
+      {
+        "term": "chart line data rows by day value visits",
+        "description": "Accessible SVG line chart for trends."
+      },
+      {
+        "term": "values sales expenses",
+        "description": "Multi-series chart fields."
+      },
+      {
+        "term": "scene3d \"Product\" scene model camera orbit into sceneState",
+        "description": "Canvas 3D mount with fallback and host renderer hook."
+      },
+      {
+        "term": "canvas id \"chart\" width \"800\"",
+        "description": "Raw drawing surface. Use extern for custom drawing today."
+      }
+    ]
+  },
+  {
+    "title": "Async data",
+    "rows": [
+      {
+        "term": "let users = fetch \"/api/users\"",
+        "description": "GET request with users.loading, users.data, and users.error."
+      },
+      {
+        "term": "fetch ... method \"POST\" body { \"email\": email }",
+        "description": "JSON POST request."
+      },
+      {
+        "term": "timeout 2500 retry 2",
+        "description": "Abort slow requests and retry failures."
+      },
+      {
+        "term": "stale keep",
+        "description": "Keep previous data while refreshing or recovering from errors."
+      },
+      {
+        "term": "group people",
+        "description": "Group fetches for invalidation."
+      },
+      {
+        "term": "key id dedupe every 30000 background",
+        "description": "Cache identity, duplicate suppression, timed revalidation, and hidden-tab behavior."
+      },
+      {
+        "term": "lazy refresh reload",
+        "description": "Register a fetch that starts when explicitly refreshed."
+      },
+      {
+        "term": "invalidate users",
+        "description": "Refresh a fetch after an action runs."
+      }
+    ]
+  },
+  {
+    "title": "Routes",
+    "rows": [
+      {
+        "term": "route \"/\" as Home",
+        "description": "Hash-based SPA route."
+      },
+      {
+        "term": "route \"/user/:id\" as Profile",
+        "description": "Route parameter captured as reactive state."
+      },
+      {
+        "term": "route \"*\" as NotFound",
+        "description": "Wildcard fallback route."
+      },
+      {
+        "term": "route \"/dashboard\" as Dashboard layout Shell",
+        "description": "Wrap route content in a layout component slot."
+      },
+      {
+        "term": "route \"/people\" as People load users",
+        "description": "Start lazy fetches when the route matches."
+      },
+      {
+        "term": "guard \"/admin\" require signedIn else \"/login\"",
+        "description": "Block navigation when a condition is false."
+      },
+      {
+        "term": "redirect \"/settings\"",
+        "description": "Navigate programmatically from an action."
+      },
+      {
+        "term": "activeRoute / activeRouteName",
+        "description": "Built-in route state."
+      }
+    ]
+  },
+  {
+    "title": "Components, stores, and effects",
+    "rows": [
+      {
+        "term": "make Card title",
+        "description": "Define a reusable component."
+      },
+      {
+        "term": "slot",
+        "description": "Render caller-provided child content."
+      },
+      {
+        "term": "Card \"Usage\"",
+        "description": "Call a component. Current semantics isolate generated local names; real component instances are the next architectural target."
+      },
+      {
+        "term": "store auth",
+        "description": "Shared reactive state namespace."
+      },
+      {
+        "term": "button \"Logout\" click auth.logout",
+        "description": "Call a store action."
+      },
+      {
+        "term": "effect searchQuery",
+        "description": "Run a block when an observed variable changes."
+      }
+    ]
+  },
+  {
+    "title": "Semantic UI and styling",
+    "rows": [
+      {
+        "term": "theme",
+        "description": "Define color, spacing, radius, and shadow tokens."
+      },
+      {
+        "term": "app / shell / topbar / sidebar / content",
+        "description": "App chrome primitives that lower to ordinary HTML and classes."
+      },
+      {
+        "term": "panel title \"Usage\" pad lg shadow md",
+        "description": "Semantic surface with utility modifiers."
+      },
+      {
+        "term": "grid cols 4 gap md",
+        "description": "Responsive layout intent visible to semantic analysis."
+      },
+      {
+        "term": "metric \"Users\" total \"Active\" tone good",
+        "description": "Dashboard metric primitive."
+      },
+      {
+        "term": "style",
+        "description": "Scoped CSS block for app-local selectors."
+      },
+      {
+        "term": "css raw",
+        "description": "Explicit raw CSS escape hatch."
+      }
+    ]
+  },
+  {
+    "title": "Interop and escape hatches",
+    "rows": [
+      {
+        "term": "extern notify from \"host.notify\"",
+        "description": "Declare a browser-hosted action."
+      },
+      {
+        "term": "button \"Notify\" click notify(\"Saved\")",
+        "description": "Call a host function through the explicit extern boundary."
+      },
+      {
+        "term": "html raw \"<host-widget></host-widget>\"",
+        "description": "Trusted raw HTML for custom elements and embedded host widgets."
+      },
+      {
+        "term": "canvas + extern",
+        "description": "Bridge to Chart.js, Three.js, Mapbox, Monaco, Web Audio, or other browser libraries."
+      }
+    ]
+  },
+  {
+    "title": "Studio tools",
+    "rows": [
+      {
+        "term": "Run / Cmd+Enter",
+        "description": "Compile, lint, and preview."
+      },
+      {
+        "term": "Lint",
+        "description": "Parser and linter diagnostics only."
+      },
+      {
+        "term": "Fix",
+        "description": "Apply safe repairs such as header, tabs, whitespace, and final newline."
+      },
+      {
+        "term": "Format",
+        "description": "Rewrite source with the canonical formatter."
+      },
+      {
+        "term": "Export",
+        "description": "Download generated HTML."
+      },
+      {
+        "term": "Save",
+        "description": "Versioned local snapshot, up to 50 versions per file."
+      },
+      {
+        "term": "Cmd+B / Cmd+J",
+        "description": "Toggle sidebar and inspector."
+      }
+    ]
+  }
+]

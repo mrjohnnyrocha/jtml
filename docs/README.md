@@ -20,7 +20,12 @@ The compact machine-readable language surface is available from the CLI:
 ```sh
 jtml keywords --json
 jtml ui --json
+jtml doctor --json
 ```
+
+Use `jtml doctor --json` for the current machine-readable readiness contract:
+local toolkit checks, verification gates, stable/first-slice/experimental
+tiers, and current enterprise-readiness status.
 
 ## Folder Map
 
@@ -31,6 +36,19 @@ jtml ui --json
 | [`roadmaps/`](roadmaps/) | Active implementation tracks and longer-horizon competitiveness plans. |
 | [`tooling/`](tooling/) | Runtime API, deployment, LSP, and embedding contracts. |
 | [`archive/`](archive/) | Historical implementation notes and repo hygiene snapshots. |
+
+## Studio Content
+
+Studio should load product content from files rather than long embedded C++
+literals wherever practical. Playground examples live under
+[`../studio/samples/`](../studio/samples/) with a `manifest.json`; `jtml studio`
+serves them through `/api/studio/samples` and keeps the embedded shell list only
+as a fallback. The Studio mini-reference now follows the same pattern through
+[`../studio/reference/catalog.json`](../studio/reference/catalog.json) and
+`/api/studio/reference`. Sidebar labels and pinned templates live in
+[`../studio/sidebar/catalog.json`](../studio/sidebar/catalog.json) and are
+served through `/api/studio/sidebar`. Follow this pattern for future larger
+prose blocks.
 
 ## Reference
 
@@ -52,7 +70,7 @@ jtml ui --json
 
 | Document | Status |
 | --- | --- |
-| [`roadmaps/next-priorities.md`](roadmaps/next-priorities.md) | Active near-term order: semantic styling, browser-local runtime, interop, component semantics, and docs/Studio hardening. |
+| [`roadmaps/next-priorities.md`](roadmaps/next-priorities.md) | Active near-term order: semantic styling, browser-local/runtime parity, component semantics, platform modularization, and docs/Studio hardening. |
 | [`roadmaps/jtml-competitive-features-roadmap.md`](roadmaps/jtml-competitive-features-roadmap.md) | Competitiveness roadmap across language, runtime, Studio, tooling, media, and ecosystem. |
 | [`roadmaps/ai-native-implementation-roadmap.md`](roadmaps/ai-native-implementation-roadmap.md) | AI-native diagnostics, repairs, LSP, Studio, modularization, interop, and media. |
 | [`roadmaps/media-graphics-roadmap.md`](roadmaps/media-graphics-roadmap.md) | Media and graphics track. |
@@ -84,6 +102,13 @@ jtml ui --json
   production path, while follow-up refinements may remain.
 - **Planned** means it belongs on the roadmap but should not be generated in
   runnable examples unless explicitly marked experimental.
+- **Experimental** means the feature may appear in demos, tooling contracts, or
+  internal roadmap work, but is not yet a production compatibility promise.
+
+JTML is enterprise-relevant but not enterprise-ready yet. The enterprise lane
+is tracked through `ROADMAP.md`, `roadmaps/next-priorities.md`, and
+`jtml doctor --json`; the priority is reducing compatibility bridges and
+monolithic implementation debt while strengthening semantic IR ownership.
 
 ## Authoring Policy
 

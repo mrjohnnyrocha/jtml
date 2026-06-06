@@ -100,6 +100,44 @@ The near-term implementation order lives in
   components with direct non-expanded `ComponentInstance` execution while
   keeping the existing metadata/runtime contract stable.
 
+## Enterprise Readiness Position
+
+JTML is enterprise-relevant, but it is not enterprise-ready yet. The conceptual
+architecture is now credible: Friendly JTML, typed AST, semantic IR,
+observable graph, runtime plans, and multiple backend targets. The
+implementation is still a hybrid transition: compatibility expansion, embedded
+Studio shell content, monolithic source files, first-slice browser runtime
+parity, and incomplete governance remain active risks.
+
+`jtml doctor --json` is the machine-readable readiness surface. It reports:
+
+- local toolkit checks;
+- required verification gates;
+- stable, first-slice, and experimental feature tiers;
+- current enterprise readiness (`enterpriseReady: false`);
+- next architecture targets.
+
+Enterprise readiness requires the next platform step:
+
+```text
+functional monolith -> modular platform with stable internal contracts
+```
+
+Near-term platform hardening targets:
+
+1. Direct non-expanded `ComponentInstance` template execution.
+2. Browser-local runtime parity with the live runtime.
+3. Studio content externalized from embedded C++ literals.
+4. Internal module boundaries for Friendly lowering, semantic IR, runtime,
+   emitters, LSP, Studio, interop, and package tooling.
+5. Security, release, compatibility, deprecation, benchmark, and contribution
+   policies.
+
+Stable today means "usable with tests and compatibility expectations." First
+slice means "implemented and valuable, but still being hardened."
+Experimental means "available for exploration and tool contracts, but not yet
+a production promise."
+
 ## Modularization (done this sprint)
 
 - **Directory layout**: `include/jtml/` for every public header, `src/` for every `.cpp`, `third_party/` for vendored single-header deps, `cli/` for the `jtml` binary split by command, `cmake/` for reusable helpers, `tests/` for the unit suite, `.github/workflows/` for CI.
@@ -169,3 +207,28 @@ component/runtime semantics until larger apps feel boringly reliable.
 The shareable documentation map lives in `docs/README.md`. Feature documents
 should use the same status language as this roadmap: implemented, first slice,
 hardened, or planned.
+
+## Latest Platform Slice
+
+- Studio sample externalization first slice. ✅ — playground examples now live
+  under `studio/samples/manifest.json` plus `.jtml` files. `jtml studio`
+  serves them via `/api/studio/samples`; the embedded shell list remains as a
+  fallback only.
+- Studio reference externalization first slice. ✅ — the mini-reference now
+  lives in `studio/reference/catalog.json`, is served via
+  `/api/studio/reference`, and renders into the Reference panel while the
+  embedded markup remains as a no-network fallback. Sidebar content and larger
+  Studio prose are the next shell-content extraction targets.
+- Studio sidebar catalog externalization first slice. ✅ — sample category
+  labels and pinned templates now live in `studio/sidebar/catalog.json` and are
+  served via `/api/studio/sidebar`. Larger Studio prose blocks remain the next
+  content extraction target.
+- Browser runtime emitter split. ✅ — the generated browser/live runtime script
+  moved from `src/transpiler.cpp` into `src/browser_runtime_emitter.cpp` behind
+  `jtml::emitBrowserRuntimeScript()`. This is the first concrete step toward
+  separating HTML emission, browser runtime emission, and runtime planning.
+- Client manifest emitter split. ✅ — browser-local manifest generation moved
+  behind `jtml::emitClientManifestScript()` in
+  `src/client_manifest_emitter.cpp`, with shared expression serialization in
+  `src/expression_source.cpp`. `src/transpiler.cpp` now delegates both runtime
+  script and manifest generation.

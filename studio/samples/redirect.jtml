@@ -1,0 +1,36 @@
+jtml 2
+
+when openDashboard
+  redirect "/dashboard"
+
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
+make Home
+  page style "font-family: system-ui; max-width: 560px; margin: 48px auto; padding: 0 20px"
+    panel title "Welcome" pad lg shadow md
+      stack gap md
+        text "This action navigates without a full page load."
+        toolbar
+          button "Open dashboard" click openDashboard
+
+make Dashboard
+  page style "font-family: system-ui; max-width: 560px; margin: 48px auto; padding: 0 20px"
+    panel title "Dashboard" pad lg shadow md
+      stack gap md
+        alert "Redirect landed here through route state." tone good
+        link "Back home" to "/"
+
+make NotFound
+  page style "font-family: system-ui; max-width: 560px; margin: 48px auto; padding: 0 20px"
+    panel title "Not found" pad lg shadow md
+      stack gap md
+        empty "No route matched the current path."
+        link "Home" to "/"
+
+route "/" as Home
+route "/dashboard" as Dashboard
+route "*" as NotFound

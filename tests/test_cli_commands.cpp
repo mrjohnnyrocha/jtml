@@ -289,6 +289,38 @@ TEST(CliUi, JsonReportsSemanticUiCatalog) {
     EXPECT_NE(tokens.find("shadow"), std::string::npos);
 }
 
+TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
+    jtml::cli::Options opts;
+    opts.json = true;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdDoctor(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+    const auto report = nlohmann::json::parse(result.out);
+
+    EXPECT_EQ(report["enterpriseReady"], false);
+    EXPECT_NE(report["readiness"].get<std::string>().find("not enterprise-ready"),
+              std::string::npos);
+    EXPECT_NE(report["architectureSourceOfTruth"].get<std::string>().find("semantic IR"),
+              std::string::npos);
+
+    const std::string tiers = report["stabilityTiers"].dump();
+    EXPECT_NE(tiers.find("stable"), std::string::npos);
+    EXPECT_NE(tiers.find("first_slice"), std::string::npos);
+    EXPECT_NE(tiers.find("experimental"), std::string::npos);
+    EXPECT_NE(tiers.find("component runtimePlan"), std::string::npos);
+    EXPECT_NE(tiers.find("jtl 1"), std::string::npos);
+
+    const std::string gates = report["verificationGates"].dump();
+    EXPECT_NE(gates.find("scripts/verify_all.sh"), std::string::npos);
+    EXPECT_NE(gates.find("ctest --test-dir build --output-on-failure"), std::string::npos);
+    EXPECT_NE(gates.find("asan-ubsan"), std::string::npos);
+
+    const std::string targets = report["nextArchitectureTargets"].dump();
+    EXPECT_NE(targets.find("direct non-expanded ComponentInstance template execution"),
+              std::string::npos);
+    EXPECT_NE(targets.find("Studio content externalization"), std::string::npos);
+}
+
 TEST(CliLint, RawEscapeHatchesAreVisibleWarnings) {
     const auto file = writeTempJtml(
         "raw-escape-hatches",

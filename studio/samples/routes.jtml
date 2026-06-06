@@ -1,0 +1,87 @@
+jtml 2
+
+// active-class highlights the current nav link
+// guard blocks protected routes when token is empty
+
+let token = "demo-token"
+let users = fetch "/api/users" lazy stale keep
+let routeMode = "hash router"
+
+guard "/dashboard" require token else "/login"
+
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
+make Nav
+  style
+    .shell
+      font-family: system-ui
+      max-width: 720px
+      margin: 44px auto
+      padding: 0 20px
+    nav
+      display: flex
+      gap: 12px
+      flex-wrap: wrap
+    nav a
+      color: #0f766e
+      text-decoration: none
+      padding: 8px 12px
+      border: 1px solid #99f6e4
+      border-radius: 999px
+    nav a.active
+      background: #ccfbf1
+      font-weight: 600
+  nav
+    link "Home" to "/" active-class "active"
+    link "Dashboard" to "/dashboard" active-class "active"
+    link "Login" to "/login" active-class "active"
+
+make Home
+  page class "shell"
+    stack gap md
+      Nav
+      panel title "Home" pad lg shadow md
+        stack gap md
+          text "Routes render components without a page refresh."
+          alert "Mode: {routeMode}. Token is prefilled so the protected route opens." tone primary
+          link "Open dashboard" to "/dashboard"
+
+make Dashboard
+  page class "shell"
+    stack gap md
+      Nav
+      panel title "Dashboard" pad lg shadow md
+        stack gap md
+          alert "Protected route: token is present." tone good
+          if users.loading
+            loading "Loading dashboard data..."
+          grid cols 2 gap md
+            for user in users.data
+              card
+                text "{user.name}"
+          link "Back home" to "/"
+
+make Login
+  page class "shell"
+    stack gap md
+      Nav
+      panel title "Login" pad lg shadow md
+        stack gap md
+          alert "If token were empty, the guard would redirect /dashboard here." tone warn
+          link "Back home" to "/"
+
+make NotFound
+  page class "shell"
+    stack gap md
+      Nav
+      panel title "Not found" pad lg shadow md
+        empty "No route matched the current path."
+
+route "/" as Home
+route "/dashboard" as Dashboard load users
+route "/login" as Login
+route "*" as NotFound

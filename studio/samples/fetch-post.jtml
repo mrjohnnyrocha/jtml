@@ -1,0 +1,80 @@
+jtml 2
+
+let email = "ada@example.com"
+let note = "Ready to send."
+let login = fetch "/api/login" method "POST" body { email: email } cache "no-store" credentials "include" timeout 2500 retry 2 stale keep refresh retryLogin
+
+when useValid
+  email = "ada@example.com"
+  note = "Valid request prepared."
+
+when useInvalid
+  email = "not-an-email"
+  note = "Invalid request prepared; retry to see server validation."
+
+when clearRequest
+  email = ""
+  note = "Empty request prepared."
+
+style
+  main
+    font-family: system-ui
+    max-width: 640px
+    margin: 48px auto
+    padding: 0 20px
+    display: grid
+    gap: 14px
+  h1
+    margin: 0
+  .toolbar
+    display: flex
+    flex-wrap: wrap
+    gap: 10px
+  input
+    padding: 10px 12px
+    border: 1px solid #d8d4c8
+    border-radius: 6px
+    min-width: 280px
+    box-sizing: border-box
+  button
+    padding: 9px 16px
+    background: white
+    border: 1px solid #d8d4c8
+    border-radius: 6px
+    cursor: pointer
+    font-weight: 700
+  .primary
+    background: #0f766e
+    color: white
+    border-color: #0f766e
+  .notice
+    padding: 10px 12px
+    background: #f8fafc
+    border: 1px solid #e2e8f0
+    border-radius: 8px
+  .error
+    color: #b42318
+    background: #fef2f2
+    border: 1px solid #fecaca
+    padding: 10px 12px
+    border-radius: 8px
+
+page
+  h1 "Login request"
+  p class "notice" note
+  input type "text" placeholder "ada@example.com" into email
+  box class "toolbar"
+    button "POST login" class "primary" click retryLogin
+    button "Valid example" click useValid
+    button "Invalid email" click useInvalid
+    button "Empty body value" click clearRequest
+  if login.loading
+    p "Sending request…"
+  else
+    p "Request finished."
+  if login.data.user
+    p "Signed in"
+    p "{login.data.user.name}"
+    p "{login.data.user.email}"
+  if login.error
+    p class "error" "Server rejected request: {login.error}"

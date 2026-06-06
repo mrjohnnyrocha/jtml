@@ -1,0 +1,92 @@
+jtml 2
+
+let email = ""
+let plan = "Pro"
+let accepted = false
+let submitted = false
+let status = "Ready."
+let subscribers = 128
+get label = submitted ? "Subscribed to {plan}. Check {email}." : "Enter your email to subscribe."
+get canSubmit = email != "" && accepted
+get audience = subscribers + 1
+
+when submit
+  if canSubmit
+    submitted = true
+    status = "Subscription saved locally."
+    subscribers += 1
+  else
+    status = "Add an email and accept the terms first."
+
+when resetForm
+  email = ""
+  plan = "Pro"
+  accepted = false
+  submitted = false
+  status = "Ready."
+
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
+style
+  main
+    font-family: system-ui
+    max-width: 760px
+    margin: 48px auto
+    padding: 0 20px
+  input, select
+    padding: 10px 12px
+    border: 1px solid #d8d4c8
+    border-radius: 6px
+    font-size: 14px
+    width: 100%
+    box-sizing: border-box
+  .terms
+    display: flex
+    align-items: center
+    gap: 8px
+  .terms input
+    width: auto
+  button
+    padding: 11px 20px
+    background: white
+    color: #111827
+    border: 1px solid #d8d4c8
+    border-radius: 6px
+    font-size: 14px
+    cursor: pointer
+    font-weight: 600
+  .primary
+    background: #0f766e
+    color: white
+    border-color: #0f766e
+
+page
+  panel title "Newsletter" pad lg shadow md
+    stack gap md
+      text label
+      grid cols 3 gap md
+        metric "Subscribers" subscribers "current" tone primary
+        metric "Plan" plan "selected" tone good
+        metric "Audience" audience "after save" tone warn
+      field
+        text "Email"
+        input type "text" placeholder "you@example.com" into email required
+      field
+        text "Plan"
+        select into plan
+          option "Free" value "Free"
+          option "Pro" value "Pro" selected
+          option "Enterprise" value "Enterprise"
+      label class "terms"
+        checkbox into accepted
+        text "I accept product updates."
+      toolbar
+        button "Subscribe" class "primary" click submit
+        button "Reset" type "button" click resetForm
+      alert "{status}" tone good
+      if submitted
+        alert "Saved subscriber: {email} on {plan}." tone primary

@@ -416,6 +416,13 @@ struct StudioDoc {
     std::string prose;
 };
 
+struct StudioSample {
+    std::string name;
+    std::string label;
+    std::string category;
+    std::string code;
+};
+
 std::string extractTitle(const std::string& markdown, const std::string& fallback) {
     std::istringstream iss(markdown);
     std::string line;
@@ -485,6 +492,42 @@ std::vector<StudioDoc> loadStudioDocs(const std::filesystem::path& root) {
         docs.push_back(std::move(doc));
     }
     return docs;
+}
+
+std::vector<StudioSample> loadStudioSamples(const std::filesystem::path& root) {
+    std::vector<StudioSample> samples;
+    const auto manifestFile = root / "manifest.json";
+    if (!std::filesystem::exists(manifestFile)) return samples;
+
+    const auto manifest = nlohmann::json::parse(readFile(manifestFile.string()));
+    if (!manifest.is_array()) return samples;
+
+    for (const auto& item : manifest) {
+        const std::string fileName = item.value("file", item.value("name", std::string{}));
+        if (fileName.empty() || fileName.find("..") != std::string::npos) continue;
+        const auto codeFile = root / fileName;
+        if (!std::filesystem::exists(codeFile)) continue;
+
+        StudioSample sample;
+        sample.name = item.value("name", codeFile.filename().string());
+        sample.label = item.value("label", sample.name);
+        sample.category = item.value("category", "basics");
+        sample.code = readFile(codeFile.string());
+        samples.push_back(std::move(sample));
+    }
+    return samples;
+}
+
+nlohmann::json loadStudioReferenceCatalog(const std::filesystem::path& file) {
+    if (!std::filesystem::exists(file)) return nlohmann::json::array();
+    auto catalog = nlohmann::json::parse(readFile(file.string()));
+    return catalog.is_array() ? catalog : nlohmann::json::array();
+}
+
+nlohmann::json loadStudioSidebarCatalog(const std::filesystem::path& file) {
+    if (!std::filesystem::exists(file)) return nlohmann::json::object();
+    auto catalog = nlohmann::json::parse(readFile(file.string()));
+    return catalog.is_object() ? catalog : nlohmann::json::object();
 }
 
 /* ── `jtml serve` (one-shot) ─────────────────────────────── */
@@ -613,6 +656,9 @@ static void serveWatching(const std::string& inputFile, int port, SyntaxMode syn
 static void serveStudio(int port) {
     auto lessons = loadLessons("tutorial");
     auto docs = loadStudioDocs("docs");
+    auto samples = loadStudioSamples("studio/samples");
+    auto referenceCatalog = loadStudioReferenceCatalog("studio/reference/catalog.json");
+    auto sidebarCatalog = loadStudioSidebarCatalog("studio/sidebar/catalog.json");
 
     static JtmlTranspiler transpiler;
     InterpreterConfig cfg;
@@ -638,6 +684,27 @@ static void serveStudio(int port) {
 
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
         res.set_content(kStudioShellHTML, "text/html");
+    });
+
+    svr.Get("/api/studio/samples", [&samples](const httplib::Request&, httplib::Response& res) {
+        nlohmann::json arr = nlohmann::json::array();
+        for (const auto& sample : samples) {
+            arr.push_back({
+                {"name", sample.name},
+                {"label", sample.label},
+                {"category", sample.category},
+                {"code", sample.code},
+            });
+        }
+        res.set_content(arr.dump(), "application/json");
+    });
+
+    svr.Get("/api/studio/reference", [&referenceCatalog](const httplib::Request&, httplib::Response& res) {
+        res.set_content(referenceCatalog.dump(), "application/json");
+    });
+
+    svr.Get("/api/studio/sidebar", [&sidebarCatalog](const httplib::Request&, httplib::Response& res) {
+        res.set_content(sidebarCatalog.dump(), "application/json");
     });
 
     svr.Get("/api/lessons", [&lessons](const httplib::Request&, httplib::Response& res) {

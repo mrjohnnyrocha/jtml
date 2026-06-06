@@ -4,6 +4,7 @@
 #include "jtml/linter.h"
 #include "jtml/parser.h"
 #include "jtml/transpiler.h"
+#include "json.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -22,6 +23,11 @@ struct StudioSample {
     std::string code;
 };
 
+struct StudioReferenceSection {
+    std::string title;
+    std::vector<std::string> terms;
+};
+
 std::string readFile(const std::filesystem::path& path) {
     std::ifstream in(path);
     std::ostringstream out;
@@ -32,7 +38,7 @@ std::string readFile(const std::filesystem::path& path) {
 std::vector<StudioSample> extractStudioSamples() {
     const auto shellPath = std::filesystem::path(JTML_SOURCE_DIR) / "cli" / "studio_shell.cpp";
     const std::string shell = readFile(shellPath);
-    const auto samplesStart = shell.find("const SAMPLES = [");
+    const auto samplesStart = shell.find("let SAMPLES = [");
     const auto samplesEnd = shell.find("];", samplesStart);
     EXPECT_NE(samplesStart, std::string::npos) << "Studio shell samples not found";
     EXPECT_NE(samplesEnd, std::string::npos) << "Studio shell sample array end not found";
@@ -72,10 +78,47 @@ std::vector<StudioSample> extractStudioSamples() {
     return samples;
 }
 
+std::vector<StudioSample> loadExternalStudioSamples() {
+    const auto root = std::filesystem::path(JTML_SOURCE_DIR);
+    const auto manifestPath = root / "studio" / "samples" / "manifest.json";
+    const auto manifest = nlohmann::json::parse(readFile(manifestPath));
+    std::vector<StudioSample> samples;
+    for (const auto& item : manifest) {
+        const auto file = root / "studio" / "samples" / item.value("file", item.value("name", ""));
+        samples.push_back({
+            item.value("name", file.filename().string()),
+            readFile(file),
+        });
+    }
+    return samples;
+}
+
+std::vector<StudioReferenceSection> loadExternalStudioReference() {
+    const auto root = std::filesystem::path(JTML_SOURCE_DIR);
+    const auto catalogPath = root / "studio" / "reference" / "catalog.json";
+    const auto catalog = nlohmann::json::parse(readFile(catalogPath));
+    std::vector<StudioReferenceSection> sections;
+    for (const auto& section : catalog) {
+        StudioReferenceSection out;
+        out.title = section.value("title", "");
+        for (const auto& row : section.value("rows", nlohmann::json::array())) {
+            out.terms.push_back(row.value("term", ""));
+            EXPECT_FALSE(row.value("description", "").empty()) << out.title;
+        }
+        sections.push_back(std::move(out));
+    }
+    return sections;
+}
+
+nlohmann::json loadExternalStudioSidebarCatalog() {
+    const auto root = std::filesystem::path(JTML_SOURCE_DIR);
+    return nlohmann::json::parse(readFile(root / "studio" / "sidebar" / "catalog.json"));
+}
+
 } // namespace
 
-TEST(StudioSamples, AllEmbeddedExamplesParseLintAndTranspile) {
-    const auto samples = extractStudioSamples();
+TEST(StudioSamples, AllExternalExamplesParseLintAndTranspile) {
+    const auto samples = loadExternalStudioSamples();
     ASSERT_GE(samples.size(), 10u);
 
     for (const auto& sample : samples) {
@@ -103,7 +146,7 @@ TEST(StudioSamples, AllEmbeddedExamplesParseLintAndTranspile) {
 }
 
 TEST(StudioSamples, CoversProductionFeatureFamilies) {
-    const auto samples = extractStudioSamples();
+    const auto samples = loadExternalStudioSamples();
     std::set<std::string> names;
     for (const auto& sample : samples) names.insert(sample.name);
 
@@ -128,7 +171,7 @@ TEST(StudioSamples, CoversProductionFeatureFamilies) {
 }
 
 TEST(StudioSamples, CoreSamplesUseSemanticUiPrimitives) {
-    const auto samples = extractStudioSamples();
+    const auto samples = loadExternalStudioSamples();
     const std::set<std::string> coreNames = {
         "counter.jtml",
         "form.jtml",
@@ -154,7 +197,7 @@ TEST(StudioSamples, CoreSamplesUseSemanticUiPrimitives) {
 }
 
 TEST(StudioSamples, NavigationSamplesUseSemanticPanels) {
-    const auto samples = extractStudioSamples();
+    const auto samples = loadExternalStudioSamples();
     const std::set<std::string> navigationNames = {
         "routes.jtml",
         "redirect.jtml",
@@ -176,7 +219,7 @@ TEST(StudioSamples, NavigationSamplesUseSemanticPanels) {
 }
 
 TEST(StudioSamples, MediaAndCompositionSamplesUseSemanticUiPrimitives) {
-    const auto samples = extractStudioSamples();
+    const auto samples = loadExternalStudioSamples();
     const std::set<std::string> names = {
         "media.jtml",
         "charts.jtml",
@@ -198,6 +241,63 @@ TEST(StudioSamples, MediaAndCompositionSamplesUseSemanticUiPrimitives) {
         EXPECT_NE(code.find("grid cols"), std::string::npos) << name;
         EXPECT_NE(code.find("stack gap"), std::string::npos) << name;
     }
+}
+
+TEST(StudioSamples, ShellKeepsEmbeddedFallbackAndLoadsExternalCatalog) {
+    const auto embedded = extractStudioSamples();
+    const auto external = loadExternalStudioSamples();
+    ASSERT_EQ(embedded.size(), external.size());
+
+    const auto shellPath = std::filesystem::path(JTML_SOURCE_DIR) / "cli" / "studio_shell.cpp";
+    const std::string shell = readFile(shellPath);
+    EXPECT_NE(shell.find("/api/studio/samples"), std::string::npos);
+    EXPECT_NE(shell.find("workspace = loadWorkspace();"), std::string::npos);
+    EXPECT_NE(shell.find("let SAMPLES = ["), std::string::npos);
+}
+
+TEST(StudioReference, ExternalCatalogCoversModernLanguageSurface) {
+    const auto sections = loadExternalStudioReference();
+    ASSERT_GE(sections.size(), 10u);
+
+    std::string all;
+    for (const auto& section : sections) {
+        EXPECT_FALSE(section.title.empty());
+        EXPECT_GE(section.terms.size(), 3u) << section.title;
+        all += section.title + "\n";
+        for (const auto& term : section.terms) all += term + "\n";
+    }
+
+    for (const auto& expected : {
+        "jtml 2",
+        "Compatibility backend",
+        "let x = expr",
+        "get x = expr",
+        "button \"Save\" click save",
+        "for item in items",
+        "video src \"demo.mp4\" controls into player",
+        "chart bar data rows by label value total",
+        "let users = fetch \"/api/users\"",
+        "route \"/\" as Home",
+        "guard \"/admin\" require signedIn else \"/login\"",
+        "make Card title",
+        "store auth",
+        "theme",
+        "extern notify from \"host.notify\"",
+        "Run / Cmd+Enter",
+    }) {
+        EXPECT_NE(all.find(expected), std::string::npos) << expected;
+    }
+}
+
+TEST(StudioReference, ShellLoadsExternalReferenceCatalogWithFallbackMarkup) {
+    const auto shellPath = std::filesystem::path(JTML_SOURCE_DIR) / "cli" / "studio_shell.cpp";
+    const std::string shell = readFile(shellPath);
+
+    EXPECT_NE(shell.find("/api/studio/reference"), std::string::npos);
+    EXPECT_NE(shell.find("let referenceCatalog = [];"), std::string::npos);
+    EXPECT_NE(shell.find("function renderReferenceCatalog()"), std::string::npos);
+    EXPECT_NE(shell.find("id=\"reference-body\""), std::string::npos);
+    EXPECT_NE(shell.find("Which syntax should I choose?"), std::string::npos);
 }
 
 TEST(StudioShell, HighlightsModernFriendlySyntax) {
@@ -280,8 +380,14 @@ TEST(StudioShell, SeparatesNavigationWorkspaceAndDocumentTools) {
 TEST(StudioShell, SidebarSearchRevealsFullExampleLibrary) {
     const auto shellPath = std::filesystem::path(JTML_SOURCE_DIR) / "cli" / "studio_shell.cpp";
     const std::string shell = readFile(shellPath);
+    const auto catalog = loadExternalStudioSidebarCatalog();
 
-    EXPECT_NE(shell.find("const pinnedTemplates = new Set"), std::string::npos);
+    ASSERT_TRUE(catalog.contains("sampleCategories"));
+    ASSERT_TRUE(catalog.contains("pinnedTemplates"));
+    EXPECT_GE(catalog["sampleCategories"].size(), 5u);
+    EXPECT_GE(catalog["pinnedTemplates"].size(), 7u);
+    EXPECT_NE(shell.find("/api/studio/sidebar"), std::string::npos);
+    EXPECT_NE(shell.find("let studioCatalog = {"), std::string::npos);
     EXPECT_NE(shell.find("if (!query && !pinnedTemplates.has(s.name)) return;"), std::string::npos);
     EXPECT_NE(shell.find("SAMPLES.forEach((s, i) =>"), std::string::npos);
 }

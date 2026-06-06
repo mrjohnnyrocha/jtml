@@ -207,6 +207,7 @@ TEST(FriendlySyntax, ThemeAndUiPrimitivesLowerToSemanticHtmlAndCss) {
     ASSERT_TRUE(parser.getErrors().empty()) << classic;
 
     JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("class=\"jtml-shell jtml-align-stretch\""), std::string::npos);
     EXPECT_NE(html.find("class=\"jtml-metric jtml-tone-good\""), std::string::npos);
@@ -300,6 +301,7 @@ TEST(FriendlySyntax, RoutesExpandToRoutedSectionsAndRuntime) {
     ASSERT_TRUE(parser.getErrors().empty()) << classic;
 
     JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("data-jtml-route"), std::string::npos);
     EXPECT_NE(html.find("function applyRoutes()"), std::string::npos);
@@ -334,6 +336,7 @@ TEST(FriendlySyntax, RouteParamsBecomeClientStateBindings) {
     ASSERT_TRUE(parser.getErrors().empty()) << classic;
 
     JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("data-jtml-route=\"/user/:id\""), std::string::npos);
     EXPECT_NE(html.find("data-jtml-route-params=\"id\""), std::string::npos);
@@ -845,7 +848,16 @@ TEST(FriendlySyntax, StoreBlockLowersToSharedDictionaryState) {
     ASSERT_TRUE(parser.getErrors().empty()) << classic;
 
     JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("\"state\":{\"auth\":\"{\\\"user\\\": \\\"Ada\\\", \\\"token\\\": \\\"abc\\\"}\""),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("\"actions\":{\"auth_logout\""),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("\"lhs\":\"auth.user\""),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("\"expr\":\"\\\"\\\"\""),
+              std::string::npos) << html;
     const std::string marker = "sendEvent('";
     const auto eventPos = html.find(marker);
     ASSERT_NE(eventPos, std::string::npos) << html;

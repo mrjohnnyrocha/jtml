@@ -1,0 +1,70 @@
+jtml 2
+
+let name = ""
+
+store auth
+  let user = ""
+  let role = "viewer"
+  let sessions = 0
+  let loggedIn = false
+
+  when login
+    let user = name
+    let role = "admin"
+    let sessions = sessions + 1
+    let loggedIn = true
+
+  when logout
+    let user = ""
+    let role = "viewer"
+    let loggedIn = false
+
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
+style
+  main
+    font-family: system-ui
+    max-width: 680px
+    margin: 48px auto
+    padding: 0 20px
+  input
+    padding: 10px 14px
+    border: 1px solid #d1cfc9
+    border-radius: 6px
+    font-size: 14px
+    width: 100%
+    box-sizing: border-box
+  button
+    justify-self: start
+    padding: 9px 16px
+    border-radius: 6px
+    cursor: pointer
+    font-size: 14px
+
+page
+  panel title "Auth Store" pad lg shadow md
+    stack gap md
+      alert "Store state is shared and keeps its own actions." tone primary
+      grid cols 3 gap md
+        metric "User" auth.user "shared field" tone primary
+        metric "Role" auth.role "store-owned" tone good
+        metric "Sessions" auth.sessions "opened" tone warn
+      if auth.loggedIn
+        card tone good
+          alert "Signed in as {auth.user}" tone good
+          text "Role: {auth.role}"
+          text "Sessions opened: {auth.sessions}"
+          toolbar
+            button "Logout" click auth.logout
+      else
+        card
+          field
+            text "Name"
+            input type "text" placeholder "Your name" into name
+          text "Next role: admin"
+          toolbar
+            button "Login" click auth.login

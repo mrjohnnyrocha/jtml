@@ -1,0 +1,48 @@
+jtml 2
+
+let count = 0
+get doubled = count * 2
+
+when increment
+  count += 1
+
+when decrement
+  if count > 0
+    count -= 1
+
+when reset
+  count = 0
+
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
+style
+  main
+    font-family: system-ui
+    max-width: 620px
+    margin: 48px auto
+    padding: 0 20px
+  button
+    padding: 10px 18px
+    border-radius: 6px
+    font-size: 15px
+    cursor: pointer
+    border: 1px solid #d8d4c8
+  .primary
+    background: #0f766e
+    color: white
+    border-color: transparent
+
+page
+  panel title "Counter" pad lg shadow md
+    stack gap md
+      grid cols 2 gap md
+        metric "Count" count "Current value" tone primary
+        metric "Doubled" doubled "Derived from count" tone good
+      toolbar
+        button "+" class "primary" click increment
+        button "−" click decrement
+        button "Reset" click reset

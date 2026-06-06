@@ -53,6 +53,9 @@ set(JTML_CORE_SOURCES
     src/module_resolver.cpp
     src/interpreter.cpp
     src/transpiler.cpp
+    src/browser_runtime_emitter.cpp
+    src/client_manifest_emitter.cpp
+    src/expression_source.cpp
     src/formatter.cpp
     src/linter.cpp
     src/refactor.cpp

@@ -1,0 +1,89 @@
+jtml 2
+
+let progress = 0
+let opacity = 0
+let scale = 0
+let playing = false
+
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
+when advance
+  if progress < 100
+    progress += 25
+    opacity += 25
+    scale += 25
+    playing = true
+
+when resetMotion
+  progress = 0
+  opacity = 0
+  scale = 0
+  playing = false
+
+when completeMotion
+  progress = 100
+  opacity = 100
+  scale = 100
+  playing = false
+
+style
+  main
+    font-family: system-ui
+    max-width: 640px
+    margin: 40px auto
+    padding: 0 24px
+  button
+    padding: 8px 18px
+    border: 1px solid #d1d5db
+    border-radius: 6px
+    background: white
+    font: inherit
+    cursor: pointer
+    font-weight: 600
+  button:hover
+    background: #f1f5f9
+  .bar-track
+    height: 20px
+    background: #f1f5f9
+    border-radius: 10px
+    overflow: hidden
+  .bar-fill
+    height: 100%
+    background: #0f766e
+    border-radius: 10px
+    transition: width .2s ease-out
+  .orb
+    width: 96px
+    height: 96px
+    border-radius: 999px
+    background: #0f766e
+    transition: all .2s ease-out
+
+page
+  panel title "Animation" pad lg shadow md
+    stack gap md
+      alert "JTML drives visible state. CSS owns the transition details." tone primary
+      grid cols 3 gap md
+        metric "Progress" progress "percent" tone primary
+        metric "Opacity" opacity "percent" tone neutral
+        metric "Scale" scale "pixels" tone good
+      card
+        stack gap md
+          h2 "Motion preview"
+          box class "bar-track"
+            box class "bar-fill" style "width: {progress}%"
+          box class "orb" aria-label "Animated preview" style "opacity: {opacity}%; width: {scale}px; height: {scale}px"
+          toolbar
+            button "Advance" click advance
+            button "Complete" click completeMotion
+            button "Reset" click resetMotion
+      card
+        h2 "State-driven CSS"
+        if playing
+          alert "Motion is in progress." tone good
+        else
+          alert "Motion is idle." tone neutral

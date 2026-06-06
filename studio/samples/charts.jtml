@@ -1,0 +1,42 @@
+jtml 2
+
+let revenue = [{ "month": "Jan", "sales": 12, "expenses": 8 }, { "month": "Feb", "sales": 18, "expenses": 10 }, { "month": "Mar", "sales": 9, "expenses": 7 }, { "month": "Apr", "sales": 24, "expenses": 14 }, { "month": "May", "sales": 30, "expenses": 16 }, { "month": "Jun", "sales": 22, "expenses": 11 }]
+
+let traffic = [{ "day": "Mon", "visits": 420, "signups": 18 }, { "day": "Tue", "visits": 680, "signups": 28 }, { "day": "Wed", "visits": 540, "signups": 21 }, { "day": "Thu", "visits": 790, "signups": 34 }, { "day": "Fri", "visits": 610, "signups": 25 }, { "day": "Sat", "visits": 320, "signups": 12 }, { "day": "Sun", "visits": 210, "signups": 8 }]
+
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
+style
+  main
+    font-family: system-ui
+    max-width: 860px
+    margin: 40px auto
+    padding: 0 24px
+  h2
+    margin: 0 0 12px
+    font-size: 15px
+    color: #334155
+  svg
+    overflow: visible
+
+page
+  panel title "Charts" pad lg shadow md
+    stack gap md
+      alert "JTML charts render to accessible SVG. Bar and line charts support axes, labels, legends, grid lines, grouped series, and stacked bars." tone primary
+      grid cols 2 gap md
+        card
+          h2 "Grouped revenue"
+          chart bar data revenue by month values sales expenses series "Sales,Expenses" colors "#0f766e,#b42318" label "Revenue split" axis x label "Month" axis y label "$k" grid legend max 40 ticks 5 annotate "Launch" at "Apr" value sales color "#9333ea" export svg png csv width "380" height "240"
+        card
+          h2 "Multi-series trend"
+          chart line data traffic by day values visits signups series "Visits,Signups" colors "#2563eb,#9333ea" label "Traffic and signups" axis x label "Day" axis y label "Count" grid legend annotate "Peak" at "Thu" value visits export svg csv width "380" height "240"
+        card
+          h2 "Stacked revenue"
+          chart bar data revenue by month values sales expenses series "Sales,Expenses" colors "#0f766e,#b42318" label "Stacked revenue" axis x label "Month" axis y label "$k" grid legend stacked max 50 ticks 6 width "380" height "240"
+        card
+          h2 "Single-series baseline"
+          chart line data traffic by day value visits label "Visit trend" color "#475569" grid axis x label "Day of week" width "380" height "240"

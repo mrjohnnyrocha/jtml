@@ -1,0 +1,78 @@
+jtml 2
+
+let revenue = 124
+let customers = 320
+let trials = 42
+let health = 87
+let incidents = 2
+let report = [{ "month": "Jan", "mrr": 92 }, { "month": "Feb", "mrr": 106 }, { "month": "Mar", "mrr": 118 }, { "month": "Apr", "mrr": 124 }]
+get avg = revenue * 1000 / customers
+get conversion = customers / trials
+get score = health > 90 ? "Excellent" : "Needs attention"
+get runway = revenue - incidents * 12
+
+when addTrial
+  trials += 5
+  health -= 1
+
+when closeDeal
+  customers += 3
+  revenue += 8
+  health += 2
+
+when reduceChurn
+  health += 4
+  incidents -= 1
+
+when resetQuarter
+  revenue = 124
+  customers = 320
+  trials = 42
+  health = 87
+  incidents = 2
+
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
+style
+  main
+    font-family: system-ui
+    max-width: 920px
+    margin: 40px auto
+    padding: 0 16px
+  button
+    padding: 10px 18px
+    background: white
+    color: #111827
+    border: 1px solid #d8d4c8
+    border-radius: 7px
+    font-size: 14px
+    cursor: pointer
+    font-weight: 600
+  .primary
+    background: #0f766e
+    color: white
+    border-color: #0f766e
+
+page
+  stack gap lg
+    panel title "Dashboard" pad lg shadow md
+      grid cols 4 gap md
+        metric "Revenue" "USD {revenue}k" "MRR" tone primary
+        metric "Customers" customers "Active" tone good
+        metric "Avg / customer" avg "USD" tone warn
+        metric "Open trials" trials "Pipeline"
+        metric "Health" "{health}%" score tone good
+        metric "Incidents" incidents "Open" tone danger
+        metric "Conversion" conversion "Customers / trial"
+        metric "Runway" runway "Score"
+      alert "Close deals to grow revenue, reduce churn to improve health, and reset to replay the quarter." tone primary
+      chart bar data report by month value mrr label "MRR" color "#0f766e" axis x label "Month" axis y label "MRR ($k)" grid legend width "760" height "260"
+      toolbar
+        button "Add trials" click addTrial
+        button "Close deal" class "primary" click closeDeal
+        button "Reduce churn" click reduceChurn
+        button "Reset quarter" click resetQuarter

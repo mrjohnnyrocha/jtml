@@ -1,0 +1,54 @@
+jtml 2
+
+let count = 0
+let last = "No changes yet."
+let direction = "idle"
+let saves = 0
+
+effect count
+  last = "Count changed to {count}"
+  if count > 0
+    direction = "positive"
+  else
+    direction = "zero or negative"
+
+when increment
+  count += 1
+
+when decrement
+  count -= 1
+
+when saveSnapshot
+  saves += 1
+  last = "Snapshot {saves}: count {count}"
+
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
+style
+  main
+    font-family: system-ui
+    max-width: 680px
+    margin: 48px auto
+    padding: 0 20px
+  button
+    padding: 10px 16px
+    border-radius: 6px
+    cursor: pointer
+    font-size: 14px
+
+page
+  panel title "Effects" pad lg shadow md
+    stack gap md
+      grid cols 3 gap md
+        metric "Count" count "watched by effect" tone primary
+        metric "Direction" direction "derived by effect" tone good
+        metric "Snapshots" saves "manual saves" tone warn
+      alert "Last effect: {last}" tone good
+      toolbar
+        button "+ Increment" click increment
+        button "- Decrement" click decrement
+        button "Save snapshot" click saveSnapshot

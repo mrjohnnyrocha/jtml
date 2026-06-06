@@ -1,0 +1,67 @@
+jtml 2
+
+// Fetches /api/users (or any JSON endpoint).
+// Swap the URL for a real endpoint in your project.
+let saved = false
+let users = fetch "/api/users" timeout 2500 retry 2 stale keep group people key "users" dedupe every 30000 refresh reloadUsers
+let teams = fetch "/api/teams" group people lazy
+
+when saveLocal
+  saved = true
+  invalidate group people
+
+when reloadEverything
+  invalidate all
+
+when clearSaved
+  saved = false
+
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
+style
+  main
+    font-family: system-ui
+    max-width: 680px
+    margin: 48px auto
+    padding: 0 20px
+  button
+    padding: 8px 14px
+    background: white
+    border: 1px solid #d8d4c8
+    border-radius: 6px
+    font-size: 13px
+    cursor: pointer
+    font-weight: 700
+  .primary
+    background: #0f766e
+    color: white
+    border-color: #0f766e
+  .meta
+    color: #64707a
+    font-size: 13px
+
+page
+  panel title "Users" pad lg shadow md
+    stack gap md
+      p class "meta" "Endpoint: /api/users · stale keep · timeout 2500ms · retry 2"
+      toolbar
+        button "Reload users" class "primary" click reloadUsers
+        button "Save + invalidate group" click saveLocal
+        button "Invalidate all" click reloadEverything
+        button "Clear saved flag" click clearSaved
+      metric "Saved flag" saved "Invalidates users" tone primary
+      if users.loading
+        loading "Loading users..."
+      if saved
+        alert "Saved locally; users fetch was invalidated." tone good
+      grid cols 2 gap md
+        for user in users.data
+          card
+            strong "{user.name}"
+            p "{user.email}"
+      if users.error
+        error "Error: {users.error}"

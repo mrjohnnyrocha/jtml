@@ -1,0 +1,18 @@
+{
+  "sampleCategories": {
+    "basics": "Basics",
+    "data": "Data & State",
+    "navigation": "Navigation",
+    "media": "Media & Graphics",
+    "composition": "Composition"
+  },
+  "pinnedTemplates": [
+    "counter.jtml",
+    "form.jtml",
+    "dashboard.jtml",
+    "fetch.jtml",
+    "routes.jtml",
+    "media.jtml",
+    "components.jtml"
+  ]
+}

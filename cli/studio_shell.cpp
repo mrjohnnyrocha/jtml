@@ -1115,7 +1115,7 @@ code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; back
 
         <section class="ref-panel">
           <div class="panel-head"><h2 class="panel-title">Reference</h2></div>
-          <div class="panel-body">
+          <div class="panel-body" id="reference-body">
             <div class="ref-sec">
               <p class="ref-sec-label">Which syntax should I choose?</p>
               <table class="ref-table"><tbody>
@@ -1465,9 +1465,21 @@ CodeMirror.defineSimpleMode("jtml", {
 });
 
 /* ═══════════════════════════════════════════════════════════
-   Built-in file samples
+   Built-in Studio catalogs
 ═══════════════════════════════════════════════════════════ */
-const SAMPLES = [
+let referenceCatalog = [];
+let studioCatalog = {
+  sampleCategories: {
+    basics: "Basics",
+    data: "Data & State",
+    navigation: "Navigation",
+    media: "Media & Graphics",
+    composition: "Composition",
+  },
+  pinnedTemplates: ["counter.jtml", "form.jtml", "dashboard.jtml", "fetch.jtml", "routes.jtml", "media.jtml", "components.jtml"],
+};
+
+let SAMPLES = [
   {
     name: "counter.jtml",
     label: "Counter",
@@ -2435,6 +2447,7 @@ let activeDocIdx    = -1;
 let activeWorkspacePath = "";
 let lessons         = [];
 let docs            = [];
+let workspace       = { projects: [] };
 let completedSlugs  = new Set(JSON.parse(localStorage.getItem("jtml:completed") || "[]"));
 let dirty           = false;
 let loading         = false;
@@ -2656,7 +2669,6 @@ function loadWorkspace() {
   localStorage.setItem(WORKSPACE_KEY, JSON.stringify(fresh));
   return fresh;
 }
-let workspace = loadWorkspace();
 function saveWorkspace() {
   localStorage.setItem(WORKSPACE_KEY, JSON.stringify(workspace));
 }
@@ -2972,6 +2984,27 @@ function renderArtifacts() {
       '<span class="artifact-empty">Run the current file to inspect generated HTML and compatibility IR.</span>';
   }
 }
+function renderReferenceCatalog() {
+  if (!referenceCatalog.length) return;
+  const body = $("reference-body");
+  if (!body) return;
+  body.innerHTML = referenceCatalog.map(section => {
+    const rows = Array.isArray(section.rows) ? section.rows : [];
+    return `
+      <div class="ref-sec">
+        <p class="ref-sec-label">${esc(section.title || "Reference")}</p>
+        <table class="ref-table"><tbody>
+          ${rows.map(row => `
+            <tr>
+              <td><code>${esc(row.term || "")}</code></td>
+              <td>${esc(row.description || "")}</td>
+            </tr>
+          `).join("")}
+        </tbody></table>
+      </div>
+    `;
+  }).join("");
+}
 function setInspectorMode(modeName) {
   inspectorMode = modeName;
   $("bottom-row").dataset.mode = modeName;
@@ -3020,9 +3053,9 @@ function renderSidebar() {
   /* Files grouped by category */
   const fl = $("file-list");
   fl.innerHTML = "";
-  const categoryLabels = { basics: "Basics", data: "Data & State", navigation: "Navigation", media: "Media & Graphics", composition: "Composition" };
+  const categoryLabels = studioCatalog.sampleCategories || {};
   const seen = {};
-  const pinnedTemplates = new Set(["counter.jtml", "form.jtml", "dashboard.jtml", "fetch.jtml", "routes.jtml", "media.jtml", "components.jtml"]);
+  const pinnedTemplates = new Set(studioCatalog.pinnedTemplates || []);
   SAMPLES.forEach((s, i) => {
     if (!query && !pinnedTemplates.has(s.name)) return;
     if (!matches((s.label || "") + " " + s.name + " " + (s.category || ""))) return;
@@ -3882,6 +3915,40 @@ document.addEventListener("keydown", e => {
    Boot
 ═══════════════════════════════════════════════════════════ */
 async function boot() {
+  try {
+    const res = await fetch("/api/studio/samples");
+    if (res.ok) {
+      const loadedSamples = await res.json();
+      if (Array.isArray(loadedSamples) && loadedSamples.length) {
+        SAMPLES = loadedSamples.filter(s => s && s.name && typeof s.code === "string");
+      }
+    }
+  } catch {}
+  try {
+    const res = await fetch("/api/studio/reference");
+    if (res.ok) {
+      const loadedReference = await res.json();
+      if (Array.isArray(loadedReference) && loadedReference.length) {
+        referenceCatalog = loadedReference.filter(s => s && s.title && Array.isArray(s.rows));
+        renderReferenceCatalog();
+      }
+    }
+  } catch {}
+  try {
+    const res = await fetch("/api/studio/sidebar");
+    if (res.ok) {
+      const loadedCatalog = await res.json();
+      if (loadedCatalog && typeof loadedCatalog === "object") {
+        studioCatalog = {
+          sampleCategories: loadedCatalog.sampleCategories || studioCatalog.sampleCategories,
+          pinnedTemplates: Array.isArray(loadedCatalog.pinnedTemplates)
+            ? loadedCatalog.pinnedTemplates
+            : studioCatalog.pinnedTemplates,
+        };
+      }
+    }
+  } catch {}
+  workspace = loadWorkspace();
   try {
     const res = await fetch("/api/lessons");
     if (res.ok) lessons = await res.json();

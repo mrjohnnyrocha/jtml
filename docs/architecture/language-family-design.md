@@ -45,6 +45,35 @@ The user-facing rule:
 - inspect compatibility output when debugging compilers or migrations, but do
   not teach it as the default language.
 
+## Maturity Contract
+
+The language family is not enterprise-ready yet. It is enterprise-relevant:
+the architecture has a credible path toward larger teams, stronger tooling,
+and multiple backends, but the implementation still contains compatibility
+bridges and monolithic source files that must be reduced before promising
+large-team stability.
+
+Use these labels consistently:
+
+| Label | Meaning |
+| --- | --- |
+| stable | Implemented, tested, documented, and expected to remain compatible within JTML 2 |
+| first slice | Implemented and valuable, but still being hardened or expanded |
+| experimental | Available for exploration or tooling contracts, but not a production promise |
+| planned | Designed direction with no compatibility commitment yet |
+
+Current examples:
+
+- stable: Friendly JTML 2 basics, Classic compatibility backend, CLI
+  check/lint/fmt/test/build/serve, keyword and semantic UI catalogs;
+- first slice: fetch cache/invalidation, route guards/layouts, semantic UI,
+  media/charts/scene3d, Studio as local hub;
+- experimental: `jtl 1`, component `runtimePlan` bridge before direct
+  non-expanded template execution, advanced browser runtime parity,
+  framework/export boundaries.
+
+`jtml doctor --json` mirrors this contract for tools and CI.
+
 ## Compilation Model
 
 Python is parsed and executed by a bytecode interpreter. It is productive, but

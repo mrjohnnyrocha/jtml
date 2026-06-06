@@ -1,0 +1,43 @@
+jtml 2
+
+make Counter label
+  let count = 0
+
+  when add
+    count += 1
+
+  when reset
+    count = 0
+
+  card title label
+    stack gap md
+      metric "Count" count "local state" tone primary
+      toolbar
+        button "+ Increment" click add
+        button "Reset" click reset
+
+theme
+  color primary "#0f766e"
+  color background "#f6f7fb"
+  radius md 12
+  shadow md "0 12px 32px rgba(15,23,42,.10)"
+
+style
+  main
+    font-family: system-ui
+    max-width: 620px
+    margin: 48px auto
+    padding: 0 20px
+  button
+    padding: 9px 16px
+    border-radius: 6px
+    font-size: 14px
+    cursor: pointer
+
+page
+  panel title "Component Isolation" pad lg shadow md
+    stack gap md
+      alert "Each Counter call receives its own local state and actions." tone primary
+      grid cols 2 gap md
+        Counter "Counter A"
+        Counter "Counter B"

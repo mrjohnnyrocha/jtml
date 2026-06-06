@@ -724,6 +724,16 @@ int cmdDoctor(const Options& o) {
         fs::path path;
         bool executable = false;
     };
+    struct Gate {
+        std::string id;
+        std::string label;
+        std::string command;
+        std::string status;
+    };
+    struct Tier {
+        std::string name;
+        std::vector<std::string> items;
+    };
 
     const std::vector<Check> checks = {
         {"core headers", "include/jtml"},
@@ -739,21 +749,78 @@ int cmdDoctor(const Options& o) {
         {"package script", "scripts/package_cli.sh", true},
         {"verification script", "scripts/verify_all.sh", true},
     };
+    const std::vector<Gate> gates = {
+        {"build", "Build CLI and tests", "cmake --build build --target jtml_tests jtml_cli -j4", "required"},
+        {"unit", "Unit test suite", "ctest --test-dir build --output-on-failure", "required"},
+        {"examples", "Examples and tutorial smoke", "./build/jtml test", "required"},
+        {"predeploy", "Full local predeploy verification", "scripts/verify_all.sh", "required"},
+        {"docs", "Docs and catalog consistency", "ctest --test-dir build --output-on-failure -R LanguageSurface", "required"},
+        {"release", "Release archive build", "scripts/verify_all.sh", "required"},
+        {"asan-ubsan", "Sanitizer build", "cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=Debug -DJTML_ENABLE_SANITIZERS=ON", "planned"},
+        {"coverage", "Coverage report", "planned", "planned"},
+        {"benchmarks", "Runtime and compiler benchmark smoke", "planned", "planned"},
+    };
+    const std::vector<Tier> tiers = {
+        {"stable", {
+            "Friendly JTML 2 authoring surface",
+            "Classic compatibility backend",
+            "CLI check/lint/fmt/test/build/serve",
+            "semantic keyword and UI catalogs",
+            "local package install/lockfile first slice",
+        }},
+        {"first_slice", {
+            "fetch lifecycle, cache identity, groups, invalidation, and timed revalidation",
+            "hash routing, guards, layouts, route-load fetches, and active route state",
+            "semantic UI primitives, theme tokens, accessibility lints, and generated CSS",
+            "media, charts, graphics, and scene3d mount contracts",
+            "Studio as the local language hub",
+        }},
+        {"experimental", {
+            "jtl 1 core-language experiments",
+            "component runtimePlan bridge before direct non-expanded template execution",
+            "advanced browser-local runtime parity",
+            "extern/custom-element/framework export boundaries",
+            "remote package registry and semantic version solving",
+        }},
+    };
+    const std::vector<std::string> nextTargets = {
+        "direct non-expanded ComponentInstance template execution",
+        "browser-local production runtime parity with live runtime semantics",
+        "Studio content externalization out of embedded C++ literals",
+        "internal module boundaries for friendly, semantic, runtime, emit, lsp, and studio code",
+        "security, release, deprecation, benchmark, and compatibility policies",
+    };
+    auto findProjectRoot = [] {
+        fs::path cursor = fs::current_path();
+        while (true) {
+            if (fs::exists(cursor / "CMakeLists.txt") &&
+                fs::exists(cursor / "include" / "jtml") &&
+                fs::exists(cursor / "src")) {
+                return cursor;
+            }
+            if (!cursor.has_parent_path() || cursor.parent_path() == cursor) break;
+            cursor = cursor.parent_path();
+        }
+        return fs::current_path();
+    };
+    const fs::path projectRoot = findProjectRoot();
 
     bool ok = true;
     nlohmann::json results = nlohmann::json::array();
-    if (!o.json) std::cout << "JTML doctor\n";
+    if (!o.json) std::cout << "JTML doctor\nProject root: " << projectRoot.string() << "\n";
     for (const auto& check : checks) {
-        bool exists = fs::exists(check.path);
+        const fs::path actualPath = projectRoot / check.path;
+        bool exists = fs::exists(actualPath);
         bool pass = exists;
         if (check.executable && exists) {
-            auto perms = fs::status(check.path).permissions();
+            auto perms = fs::status(actualPath).permissions();
             pass = (perms & fs::perms::owner_exec) != fs::perms::none;
         }
         ok = ok && pass;
         results.push_back({
             {"label", check.label},
             {"path", check.path.string()},
+            {"actualPath", actualPath.string()},
             {"requiredExecutable", check.executable},
             {"ok", pass},
         });
@@ -763,10 +830,35 @@ int cmdDoctor(const Options& o) {
         }
     }
 
+    nlohmann::json gateJson = nlohmann::json::array();
+    for (const auto& gate : gates) {
+        gateJson.push_back({
+            {"id", gate.id},
+            {"label", gate.label},
+            {"command", gate.command},
+            {"status", gate.status},
+        });
+    }
+
+    nlohmann::json tierJson = nlohmann::json::array();
+    for (const auto& tier : tiers) {
+        tierJson.push_back({
+            {"name", tier.name},
+            {"items", tier.items},
+        });
+    }
+
     if (o.json) {
         nlohmann::json out = {
             {"ok", ok},
             {"version", versionString()},
+            {"projectRoot", projectRoot.string()},
+            {"enterpriseReady", false},
+            {"readiness", "promising observable-first language platform; not enterprise-ready yet"},
+            {"architectureSourceOfTruth", "Friendly JTML -> typed AST -> semantic IR -> observable graph -> backends"},
+            {"stabilityTiers", tierJson},
+            {"verificationGates", gateJson},
+            {"nextArchitectureTargets", nextTargets},
             {"checks", results},
         };
         std::cout << out.dump(2) << "\n";
@@ -777,7 +869,11 @@ int cmdDoctor(const Options& o) {
         std::cout << "Doctor found missing local toolkit pieces.\n";
         return 1;
     }
-    std::cout << "Local toolkit shape is complete. For full verification run scripts/verify_all.sh\n";
+    std::cout << "Local toolkit shape is complete.\n"
+              << "Readiness: promising observable-first language platform; not enterprise-ready yet.\n"
+              << "Required gates: build, unit, examples/tutorial smoke, docs/catalog consistency, full predeploy verification.\n"
+              << "Next architecture target: direct non-expanded ComponentInstance template execution.\n"
+              << "For full verification run scripts/verify_all.sh\n";
     return 0;
 }
 

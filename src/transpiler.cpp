@@ -189,7 +189,7 @@ std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
             nodeDerivedMap[nodeID][attr.key] = derivedVarName;
             attributeBindings[&attr] = {derivedVarName, derivedVarName};
             // Ensure that the attribute value represents the JTML function or handler
-            std::string functionCall = escapeJS(attr.value->toString());
+            std::string functionCall = escapeHTML(escapeJS(expressionSource(attr.value.get())));
 
             // Handle browser events that provide a useful value to JTML.
             std::ostringstream args;
@@ -287,7 +287,7 @@ std::string JtmlTranspiler::transpileIfInsideElement(const IfStatementNode& node
 
     std::ostringstream out;
     out << "<div data-jtml-if=\"" << condName << "\" "
-        << "data-jtml-cond-expr=\"" << escapeHTML(node.condition ? node.condition->toString() : "") << "\" "
+        << "data-jtml-cond-expr=\"" << escapeHTML(expressionSource(node.condition.get())) << "\" "
         << "data-then=\"" << thenHTML << "\" "
         << "data-else=\"" << elseHTML << "\">"
         << "</div>\n";
@@ -331,7 +331,7 @@ std::string JtmlTranspiler::transpileForInsideElement(const ForStatementNode& no
     std::ostringstream out;
     out << "<div id=\"" << rangeName << "\" data-jtml-for=\"" << rangeName
         << "\" data-jtml-iterator=\"" << node.iteratorName
-        << "\" data-jtml-for-expr=\"" << escapeHTML(node.iterableExpression ? node.iterableExpression->toString() : "")
+        << "\" data-jtml-for-expr=\"" << escapeHTML(expressionSource(node.iterableExpression.get()))
         << "\" data-body=\"" << escapedBody << "\"></div>\n";
 
     return out.str();
@@ -363,7 +363,7 @@ std::string JtmlTranspiler::transpileWhileInsideElement(const WhileStatementNode
 
     std::ostringstream out;
     out << "<div data-jtml-while=\"" << condName << "\" "
-        << "data-jtml-cond-expr=\"" << escapeHTML(node.condition ? node.condition->toString() : "") << "\" "
+        << "data-jtml-cond-expr=\"" << escapeHTML(expressionSource(node.condition.get())) << "\" "
         << "data-body=\"" << bodyHTML << "\">"
         << "</div>\n";
     return out.str();

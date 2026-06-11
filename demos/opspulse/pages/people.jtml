@@ -1,0 +1,49 @@
+jtml 2
+
+use filterState from "../stores/filter-state.jtml"
+use opsData from "../stores/ops-data.jtml"
+use Shell from "../components/layouts/shell.jtml"
+use { PageHero, MetricCard } from "../components/ui/common.jtml"
+
+when clearPeopleSearch
+  filterState.search = ""
+
+when openAnaProfile
+  filterState.selectedRegion = "Portugal"
+  filterState.selectedPlatform = "Web"
+
+when openMiguelProfile
+  filterState.selectedRegion = "Spain"
+  filterState.selectedPlatform = "Internal"
+
+when openClaraProfile
+  filterState.selectedRegion = "Brazil"
+  filterState.selectedPlatform = "Mobile"
+
+export make PeoplePage
+  Shell "People and enablement"
+    PageHero "People and enablement" "Track active users, training cohorts, and adoption ownership."
+    box class "toolbar"
+      input "Search people" into filterState.search
+      button "Clear" click clearPeopleSearch
+    box class "metric-grid"
+      MetricCard "Active users" opsData.activeUsers filterState.selectedRegion "good"
+      MetricCard "Adoption" opsData.adoption "Across enabled teams" "primary"
+      MetricCard "Target segment" filterState.selectedPlatform "Current platform" "warn"
+      MetricCard "Period" filterState.selectedPeriod "Reporting window" "primary"
+    box class "person-grid"
+      box class "ops-card"
+        h3 "Ana Ribeiro"
+        text "AI programme lead"
+        text "Portugal / Web"
+        button "Open profile" click openAnaProfile
+      box class "ops-card"
+        h3 "Miguel Santos"
+        text "Engineering enablement"
+        text "Spain / Internal"
+        button "Open profile" click openMiguelProfile
+      box class "ops-card"
+        h3 "Clara Costa"
+        text "Customer operations"
+        text "Brazil / Mobile"
+        button "Open profile" click openClaraProfile

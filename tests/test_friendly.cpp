@@ -498,12 +498,15 @@ TEST(FriendlySyntax, TemplateBindingsExposeConditionsAndLoops) {
     std::string classic = normalizeOk(
         "jtml 2\n"
         "let ready = true\n"
+        "let mode = \"ready\"\n"
         "let items = [\"Ada\", \"Grace\"]\n"
         "page\n"
         "  if ready\n"
         "    text \"Ready\"\n"
         "  else\n"
         "    text \"Waiting\"\n"
+        "  if mode == \"ready\"\n"
+        "    text \"Mode ready\"\n"
         "  for item in items\n"
         "    text item\n");
 
@@ -517,6 +520,10 @@ TEST(FriendlySyntax, TemplateBindingsExposeConditionsAndLoops) {
     JtmlTranspiler transpiler;
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("function applyTemplates"), std::string::npos);
+    EXPECT_NE(html.find("data-jtml-cond-expr=\"(mode == &quot;ready&quot;)\""),
+              std::string::npos) << html;
+    EXPECT_EQ(html.find("data-jtml-cond-expr=\"(mode == ready)\""),
+              std::string::npos) << html;
 
     InterpreterConfig config;
     config.startWebSocket = false;
@@ -538,6 +545,44 @@ TEST(FriendlySyntax, TemplateBindingsExposeConditionsAndLoops) {
         }
     }
     EXPECT_TRUE(sawLoop) << bindings.dump(2);
+}
+
+TEST(FriendlySyntax, BrowserLocalLoopBodiesUseScopedExpressionsAndAttributes) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "let users = [{ name: \"Ada\", avatar: \"/ada.png\", active: true }]\n"
+        "page\n"
+        "  for user in users\n"
+        "    box class \"person\"\n"
+        "      image src user.avatar alt user.name\n"
+        "      if user.active\n"
+        "        text user.name\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+
+    EXPECT_NE(html.find("function applyScopedTemplates(root, scope)"), std::string::npos)
+        << html;
+    EXPECT_NE(html.find("function applyScopedAttributes(root, scope)"), std::string::npos)
+        << html;
+    EXPECT_NE(html.find("evaluateClientExpression(attr.value, scope)"), std::string::npos)
+        << html;
+    EXPECT_NE(html.find("renderLoopBody(body, iterator, nestedItem, scope)"), std::string::npos)
+        << html;
+    EXPECT_NE(html.find("data-jtml-attr-src-expr=&quot;user.avatar&quot;"), std::string::npos)
+        << html;
+    EXPECT_NE(html.find("data-jtml-attr-alt-expr=&quot;user.name&quot;"), std::string::npos)
+        << html;
+    EXPECT_NE(html.find("data-jtml-cond-expr=&quot;user.active&quot;"), std::string::npos)
+        << html;
 }
 
 TEST(FriendlySyntax, FetchDeclarationsExposeClientRuntimeBindings) {
@@ -569,8 +614,8 @@ TEST(FriendlySyntax, FetchDeclarationsExposeClientRuntimeBindings) {
     EXPECT_NE(html.find("data-jtml-fetch=\"users\""), std::string::npos);
     EXPECT_NE(html.find("data-url=\"/api/users\""), std::string::npos);
     EXPECT_NE(html.find("data-jtml-expr=\"users.error\""), std::string::npos);
-    EXPECT_NE(html.find("data-jtml-cond-expr=\"(users.loading)\""), std::string::npos);
-    EXPECT_NE(html.find("data-jtml-for-expr=&quot;(users.data)&quot;"), std::string::npos);
+    EXPECT_NE(html.find("data-jtml-cond-expr=\"users.loading\""), std::string::npos);
+    EXPECT_NE(html.find("data-jtml-for-expr=&quot;users.data&quot;"), std::string::npos);
     EXPECT_NE(html.find("function startFetchBindings()"), std::string::npos);
     EXPECT_NE(html.find("function applyClientState()"), std::string::npos);
     EXPECT_NE(html.find("\\s*\\)?\\s*\\}\\}"), std::string::npos);
@@ -892,6 +937,66 @@ TEST(FriendlySyntax, StoreBlockLowersToSharedDictionaryState) {
     ASSERT_TRUE(state["variables"].contains("auth")) << state.dump(2);
     EXPECT_EQ(state["variables"]["auth"]["value"]["user"], "");
     EXPECT_EQ(state["variables"]["auth"]["value"]["token"], "");
+}
+
+TEST(FriendlySyntax, StoreActionWithStringArgumentLowersAndDispatches) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "store filterState\n"
+        "  let selectedRegion = \"All\"\n"
+        "  when pickRegion region\n"
+        "    selectedRegion = region\n"
+        "page\n"
+        "  text \"Region: {filterState.selectedRegion}\"\n"
+        "  button \"Portugal\" click filterState.pickRegion(\"Portugal\")\n");
+
+    EXPECT_NE(classic.find("define filterState = {selectedRegion: \"All\"}\\"),
+              std::string::npos) << classic;
+    EXPECT_NE(classic.find("function filterState_pickRegion(region)\\\\"),
+              std::string::npos) << classic;
+    EXPECT_NE(classic.find("filterState.selectedRegion = region\\\\"),
+              std::string::npos) << classic;
+    EXPECT_NE(classic.find("@button onClick=filterState_pickRegion(\"Portugal\") type=\"button\"\\\\"),
+              std::string::npos) << classic;
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("\"actions\":{\"filterState_pickRegion\""), std::string::npos)
+        << html;
+    EXPECT_NE(html.find("\"params\":[\"region\"]"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"lhs\":\"filterState.selectedRegion\""), std::string::npos)
+        << html;
+    EXPECT_NE(html.find("filterState_pickRegion(\\&quot;Portugal\\&quot;)"), std::string::npos)
+        << html;
+
+    const std::string marker = "sendEvent('";
+    const auto eventPos = html.find(marker);
+    ASSERT_NE(eventPos, std::string::npos) << html;
+    const auto idStart = eventPos + marker.size();
+    const auto idEnd = html.find("'", idStart);
+    ASSERT_NE(idEnd, std::string::npos) << html;
+    const std::string elementId = html.substr(idStart, idEnd - idStart);
+
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(transpiler, config);
+    interpreter.interpret(program);
+
+    std::string updatedBindings;
+    std::string error;
+    ASSERT_TRUE(interpreter.dispatchEvent(elementId, "onClick", nlohmann::json::array(),
+                                          updatedBindings, error)) << error;
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_TRUE(state["variables"].contains("filterState")) << state.dump(2);
+    EXPECT_EQ(state["variables"]["filterState"]["value"]["selectedRegion"], "Portugal");
 }
 
 TEST(FriendlySyntax, StoreBlockQualifiesFieldReadsInsideExpressions) {
@@ -1504,7 +1609,7 @@ TEST(FriendlySyntax, BrowserLocalRuntimeEvaluatesLogicalExpressions) {
     transpiler.setBrowserLocalRuntime(true);
     const std::string html = transpiler.transpile(program);
 
-    EXPECT_NE(html.find("data-jtml-cond-expr=\"(ready &amp;&amp; (! blocked))\""), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-cond-expr=\"(ready &amp;&amp; !blocked)\""), std::string::npos) << html;
     EXPECT_NE(html.find("splitTopLevelToken(expr, '||')"), std::string::npos) << html;
     EXPECT_NE(html.find("splitTopLevelToken(expr, '&&')"), std::string::npos) << html;
     EXPECT_NE(html.find("value: !part.value"), std::string::npos) << html;
@@ -1780,6 +1885,9 @@ TEST(FriendlySyntax, ComponentExpansionAddsInstanceMarker) {
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("\"componentDefinitions\":[{\"name\":\"Badge\",\"params\":[\"label\"]"),
               std::string::npos) << html;
+    EXPECT_NE(html.find("\"bodyPlan\":[{\"indent\":0,\"parentIndex\":-1,\"kind\":\"template\",\"head\":\"text\""),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("\"renderRoot\":true"), std::string::npos) << html;
     EXPECT_NE(html.find("\"componentInstances\":[{\"id\":\"Badge_"), std::string::npos) << html;
     EXPECT_NE(html.find("\"component\":\"Badge\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"params\":{\"label\":\"Gold\"}"), std::string::npos) << html;
@@ -1904,6 +2012,19 @@ TEST(FriendlySyntax, InterpreterRegistersComponentInstancesAndLocalState) {
     EXPECT_EQ(state["componentDefinitions"][0]["runtimePlan"]["mode"], "semantic-instance");
     EXPECT_EQ(state["componentDefinitions"][0]["runtimePlan"]["actions"][0], "add");
     EXPECT_EQ(state["componentDefinitions"][0]["runtimePlan"]["state"][0], "count");
+    ASSERT_GE(state["componentDefinitions"][0]["bodyPlan"].size(), 4);
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][0]["kind"], "state");
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][0]["parentIndex"], -1);
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][1]["kind"], "action");
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][1]["parentIndex"], -1);
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][2]["kind"], "assignment");
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][2]["parentIndex"], 1);
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][3]["kind"], "template");
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][3]["parentIndex"], -1);
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][3]["renderRoot"], true);
+    ASSERT_GE(state["componentDefinitions"][0]["runtimePlan"]["bodyPlan"].size(), 4);
+    EXPECT_EQ(state["componentDefinitions"][0]["runtimePlan"]["bodyPlan"][4]["text"], "show count");
+    EXPECT_EQ(state["componentDefinitions"][0]["runtimePlan"]["bodyPlan"][4]["parentIndex"], 3);
     EXPECT_EQ(state["componentDefinitions"][0]["rootTemplateNodeCount"], 1);
     EXPECT_NE(state["componentDefinitions"][0]["body"].get<std::string>().find("let count = 0"),
               std::string::npos);

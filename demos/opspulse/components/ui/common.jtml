@@ -1,34 +1,47 @@
 jtml 2
 
-use "../../stores/app-state.jtml"
+use appState from "../../stores/app-state.jtml"
 
-make AlertBar message
-  table width "100%" cellpadding "12" cellspacing "0" bgcolor "#eff6ff"
-    tr
-      td
-        strong message
-      td width "120" align "right"
-        button "Dismiss" click appState.dismissAlert
+when dismissWorkspaceAlert
+  appState.alertMessage = ""
 
-make MetricCard label value detail tone
-  fieldset class "metric-card {tone}"
-    legend label
+export make AlertBar message
+  box class "ops-card"
+    strong message
+    box class "toolbar"
+      button "Dismiss" click dismissWorkspaceAlert
+
+export make PageHero title detail
+  box class "hero"
+    h1 title
+    text detail
+
+export make MetricCard label value detail tone
+  box class "metric-card {tone}"
+    strong label
     h2 value
     text detail
 
-make LoadingBlock resource
-  fieldset class "loading"
-    legend "Loading"
-    text resource
+export make StatusPill label tone
+  strong class "status-{tone}"
+    show label
 
-make ErrorBlock resource error
-  fieldset class "error"
-    legend "Could not load"
-    text resource
-    text error
-    button "Try again"
+export make ProgressBar label fillClass detail
+  box class "ops-card"
+    strong label
+    box class "progress"
+      box class fillClass
+        text ""
+    text detail
 
-make EmptyBlock label
-  fieldset class "empty"
-    legend "Nothing here"
+export make EmptyBlock label
+  box class "ops-card"
+    h3 "Nothing selected"
     text label
+
+export make InsightCard title detail tone
+  box class "ops-card"
+    strong class "status-{tone}"
+      show tone
+    h3 title
+    text detail

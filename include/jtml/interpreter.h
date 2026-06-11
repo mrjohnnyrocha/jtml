@@ -140,6 +140,16 @@ private:
         int sourceLine = 0;
         std::vector<std::string> params;
         std::string body;
+        struct BodyPlanNode {
+            int indent = 0;
+            int parentIndex = -1;
+            std::string kind;
+            std::string head;
+            std::string name;
+            std::string text;
+            bool renderRoot = false;
+        };
+        std::vector<BodyPlanNode> bodyPlan;
         std::vector<std::string> localState;
         std::vector<std::string> localDerived;
         std::vector<std::string> localActions;

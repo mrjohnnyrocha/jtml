@@ -1,0 +1,33 @@
+jtml 2
+
+use appState from "../stores/app-state.jtml"
+use filterState from "../stores/filter-state.jtml"
+use Shell from "../components/layouts/shell.jtml"
+use { PageHero, MetricCard } from "../components/ui/common.jtml"
+
+when saveWorkspaceSettings
+  appState.settingsSaved = true
+  appState.alertMessage = "Workspace settings saved"
+
+export make SettingsPage
+  Shell "Workspace settings"
+    PageHero "Workspace settings" "A small form showing shared store state, derived values, and actions."
+    box class "two-column"
+      box class "ops-card"
+        h2 "Workspace"
+        input "Workspace name" into appState.workspace
+        input "Default region" into filterState.selectedRegion
+        input "Default platform" into filterState.selectedPlatform
+        button "Save settings" click saveWorkspaceSettings
+        if appState.settingsSaved
+          text "Settings saved"
+        else
+          text "No recent changes"
+      box class "ops-card"
+        h2 "Observable summary"
+        MetricCard "Workspace" appState.workspace "Shared store value" "primary"
+        MetricCard "Filter summary" "{filterState.selectedRegion} / {filterState.selectedPlatform} / {filterState.selectedTool}" "Shared across pages" "good"
+        if filterState.search != ""
+          MetricCard "Search active" "true" "Input binding" "warn"
+        else
+          MetricCard "Search active" "false" "Input binding" "warn"

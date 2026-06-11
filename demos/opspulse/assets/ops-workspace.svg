@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" role="img" aria-labelledby="title desc">
+  <title id="title">OpsPulse workspace</title>
+  <desc id="desc">A polished enterprise dashboard illustration with panels, metrics, charts, and a sidebar.</desc>
+  <rect width="960" height="560" rx="32" fill="#f6f8fb"/>
+  <rect x="48" y="48" width="864" height="464" rx="28" fill="#ffffff" stroke="#d8e0e7" stroke-width="3"/>
+  <rect x="48" y="48" width="190" height="464" rx="28" fill="#155e75"/>
+  <circle cx="92" cy="96" r="24" fill="#e0f2fe"/>
+  <rect x="126" y="82" width="76" height="14" rx="7" fill="#e0f2fe"/>
+  <rect x="78" y="154" width="128" height="16" rx="8" fill="#ffffff" opacity=".92"/>
+  <rect x="78" y="196" width="112" height="14" rx="7" fill="#ffffff" opacity=".62"/>
+  <rect x="78" y="234" width="134" height="14" rx="7" fill="#ffffff" opacity=".62"/>
+  <rect x="78" y="272" width="104" height="14" rx="7" fill="#ffffff" opacity=".62"/>
+  <rect x="278" y="86" width="278" height="26" rx="13" fill="#17202a"/>
+  <rect x="278" y="134" width="148" height="16" rx="8" fill="#64748b"/>
+  <rect x="278" y="194" width="144" height="96" rx="18" fill="#ecfeff" stroke="#99f6e4"/>
+  <rect x="450" y="194" width="144" height="96" rx="18" fill="#f0fdf4" stroke="#bbf7d0"/>
+  <rect x="622" y="194" width="144" height="96" rx="18" fill="#fffbeb" stroke="#fde68a"/>
+  <rect x="794" y="194" width="82" height="96" rx="18" fill="#fef2f2" stroke="#fecaca"/>
+  <rect x="300" y="220" width="82" height="14" rx="7" fill="#155e75"/>
+  <rect x="300" y="246" width="58" height="18" rx="9" fill="#0f766e"/>
+  <rect x="472" y="220" width="82" height="14" rx="7" fill="#155e75"/>
+  <rect x="472" y="246" width="58" height="18" rx="9" fill="#0f766e"/>
+  <rect x="644" y="220" width="82" height="14" rx="7" fill="#155e75"/>
+  <rect x="644" y="246" width="58" height="18" rx="9" fill="#d97706"/>
+  <rect x="278" y="326" width="354" height="142" rx="20" fill="#f8fafc" stroke="#d8e0e7"/>
+  <rect x="662" y="326" width="214" height="142" rx="20" fill="#f8fafc" stroke="#d8e0e7"/>
+  <path d="M314 426 L376 386 L438 404 L500 358 L584 376" fill="none" stroke="#155e75" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="692" y="362" width="128" height="12" rx="6" fill="#cbd5e1"/>
+  <rect x="692" y="394" width="154" height="12" rx="6" fill="#94a3b8"/>
+  <rect x="692" y="426" width="96" height="12" rx="6" fill="#cbd5e1"/>
+</svg>

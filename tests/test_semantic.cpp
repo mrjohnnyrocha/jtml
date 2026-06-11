@@ -2,7 +2,9 @@
 #include "jtml/language_catalog.h"
 #include "jtml/lexer.h"
 #include "jtml/parser.h"
+#include "jtml/runtime_plan.h"
 #include "jtml/semantic.h"
+#include "jtml/semantic/module_graph.h"
 #include "jtml/transpiler.h"
 
 #include <gtest/gtest.h>
@@ -71,6 +73,16 @@ const jtml::SemanticImport* findImportRecord(const jtml::SemanticProgram& semant
     return it == semantic.importRecords.end() ? nullptr : &*it;
 }
 
+std::vector<const jtml::SemanticImport*> findImportRecords(
+        const jtml::SemanticProgram& semantic,
+        const std::string& specifier) {
+    std::vector<const jtml::SemanticImport*> matches;
+    for (const auto& import : semantic.importRecords) {
+        if (import.specifier == specifier) matches.push_back(&import);
+    }
+    return matches;
+}
+
 const jtml::SemanticComponentDefinition* findComponentDefinition(
         const jtml::SemanticProgram& semantic,
         const std::string& name) {
@@ -79,6 +91,26 @@ const jtml::SemanticComponentDefinition* findComponentDefinition(
         semantic.componentDefinitions.end(),
         [&](const auto& definition) { return definition.name == name; });
     return it == semantic.componentDefinitions.end() ? nullptr : &*it;
+}
+
+const jtml::RuntimePlanBinding* findRuntimeBinding(
+        const std::vector<jtml::RuntimePlanBinding>& bindings,
+        const std::string& name) {
+    auto it = std::find_if(
+        bindings.begin(),
+        bindings.end(),
+        [&](const auto& binding) { return binding.name == name; });
+    return it == bindings.end() ? nullptr : &*it;
+}
+
+const jtml::RuntimePlanAction* findRuntimeAction(
+        const std::vector<jtml::RuntimePlanAction>& actions,
+        const std::string& name) {
+    auto it = std::find_if(
+        actions.begin(),
+        actions.end(),
+        [&](const auto& action) { return action.name == name; });
+    return it == actions.end() ? nullptr : &*it;
 }
 
 } // namespace
@@ -653,6 +685,47 @@ TEST(SemanticProgram, CapturesFriendlyReExportImportRecords) {
     EXPECT_TRUE(hasEdge(semantic, "module:re-export", "./card.jtml", "imports"));
 }
 
+TEST(SemanticProgram, KeepsMultipleImportRecordsForSameSpecifier) {
+    const std::string source =
+        "jtml 2\n"
+        "use Card from \"./ui.jtml\"\n"
+        "use Button from \"./ui.jtml\"\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+
+    const auto records = findImportRecords(semantic, "./ui.jtml");
+    ASSERT_EQ(records.size(), 2u) << semantic.importRecords.size();
+    EXPECT_EQ(records[0]->kind, "named");
+    EXPECT_EQ(records[1]->kind, "named");
+}
+
+TEST(SemanticProject, BuildsModuleRecordsFromLinkedProgram) {
+    jtml::SemanticProgram semantic;
+    semantic.moduleFiles = {
+        "/app/index.jtml",
+        "/app/components/ui.jtml",
+    };
+    semantic.importRecords.push_back({
+        "./components/ui.jtml",
+        "named",
+        {"Card"},
+        false,
+    });
+
+    const auto project = jtml::buildSemanticProject(semantic, "/app/index.jtml");
+
+    ASSERT_EQ(project.modules.size(), 2u);
+    EXPECT_EQ(project.entry, 0u);
+    EXPECT_EQ(project.modules[0].path, "/app/index.jtml");
+    ASSERT_EQ(project.modules[0].imports.size(), 1u);
+    EXPECT_EQ(project.modules[0].imports[0].specifier, "./components/ui.jtml");
+    ASSERT_EQ(project.modules[0].imports[0].names.size(), 1u);
+    EXPECT_EQ(project.modules[0].imports[0].names[0], "Card");
+    EXPECT_EQ(project.modules[0].imports[0].importer, project.entry);
+    EXPECT_EQ(project.modules[0].imports[0].resolved, 1u);
+}
+
 TEST(SemanticProgram, UsageAnalysisComesFromSemanticGraph) {
     const std::string source =
         "jtml 2\n"
@@ -712,4 +785,108 @@ TEST(SemanticProgram, UsageAnalysisComesFromSemanticGraph) {
     EXPECT_TRUE(std::any_of(usage.warnings.begin(), usage.warnings.end(), [](const auto& warning) {
         return warning.code == "JTML_UNBOUND_ACTION" && warning.message.find("never") != std::string::npos;
     }));
+}
+
+TEST(RuntimePlan, OwnsBrowserLocalRuntimeShapeBeforeManifestEmission) {
+    const std::string source =
+        "jtml 2\n"
+        "\n"
+        "let count = 0\n"
+        "let users = fetch \"/api/users\" retry 2 refresh reloadUsers\n"
+        "get label = \"Count {count}\"\n"
+        "\n"
+        "when add step\n"
+        "  if step\n"
+        "    count += step\n"
+        "  else\n"
+        "    count += 1\n"
+        "\n"
+        "when reloadUsers\n"
+        "  invalidate users\n"
+        "\n"
+        "make Counter title\n"
+        "  card title title\n"
+        "    text label\n"
+        "\n"
+        "route \"/:title\" as Counter\n"
+        "\n"
+        "page\n"
+        "  Counter \"Home\"\n"
+        "  button \"Add\" click add(1)\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto plan = jtml::buildRuntimePlan(program, semantic);
+
+    const auto* count = findRuntimeBinding(plan.state, "count");
+    ASSERT_NE(count, nullptr);
+    EXPECT_EQ(count->expr, "0.000000000000000");
+    EXPECT_NE(findRuntimeBinding(plan.state, "users"), nullptr);
+    EXPECT_NE(findRuntimeBinding(plan.state, "title"), nullptr);
+    const auto* label = findRuntimeBinding(plan.derived, "label");
+    ASSERT_NE(label, nullptr);
+    EXPECT_EQ(label->expr, "(\"Count \" + count)");
+
+    ASSERT_EQ(plan.fetches.size(), 1u);
+    EXPECT_EQ(plan.fetches[0].name, "users");
+    EXPECT_EQ(plan.fetches[0].url, "/api/users");
+    EXPECT_EQ(plan.fetches[0].retryCount, "2");
+    EXPECT_EQ(plan.fetches[0].refreshAction, "reloadUsers");
+
+    ASSERT_EQ(plan.routes.size(), 1u);
+    EXPECT_EQ(plan.routes[0].path, "/:title");
+    EXPECT_EQ(plan.routes[0].component, "Counter");
+
+    const auto* add = findRuntimeAction(plan.actions, "add");
+    ASSERT_NE(add, nullptr);
+    ASSERT_EQ(add->params.size(), 1u);
+    EXPECT_EQ(add->params[0], "step");
+    ASSERT_EQ(add->body.size(), 1u);
+    EXPECT_EQ(add->body[0].kind, "if");
+    EXPECT_EQ(add->body[0].condition, "step");
+    ASSERT_EQ(add->body[0].thenStatements.size(), 1u);
+    EXPECT_EQ(add->body[0].thenStatements[0].lhs, "count");
+    EXPECT_EQ(add->body[0].thenStatements[0].expr, "(count + step)");
+    ASSERT_EQ(add->body[0].elseStatements.size(), 1u);
+    EXPECT_EQ(add->body[0].elseStatements[0].expr, "(count + 1.000000000000000)");
+    EXPECT_NE(findRuntimeAction(plan.actions, "reloadUsers"), nullptr);
+
+    ASSERT_EQ(plan.componentDefinitions.size(), 1u);
+    EXPECT_EQ(plan.componentDefinitions[0].name, "Counter");
+    EXPECT_NE(plan.componentDefinitions[0].bodySource.find("text label"),
+              std::string::npos);
+    EXPECT_FALSE(plan.componentDefinitions[0].bodyHex.empty());
+    ASSERT_GE(plan.componentDefinitions[0].bodyPlan.size(), 2u);
+    EXPECT_TRUE(std::any_of(
+        plan.componentDefinitions[0].bodyPlan.begin(),
+        plan.componentDefinitions[0].bodyPlan.end(),
+        [](const auto& node) {
+            return node.kind == "template" && node.name == "card" && node.renderRoot;
+        }));
+    EXPECT_TRUE(std::any_of(
+        plan.componentDefinitions[0].bodyPlan.begin(),
+        plan.componentDefinitions[0].bodyPlan.end(),
+        [](const auto& node) {
+            return node.kind == "template" && node.name == "text" && !node.renderRoot;
+        }));
+    auto cardIt = std::find_if(
+        plan.componentDefinitions[0].bodyPlan.begin(),
+        plan.componentDefinitions[0].bodyPlan.end(),
+        [](const auto& node) {
+            return node.kind == "template" && node.name == "card" && node.renderRoot;
+        });
+    ASSERT_NE(cardIt, plan.componentDefinitions[0].bodyPlan.end());
+    const int cardIndex = static_cast<int>(
+        std::distance(plan.componentDefinitions[0].bodyPlan.begin(), cardIt));
+    EXPECT_TRUE(std::any_of(
+        plan.componentDefinitions[0].bodyPlan.begin(),
+        plan.componentDefinitions[0].bodyPlan.end(),
+        [&](const auto& node) {
+            return node.kind == "template" && node.name == "text" &&
+                   node.parentIndex == cardIndex;
+        }));
+    EXPECT_TRUE(std::any_of(
+        plan.componentInstances.begin(),
+        plan.componentInstances.end(),
+        [](const auto& instance) { return instance.component == "Counter"; }));
 }

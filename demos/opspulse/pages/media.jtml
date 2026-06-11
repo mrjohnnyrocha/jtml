@@ -1,0 +1,34 @@
+jtml 2
+
+use opsData from "../stores/ops-data.jtml"
+use Shell from "../components/layouts/shell.jtml"
+use { PageHero, MetricCard } from "../components/ui/common.jtml"
+
+let selectedImage = ""
+let mediaUploads = []
+
+export make MediaPage
+  Shell "Media and interface lab"
+    PageHero "Media and interface lab" "JTML can keep normal web media, upload state, and visual dashboard surfaces in the same readable app."
+    box class "metric-grid"
+      MetricCard "Assets" opsData.mediaAssets "Managed launch files" "primary"
+      MetricCard "Visual surfaces" "4" "Image, file, dropzone, SVG" "good"
+      MetricCard "Review status" "Ready" "Accessible media path" "good"
+      MetricCard "Next target" "3D" "Interop and scene runtime" "warn"
+    box class "media-grid"
+      box class "ops-card"
+        h2 "Workspace visual"
+        image src "/assets/ops-workspace.svg" alt "OpsPulse workspace illustration" loading "lazy"
+        text "A local deployable asset, copied with the app."
+      box class "ops-card"
+        h2 "Evidence intake"
+        file "Upload screenshot" accept "image/*" into selectedImage
+        if selectedImage
+          text "Selected file: {selectedImage.name}"
+          image src selectedImage.preview alt selectedImage.name
+        else
+          text "No screenshot selected yet."
+        dropzone "Drop launch evidence" accept "image/*,video/*,.pdf" into mediaUploads
+        if mediaUploads
+          text "Dropzone state is connected and ready for batch processing."
+        text "Uploaded media is exposed as JTML state for previews and future processing."

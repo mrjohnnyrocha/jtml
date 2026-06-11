@@ -303,11 +303,24 @@ Implementation slices:
    `src/client_manifest_emitter.cpp`, and shared expression serialization moved
    to `src/expression_source.cpp`. `src/transpiler.cpp` is now primarily the
    HTML emitter and delegates runtime script plus manifest generation.
-   Next: split browser-local runtime data planning away from the manifest
-   JSON writer, then use that plan for direct component instance execution.
-7. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
+8. ✅ Runtime plan extraction: browser-local runtime data now flows through a
+   typed `jtml::RuntimePlan` before JSON manifest serialization. This keeps the
+   existing manifest shape stable while giving the next backend slices a shared
+   state/derived/action/fetch/route/component plan to consume.
+9. ✅ Runtime plan adoption slice: `jtml explain --json` exposes `runtimePlan`,
+   component definition plans carry decoded body source, and the live
+   interpreter now registers component definitions/instances from the same plan
+   consumed by browser-local manifest generation.
+10. ✅ Component body plan slice: `RuntimePlan` component definitions now expose
+   structured body nodes (`state`, `derived`, `action`, `assignment`,
+   `effect`, `slot`, `template`) plus indent, parent-index, and render-root
+   metadata through `runtimePlan.componentDefinitions[].bodyPlan`,
+   browser-local manifests, and live `/api/component-definitions`.
+   Next: use that body plan for direct non-expanded component instance
+   execution and live/browser parity checks.
+11. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
    same catalog endpoint pattern.
-8. Add security, compatibility, deprecation, contribution, benchmark, and
+12. Add security, compatibility, deprecation, contribution, benchmark, and
    release-policy docs once the internal contracts stop moving every slice.
 
 ## Decision

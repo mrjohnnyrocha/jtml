@@ -2,6 +2,7 @@
 #include "jtml/interpreter.h"
 #include "jtml/attribute_classifier.h"
 #include "jtml/friendly.h"
+#include "jtml/runtime_plan.h"
 #include "jtml/semantic.h"
 
 #include <algorithm>
@@ -414,6 +415,22 @@ std::string Interpreter::getComponentsJSON() {
 }
 
 std::string Interpreter::getComponentDefinitionsJSON() {
+    auto componentBodyPlanToJson = [](const auto& bodyPlan) {
+        nlohmann::json out = nlohmann::json::array();
+        for (const auto& node : bodyPlan) {
+            out.push_back({
+                {"indent", node.indent},
+                {"parentIndex", node.parentIndex},
+                {"kind", node.kind},
+                {"head", node.head},
+                {"name", node.name},
+                {"text", node.text},
+                {"renderRoot", node.renderRoot},
+            });
+        }
+        return out;
+    };
+
     nlohmann::json out = nlohmann::json::array();
     for (const auto& def : componentDefinitions) {
         out.push_back({
@@ -421,6 +438,7 @@ std::string Interpreter::getComponentDefinitionsJSON() {
             {"sourceLine", def.sourceLine},
             {"params", def.params},
             {"body", def.body},
+            {"bodyPlan", componentBodyPlanToJson(def.bodyPlan)},
             {"localState", stringVectorToJson(def.localState)},
             {"localDerived", stringVectorToJson(def.localDerived)},
             {"localActions", stringVectorToJson(def.localActions)},
@@ -437,6 +455,7 @@ std::string Interpreter::getComponentDefinitionsJSON() {
                 {"state", stringVectorToJson(def.localState)},
                 {"derived", stringVectorToJson(def.localDerived)},
                 {"effects", stringVectorToJson(def.localEffects)},
+                {"bodyPlan", componentBodyPlanToJson(def.bodyPlan)},
                 {"bodyNodeCount", def.bodyNodeCount},
                 {"rootTemplateNodeCount", def.rootTemplateNodeCount},
                 {"slotCount", def.slotCount},
@@ -1133,23 +1152,34 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
     componentInstances.clear();
     componentDefinitions.clear();
 
-    const auto semantic = jtml::analyzeSemanticProgram(program);
-    if (!semantic.componentDefinitions.empty() || !semantic.componentInstances.empty()) {
-        for (const auto& semanticDef : semantic.componentDefinitions) {
+    const auto plan = jtml::buildRuntimePlan(program);
+    if (!plan.componentDefinitions.empty() || !plan.componentInstances.empty()) {
+        for (const auto& plannedDef : plan.componentDefinitions) {
             RuntimeComponentDefinition def;
-            def.name = semanticDef.name;
-            def.sourceLine = semanticDef.sourceLine;
-            def.params = semanticDef.params;
-            def.body = hexDecode(semanticDef.bodyHex);
-            def.localState = semanticDef.localState;
-            def.localDerived = semanticDef.localDerived;
-            def.localActions = semanticDef.localActions;
-            def.localEffects = semanticDef.localEffects;
-            def.eventBindings = semanticDef.eventBindings;
-            def.hasSlot = semanticDef.hasSlot;
-            def.bodyNodeCount = semanticDef.bodyNodeCount;
-            def.rootTemplateNodeCount = semanticDef.rootTemplateNodeCount;
-            def.slotCount = semanticDef.slotCount;
+            def.name = plannedDef.name;
+            def.sourceLine = plannedDef.sourceLine;
+            def.params = plannedDef.params;
+            def.body = plannedDef.bodySource;
+            for (const auto& plannedNode : plannedDef.bodyPlan) {
+                def.bodyPlan.push_back({
+                    plannedNode.indent,
+                    plannedNode.parentIndex,
+                    plannedNode.kind,
+                    plannedNode.head,
+                    plannedNode.name,
+                    plannedNode.text,
+                    plannedNode.renderRoot,
+                });
+            }
+            def.localState = plannedDef.localState;
+            def.localDerived = plannedDef.localDerived;
+            def.localActions = plannedDef.localActions;
+            def.localEffects = plannedDef.localEffects;
+            def.eventBindings = plannedDef.eventBindings;
+            def.hasSlot = plannedDef.hasSlot;
+            def.bodyNodeCount = plannedDef.bodyNodeCount;
+            def.rootTemplateNodeCount = plannedDef.rootTemplateNodeCount;
+            def.slotCount = plannedDef.slotCount;
 
             auto existing = std::find_if(componentDefinitions.begin(), componentDefinitions.end(),
                 [&](const RuntimeComponentDefinition& current) {
@@ -1166,21 +1196,21 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
             return out;
         };
 
-        for (const auto& semanticInstance : semantic.componentInstances) {
+        for (const auto& plannedInstance : plan.componentInstances) {
             RuntimeComponentInstance instance;
-            instance.id = semanticInstance.id;
-            instance.component = semanticInstance.component;
-            instance.role = semanticInstance.role.empty() ? "component" : semanticInstance.role;
-            instance.sourceLine = semanticInstance.sourceLine;
-            instance.instanceID = static_cast<JTML::InstanceID>(semanticInstance.instanceId);
+            instance.id = plannedInstance.id;
+            instance.component = plannedInstance.component;
+            instance.role = plannedInstance.role.empty() ? "component" : plannedInstance.role;
+            instance.sourceLine = plannedInstance.sourceLine;
+            instance.instanceID = static_cast<JTML::InstanceID>(plannedInstance.instanceId);
             if (instance.instanceID == 0) {
                 instance.instanceID = parseInstanceId("", instance.id);
             }
             if (instance.instanceID == 0) {
                 instance.instanceID = static_cast<JTML::InstanceID>(componentInstances.size() + 1);
             }
-            instance.params = propertiesToMap(semanticInstance.params);
-            instance.locals = propertiesToMap(semanticInstance.locals);
+            instance.params = propertiesToMap(plannedInstance.params);
+            instance.locals = propertiesToMap(plannedInstance.locals);
             componentInstances.push_back(std::move(instance));
         }
     } else {

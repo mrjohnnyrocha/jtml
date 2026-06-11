@@ -1,0 +1,69 @@
+jtml 2
+
+use appState from "../stores/app-state.jtml"
+use filterState from "../stores/filter-state.jtml"
+use opsData from "../stores/ops-data.jtml"
+use Shell from "../components/layouts/shell.jtml"
+use { PageHero, MetricCard, EmptyBlock } from "../components/ui/common.jtml"
+
+when priorityAll
+  filterState.selectedPriority = "All"
+
+when priorityHigh
+  filterState.selectedPriority = "High"
+
+when priorityMedium
+  filterState.selectedPriority = "Medium"
+
+when priorityLow
+  filterState.selectedPriority = "Low"
+
+when openIncidentPolicy
+  appState.selectedIncident = "INC-1042"
+  appState.alertMessage = "Incident selected: INC-1042"
+
+when openIncidentSearch
+  appState.selectedIncident = "INC-1037"
+  appState.alertMessage = "Incident selected: INC-1037"
+
+when addIncidentNote
+  if appState.draftNote != ""
+    appState.alertMessage = "Operational note added"
+    appState.draftNote = ""
+
+when closeIncidentDetail
+  appState.selectedIncident = ""
+
+export make IncidentsPage
+  Shell "Incident center"
+    PageHero "Incident center" "Review model, routing, policy, and integration incidents."
+    box class "toolbar"
+      button "All" click priorityAll
+      button "High" click priorityHigh
+      button "Medium" click priorityMedium
+      button "Low" click priorityLow
+    box class "metric-grid"
+      MetricCard "Open incidents" opsData.incidentsOpen filterState.selectedPriority "warn"
+      MetricCard "Reliability" opsData.reliability "Service health" "good"
+      MetricCard "Median latency" opsData.avgLatency "Runtime path" "primary"
+      MetricCard "Escalations" "2" "Needs owner review" "danger"
+    box class "two-column"
+      box class "ops-card"
+        h2 "Incident queue"
+        box class "ops-card"
+          h3 "INC-1042 Policy fallback"
+          text "High / active"
+          button "Open" click openIncidentPolicy
+        box class "ops-card"
+          h3 "INC-1037 Search quality"
+          text "Medium / monitoring"
+          button "Open" click openIncidentSearch
+      box class "ops-card"
+        h2 "Incident detail"
+        if appState.selectedIncident != ""
+          text appState.selectedIncident
+          textarea "Write operational note" into appState.draftNote
+          button "Add note" click addIncidentNote
+          button "Close" click closeIncidentDetail
+        else
+          EmptyBlock "Select an incident to inspect ownership, notes, and recovery state."

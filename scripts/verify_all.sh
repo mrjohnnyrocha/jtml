@@ -22,6 +22,23 @@ for demo_file in "$repo_root"/demos/*.jtml; do
 done
 "$build_dir/jtml" explain "$repo_root/demos/index.jtml" --json > "$repo_root/dist/demo-explain.json"
 "$build_dir/jtml" build "$repo_root/demos" --out "$repo_root/dist/demos"
+"$build_dir/jtml" check "$repo_root/demos/opspulse/index.jtml"
+"$build_dir/jtml" lint "$repo_root/demos/opspulse/index.jtml"
+"$build_dir/jtml" explain "$repo_root/demos/opspulse/index.jtml" --json > "$repo_root/dist/opspulse-explain.json"
+"$build_dir/jtml" build "$repo_root/demos/opspulse" --out "$repo_root/dist/opspulse"
+test -f "$repo_root/dist/opspulse/index.html"
+test -f "$repo_root/dist/opspulse/assets/ops-workspace.svg"
+
+tmp_browser_loop="$(mktemp "${TMPDIR:-/tmp}/jtml-browser-loop.XXXXXX.jtml")"
+printf 'jtml 2\n\nlet users = [{ name: "Ada", avatar: "/ada.png", active: true }]\n\npage\n  for user in users\n    box class "person"\n      image src user.avatar alt user.name\n      if user.active\n        text user.name\n' > "$tmp_browser_loop"
+"$build_dir/jtml" build "$tmp_browser_loop" --target browser --out "$repo_root/dist/browser-loop"
+grep -q 'function applyScopedTemplates(root, scope)' "$repo_root/dist/browser-loop/index.html" \
+  || { echo "browser-loop: scoped template runtime helper missing" >&2; exit 1; }
+grep -q 'data-jtml-attr-src-expr=&quot;user.avatar&quot;' "$repo_root/dist/browser-loop/index.html" \
+  || { echo "browser-loop: loop-scoped image src binding missing" >&2; exit 1; }
+grep -q 'data-jtml-cond-expr=&quot;user.active&quot;' "$repo_root/dist/browser-loop/index.html" \
+  || { echo "browser-loop: loop-scoped nested condition missing" >&2; exit 1; }
+rm -f "$tmp_browser_loop"
 
 tmp_pkg_root="$(mktemp -d "${TMPDIR:-/tmp}/jtml-package.XXXXXX")"
 mkdir -p "$tmp_pkg_root/shared" "$tmp_pkg_root/app"
@@ -760,8 +777,8 @@ test -f "$repo_root/dist/release/SHA256SUMS"
 # ---------------------------------------------------------------------------
 # Runtime regression smoke. Boots `jtml serve` against the bundled examples
 # that exercise the production-language paths fixed during the Studio revamp
-# (fetch GET, fetch POST + nested conditions, routes, stores, component
-# isolation, hex colours in style blocks, and the iframe-safe link
+# (fetch GET, fetch POST + nested conditions, routes, stores, store action
+# dispatch, component isolation, hex colours in style blocks, and the iframe-safe link
 # interceptor) and asserts the documented HTTP contract returns the expected
 # shape. Gated on Node so the rest of verify_all stays portable on machines
 # that don't have it; the section logs and skips when it's missing.
@@ -781,6 +798,7 @@ runtime_smoke() {
     if [ -n "${_srv_pid:-}" ] && kill -0 "$_srv_pid" 2>/dev/null; then
       kill "$_srv_pid" 2>/dev/null || true
       wait "$_srv_pid" 2>/dev/null || true
+      sleep 0.2
     fi
     _srv_pid=""
   }
@@ -826,11 +844,19 @@ runtime_smoke() {
     fi
   }
 
+  local smoke_base=$((9400 + ($$ % 400)))
+  local fetch_get_port=$((smoke_base + 1))
+  local fetch_post_port=$((smoke_base + 2))
+  local routes_port=$((smoke_base + 3))
+  local store_port=$((smoke_base + 4))
+  local components_port=$((smoke_base + 5))
+  local studio_port=$((smoke_base + 6))
+
   # ---- 1. fetch GET seeds bindings.state.<name> with {data,error,loading} ----
-  echo "[runtime-smoke] 1/7 fetch GET..."
-  start_serve "$repo_root/examples/friendly_fetch.jtml" 9501 \
+  echo "[runtime-smoke] 1/8 fetch GET..."
+  start_serve "$repo_root/examples/friendly_fetch.jtml" "$fetch_get_port" \
     "$artifacts_dir/fetch-get.log"
-  curl -fsS http://localhost:9501/api/bindings > "$artifacts_dir/fetch-get-bindings.json"
+  curl -fsS "http://localhost:$fetch_get_port/api/bindings" > "$artifacts_dir/fetch-get-bindings.json"
   assert_json "$artifacts_dir/fetch-get-bindings.json" \
     "fetch GET bindings.state.users shape" \
     "data.bindings && data.bindings.state && data.bindings.state.users && 'loading' in data.bindings.state.users && 'data' in data.bindings.state.users && 'error' in data.bindings.state.users"
@@ -838,15 +864,15 @@ runtime_smoke() {
 
   # ---- 2. fetch POST seeds bindings.state.<name> AND the nested ----
   #         `if login.data.user` page renders without crashing.
-  echo "[runtime-smoke] 2/7 fetch POST..."
-  start_serve "$repo_root/examples/friendly_fetch_post.jtml" 9502 \
+  echo "[runtime-smoke] 2/8 fetch POST..."
+  start_serve "$repo_root/examples/friendly_fetch_post.jtml" "$fetch_post_port" \
     "$artifacts_dir/fetch-post.log"
-  curl -fsS http://localhost:9502/api/bindings > "$artifacts_dir/fetch-post-bindings.json"
+  curl -fsS "http://localhost:$fetch_post_port/api/bindings" > "$artifacts_dir/fetch-post-bindings.json"
   assert_json "$artifacts_dir/fetch-post-bindings.json" \
     "fetch POST bindings.state.login shape" \
     "data.bindings && data.bindings.state && data.bindings.state.login && 'loading' in data.bindings.state.login && 'data' in data.bindings.state.login && 'error' in data.bindings.state.login"
   http_code="$(curl -fsS -o "$artifacts_dir/fetch-post-page.html" \
-    -w '%{http_code}' http://localhost:9502/)"
+    -w '%{http_code}' "http://localhost:$fetch_post_port/")"
   test "$http_code" = "200" \
     || { echo "fetch POST: GET / returned $http_code (nested if regressed?)" >&2; exit 1; }
   test -s "$artifacts_dir/fetch-post-page.html" \
@@ -854,10 +880,10 @@ runtime_smoke() {
   cleanup_srv
 
   # ---- 3. routes register + iframe-safe link interceptor is in the runtime ----
-  echo "[runtime-smoke] 3/7 routes + link interceptor..."
-  start_serve "$repo_root/examples/friendly_routes.jtml" 9503 \
+  echo "[runtime-smoke] 3/8 routes + link interceptor..."
+  start_serve "$repo_root/examples/friendly_routes.jtml" "$routes_port" \
     "$artifacts_dir/routes.log"
-  curl -fsS http://localhost:9503/ > "$artifacts_dir/routes.html"
+  curl -fsS "http://localhost:$routes_port/" > "$artifacts_dir/routes.html"
   grep -q 'data-jtml-link="true"' "$artifacts_dir/routes.html" \
     || { echo "routes: data-jtml-link attribute missing from rendered output" >&2; exit 1; }
   # The link interceptor (added to fix Studio iframe nav) MUST be present so
@@ -869,65 +895,108 @@ runtime_smoke() {
   cleanup_srv
 
   # ---- 4. store: shared dictionary state surfaces user-authored fields ----
-  echo "[runtime-smoke] 4/7 store..."
-  start_serve "$repo_root/examples/friendly_store.jtml" 9504 \
+  echo "[runtime-smoke] 4/8 store..."
+  start_serve "$repo_root/examples/friendly_store.jtml" "$store_port" \
     "$artifacts_dir/store.log"
-  curl -fsS http://localhost:9504/api/bindings > "$artifacts_dir/store-bindings.json"
+  curl -fsS "http://localhost:$store_port/api/bindings" > "$artifacts_dir/store-bindings.json"
   assert_json "$artifacts_dir/store-bindings.json" \
     "store auth.user/auth.token initialization" \
     "data.bindings && data.bindings.state && data.bindings.state.auth && data.bindings.state.auth.user === 'Ada' && data.bindings.state.auth.token === 'demo-token'"
   cleanup_srv
 
-  # ---- 5. component isolation: each Counter has its own locals AND ----
+  # ---- 5. store action dispatch: parameterized store actions preserve ----
+  #         quoted arguments through HTML event emission and /api/event.
+  echo "[runtime-smoke] 5/8 parameterized store action..."
+  cat > "$artifacts_dir/store-action.jtml" <<'JTML'
+jtml 2
+store filterState
+  let selectedRegion = "All"
+  when pickRegion region
+    selectedRegion = region
+page
+  text "Region: {filterState.selectedRegion}"
+  button "Portugal" click filterState.pickRegion("Portugal")
+JTML
+  start_serve "$artifacts_dir/store-action.jtml" "$store_port" \
+    "$artifacts_dir/store-action.log"
+  curl -fsS "http://localhost:$store_port/" > "$artifacts_dir/store-action.html"
+  grep -q 'filterState_pickRegion(\\&quot;Portugal\\&quot;)' "$artifacts_dir/store-action.html" \
+    || { echo "store action: quoted argument was not preserved in event emission" >&2; exit 1; }
+  STORE_ACTION_HTML="$artifacts_dir/store-action.html" \
+  STORE_ACTION_PAYLOAD="$artifacts_dir/store-action-payload.json" \
+  node -e "
+    const fs = require('fs');
+    const html = fs.readFileSync(process.env.STORE_ACTION_HTML, 'utf8');
+    const match = html.match(/sendEvent\\('([^']+)', 'onClick', \\['([^']+)'\\]\\)/);
+    if (!match) {
+      console.error('store action: could not find click sendEvent call');
+      process.exit(1);
+    }
+    fs.writeFileSync(process.env.STORE_ACTION_PAYLOAD, JSON.stringify({
+      elementId: match[1],
+      eventType: 'onClick',
+      args: [match[2]]
+    }));
+  "
+  curl -fsS -X POST "http://localhost:$store_port/api/event" \
+    -H 'Content-Type: application/json' \
+    --data "@$artifacts_dir/store-action-payload.json" \
+    > "$artifacts_dir/store-action-event.json"
+  assert_json "$artifacts_dir/store-action-event.json" \
+    "parameterized store action mutates dictionary state" \
+    "data.ok === true && data.state && data.state.variables && data.state.variables.filterState && data.state.variables.filterState.value && data.state.variables.filterState.value.selectedRegion === 'Portugal'"
+  cleanup_srv
+
+  # ---- 6. component isolation: each Counter has its own locals AND ----
   #         dispatching `add` on instance 1 does NOT mutate instance 2.
-  echo "[runtime-smoke] 5/7 component isolation..."
-  start_serve "$repo_root/examples/friendly_component_isolation.jtml" 9505 \
+  echo "[runtime-smoke] 6/8 component isolation..."
+  start_serve "$repo_root/examples/friendly_component_isolation.jtml" "$components_port" \
     "$artifacts_dir/components.log"
-  curl -fsS http://localhost:9505/api/components > "$artifacts_dir/components-before.json"
+  curl -fsS "http://localhost:$components_port/api/components" > "$artifacts_dir/components-before.json"
   assert_json "$artifacts_dir/components-before.json" \
     "two Counter instances with independent count=0" \
     "Array.isArray(data.components) && data.components.length === 2 && data.components.every(c => c.component === 'Counter') && data.components.every(c => c && c.locals && c.locals.count && c.locals.count.value === 0) && data.components[0].id !== data.components[1].id"
   first_id="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$artifacts_dir/components-before.json','utf8')).components[0].id)")"
   second_id="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$artifacts_dir/components-before.json','utf8')).components[1].id)")"
-  curl -fsS -X POST http://localhost:9505/api/component-action \
+  curl -fsS -X POST "http://localhost:$components_port/api/component-action" \
     -H 'Content-Type: application/json' \
     --data "{\"componentId\":\"$first_id\",\"action\":\"add\",\"args\":[]}" \
     > "$artifacts_dir/components-action.json"
   assert_json "$artifacts_dir/components-action.json" \
     "component-action dispatch returns ok" \
     "data.ok === true"
-  curl -fsS http://localhost:9505/api/components > "$artifacts_dir/components-after.json"
+  curl -fsS "http://localhost:$components_port/api/components" > "$artifacts_dir/components-after.json"
   FIRST_ID="$first_id" SECOND_ID="$second_id" \
   assert_json "$artifacts_dir/components-after.json" \
     "component isolation: add on first only changes first" \
     "(function(){const f=process.env.FIRST_ID,s=process.env.SECOND_ID;const a=data.components.find(c=>c.id===f);const b=data.components.find(c=>c.id===s);return a && b && a.locals.count.value === 1 && b.locals.count.value === 0;})()"
   cleanup_srv
 
-  # ---- 6. CSS hex colours inside Friendly `style` blocks survive lowering ----
-  echo "[runtime-smoke] 6/7 hex colours..."
+  # ---- 7. CSS hex colours inside Friendly `style` blocks survive lowering ----
+  echo "[runtime-smoke] 7/8 hex colours..."
   "$build_dir/jtml" transpile "$repo_root/examples/friendly_fetch.jtml" \
     -o "$artifacts_dir/fetch-styles.html" >/dev/null
   grep -q '#d8d4c9' "$artifacts_dir/fetch-styles.html" \
     || { echo "style block: hex colour #d8d4c9 was stripped during lowering" >&2; exit 1; }
 
-  # ---- 7. Studio's /api/run goes through the same transpiler so the link ----
+  # ---- 8. Studio's /api/run goes through the same transpiler so the link ----
   #         interceptor reaches Studio previews too. /api/run is registered
   #         by `jtml studio` only (not `jtml serve`), so this case spins up
   #         the Studio server.
-  echo "[runtime-smoke] 7/7 Studio /api/run preview path..."
-  "$build_dir/jtml" studio --port 9506 > "$artifacts_dir/api-run.log" 2>&1 &
+  echo "[runtime-smoke] 8/8 Studio /api/run preview path..."
+  "$build_dir/jtml" studio --port "$studio_port" > "$artifacts_dir/api-run.log" 2>&1 &
   _srv_pid=$!
   studio_ready=0
   # Studio doesn't expose /api/health (only `jtml serve` does); GET / serves
   # the embedded shell HTML once the server is listening, so use that.
   for _ in $(seq 1 200); do
-    if curl -fsS "http://localhost:9506/" >/dev/null 2>&1; then
+    if curl -fsS "http://localhost:$studio_port/" >/dev/null 2>&1; then
       studio_ready=1; break
     fi
     sleep 0.1
   done
   if [ "$studio_ready" -ne 1 ]; then
-    echo "runtime-smoke: jtml studio failed to become ready on port 9506" >&2
+    echo "runtime-smoke: jtml studio failed to become ready on port $studio_port" >&2
     cat "$artifacts_dir/api-run.log" >&2 || true
     exit 1
   fi
@@ -937,7 +1006,7 @@ runtime_smoke() {
     const code = fs.readFileSync(process.env.ROUTES_FILE, 'utf8');
     fs.writeFileSync('$artifacts_dir/api-run-payload.json', JSON.stringify({ code }));
   "
-  curl -fsS -X POST http://localhost:9506/api/run \
+  curl -fsS -X POST "http://localhost:$studio_port/api/run" \
     -H 'Content-Type: application/json' \
     --data "@$artifacts_dir/api-run-payload.json" \
     > "$artifacts_dir/api-run.json"
@@ -947,7 +1016,7 @@ runtime_smoke() {
   cleanup_srv
 
   trap - EXIT
-  echo "Runtime regression smoke passed (7 checks)."
+  echo "Runtime regression smoke passed (8 checks)."
 }
 
 runtime_smoke

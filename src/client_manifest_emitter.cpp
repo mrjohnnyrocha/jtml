@@ -1,6 +1,5 @@
 #include "jtml/client_manifest_emitter.h"
 #include "jtml/expression_source.h"
-#include "jtml/semantic.h"
 
 #include <sstream>
 
@@ -18,7 +17,7 @@ std::string semanticPropertiesJson(const std::vector<SemanticProperty>& properti
     return out.str();
 }
 
-std::string clientStatementsJson(const std::vector<std::unique_ptr<ASTNode>>& nodes) {
+std::string clientStatementsJson(const std::vector<RuntimePlanStatement>& nodes) {
     std::ostringstream out;
     out << '[';
     bool first = true;
@@ -26,25 +25,14 @@ std::string clientStatementsJson(const std::vector<std::unique_ptr<ASTNode>>& no
         if (!first) out << ',';
         first = false;
     };
-    for (const auto& node : nodes) {
-        if (!node) continue;
-        if (node->getType() == ASTNodeType::AssignmentStatement) {
-            const auto& stmt = static_cast<const AssignmentStatementNode&>(*node);
+    for (const auto& stmt : nodes) {
+        if (stmt.kind == "assign") {
             sep();
-            out << "{\"kind\":\"assign\",\"lhs\":"
-                << jsonString(expressionSource(stmt.lhs.get()))
-                << ",\"expr\":" << jsonString(expressionSource(stmt.rhs.get())) << '}';
-        } else if (node->getType() == ASTNodeType::DefineStatement) {
-            const auto& stmt = static_cast<const DefineStatementNode&>(*node);
+            out << "{\"kind\":\"assign\",\"lhs\":" << jsonString(stmt.lhs)
+                << ",\"expr\":" << jsonString(stmt.expr) << '}';
+        } else if (stmt.kind == "if") {
             sep();
-            out << "{\"kind\":\"assign\",\"lhs\":"
-                << jsonString(stmt.identifier)
-                << ",\"expr\":" << jsonString(expressionSource(stmt.expression.get())) << '}';
-        } else if (node->getType() == ASTNodeType::IfStatement) {
-            const auto& stmt = static_cast<const IfStatementNode&>(*node);
-            sep();
-            out << "{\"kind\":\"if\",\"condition\":"
-                << jsonString(expressionSource(stmt.condition.get()))
+            out << "{\"kind\":\"if\",\"condition\":" << jsonString(stmt.condition)
                 << ",\"then\":" << clientStatementsJson(stmt.thenStatements)
                 << ",\"else\":" << clientStatementsJson(stmt.elseStatements)
                 << '}';
@@ -54,9 +42,32 @@ std::string clientStatementsJson(const std::vector<std::unique_ptr<ASTNode>>& no
     return out.str();
 }
 
+std::string componentBodyPlanJson(const std::vector<RuntimePlanComponentBodyNode>& nodes) {
+    std::ostringstream out;
+    out << '[';
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        if (i) out << ',';
+        const auto& node = nodes[i];
+        out << "{\"indent\":" << node.indent
+            << ",\"parentIndex\":" << node.parentIndex
+            << ",\"kind\":" << jsonString(node.kind)
+            << ",\"head\":" << jsonString(node.head)
+            << ",\"name\":" << jsonString(node.name)
+            << ",\"text\":" << jsonString(node.text)
+            << ",\"renderRoot\":" << (node.renderRoot ? "true" : "false")
+            << "}";
+    }
+    out << ']';
+    return out.str();
+}
+
 } // namespace
 
 std::string emitClientManifestScript(const std::vector<std::unique_ptr<ASTNode>>& program) {
+    return emitClientManifestScript(buildRuntimePlan(program));
+}
+
+std::string emitClientManifestScript(const RuntimePlan& plan) {
     std::ostringstream json;
     json << "{\"state\":{";
     bool firstState = true;
@@ -81,7 +92,6 @@ std::string emitClientManifestScript(const std::vector<std::unique_ptr<ASTNode>>
         firstAction = false;
     };
 
-    const auto semantic = jtml::analyzeSemanticProgram(program);
     auto stringVectorJson = [](const std::vector<std::string>& values) {
         std::ostringstream out;
         out << '[';
@@ -94,9 +104,9 @@ std::string emitClientManifestScript(const std::vector<std::unique_ptr<ASTNode>>
     };
     std::ostringstream routes;
     routes << "\"routes\":[";
-    for (size_t i = 0; i < semantic.routeRecords.size(); ++i) {
+    for (size_t i = 0; i < plan.routes.size(); ++i) {
         if (i) routes << ',';
-        const auto& route = semantic.routeRecords[i];
+        const auto& route = plan.routes[i];
         routes << "{\"path\":" << jsonString(route.path)
                << ",\"name\":" << jsonString(route.component)
                << ",\"params\":[";
@@ -114,9 +124,9 @@ std::string emitClientManifestScript(const std::vector<std::unique_ptr<ASTNode>>
 
     std::ostringstream fetches;
     fetches << "\"fetches\":[";
-    for (size_t i = 0; i < semantic.fetchRecords.size(); ++i) {
+    for (size_t i = 0; i < plan.fetches.size(); ++i) {
         if (i) fetches << ',';
-        const auto& fetch = semantic.fetchRecords[i];
+        const auto& fetch = plan.fetches[i];
         fetches << "{\"name\":" << jsonString(fetch.name)
                 << ",\"url\":" << jsonString(fetch.url)
                 << ",\"method\":" << jsonString(fetch.method.empty() ? "GET" : fetch.method)
@@ -138,9 +148,9 @@ std::string emitClientManifestScript(const std::vector<std::unique_ptr<ASTNode>>
 
     std::ostringstream componentDefinitions;
     componentDefinitions << "\"componentDefinitions\":[";
-    for (size_t i = 0; i < semantic.componentDefinitions.size(); ++i) {
+    for (size_t i = 0; i < plan.componentDefinitions.size(); ++i) {
         if (i) componentDefinitions << ',';
-        const auto& definition = semantic.componentDefinitions[i];
+        const auto& definition = plan.componentDefinitions[i];
         componentDefinitions << "{\"name\":" << jsonString(definition.name)
                              << ",\"params\":[";
         for (size_t paramIndex = 0; paramIndex < definition.params.size(); ++paramIndex) {
@@ -153,6 +163,7 @@ std::string emitClientManifestScript(const std::vector<std::unique_ptr<ASTNode>>
                              << ",\"localEffects\":" << stringVectorJson(definition.localEffects)
                              << ",\"eventBindings\":" << stringVectorJson(definition.eventBindings)
                              << ",\"bodyHex\":" << jsonString(definition.bodyHex)
+                             << ",\"bodyPlan\":" << componentBodyPlanJson(definition.bodyPlan)
                              << ",\"hasSlot\":" << (definition.hasSlot ? "true" : "false")
                              << ",\"bodyNodeCount\":" << definition.bodyNodeCount
                              << ",\"rootTemplateNodeCount\":" << definition.rootTemplateNodeCount
@@ -163,9 +174,9 @@ std::string emitClientManifestScript(const std::vector<std::unique_ptr<ASTNode>>
 
     std::ostringstream componentInstances;
     componentInstances << "\"componentInstances\":[";
-    for (size_t i = 0; i < semantic.componentInstances.size(); ++i) {
+    for (size_t i = 0; i < plan.componentInstances.size(); ++i) {
         if (i) componentInstances << ',';
-        const auto& instance = semantic.componentInstances[i];
+        const auto& instance = plan.componentInstances[i];
         componentInstances << "{\"id\":" << jsonString(instance.id)
                            << ",\"component\":" << jsonString(instance.component)
                            << ",\"instanceId\":" << instance.instanceId
@@ -176,26 +187,24 @@ std::string emitClientManifestScript(const std::vector<std::unique_ptr<ASTNode>>
                            << "}";
     }
 
-    for (const auto& node : program) {
-        if (!node) continue;
-        if (node->getType() == ASTNodeType::DefineStatement) {
-            const auto& stmt = static_cast<const DefineStatementNode&>(*node);
-            stateSep();
-            json << jsonString(stmt.identifier) << ':' << jsonString(expressionSource(stmt.expression.get()));
-        } else if (node->getType() == ASTNodeType::DeriveStatement) {
-            const auto& stmt = static_cast<const DeriveStatementNode&>(*node);
-            derivedSep();
-            derived << jsonString(stmt.identifier) << ':' << jsonString(expressionSource(stmt.expression.get()));
-        } else if (node->getType() == ASTNodeType::FunctionDeclaration) {
-            const auto& stmt = static_cast<const FunctionDeclarationNode&>(*node);
-            actionSep();
-            actions << jsonString(stmt.name) << ":{\"params\":[";
-            for (size_t i = 0; i < stmt.parameters.size(); ++i) {
-                if (i) actions << ',';
-                actions << jsonString(stmt.parameters[i].name);
-            }
-            actions << "],\"body\":" << clientStatementsJson(stmt.body) << '}';
+    for (const auto& binding : plan.state) {
+        stateSep();
+        json << jsonString(binding.name) << ':' << jsonString(binding.expr);
+    }
+
+    for (const auto& binding : plan.derived) {
+        derivedSep();
+        derived << jsonString(binding.name) << ':' << jsonString(binding.expr);
+    }
+
+    for (const auto& action : plan.actions) {
+        actionSep();
+        actions << jsonString(action.name) << ":{\"params\":[";
+        for (size_t i = 0; i < action.params.size(); ++i) {
+            if (i) actions << ',';
+            actions << jsonString(action.params[i]);
         }
+        actions << "],\"body\":" << clientStatementsJson(action.body) << '}';
     }
 
     json << "},";

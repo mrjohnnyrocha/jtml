@@ -1,0 +1,25 @@
+jtml 2
+
+use filterState from "../stores/filter-state.jtml"
+use opsData from "../stores/ops-data.jtml"
+use Shell from "../components/layouts/shell.jtml"
+use FilterPanel from "../components/ui/filter-panel.jtml"
+use { PageHero, MetricCard, ProgressBar } from "../components/ui/common.jtml"
+
+export make UsagePage
+  Shell "Usage intelligence"
+    PageHero "Usage intelligence" "Segment adoption, tool mix, and operating cadence in one route."
+    FilterPanel
+    box class "metric-grid"
+      MetricCard "Primary tool" filterState.selectedTool "Current filter" "primary"
+      MetricCard "Adoption" opsData.adoption "Weighted active use" "good"
+      MetricCard "Reliability" opsData.reliability "Last 30 days" "good"
+      MetricCard "Open incidents" opsData.incidentsOpen filterState.selectedPriority "warn"
+    box class "card-grid"
+      ProgressBar "ChatGPT Enterprise" "w-92" "Knowledge work, support, and strategy workflows."
+      ProgressBar "Copilot" "w-78" "Engineering, documentation, and daily productivity."
+      ProgressBar "Claude" "w-64" "Analysis, policy, and long-context review."
+    box class "ops-card"
+      h2 "Usage notes"
+      text "The filter store is shared across routes, so selecting a region here affects dashboard context too."
+      text "This is the modular state pattern JTML needs for larger enterprise apps."

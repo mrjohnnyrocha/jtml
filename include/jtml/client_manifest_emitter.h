@@ -2,6 +2,7 @@
 #define JTML_CLIENT_MANIFEST_EMITTER_H
 
 #include "jtml/ast.h"
+#include "jtml/runtime_plan.h"
 
 #include <memory>
 #include <string>
@@ -10,6 +11,7 @@
 namespace jtml {
 
 std::string emitClientManifestScript(const std::vector<std::unique_ptr<ASTNode>>& program);
+std::string emitClientManifestScript(const RuntimePlan& plan);
 
 } // namespace jtml
 

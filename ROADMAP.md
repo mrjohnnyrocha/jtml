@@ -252,3 +252,24 @@ hardened, or planned.
   `src/client_manifest_emitter.cpp`, with shared expression serialization in
   `src/expression_source.cpp`. `src/transpiler.cpp` now delegates both runtime
   script and manifest generation.
+- Runtime plan extraction. ✅ — browser-local runtime data now has a typed
+  `jtml::RuntimePlan` built from AST + semantic IR before JSON manifest
+  serialization. `emitClientManifestScript(program)` remains compatible, while
+  `emitClientManifestScript(plan)` gives future browser/live/component
+  backends the same runtime contract without re-scanning source or rebuilding
+  ad-hoc manifest state.
+- Runtime plan adoption slice. ✅ — `jtml explain --json` now exposes the
+  runtime plan directly, component definitions carry decoded body source in the
+  plan, and the live interpreter registers component definitions/instances from
+  `RuntimePlan` instead of independently rebuilding semantic component records.
+  Next: execute component templates directly from the plan, with source
+  expansion retained only as a compatibility backend.
+- Component body plan slice. ✅ — component definitions in `RuntimePlan` now
+  carry a structured body plan derived from decoded component source
+  (`state`, `derived`, `action`, `assignment`, `effect`, `slot`, and
+  `template` nodes with indent, parent-index, and render-root metadata).
+  `jtml explain --json`, browser-local manifests, and live
+  `/api/component-definitions` expose this as
+  `runtimePlan.componentDefinitions[].bodyPlan`, giving direct component
+  execution, Studio, LSP, and parity tooling a semantic component-body surface
+  instead of requiring each backend to parse encoded source strings.

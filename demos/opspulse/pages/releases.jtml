@@ -1,0 +1,27 @@
+jtml 2
+
+use opsData from "../stores/ops-data.jtml"
+use Shell from "../components/layouts/shell.jtml"
+use { PageHero, MetricCard, ProgressBar } from "../components/ui/common.jtml"
+
+export make ReleasesPage
+  Shell "Release train"
+    PageHero "Release train" "Plan governed AI feature delivery with observable readiness gates."
+    box class "metric-grid"
+      MetricCard "Ready releases" opsData.releasesReady "Approved for rollout" "good"
+      MetricCard "Reliability gate" opsData.reliability "Required before release" "primary"
+      MetricCard "Assets" opsData.mediaAssets "Docs and media" "primary"
+      MetricCard "Risk reviews" "3" "Open decisions" "warn"
+    box class "card-grid"
+      box class "ops-card"
+        h3 "Studio workspace"
+        text "Modernized tutorial, docs, examples, and reference hub."
+        ProgressBar "Readiness" "w-92" "Ready for wider testing."
+      box class "ops-card"
+        h3 "Module graph"
+        text "Explicit exports, named imports, and semantic project records."
+        ProgressBar "Readiness" "w-78" "Next: core-owned per-file linker."
+      box class "ops-card"
+        h3 "Browser runtime"
+        text "Fetch, routes, stores, media and component isolation paths."
+        ProgressBar "Readiness" "w-64" "Next: parity hardening."

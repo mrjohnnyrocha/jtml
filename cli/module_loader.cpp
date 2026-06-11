@@ -182,6 +182,14 @@ std::string exportedSymbolName(const std::string& strippedExportLine) {
     return {};
 }
 
+bool isPrivateImplementationDeclaration(const std::string& text) {
+    std::istringstream in(text);
+    std::string keyword;
+    in >> keyword;
+    return keyword == "let" || keyword == "const" || keyword == "get" ||
+           keyword == "when" || keyword == "effect" || keyword == "extern";
+}
+
 std::string joinNames(const std::vector<std::string>& names) {
     std::ostringstream out;
     for (size_t i = 0; i < names.size(); ++i) {
@@ -248,6 +256,7 @@ std::string moduleVisitKey(const std::filesystem::path& file,
 
 FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& inputFile,
                                          std::set<std::string>& visited,
+                                         std::set<std::string>& privateImplEmitted,
                                          std::vector<std::filesystem::path>& stack,
                                          std::vector<std::filesystem::path>& files,
                                          const std::vector<std::string>& selectedExports = {});
@@ -302,6 +311,7 @@ std::map<std::string, ExportDecl> collectExports(const std::filesystem::path& fi
 
 FriendlyLoad loadFriendlyDependency(const std::filesystem::path& inputFile,
                                     std::set<std::string>& visited,
+                                    std::set<std::string>& privateImplEmitted,
                                     std::vector<std::filesystem::path>& stack,
                                     std::vector<std::filesystem::path>& files,
                                     const std::vector<std::string>& selectedExports = {}) {
@@ -325,7 +335,8 @@ FriendlyLoad loadFriendlyDependency(const std::filesystem::path& inputFile,
     visited.insert(key);
     files.push_back(file);
     stack.push_back(file);
-    FriendlyLoad loaded = loadFriendlyCompilationUnit(file, visited, stack, files, selectedExports);
+    FriendlyLoad loaded = loadFriendlyCompilationUnit(file, visited, privateImplEmitted,
+                                                      stack, files, selectedExports);
     stack.pop_back();
     return loaded;
 }
@@ -333,6 +344,7 @@ FriendlyLoad loadFriendlyDependency(const std::filesystem::path& inputFile,
 std::string loadCompilationUnit(const std::filesystem::path& inputFile,
                                 SyntaxMode syntax,
                                 std::set<std::string>& visited,
+                                std::set<std::string>& privateImplEmitted,
                                 std::vector<std::filesystem::path>& stack,
                                 std::vector<std::filesystem::path>& files) {
     const auto file = normalizePath(inputFile);
@@ -355,7 +367,8 @@ std::string loadCompilationUnit(const std::filesystem::path& inputFile,
         (syntax == SyntaxMode::Auto &&
          (isFriendlySyntax(rawSource) || looksLikeFriendlySyntax(rawSource)));
     if (friendly) {
-        FriendlyLoad loaded = loadFriendlyCompilationUnit(file, visited, stack, files);
+        FriendlyLoad loaded = loadFriendlyCompilationUnit(file, visited, privateImplEmitted,
+                                                          stack, files);
         stack.pop_back();
         return loaded.classicPrefix +
                normalizeSourceSyntax(loaded.friendlySource, SyntaxMode::Friendly);
@@ -371,7 +384,8 @@ std::string loadCompilationUnit(const std::filesystem::path& inputFile,
         if (parseImportLine(line, importPath)) {
             auto resolved = resolveJtmlModulePath(importPath, file);
             try {
-                out << loadCompilationUnit(resolved, SyntaxMode::Auto, visited, stack, files);
+                out << loadCompilationUnit(resolved, SyntaxMode::Auto, visited,
+                                           privateImplEmitted, stack, files);
             } catch (const std::exception& e) {
                 throw importResolutionError(importPath, file, resolved, e);
             }
@@ -413,11 +427,13 @@ FriendlyLoad loadReexport(const FriendlyUseSpec& use,
                           const std::vector<std::string>& selectedNames,
                           const std::filesystem::path& importer,
                           std::set<std::string>& visited,
+                          std::set<std::string>& privateImplEmitted,
                           std::vector<std::filesystem::path>& stack,
                           std::vector<std::filesystem::path>& files) {
     auto resolved = resolveJtmlModulePath(use.path, importer);
     try {
-        return loadFriendlyDependency(resolved, visited, stack, files, selectedNames);
+        return loadFriendlyDependency(resolved, visited, privateImplEmitted,
+                                      stack, files, selectedNames);
     } catch (const std::exception& e) {
         throw importResolutionError(use.path, importer, resolved, e);
     }
@@ -425,6 +441,7 @@ FriendlyLoad loadReexport(const FriendlyUseSpec& use,
 
 FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
                                          std::set<std::string>& visited,
+                                         std::set<std::string>& privateImplEmitted,
                                          std::vector<std::filesystem::path>& stack,
                                          std::vector<std::filesystem::path>& files,
                                          const std::vector<std::string>& selectedExports) {
@@ -443,6 +460,7 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
     int selectedExportIndent = -1;
     std::set<std::string> importedNamedSymbols;
     std::set<std::string> emittedReexports;
+    const bool emitPrivateImpl = privateImplEmitted.insert(file.string()).second;
 
     for (size_t i = 0; i < sourceLines.size(); ++i) {
         std::string line = sourceLines[i];
@@ -463,7 +481,7 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
             FriendlyLoad dependency;
             try {
                 dependency = loadFriendlyDependency(
-                    resolved, visited, stack, files,
+                    resolved, visited, privateImplEmitted, stack, files,
                     use.sideEffect ? std::vector<std::string>{} : use.names);
             } catch (const std::exception& e) {
                 throw importResolutionError(use.path, file, resolved, e);
@@ -484,6 +502,15 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
 
             if (indent != 0) continue;
             if (!startsWithWord(text, "export")) {
+                if (isPrivateImplementationDeclaration(text)) {
+                    if (emitPrivateImpl) friendly << line << "\n";
+                    while (i + 1 < sourceLines.size() &&
+                           leadingSpaces(sourceLines[i + 1]) > indent) {
+                        ++i;
+                        if (emitPrivateImpl) friendly << sourceLines[i] << "\n";
+                    }
+                    continue;
+                }
                 while (i + 1 < sourceLines.size() &&
                        leadingSpaces(sourceLines[i + 1]) > indent) {
                     ++i;
@@ -504,7 +531,8 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
                     const std::string key = reexport.path + "|" + joinNames(wanted);
                     if (emittedReexports.insert(key).second) {
                         FriendlyLoad dependency = loadReexport(
-                            reexport, wanted, file, visited, stack, files);
+                            reexport, wanted, file, visited, privateImplEmitted,
+                            stack, files);
                         result.classicPrefix += dependency.classicPrefix;
                         friendly << dependency.friendlySource;
                     }
@@ -531,7 +559,8 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
             FriendlyUseSpec reexport;
             if (parseFriendlyUseLine(stripped, reexport)) {
                 FriendlyLoad dependency = loadReexport(
-                    reexport, reexport.names, file, visited, stack, files);
+                    reexport, reexport.names, file, visited, privateImplEmitted,
+                    stack, files);
                 result.classicPrefix += dependency.classicPrefix;
                 friendly << dependency.friendlySource;
                 continue;
@@ -551,9 +580,11 @@ std::string loadCompilationUnit(const std::string& inputFile,
                                 SyntaxMode syntax,
                                 std::vector<std::filesystem::path>* filesOut) {
     std::set<std::string> visited;
+    std::set<std::string> privateImplEmitted;
     std::vector<std::filesystem::path> stack;
     std::vector<std::filesystem::path> files;
-    std::string source = loadCompilationUnit(inputFile, syntax, visited, stack, files);
+    std::string source = loadCompilationUnit(inputFile, syntax, visited,
+                                             privateImplEmitted, stack, files);
     if (filesOut) *filesOut = std::move(files);
     return source;
 }

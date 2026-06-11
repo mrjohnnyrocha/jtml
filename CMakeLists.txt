@@ -59,7 +59,9 @@ set(JTML_CORE_SOURCES
     src/formatter.cpp
     src/linter.cpp
     src/refactor.cpp
+    src/runtime_plan.cpp
     src/semantic.cpp
+    src/jtml/semantic/module_graph.cpp
     src/environment.cpp
     src/array.cpp
     src/dict.cpp

@@ -318,21 +318,21 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         return parts.filter(function (part) { return part.length > 0; });
       }
 
-      function evaluateClientExpression(expr) {
+      function evaluateClientExpression(expr, scope) {
         expr = normalizeClientExpr(expr);
         if (!expr) return { found: false, value: undefined };
         const conditionalParts = splitTopLevelToken(expr, '?');
         if (conditionalParts.length === 2) {
           const falseParts = splitTopLevelToken(conditionalParts[1], ':');
           if (falseParts.length === 2) {
-            const condition = evaluateClientExpression(conditionalParts[0]);
-            return evaluateClientExpression(condition.found && condition.value ? falseParts[0] : falseParts[1]);
+            const condition = evaluateClientExpression(conditionalParts[0], scope);
+            return evaluateClientExpression(condition.found && condition.value ? falseParts[0] : falseParts[1], scope);
           }
         }
         const orParts = splitTopLevelToken(expr, '||');
         if (orParts.length > 1) {
           for (let i = 0; i < orParts.length; i += 1) {
-            const part = evaluateClientExpression(orParts[i]);
+            const part = evaluateClientExpression(orParts[i], scope);
             if (!part.found) return { found: false, value: undefined };
             if (part.value) return { found: true, value: true };
           }
@@ -341,14 +341,14 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         const andParts = splitTopLevelToken(expr, '&&');
         if (andParts.length > 1) {
           for (let i = 0; i < andParts.length; i += 1) {
-            const part = evaluateClientExpression(andParts[i]);
+            const part = evaluateClientExpression(andParts[i], scope);
             if (!part.found) return { found: false, value: undefined };
             if (!part.value) return { found: true, value: false };
           }
           return { found: true, value: true };
         }
         if (expr[0] === '!' && expr.slice(0, 2) !== '!=') {
-          const part = evaluateClientExpression(expr.slice(1));
+          const part = evaluateClientExpression(expr.slice(1), scope);
           return part.found ? { found: true, value: !part.value } : part;
         }
         const comparisons = ['==', '!=', '>=', '<=', '>', '<'];
@@ -356,8 +356,8 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
           const op = comparisons[c];
           const parts = splitTopLevelToken(expr, op);
           if (parts.length === 2) {
-            const left = evaluateClientExpression(parts[0]);
-            const right = evaluateClientExpression(parts[1]);
+            const left = evaluateClientExpression(parts[0], scope);
+            const right = evaluateClientExpression(parts[1], scope);
             if (!left.found || !right.found) return { found: false, value: undefined };
             if (op === '==') return { found: true, value: left.value == right.value };
             if (op === '!=') return { found: true, value: left.value != right.value };
@@ -371,7 +371,7 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         if (plusParts.length > 1) {
           let out = '';
           for (let i = 0; i < plusParts.length; i += 1) {
-            const part = evaluateClientExpression(plusParts[i]);
+            const part = evaluateClientExpression(plusParts[i], scope);
             if (!part.found) {
               return { found: false, value: undefined };
             }
@@ -381,20 +381,20 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         }
         const minusParts = splitTopLevelToken(expr, '-');
         if (minusParts.length === 2) {
-          const left = evaluateClientExpression(minusParts[0]);
-          const right = evaluateClientExpression(minusParts[1]);
+          const left = evaluateClientExpression(minusParts[0], scope);
+          const right = evaluateClientExpression(minusParts[1], scope);
           if (left.found && right.found) return { found: true, value: Number(left.value) - Number(right.value) };
         }
         const multiplyParts = splitTopLevelToken(expr, '*');
         if (multiplyParts.length === 2) {
-          const left = evaluateClientExpression(multiplyParts[0]);
-          const right = evaluateClientExpression(multiplyParts[1]);
+          const left = evaluateClientExpression(multiplyParts[0], scope);
+          const right = evaluateClientExpression(multiplyParts[1], scope);
           if (left.found && right.found) return { found: true, value: Number(left.value) * Number(right.value) };
         }
         const divideParts = splitTopLevelToken(expr, '/');
         if (divideParts.length === 2) {
-          const left = evaluateClientExpression(divideParts[0]);
-          const right = evaluateClientExpression(divideParts[1]);
+          const left = evaluateClientExpression(divideParts[0], scope);
+          const right = evaluateClientExpression(divideParts[1], scope);
           if (left.found && right.found) return { found: true, value: Number(left.value) / Number(right.value) };
         }
         if (expr === 'true') return { found: true, value: true };
@@ -407,6 +407,10 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
           return { found: true, value: Number(expr) };
         }
         if (/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(expr)) {
+          if (scope) {
+            const scoped = deepGet(scope, expr);
+            if (scoped.found) return scoped;
+          }
           return deepGet(clientState, expr);
         }
         return { found: true, value: expr };
@@ -474,7 +478,7 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         return parts;
       }
 
-      function evaluateClientBodyExpression(expr) {
+      function evaluateClientBodyExpression(expr, scope) {
         expr = normalizeClientExpr(expr);
         if (!expr) return { found: false, value: undefined };
         if (expr[0] === '{' && expr[expr.length - 1] === '}') {
@@ -486,7 +490,7 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
             const rawKey = colon === -1 ? entry : entry.slice(0, colon).trim();
             const key = rawKey.replace(/^['"]|['"]$/g, '');
             const valueExpr = colon === -1 ? rawKey : entry.slice(colon + 1).trim();
-            const value = evaluateClientExpression(valueExpr);
+            const value = evaluateClientExpression(valueExpr, scope);
             body[key] = value.found ? value.value : valueExpr;
           });
           return { found: true, value: body };
@@ -497,12 +501,12 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
           return {
             found: true,
             value: splitTopLevelList(inner).map(function (part) {
-              const value = evaluateClientBodyExpression(part);
+              const value = evaluateClientBodyExpression(part, scope);
               return value.found ? value.value : part;
             })
           };
         }
-        return evaluateClientExpression(expr);
+        return evaluateClientExpression(expr, scope);
       }
 
       function applyClientDerived() {
@@ -1486,16 +1490,80 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         return renderTemplateValue(value);
       }
 
+      function applyScopedExpressions(root, scope) {
+        root.querySelectorAll('[data-jtml-expr]').forEach(function (el) {
+          const result = evaluateClientExpression(el.getAttribute('data-jtml-expr'), scope);
+          if (result.found) el.textContent = renderTemplateValue(result.value);
+        });
+      }
+
+      function applyScopedAttributes(root, scope) {
+        root.querySelectorAll('*').forEach(function (el) {
+          Array.prototype.slice.call(el.attributes || []).forEach(function (attr) {
+            const match = attr.name.match(/^data-jtml-attr-(.+)-expr$/);
+            if (!match) return;
+            const result = evaluateClientExpression(attr.value, scope);
+            if (result.found) applyAttribute(el, match[1], result.value);
+          });
+        });
+      }
+
+      function applyScopedTemplates(root, scope) {
+        for (let pass = 0; pass < 5; pass += 1) {
+          let changed = false;
+          root.querySelectorAll('[data-jtml-cond-expr]').forEach(function (el) {
+            const result = evaluateClientExpression(el.getAttribute('data-jtml-cond-expr'), scope);
+            if (!result.found) return;
+            const source = result.value ? el.getAttribute('data-then') || el.getAttribute('data-body') || '' : el.getAttribute('data-else') || '';
+            if (el.dataset.jtmlRendered !== source) {
+              el.innerHTML = renderLoopBody(source, '', null, scope);
+              el.dataset.jtmlRendered = source;
+              changed = true;
+            }
+          });
+          root.querySelectorAll('[data-jtml-for-expr]').forEach(function (el) {
+            const result = evaluateClientExpression(el.getAttribute('data-jtml-for-expr'), scope);
+            if (!result.found) return;
+            const iterator = el.getAttribute('data-jtml-iterator') || 'item';
+            const body = el.getAttribute('data-body') || '';
+            let values = result.value;
+            if (values == null) values = [];
+            if (!Array.isArray(values)) {
+              if (typeof values === 'string') values = values.split('');
+              else if (typeof values === 'object') values = Object.values(values);
+              else values = [values];
+            }
+            const html = values.map(function (nestedItem) {
+              return renderLoopBody(body, iterator, nestedItem, scope);
+            }).join('');
+            if (el.dataset.jtmlRendered !== html) {
+              el.innerHTML = html;
+              el.dataset.jtmlRendered = html;
+              changed = true;
+            }
+          });
+          applyScopedExpressions(root, scope);
+          applyScopedAttributes(root, scope);
+          if (!changed) break;
+        }
+      }
+
       function escapeSelectorValue(value) {
         if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(value);
         return String(value).replace(/["\\]/g, '\\$&');
       }
 
-      function renderLoopBody(template, iterator, item) {
-        const scope = {};
-        scope[iterator] = item;
-        return template.replace(/\{\{\s*\(?\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\s*\)?\s*\}\}/g,
+      function renderLoopBody(template, iterator, item, parentScope) {
+        const scope = Object.assign({}, parentScope || {});
+        if (iterator) scope[iterator] = item;
+        const substituted = String(template || '').replace(/\{\{\s*\(?\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\s*\)?\s*\}\}/g,
           function (_, expr) { return lookupTemplatePath(scope, expr); });
+        const holder = document.createElement('template');
+        holder.innerHTML = substituted;
+        applyScopedTemplates(holder.content, scope);
+        applyScopedExpressions(holder.content, scope);
+        applyScopedAttributes(holder.content, scope);
+        return holder.innerHTML;
       }
 
       function applyTemplates(b) {

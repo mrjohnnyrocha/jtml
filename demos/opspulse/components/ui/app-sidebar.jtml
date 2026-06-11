@@ -1,31 +1,31 @@
 jtml 2
 
-use "../../stores/app-state.jtml"
-use "../../stores/filter-state.jtml"
+use appState from "../../stores/app-state.jtml"
+use filterState from "../../stores/filter-state.jtml"
 
-make AppSidebar
-  nav class "{appState.sidebarClass}"
-    table width "100%" cellpadding "14" cellspacing "0" bgcolor "#f8fafc"
-      tr
-        td
-          h3 "Navigation"
-          list
-            item
-              link "Dashboard" to "/"
-            item
-              link "Usage" to "/usage"
-            item
-              link "People" to "/people"
-            item
-              link "Incidents" to "/incidents"
-            item
-              link "Releases" to "/releases"
-            item
-              link "Media" to "/media"
-            item
-              link "Settings" to "/settings"
-          hr
-          strong "Filters"
-          text filterState.filterSummary
-          if filterState.isFiltered
-            button "Reset filters" click filterState.resetFilters
+when resetSidebarFilters
+  filterState.selectedRegion = "All"
+  filterState.selectedPlatform = "All"
+  filterState.selectedTool = "All"
+  filterState.selectedPriority = "All"
+
+export make AppSidebar
+  aside class "ops-sidebar"
+    box class "brand-mark"
+      text "OP"
+    box
+      h2 appState.appName
+      text appState.workspace
+    nav class "nav-stack"
+      navlink "Dashboard" to "/"
+      navlink "Usage" to "/usage"
+      navlink "People" to "/people"
+      navlink "Incidents" to "/incidents"
+      navlink "Releases" to "/releases"
+      navlink "Media" to "/media"
+      navlink "Settings" to "/settings"
+    box class "ops-card"
+      strong "Scope"
+      text "{filterState.selectedRegion} / {filterState.selectedPlatform} / {filterState.selectedTool}"
+      if filterState.selectedRegion != "All" || filterState.selectedPlatform != "All" || filterState.selectedTool != "All" || filterState.selectedPriority != "All"
+        button "Reset filters" click resetSidebarFilters

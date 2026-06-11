@@ -1,25 +1,12 @@
 jtml 2
 
-// Global app state: theme, sidebar, user, notifications
-store appState
+export store appState
+  let appName = "OpsPulse"
+  let workspace = "Enterprise AI Operations"
   let currentUser = "João"
-  let currentRole = "Admin"
-  let sidebarOpen = true
-  let darkMode = false
-  let alertMessage = ""
-
-  when toggleSidebar
-    sidebarOpen = !sidebarOpen
-
-  when toggleTheme
-    darkMode = !darkMode
-
-  when showAlert message
-    alertMessage = message
-
-  when dismissAlert
-    alertMessage = ""
-
-  get themeClass = darkMode ? "app app-dark" : "app"
-  get sidebarClass = sidebarOpen ? "sidebar sidebar-open" : "sidebar sidebar-closed"
-  get hasAlert = alertMessage != ""
+  let currentRole = "Platform owner"
+  let alertMessage = "Module graph loaded from explicit JTML exports."
+  let exportReady = false
+  let settingsSaved = false
+  let selectedIncident = ""
+  let draftNote = ""

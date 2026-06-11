@@ -8,7 +8,9 @@
 #include "jtml/interpreter.h"
 #include "jtml/language_catalog.h"
 #include "jtml/linter.h"
+#include "jtml/runtime_plan.h"
 #include "jtml/semantic.h"
+#include "jtml/semantic/module_graph.h"
 #include "jtml/transpiler.h"
 #include "json.hpp"
 
@@ -226,6 +228,32 @@ nlohmann::json semanticImportRecordsToJson(const jtml::SemanticProgram& semantic
     return out;
 }
 
+nlohmann::json semanticProjectToJson(const jtml::SemanticProject& project) {
+    nlohmann::json modules = nlohmann::json::array();
+    for (const auto& module : project.modules) {
+        nlohmann::json imports = nlohmann::json::array();
+        for (const auto& import : module.imports) {
+            imports.push_back({
+                {"specifier", import.specifier},
+                {"kind", import.kind},
+                {"names", import.names},
+                {"reExport", import.reExport},
+                {"importer", import.importer},
+                {"resolved", import.resolved},
+            });
+        }
+        modules.push_back({
+            {"id", module.id},
+            {"path", module.path},
+            {"imports", imports},
+        });
+    }
+    return {
+        {"entry", project.entry},
+        {"modules", modules},
+    };
+}
+
 nlohmann::json semanticPropertiesToJson(const std::vector<jtml::SemanticProperty>& properties) {
     nlohmann::json out = nlohmann::json::object();
     for (const auto& property : properties) out[property.name] = property.value;
@@ -268,6 +296,135 @@ nlohmann::json semanticComponentInstancesToJson(const jtml::SemanticProgram& sem
         });
     }
     return out;
+}
+
+nlohmann::json runtimePlanBindingsToJson(const std::vector<jtml::RuntimePlanBinding>& bindings) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& binding : bindings) {
+        out.push_back({
+            {"name", binding.name},
+            {"expr", binding.expr},
+        });
+    }
+    return out;
+}
+
+nlohmann::json runtimePlanStatementsToJson(const std::vector<jtml::RuntimePlanStatement>& statements) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& statement : statements) {
+        nlohmann::json item = {
+            {"kind", statement.kind},
+        };
+        if (!statement.lhs.empty()) item["lhs"] = statement.lhs;
+        if (!statement.expr.empty()) item["expr"] = statement.expr;
+        if (!statement.condition.empty()) item["condition"] = statement.condition;
+        if (!statement.thenStatements.empty()) {
+            item["then"] = runtimePlanStatementsToJson(statement.thenStatements);
+        }
+        if (!statement.elseStatements.empty()) {
+            item["else"] = runtimePlanStatementsToJson(statement.elseStatements);
+        }
+        out.push_back(std::move(item));
+    }
+    return out;
+}
+
+nlohmann::json runtimePlanActionsToJson(const std::vector<jtml::RuntimePlanAction>& actions) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& action : actions) {
+        out.push_back({
+            {"name", action.name},
+            {"params", action.params},
+            {"body", runtimePlanStatementsToJson(action.body)},
+        });
+    }
+    return out;
+}
+
+nlohmann::json runtimePlanRoutesToJson(const std::vector<jtml::SemanticRoute>& routes) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& route : routes) {
+        out.push_back({
+            {"path", route.path},
+            {"component", route.component},
+            {"params", route.params},
+            {"loads", route.loads},
+        });
+    }
+    return out;
+}
+
+nlohmann::json runtimePlanFetchesToJson(const std::vector<jtml::SemanticFetch>& fetches) {
+    jtml::SemanticProgram program;
+    program.fetchRecords = fetches;
+    return semanticFetchRecordsToJson(program);
+}
+
+nlohmann::json runtimePlanComponentDefinitionsToJson(
+        const std::vector<jtml::RuntimePlanComponentDefinition>& definitions) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& definition : definitions) {
+        nlohmann::json bodyPlan = nlohmann::json::array();
+        for (const auto& node : definition.bodyPlan) {
+            bodyPlan.push_back({
+                {"indent", node.indent},
+                {"parentIndex", node.parentIndex},
+                {"kind", node.kind},
+                {"head", node.head},
+                {"name", node.name},
+                {"text", node.text},
+                {"renderRoot", node.renderRoot},
+            });
+        }
+        out.push_back({
+            {"name", definition.name},
+            {"params", definition.params},
+            {"localState", definition.localState},
+            {"localDerived", definition.localDerived},
+            {"localActions", definition.localActions},
+            {"localEffects", definition.localEffects},
+            {"eventBindings", definition.eventBindings},
+            {"bodySource", definition.bodySource},
+            {"bodyHex", definition.bodyHex},
+            {"bodyPlan", bodyPlan},
+            {"hasSlot", definition.hasSlot},
+            {"bodyNodeCount", definition.bodyNodeCount},
+            {"rootTemplateNodeCount", definition.rootTemplateNodeCount},
+            {"slotCount", definition.slotCount},
+            {"sourceLine", definition.sourceLine},
+        });
+    }
+    return out;
+}
+
+nlohmann::json runtimePlanComponentInstancesToJson(
+        const std::vector<jtml::RuntimePlanComponentInstance>& instances) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& instance : instances) {
+        out.push_back({
+            {"id", instance.id},
+            {"component", instance.component},
+            {"instanceId", instance.instanceId},
+            {"role", instance.role},
+            {"params", semanticPropertiesToJson(instance.params)},
+            {"locals", semanticPropertiesToJson(instance.locals)},
+            {"sourceLine", instance.sourceLine},
+        });
+    }
+    return out;
+}
+
+nlohmann::json runtimePlanToJson(const jtml::RuntimePlan& plan) {
+    return {
+        {"sourceOfTruth", "typed AST + semantic IR"},
+        {"state", runtimePlanBindingsToJson(plan.state)},
+        {"derived", runtimePlanBindingsToJson(plan.derived)},
+        {"actions", runtimePlanActionsToJson(plan.actions)},
+        {"routes", runtimePlanRoutesToJson(plan.routes)},
+        {"fetches", runtimePlanFetchesToJson(plan.fetches)},
+        {"componentDefinitions", runtimePlanComponentDefinitionsToJson(plan.componentDefinitions)},
+        {"componentInstances", runtimePlanComponentInstancesToJson(plan.componentInstances)},
+    };
 }
 
 std::string joinDisplay(const std::vector<std::string>& values,
@@ -778,10 +935,16 @@ int cmdExplain(const Options& o) {
     JtmlLinter linter;
     auto diagnostics = linter.lint(program);
     auto semantic = jtml::analyzeSemanticProgram(program, source);
+    std::set<std::string> seenModuleFiles;
     for (const auto& file : collectSourceFiles(o.inputFile, o.syntax)) {
-        semantic.moduleFiles.push_back(file.generic_string());
+        const auto path = file.generic_string();
+        if (seenModuleFiles.insert(path).second) {
+            semantic.moduleFiles.push_back(path);
+        }
     }
     const auto usage = jtml::analyzeSemanticUsage(semantic);
+    const auto project = jtml::buildSemanticProject(semantic, o.inputFile);
+    const auto runtimePlan = jtml::buildRuntimePlan(program, semantic);
     const auto depth = classifyDepth(semantic);
 
     // Build action profiles map for easy lookup
@@ -841,6 +1004,7 @@ int cmdExplain(const Options& o) {
                 {"attributes", attributeKindCountsToJson(semantic.attributes)},
                 {"nodes", semanticNodeCountsToJson(semantic)},
                 {"moduleFiles", semantic.moduleFiles},
+                {"project", semanticProjectToJson(project)},
                 {"routeRecords", semanticRouteRecordsToJson(semantic)},
                 {"fetchRecords", semanticFetchRecordsToJson(semantic)},
                 {"importRecords", semanticImportRecordsToJson(semantic)},
@@ -851,6 +1015,7 @@ int cmdExplain(const Options& o) {
                 {"dependencies", semanticEdgesToJson(semantic)},
                 {"sourceOfTruth", "typed AST -> semantic analysis -> observable graph"}
             }},
+            {"runtimePlan", runtimePlanToJson(runtimePlan)},
             {"issues", {
                 {"deadState",          listJson(usage.deadState)},
                 {"zombieState",        listJson(usage.zombieState)},

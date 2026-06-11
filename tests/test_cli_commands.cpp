@@ -179,6 +179,40 @@ TEST(CliModules, MissingImportDiagnosticsNameImporterAndResolvedPath) {
         << result.err;
 }
 
+TEST(CliModules, NamedImportsEmitPrivateImplementationOnlyOncePerFile) {
+    const auto root = makeTempDir("named-import-private-once");
+    const auto app = root / "app";
+    writeTempFile(app / "components" / "common.jtml",
+        "jtml 2\n"
+        "let dismissed = false\n"
+        "when dismissShared\n"
+        "  dismissed = true\n"
+        "\n"
+        "export make AlertOne\n"
+        "  button \"Dismiss one\" click dismissShared\n"
+        "  text dismissed\n"
+        "\n"
+        "export make AlertTwo\n"
+        "  button \"Dismiss two\" click dismissShared\n"
+        "  text dismissed\n");
+    writeTempFile(app / "index.jtml",
+        "jtml 2\n"
+        "use AlertOne from \"./components/common.jtml\"\n"
+        "use AlertTwo from \"./components/common.jtml\"\n"
+        "page\n"
+        "  AlertOne\n"
+        "  AlertTwo\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = (app / "index.jtml").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdCheck(opts); });
+    EXPECT_EQ(result.code, 0) << result.out << result.err;
+    EXPECT_EQ(result.err.find("Function already defined"), std::string::npos)
+        << result.err;
+}
+
 TEST(CliModules, NamedImportRequiresExportedDeclaration) {
     const auto root = makeTempDir("named-import-no-export");
     const auto app = root / "app";
@@ -275,6 +309,29 @@ TEST(CliModules, NamedImportDoesNotExposePrivateDeclarations) {
     const auto result = captureCommand([&] { return jtml::cli::cmdCheck(opts); });
     EXPECT_EQ(result.code, 1);
     EXPECT_NE(result.err.find("InternalCard"), std::string::npos) << result.err;
+}
+
+TEST(CliModules, NamedImportKeepsPrivateImplementationState) {
+    const auto root = makeTempDir("private-module-helper");
+    const auto app = root / "app";
+    writeTempFile(app / "components" / "card.jtml",
+        "jtml 2\n"
+        "let cardTone = \"primary\"\n"
+        "export make Card title\n"
+        "  box class cardTone\n"
+        "    h2 title\n");
+    writeTempFile(app / "index.jtml",
+        "jtml 2\n"
+        "use Card from \"./components/card.jtml\"\n"
+        "page\n"
+        "  Card \"Hello\"\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = (app / "index.jtml").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdCheck(opts); });
+    EXPECT_EQ(result.code, 0) << result.out << result.err;
 }
 
 TEST(CliModules, NamedImportCanUseReExportedDeclaration) {
@@ -510,6 +567,28 @@ TEST(CliExplain, JsonReportsObservableDepthAndStoreActions) {
     EXPECT_EQ(report["semantic"]["componentInstances"][0]["role"], "route");
     EXPECT_GE(report["semantic"]["dependencies"].size(), 1u);
     EXPECT_EQ(report["semantic"]["sourceOfTruth"], "typed AST -> semantic analysis -> observable graph");
+    ASSERT_TRUE(report.contains("runtimePlan")) << report.dump(2);
+    EXPECT_EQ(report["runtimePlan"]["sourceOfTruth"], "typed AST + semantic IR");
+    EXPECT_NE(report["runtimePlan"]["state"].dump().find("\"name\":\"token\""), std::string::npos)
+        << report.dump(2);
+    EXPECT_NE(report["runtimePlan"]["state"].dump().find("\"name\":\"users\""), std::string::npos)
+        << report.dump(2);
+    EXPECT_NE(report["runtimePlan"]["actions"].dump().find("\"name\":\"workspace_approve\""),
+              std::string::npos) << report.dump(2);
+    ASSERT_EQ(report["runtimePlan"]["routes"].size(), 1u) << report.dump(2);
+    EXPECT_EQ(report["runtimePlan"]["routes"][0]["component"], "Home");
+    ASSERT_EQ(report["runtimePlan"]["fetches"].size(), 1u) << report.dump(2);
+    EXPECT_EQ(report["runtimePlan"]["fetches"][0]["name"], "users");
+    ASSERT_EQ(report["runtimePlan"]["componentDefinitions"].size(), 1u) << report.dump(2);
+    EXPECT_EQ(report["runtimePlan"]["componentDefinitions"][0]["name"], "Home");
+    EXPECT_NE(report["runtimePlan"]["componentDefinitions"][0]["bodySource"].get<std::string>().find("let open = true"),
+              std::string::npos) << report.dump(2);
+    EXPECT_NE(report["runtimePlan"]["componentDefinitions"][0]["bodyPlan"].dump().find("\"kind\":\"action\""),
+              std::string::npos) << report.dump(2);
+    EXPECT_NE(report["runtimePlan"]["componentDefinitions"][0]["bodyPlan"].dump().find("\"renderRoot\":true"),
+              std::string::npos) << report.dump(2);
+    ASSERT_EQ(report["runtimePlan"]["componentInstances"].size(), 1u) << report.dump(2);
+    EXPECT_EQ(report["runtimePlan"]["componentInstances"][0]["role"], "route");
 }
 
 TEST(CliExplain, TextReportsComponentOwnedSemantics) {

@@ -1,0 +1,10 @@
+jtml 2
+
+use Shell from "../components/layouts/shell.jtml"
+use PageHero from "../components/ui/common.jtml"
+
+export make NotFoundPage
+  Shell "Not found"
+    PageHero "Page not found" "This route is not registered in the OpsPulse module graph."
+    box class "ops-card"
+      link "Back to dashboard" to "/"

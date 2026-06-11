@@ -1100,25 +1100,29 @@ std::vector<SemanticFetch> fetchesToVector(
 
 std::vector<SemanticImport> importsToVector(
     const std::set<std::tuple<std::string, std::string, std::string, bool>>& values) {
-    std::map<std::string, SemanticImport> bySpecifier;
+    std::set<std::string> specifiersWithFriendlyRecords;
     for (const auto& item : values) {
-        SemanticImport candidate{
-            std::get<0>(item),
-            std::get<1>(item),
-            splitCommaList(std::get<2>(item)),
-            std::get<3>(item),
-        };
-        auto existing = bySpecifier.find(candidate.specifier);
-        if (existing == bySpecifier.end() ||
-            existing->second.kind == "compatibility" ||
-            (!existing->second.reExport && candidate.reExport)) {
-            bySpecifier[candidate.specifier] = std::move(candidate);
+        if (std::get<1>(item) != "compatibility") {
+            specifiersWithFriendlyRecords.insert(std::get<0>(item));
         }
     }
 
+    std::set<std::tuple<std::string, std::string, std::string, bool>> emitted;
     std::vector<SemanticImport> imports;
-    for (const auto& item : bySpecifier) {
-        imports.push_back(item.second);
+    for (const auto& item : values) {
+        const auto& specifier = std::get<0>(item);
+        const auto& kind = std::get<1>(item);
+        if (kind == "compatibility" && specifiersWithFriendlyRecords.count(specifier)) {
+            continue;
+        }
+        if (!emitted.insert(item).second) continue;
+        SemanticImport candidate{
+            specifier,
+            kind,
+            splitCommaList(std::get<2>(item)),
+            std::get<3>(item),
+        };
+        imports.push_back(std::move(candidate));
     }
     return imports;
 }

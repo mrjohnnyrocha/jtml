@@ -1,0 +1,12 @@
+jtml 2
+
+export store opsData
+  let totalInteractions = "1.24M"
+  let activeUsers = "18,420"
+  let avgLatency = "842ms"
+  let costEstimate = "€48.2k"
+  let adoption = "92%"
+  let reliability = "99.4%"
+  let incidentsOpen = "7"
+  let releasesReady = "4"
+  let mediaAssets = "128"

@@ -1,0 +1,25 @@
+jtml 2
+
+// Global app state: theme, sidebar, user, notifications
+store appState
+  let currentUser = "João"
+  let currentRole = "Admin"
+  let sidebarOpen = true
+  let darkMode = false
+  let alertMessage = ""
+
+  when toggleSidebar
+    sidebarOpen = !sidebarOpen
+
+  when toggleTheme
+    darkMode = !darkMode
+
+  when showAlert message
+    alertMessage = message
+
+  when dismissAlert
+    alertMessage = ""
+
+  get themeClass = darkMode ? "app app-dark" : "app"
+  get sidebarClass = sidebarOpen ? "sidebar sidebar-open" : "sidebar sidebar-closed"
+  get hasAlert = alertMessage != ""

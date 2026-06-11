@@ -69,6 +69,13 @@ struct SemanticFetch {
     bool lazy = false;
 };
 
+struct SemanticImport {
+    std::string specifier;
+    std::string kind;
+    std::vector<std::string> names;
+    bool reExport = false;
+};
+
 struct SemanticProperty {
     std::string name;
     std::string value;
@@ -101,6 +108,7 @@ struct SemanticComponentInstance {
 };
 
 struct SemanticProgram {
+    std::vector<std::string> moduleFiles;
     std::vector<std::string> state;
     std::vector<std::string> constants;
     std::vector<std::string> derived;
@@ -115,6 +123,7 @@ struct SemanticProgram {
     std::vector<std::string> stores;
     std::vector<std::string> effects;
     std::vector<std::string> imports;
+    std::vector<SemanticImport> importRecords;
     std::vector<std::string> externs;
     std::vector<std::string> uiPrimitives;
     std::vector<SemanticUiUse> uiUses;

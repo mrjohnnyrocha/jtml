@@ -719,9 +719,11 @@ semantic instance mode. The current renderer still emits compatibility-expanded
 DOM, but tooling no longer needs to reverse-engineer component ownership from
 that DOM.
 
-Relative imports are resolved relative to the importing file, parsed once per
-compile graph, and cycles are reported as errors. Bare package imports such as
-`use Button from "ui-kit"` resolve through the nearest
+Relative imports are resolved from the directory of the importing file, parsed
+once per compile graph, and cycles are reported as errors. This is the
+reliable first slice needed by `check`, `build`, `serve --watch`, `dev`, and
+`explain`. Bare package imports such as `use Button from "ui-kit"` resolve
+through the nearest
 `jtml_modules/ui-kit/index.jtml` or `jtml_modules/ui-kit/package.jtml`.
 `jtml add` installs local packages into `jtml_modules/`, records
 `jtml.packages.json`, and writes `jtml.lock.json` with deterministic package
@@ -745,12 +747,21 @@ let privateDebugLabel = "not imported by name"
 ```
 
 Named imports (`use Card from "./components/card.jtml"` and
-`use { Card } from "./components/card.jtml"`) include only matching exported
-top-level declarations when a module uses `export`. Side-effect imports
-(`use "./setup.jtml"`) keep the compatibility behavior and evaluate the whole
-file. Modules with no `export` declarations also keep compatibility behavior
-for now, so existing apps continue to build while larger projects can opt into
-explicit public APIs.
+`use { Card } from "./components/card.jtml"`) are export-filtered: the imported
+module must explicitly export the requested top-level declarations, missing
+exports are reported with the available public names, duplicate exported names
+are errors, and non-exported declarations stay private to that module load.
+Side-effect imports (`use "./setup.jtml"`) keep the compatibility behavior and
+evaluate the whole file. Re-export barrels can forward public declarations:
+
+```jtml
+// components/index.jtml
+jtml 2
+export use Card from "./card.jtml"
+```
+
+Remaining module work is deeper per-file semantic ownership, imported store
+identity polish, and richer cycle recovery.
 
 ## Compatibility Backend
 

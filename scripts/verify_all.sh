@@ -25,7 +25,7 @@ done
 
 tmp_pkg_root="$(mktemp -d "${TMPDIR:-/tmp}/jtml-package.XXXXXX")"
 mkdir -p "$tmp_pkg_root/shared" "$tmp_pkg_root/app"
-printf 'jtml 2\n\nmake Card title\n  box\n    h2 title\n    slot\n' > "$tmp_pkg_root/shared/card.jtml"
+printf 'jtml 2\n\nexport make Card title\n  box\n    h2 title\n    slot\n' > "$tmp_pkg_root/shared/card.jtml"
 (
   cd "$tmp_pkg_root/app"
   "$build_dir/jtml" add ../shared/card.jtml --json > "$repo_root/dist/package-add.json"

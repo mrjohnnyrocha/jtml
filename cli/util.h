@@ -6,6 +6,8 @@
 // stdout silencer).
 #pragma once
 
+#include "module_loader.h"
+
 #include "jtml/ast.h"
 #include "jtml/friendly.h"
 #include "jtml/lexer.h"
@@ -47,9 +49,6 @@ parseProgramFromFile(const std::string& inputFile);
 
 std::vector<std::unique_ptr<ASTNode>>
 parseProgramFromFile(const std::string& inputFile, SyntaxMode syntax);
-
-std::vector<std::filesystem::path>
-collectSourceFiles(const std::string& inputFile, SyntaxMode syntax);
 
 // `jtml X.Y.Z[-suffix]` as a single string. Used by --version and the
 // usage banner.

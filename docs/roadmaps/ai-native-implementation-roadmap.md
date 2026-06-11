@@ -277,15 +277,23 @@ Status: in progress.
 1. Friendly `use Component from "./file.jtml"` and named imports
    `use { foo, bar } from "./mod.jtml"`.
 2. Module graph resolved relative to the importing file with cycle detection.
-   ✅ Linter walks the graph (`JtmlLinter::resolveImport`) and the LSP
+   ✅ CLI graph loading now resolves nested relative imports from each
+   importer and is shared by `check`, `build`, `serve --watch`, `dev`, and
+   `explain`. Linter walks the graph (`JtmlLinter::resolveImport`) and the LSP
    walks the same graph for definition, hover, and completion.
    ✅ Bare package imports resolve through nearest `jtml_modules/<name>/index.jtml`
    or `package.jtml`.
 3. Per-file scopes for state, components, and stores; only `use`-declared
    names cross the file boundary.
-   ✅ First explicit-export slice shipped: Friendly `export` marks public
-   top-level declarations and named imports include only matching exports when
-   a module opts in.
+   ✅ First explicit-export slice shipped for compatibility lowering:
+   Friendly `export` marks public top-level declarations, named imports require
+   matching exports, missing exports list available public names, duplicate
+   exports are diagnostics, and private declarations stay private under named
+   imports. Re-export barrels such as
+   `export use Card from "./card.jtml"` forward public declarations through the
+   shared module loader.
+   Remaining: full semantic module ownership and imported store identity
+   polish.
 4. Linter walks the module graph so cross-file references are no longer
    flagged as undefined. ✅
 5. LSP cross-file go-to-definition, hover, and completion through `use` /
@@ -299,7 +307,14 @@ Status: in progress.
    writes deterministic `jtml.lock.json` package/file fingerprints for review
    and reproducible team installs. ✅ `jtml install [--json]` restores missing
    local packages from the manifest when sources are available and verifies
-   installed package fingerprints against the lockfile for CI.
+   installed package fingerprints against the lockfile for CI. ✅ The CLI
+   package implementation is isolated in `cli/package_manager.*` instead of
+   living inside the broad command-dispatch file.
+8. Semantic module provenance first slice.
+   ✅ `SemanticProgram` now exposes structured `importRecords` and
+   `jtml explain --json` reports the module file set collected by the shared
+   loader. This gives AI/tooling a stable bridge while full per-file AST/IR
+   ownership is implemented.
 
 ## Phase 7: Language Interoperability
 

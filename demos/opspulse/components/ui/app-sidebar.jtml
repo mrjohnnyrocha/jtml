@@ -1,0 +1,31 @@
+jtml 2
+
+use "../../stores/app-state.jtml"
+use "../../stores/filter-state.jtml"
+
+make AppSidebar
+  nav class "{appState.sidebarClass}"
+    table width "100%" cellpadding "14" cellspacing "0" bgcolor "#f8fafc"
+      tr
+        td
+          h3 "Navigation"
+          list
+            item
+              link "Dashboard" to "/"
+            item
+              link "Usage" to "/usage"
+            item
+              link "People" to "/people"
+            item
+              link "Incidents" to "/incidents"
+            item
+              link "Releases" to "/releases"
+            item
+              link "Media" to "/media"
+            item
+              link "Settings" to "/settings"
+          hr
+          strong "Filters"
+          text filterState.filterSummary
+          if filterState.isFiltered
+            button "Reset filters" click filterState.resetFilters

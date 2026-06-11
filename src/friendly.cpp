@@ -59,6 +59,16 @@ bool startsWith(const std::string& s, const std::string& prefix) {
     return s.rfind(prefix, 0) == 0;
 }
 
+bool isIdentifierStart(char ch) {
+    const auto c = static_cast<unsigned char>(ch);
+    return std::isalpha(c) || ch == '_';
+}
+
+bool isIdentifierPart(char ch) {
+    const auto c = static_cast<unsigned char>(ch);
+    return std::isalnum(c) || ch == '_';
+}
+
 bool isFriendlyHeader(const std::string& text) {
     return text == "jtml 2" || text == "jtl 1";
 }
@@ -1360,6 +1370,30 @@ std::string mapStoreToken(const std::string& token,
                           const std::string& storeName,
                           const std::set<std::string>& fields,
                           const std::set<std::string>& actions) {
+    if (isQuoted(token)) {
+        std::string mapped;
+        mapped.reserve(token.size());
+        for (size_t i = 0; i < token.size(); ++i) {
+            if (token[i] == '\\' && i + 1 < token.size()) {
+                mapped.push_back(token[i]);
+                mapped.push_back(token[++i]);
+                continue;
+            }
+            if (token[i] == '{') {
+                const auto close = token.find('}', i + 1);
+                if (close != std::string::npos) {
+                    mapped.push_back('{');
+                    mapped += mapStoreToken(token.substr(i + 1, close - i - 1), storeName, fields, actions);
+                    mapped.push_back('}');
+                    i = close;
+                    continue;
+                }
+            }
+            mapped.push_back(token[i]);
+        }
+        return mapped;
+    }
+
     if (actions.count(token)) return storeName + "_" + token;
     for (const auto& action : actions) {
         if (startsWith(token, action + "(")) {
@@ -1377,7 +1411,32 @@ std::string mapStoreToken(const std::string& token,
             return storeName + "." + token;
         }
     }
-    return token;
+
+    std::string mapped;
+    mapped.reserve(token.size() + storeName.size());
+    for (size_t i = 0; i < token.size();) {
+        if (!isIdentifierStart(token[i])) {
+            mapped.push_back(token[i++]);
+            continue;
+        }
+
+        const size_t start = i;
+        ++i;
+        while (i < token.size() && isIdentifierPart(token[i])) ++i;
+        const std::string identifier = token.substr(start, i - start);
+        const bool alreadyQualified = start > 0 && token[start - 1] == '.';
+        const bool objectLiteralKey = i < token.size() && token[i] == ':';
+        const bool actionCall = i < token.size() && token[i] == '(';
+
+        if (!alreadyQualified && !objectLiteralKey && fields.count(identifier)) {
+            mapped += storeName + "." + identifier;
+        } else if (!alreadyQualified && actionCall && actions.count(identifier)) {
+            mapped += storeName + "_" + identifier;
+        } else {
+            mapped += identifier;
+        }
+    }
+    return mapped;
 }
 
 std::string transformStoreLineText(const std::string& text,

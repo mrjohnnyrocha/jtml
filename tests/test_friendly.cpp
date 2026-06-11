@@ -894,6 +894,36 @@ TEST(FriendlySyntax, StoreBlockLowersToSharedDictionaryState) {
     EXPECT_EQ(state["variables"]["auth"]["value"]["token"], "");
 }
 
+TEST(FriendlySyntax, StoreBlockQualifiesFieldReadsInsideExpressions) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "store appState\n"
+        "  let darkMode = false\n"
+        "  let sidebarOpen = true\n"
+        "  get themeLabel = \"Theme dark: {darkMode}\"\n"
+        "  when toggleTheme\n"
+        "    darkMode = !darkMode\n"
+        "  when toggleSidebar\n"
+        "    sidebarOpen = !sidebarOpen\n"
+        "page\n"
+        "  text appState.themeLabel\n"
+        "  button \"Theme\" click appState.toggleTheme\n");
+
+    EXPECT_NE(classic.find("derive themeLabel = \"Theme dark: \" + appState.darkMode"),
+              std::string::npos) << classic;
+    EXPECT_NE(classic.find("appState.darkMode = !appState.darkMode\\\\"), std::string::npos)
+        << classic;
+    EXPECT_NE(classic.find("appState.sidebarOpen = !appState.sidebarOpen\\\\"), std::string::npos)
+        << classic;
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+}
+
 // ---------------------------------------------------------------------------
 // Core Friendly Statements
 // ---------------------------------------------------------------------------

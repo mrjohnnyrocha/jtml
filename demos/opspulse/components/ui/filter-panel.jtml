@@ -1,0 +1,30 @@
+jtml 2
+
+use "../../stores/filter-state.jtml"
+
+make FilterPanel
+  fieldset class "filters"
+    legend "Filters"
+    table width "100%" cellpadding "8" cellspacing "0"
+      tr
+        td valign "top"
+          strong "Region"
+          br
+          button "All" click filterState.pickRegion("All")
+          button "Portugal" click filterState.pickRegion("Portugal")
+          button "Spain" click filterState.pickRegion("Spain")
+          button "Brazil" click filterState.pickRegion("Brazil")
+        td valign "top"
+          strong "Platform"
+          br
+          button "All" click filterState.pickPlatform("All")
+          button "Web" click filterState.pickPlatform("Web")
+          button "Mobile" click filterState.pickPlatform("Mobile")
+          button "Internal" click filterState.pickPlatform("Internal")
+        td valign "top"
+          strong "Tool"
+          br
+          button "All" click filterState.pickTool("All")
+          button "ChatGPT" click filterState.pickTool("ChatGPT")
+          button "Copilot" click filterState.pickTool("Copilot")
+          button "Mind4EDP" click filterState.pickTool("Mind4EDP")

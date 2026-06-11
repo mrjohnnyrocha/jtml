@@ -1,0 +1,35 @@
+jtml 2
+
+// Filter state: regions, platforms, tools, priorities
+store filterState
+  let selectedRegion = "All"
+  let selectedPlatform = "All"
+  let selectedTool = "All"
+  let selectedPriority = "All"
+  let selectedPeriod = "30d"
+  let search = ""
+
+  when pickRegion region
+    selectedRegion = region
+
+  when pickPlatform platform
+    selectedPlatform = platform
+
+  when pickTool tool
+    selectedTool = tool
+
+  when pickPriority priority
+    selectedPriority = priority
+
+  when clearSearch
+    search = ""
+
+  when resetFilters
+    selectedRegion = "All"
+    selectedPlatform = "All"
+    selectedTool = "All"
+    selectedPriority = "All"
+
+  get isFiltered = selectedRegion != "All" || selectedPlatform != "All" || selectedTool != "All" || selectedPriority != "All"
+  get filterSummary = selectedRegion + " / " + selectedPlatform + " / " + selectedTool
+  get hasSearch = search != ""

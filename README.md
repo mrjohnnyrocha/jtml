@@ -239,7 +239,9 @@ jtml add ui-kit --from ../packages/ui-kit
 
 Packages are copied into `jtml_modules/` and tracked in `jtml.packages.json`.
 Friendly imports can use bare package names, for example
-`use Card from "card"` or `use Button from "ui-kit"`.
+`use Card from "card"` or `use Button from "ui-kit"`. Named package imports
+follow the same module rule as relative imports: the package entry must export
+the requested public declaration, such as `export make Card`.
 
 For a live development loop, add `--watch`. The source file is polled and any saved change re-transpiles, hot-swaps the interpreter, and broadcasts a reload to every connected browser — no extension, no script, no config:
 

@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -20,6 +21,32 @@ std::filesystem::path writeTempJtml(const std::string& name, const std::string& 
     out << source;
     return path;
 }
+
+std::filesystem::path makeTempDir(const std::string& name) {
+    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    auto root = std::filesystem::temp_directory_path() /
+                ("jtml-cli-" + name + "-" + std::to_string(stamp));
+    std::filesystem::create_directories(root);
+    return root;
+}
+
+void writeTempFile(const std::filesystem::path& path, const std::string& source) {
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream out(path);
+    out << source;
+}
+
+struct ScopedCurrentPath {
+    std::filesystem::path previous = std::filesystem::current_path();
+
+    explicit ScopedCurrentPath(const std::filesystem::path& next) {
+        std::filesystem::current_path(next);
+    }
+
+    ~ScopedCurrentPath() {
+        std::filesystem::current_path(previous);
+    }
+};
 
 struct CapturedCommand {
     int code = 0;
@@ -49,6 +76,297 @@ CapturedCommand captureCommand(Fn fn) {
 }
 
 } // namespace
+
+TEST(CliModules, NestedRelativeImportsResolveFromImporterForCoreCommands) {
+    const auto root = makeTempDir("nested-modules");
+    const auto app = root / "opspulse";
+
+    writeTempFile(app / "components" / "ui" / "card.jtml",
+        "jtml 2\n"
+        "export make Card title\n"
+        "  box class \"card\"\n"
+        "    h2 title\n"
+        "    text \"Reusable card\"\n");
+    writeTempFile(app / "stores" / "app-state.jtml",
+        "jtml 2\n"
+        "use Card from \"../components/ui/card.jtml\"\n"
+        "\n"
+        "store appState\n"
+        "  let user = \"Ada\"\n"
+        "  when clearUser\n"
+        "    user = \"\"\n");
+    writeTempFile(app / "pages" / "home.jtml",
+        "jtml 2\n"
+        "use \"../stores/app-state.jtml\"\n"
+        "\n"
+        "make Home\n"
+        "  page\n"
+        "    Card \"Welcome\"\n"
+        "    text \"User: {appState.user}\"\n"
+        "    button \"Clear\" click appState.clearUser\n");
+    writeTempFile(app / "index.jtml",
+        "jtml 2\n"
+        "use \"./stores/app-state.jtml\"\n"
+        "use \"./pages/home.jtml\"\n"
+        "\n"
+        "page\n"
+        "  Home\n");
+
+    jtml::cli::Options check;
+    check.inputFile = (app / "index.jtml").string();
+    check.syntax = jtml::SyntaxMode::Auto;
+    const auto checked = captureCommand([&] { return jtml::cli::cmdCheck(check); });
+    ASSERT_EQ(checked.code, 0) << checked.out << checked.err;
+
+    jtml::cli::Options build;
+    build.inputFile = (app / "index.jtml").string();
+    build.outputFile = (root / "dist").string();
+    build.target = "browser";
+    build.syntax = jtml::SyntaxMode::Auto;
+    const auto built = captureCommand([&] { return jtml::cli::cmdBuild(build); });
+    ASSERT_EQ(built.code, 0) << built.out << built.err;
+    EXPECT_TRUE(std::filesystem::exists(root / "dist" / "index.html"));
+
+    jtml::cli::Options explain;
+    explain.inputFile = (app / "index.jtml").string();
+    explain.syntax = jtml::SyntaxMode::Auto;
+    explain.json = true;
+    const auto explained = captureCommand([&] { return jtml::cli::cmdExplain(explain); });
+    ASSERT_EQ(explained.code, 0) << explained.out << explained.err;
+    const auto report = nlohmann::json::parse(explained.out);
+    EXPECT_EQ(report["ok"], true) << report.dump(2);
+    EXPECT_GE(report["semantic"]["nodes"]["components"].get<int>(), 1);
+    EXPECT_GE(report["semantic"]["nodes"]["moduleFiles"].get<int>(), 4);
+    EXPECT_NE(report["semantic"]["moduleFiles"].dump().find("stores/app-state.jtml"), std::string::npos)
+        << report.dump(2);
+    EXPECT_NE(report["state"].dump().find("appState"), std::string::npos)
+        << report.dump(2);
+    EXPECT_NE(report["actions"].dump().find("appState_clearUser"), std::string::npos)
+        << report.dump(2);
+
+    const auto files = jtml::cli::collectSourceFiles(
+        (app / "index.jtml").string(), jtml::SyntaxMode::Auto);
+    auto contains = [&](const std::filesystem::path& expected) {
+        const auto canonical = std::filesystem::weakly_canonical(expected);
+        return std::find(files.begin(), files.end(), canonical) != files.end();
+    };
+    EXPECT_TRUE(contains(app / "index.jtml"));
+    EXPECT_TRUE(contains(app / "stores" / "app-state.jtml"));
+    EXPECT_TRUE(contains(app / "components" / "ui" / "card.jtml"));
+    EXPECT_TRUE(contains(app / "pages" / "home.jtml"));
+}
+
+TEST(CliModules, MissingImportDiagnosticsNameImporterAndResolvedPath) {
+    const auto root = makeTempDir("missing-import");
+    const auto app = root / "opspulse";
+    writeTempFile(app / "index.jtml",
+        "jtml 2\n"
+        "use \"./stores/missing.jtml\"\n"
+        "page\n"
+        "  h1 \"Broken import\"\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = (app / "index.jtml").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdCheck(opts); });
+    EXPECT_EQ(result.code, 1);
+    EXPECT_NE(result.err.find("Cannot resolve import './stores/missing.jtml'"), std::string::npos)
+        << result.err;
+    EXPECT_NE(result.err.find((app / "index.jtml").string()), std::string::npos)
+        << result.err;
+    EXPECT_NE(result.err.find((app / "stores" / "missing.jtml").string()), std::string::npos)
+        << result.err;
+}
+
+TEST(CliModules, NamedImportRequiresExportedDeclaration) {
+    const auto root = makeTempDir("named-import-no-export");
+    const auto app = root / "app";
+    writeTempFile(app / "components" / "card.jtml",
+        "jtml 2\n"
+        "make Card title\n"
+        "  h2 title\n");
+    writeTempFile(app / "index.jtml",
+        "jtml 2\n"
+        "use Card from \"./components/card.jtml\"\n"
+        "page\n"
+        "  Card \"Hello\"\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = (app / "index.jtml").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdCheck(opts); });
+    EXPECT_EQ(result.code, 1);
+    EXPECT_NE(result.err.find("Named import from"), std::string::npos) << result.err;
+    EXPECT_NE(result.err.find("requires exported declarations"), std::string::npos)
+        << result.err;
+    EXPECT_NE(result.err.find("Card"), std::string::npos) << result.err;
+}
+
+TEST(CliModules, MissingNamedExportReportsAvailableExports) {
+    const auto root = makeTempDir("missing-export");
+    const auto app = root / "app";
+    writeTempFile(app / "components" / "card.jtml",
+        "jtml 2\n"
+        "export make Card title\n"
+        "  h2 title\n");
+    writeTempFile(app / "index.jtml",
+        "jtml 2\n"
+        "use Panel from \"./components/card.jtml\"\n"
+        "page\n"
+        "  Panel \"Hello\"\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = (app / "index.jtml").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdCheck(opts); });
+    EXPECT_EQ(result.code, 1);
+    EXPECT_NE(result.err.find("Missing export(s)"), std::string::npos) << result.err;
+    EXPECT_NE(result.err.find("Panel"), std::string::npos) << result.err;
+    EXPECT_NE(result.err.find("Available exports: Card"), std::string::npos) << result.err;
+}
+
+TEST(CliModules, DuplicateExportedSymbolIsDiagnostic) {
+    const auto root = makeTempDir("duplicate-export");
+    const auto app = root / "app";
+    writeTempFile(app / "components" / "cards.jtml",
+        "jtml 2\n"
+        "export make Card title\n"
+        "  h2 title\n"
+        "export make Card title\n"
+        "  h2 title\n");
+    writeTempFile(app / "index.jtml",
+        "jtml 2\n"
+        "use Card from \"./components/cards.jtml\"\n"
+        "page\n"
+        "  Card \"Hello\"\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = (app / "index.jtml").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdCheck(opts); });
+    EXPECT_EQ(result.code, 1);
+    EXPECT_NE(result.err.find("Duplicate exported symbol 'Card'"), std::string::npos)
+        << result.err;
+}
+
+TEST(CliModules, NamedImportDoesNotExposePrivateDeclarations) {
+    const auto root = makeTempDir("private-module-decl");
+    const auto app = root / "app";
+    writeTempFile(app / "components" / "card.jtml",
+        "jtml 2\n"
+        "export make Card title\n"
+        "  h2 title\n"
+        "make InternalCard\n"
+        "  text \"Private\"\n");
+    writeTempFile(app / "index.jtml",
+        "jtml 2\n"
+        "use Card from \"./components/card.jtml\"\n"
+        "page\n"
+        "  InternalCard\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = (app / "index.jtml").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdCheck(opts); });
+    EXPECT_EQ(result.code, 1);
+    EXPECT_NE(result.err.find("InternalCard"), std::string::npos) << result.err;
+}
+
+TEST(CliModules, NamedImportCanUseReExportedDeclaration) {
+    const auto root = makeTempDir("reexport-module");
+    const auto app = root / "app";
+    writeTempFile(app / "components" / "card.jtml",
+        "jtml 2\n"
+        "export make Card title\n"
+        "  h2 title\n");
+    writeTempFile(app / "components" / "index.jtml",
+        "jtml 2\n"
+        "export use Card from \"./card.jtml\"\n");
+    writeTempFile(app / "index.jtml",
+        "jtml 2\n"
+        "use Card from \"./components/index.jtml\"\n"
+        "page\n"
+        "  Card \"Hello\"\n");
+
+    jtml::cli::Options check;
+    check.inputFile = (app / "index.jtml").string();
+    check.syntax = jtml::SyntaxMode::Auto;
+    const auto checked = captureCommand([&] { return jtml::cli::cmdCheck(check); });
+    ASSERT_EQ(checked.code, 0) << checked.out << checked.err;
+
+    const auto files = jtml::cli::collectSourceFiles(
+        (app / "index.jtml").string(), jtml::SyntaxMode::Auto);
+    auto contains = [&](const std::filesystem::path& expected) {
+        const auto canonical = std::filesystem::weakly_canonical(expected);
+        return std::find(files.begin(), files.end(), canonical) != files.end();
+    };
+    EXPECT_TRUE(contains(app / "index.jtml"));
+    EXPECT_TRUE(contains(app / "components" / "index.jtml"));
+    EXPECT_TRUE(contains(app / "components" / "card.jtml"));
+}
+
+TEST(CliPackages, AddWritesManifestLockfileAndInstallVerifies) {
+    const auto root = makeTempDir("package-install");
+    const auto packageDir = root / "source" / "ui-kit";
+    writeTempFile(packageDir / "index.jtml",
+        "jtml 2\n"
+        "export make Badge label\n"
+        "  badge label tone primary\n");
+
+    ScopedCurrentPath cwd(root);
+
+    jtml::cli::Options add;
+    add.inputFile = packageDir.string();
+    add.syntax = jtml::SyntaxMode::Auto;
+    const auto added = captureCommand([&] { return jtml::cli::cmdAdd(add); });
+    ASSERT_EQ(added.code, 0) << added.out << added.err;
+    EXPECT_TRUE(std::filesystem::exists(root / "jtml_modules" / "ui-kit" / "index.jtml"));
+    EXPECT_TRUE(std::filesystem::exists(root / "jtml.packages.json"));
+    EXPECT_TRUE(std::filesystem::exists(root / "jtml.lock.json"));
+
+    jtml::cli::Options install;
+    install.json = true;
+    const auto installed = captureCommand([&] { return jtml::cli::cmdInstall(install); });
+    ASSERT_EQ(installed.code, 0) << installed.out << installed.err;
+    const auto report = nlohmann::json::parse(installed.out);
+    EXPECT_EQ(report["ok"], true) << report.dump(2);
+    ASSERT_TRUE(report["packages"].is_array()) << report.dump(2);
+    ASSERT_EQ(report["packages"].size(), 1) << report.dump(2);
+    EXPECT_EQ(report["packages"][0]["name"], "ui-kit") << report.dump(2);
+    EXPECT_EQ(report["packages"][0]["ok"], true) << report.dump(2);
+}
+
+TEST(CliExplain, StoreActionUnaryReadsAreSemanticStoreMembers) {
+    const auto file = writeTempJtml(
+        "store-unary-read",
+        "jtml 2\n"
+        "store appState\n"
+        "  let darkMode = false\n"
+        "  get themeClass = darkMode ? \"dark\" : \"light\"\n"
+        "  when toggleTheme\n"
+        "    darkMode = !darkMode\n"
+        "page\n"
+        "  main class appState.themeClass\n"
+        "    button \"Theme\" click appState.toggleTheme\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = file.string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.json = true;
+
+    const auto explained = captureCommand([&] { return jtml::cli::cmdExplain(opts); });
+    ASSERT_EQ(explained.code, 0) << explained.out << explained.err;
+    const auto report = nlohmann::json::parse(explained.out);
+    EXPECT_EQ(report["ok"], true) << report.dump(2);
+    EXPECT_EQ(report["diagnostics"].size(), 0) << report.dump(2);
+    EXPECT_NE(report["actionProfiles"].dump().find("darkMode"), std::string::npos)
+        << report.dump(2);
+}
 
 TEST(CliLint, ObservableWarningsRespectFriendlyComponentStoreAndMemberRefs) {
     const auto file = writeTempJtml(

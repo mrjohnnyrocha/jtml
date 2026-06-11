@@ -109,6 +109,15 @@ std::string joinValues(const std::vector<std::string>& values) {
     return out.str();
 }
 
+void addImportRecord(std::set<std::tuple<std::string, std::string, std::string, bool>>& records,
+                     const std::string& specifier,
+                     const std::string& kind,
+                     const std::vector<std::string>& names,
+                     bool reExport) {
+    if (specifier.empty()) return;
+    records.insert({specifier, kind.empty() ? "side-effect" : kind, joinValues(names), reExport});
+}
+
 std::string hexDecode(const std::string& hex) {
     std::string out;
     if (hex.size() % 2 != 0) return out;
@@ -380,6 +389,7 @@ struct SemanticSets {
     std::set<std::string> stores;
     std::set<std::string> effects;
     std::set<std::string> imports;
+    std::set<std::tuple<std::string, std::string, std::string, bool>> importRecords;
     std::set<std::string> externs;
     std::set<std::string> uiPrimitives;
     std::set<std::tuple<std::string, std::string, bool, bool, bool, bool, bool, bool, bool, bool>> uiUses;
@@ -406,6 +416,16 @@ void addEdge(SemanticSets& out,
              const std::string& kind) {
     if (from.empty() || to.empty() || kind.empty()) return;
     out.edges.insert({from, to, kind});
+}
+
+void addImport(SemanticSets& out,
+               const std::string& specifier,
+               const std::string& kind,
+               const std::vector<std::string>& names = {},
+               bool reExport = false) {
+    insertSorted(out.imports, specifier);
+    addImportRecord(out.importRecords, specifier, kind, names, reExport);
+    addEdge(out, reExport ? "module:re-export" : "module", specifier, "imports");
 }
 
 void addExpressionEdges(SemanticSets& out,
@@ -824,8 +844,7 @@ void collectFromNode(const ASTNode& node, SemanticSets& out, const std::string& 
         }
         case ASTNodeType::ImportStatement: {
             const auto& stmt = static_cast<const ImportStatementNode&>(node);
-            insertSorted(out.imports, stmt.path);
-            addEdge(out, "module", stmt.path, "imports");
+            addImport(out, stmt.path, "compatibility");
             break;
         }
         case ASTNodeType::StoreStatement: {
@@ -898,6 +917,51 @@ bool isThemeTokenLine(const std::vector<std::string>& tokens) {
     return tokenKinds.count(tokens[0]) > 0 && tokens.size() >= 3;
 }
 
+void collectFriendlyUseRecord(const std::vector<std::string>& tokens,
+                              SemanticSets& out,
+                              bool reExport) {
+    const size_t useIndex = reExport ? 1 : 0;
+    if (tokens.size() <= useIndex + 1) return;
+
+    if (tokens.size() == useIndex + 2) {
+        addImport(out, unquoteToken(tokens[useIndex + 1]), "side-effect", {}, reExport);
+        return;
+    }
+
+    const auto from = std::find(tokens.begin() + static_cast<long>(useIndex + 1),
+                                tokens.end(),
+                                "from");
+    if (from == tokens.end() || from + 1 == tokens.end()) return;
+
+    std::vector<std::string> names;
+    bool destructured = false;
+    for (auto it = tokens.begin() + static_cast<long>(useIndex + 1); it != from; ++it) {
+        std::string name = cleanIdentifier(*it);
+        if (name.empty()) continue;
+        if (name == "{") {
+            destructured = true;
+            continue;
+        }
+        if (name == "}") continue;
+        if (!name.empty() && name.front() == '{') {
+            destructured = true;
+            name.erase(name.begin());
+        }
+        if (!name.empty() && name.back() == '}') {
+            destructured = true;
+            name.pop_back();
+        }
+        name = cleanIdentifier(name);
+        if (!name.empty()) names.push_back(name);
+    }
+
+    addImport(out,
+              unquoteToken(*(from + 1)),
+              destructured ? "destructured" : "named",
+              names,
+              reExport);
+}
+
 void collectFriendlySourceFallback(const std::string& source, SemanticSets& out) {
     std::istringstream input(source);
     std::string raw;
@@ -928,7 +992,9 @@ void collectFriendlySourceFallback(const std::string& source, SemanticSets& out)
             return tokens.size() > 1 ? cleanIdentifier(tokens[1]) : std::string{};
         };
 
-        if (head == "store" && tokens.size() > 1) {
+        if (head == "export" && tokens.size() > 1 && tokens[1] == "use") {
+            collectFriendlyUseRecord(tokens, out, true);
+        } else if (head == "store" && tokens.size() > 1) {
             insertSorted(out.stores, second());
         } else if (head == "css" && tokens.size() > 1 && tokens[1] == "raw") {
             ++out.rawCssBlocks;
@@ -939,17 +1005,7 @@ void collectFriendlySourceFallback(const std::string& source, SemanticSets& out)
         } else if (head == "route" && tokens.size() >= 4) {
             insertSorted(out.routes, unquoteToken(tokens[1]) + " -> " + cleanIdentifier(tokens[3]));
         } else if (head == "use" && tokens.size() > 1) {
-            std::string path;
-            if (tokens.size() == 2) {
-                path = unquoteToken(tokens[1]);
-            } else {
-                const auto from = std::find(tokens.begin(), tokens.end(), "from");
-                if (from != tokens.end() && from + 1 != tokens.end()) {
-                    path = unquoteToken(*(from + 1));
-                }
-            }
-            insertSorted(out.imports, path);
-            addEdge(out, "module", path, "imports");
+            collectFriendlyUseRecord(tokens, out, false);
         } else if (head == "make" && tokens.size() > 1) {
             insertSorted(out.components, second());
         } else if ((head == "let" || head == "define") && tokens.size() > 1) {
@@ -1042,6 +1098,31 @@ std::vector<SemanticFetch> fetchesToVector(
     return fetches;
 }
 
+std::vector<SemanticImport> importsToVector(
+    const std::set<std::tuple<std::string, std::string, std::string, bool>>& values) {
+    std::map<std::string, SemanticImport> bySpecifier;
+    for (const auto& item : values) {
+        SemanticImport candidate{
+            std::get<0>(item),
+            std::get<1>(item),
+            splitCommaList(std::get<2>(item)),
+            std::get<3>(item),
+        };
+        auto existing = bySpecifier.find(candidate.specifier);
+        if (existing == bySpecifier.end() ||
+            existing->second.kind == "compatibility" ||
+            (!existing->second.reExport && candidate.reExport)) {
+            bySpecifier[candidate.specifier] = std::move(candidate);
+        }
+    }
+
+    std::vector<SemanticImport> imports;
+    for (const auto& item : bySpecifier) {
+        imports.push_back(item.second);
+    }
+    return imports;
+}
+
 std::vector<SemanticComponentDefinition> componentDefinitionsToVector(
     const std::set<std::tuple<std::string, std::string, std::string, std::string, std::string,
                               std::string, std::string, std::string, bool, int, int, int, int>>& values) {
@@ -1107,6 +1188,7 @@ SemanticProgram analyzeSemanticProgram(
     semantic.stores = toVector(sets.stores);
     semantic.effects = toVector(sets.effects);
     semantic.imports = toVector(sets.imports);
+    semantic.importRecords = importsToVector(sets.importRecords);
     semantic.externs = toVector(sets.externs);
     semantic.uiPrimitives = toVector(sets.uiPrimitives);
     semantic.uiUses = uiUsesToVector(sets.uiUses);

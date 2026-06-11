@@ -1,0 +1,34 @@
+jtml 2
+
+use "../../stores/app-state.jtml"
+
+make AlertBar message
+  table width "100%" cellpadding "12" cellspacing "0" bgcolor "#eff6ff"
+    tr
+      td
+        strong message
+      td width "120" align "right"
+        button "Dismiss" click appState.dismissAlert
+
+make MetricCard label value detail tone
+  fieldset class "metric-card {tone}"
+    legend label
+    h2 value
+    text detail
+
+make LoadingBlock resource
+  fieldset class "loading"
+    legend "Loading"
+    text resource
+
+make ErrorBlock resource error
+  fieldset class "error"
+    legend "Could not load"
+    text resource
+    text error
+    button "Try again"
+
+make EmptyBlock label
+  fieldset class "empty"
+    legend "Nothing here"
+    text label

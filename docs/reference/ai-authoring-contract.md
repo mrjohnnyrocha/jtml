@@ -110,9 +110,12 @@ be understandable on its own.
 
 ## Modules
 
-Use modules when an app naturally grows beyond one file. Keep reusable
-components under `components/`, `modules/`, or a local package installed under
-`jtml_modules/`, then import them with `use`.
+Use modules when an app naturally grows beyond one file, but keep the current
+first-slice status in mind. Relative imports are now resolved from the
+importing file and are suitable for `check`, `build`, `serve --watch`, `dev`,
+and `explain`. Full enterprise-grade module boundaries are still in progress.
+Keep reusable components under `components/`, `modules/`, or a local package
+installed under `jtml_modules/`, then import them with `use`.
 
 ```jtml
 use Card from "./components/card.jtml"
@@ -138,9 +141,14 @@ export make Card title
     slot
 ```
 
-Named imports only pull matching exported top-level declarations when a module
-uses `export`. Use side-effect imports only for setup modules that are meant to
-evaluate all top-level declarations.
+Named imports are export-filtered. A module imported with
+`use Card from "./components/card.jtml"` must contain `export make Card`;
+missing exports and duplicate exported names are diagnostics, and non-exported
+helpers are not pulled into the importing file. Use side-effect imports only
+for setup modules that are meant to evaluate all top-level declarations.
+Use `export use Card from "./card.jtml"` for small barrel modules that
+re-export public declarations. Remaining module work is deeper per-file
+semantic ownership and imported store identity polish.
 
 ## Fetch
 

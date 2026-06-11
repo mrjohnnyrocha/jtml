@@ -25,7 +25,7 @@ JTML is currently a reactive templating language with a compact syntax and a nat
 
 ## Tier 3: Ecosystem
 
-Package management now has a local-first first slice (`jtml add` installs files/directories into `jtml_modules`, records `jtml.packages.json`, writes deterministic `jtml.lock.json` fingerprints, `jtml install` restores/verifies package state for CI, and bare imports resolve through nearest `jtml_modules`). Remote registries, semantic versions, richer object/collection type diagnostics, deeper package-aware editor intelligence, and runtime component objects remain planned after the P0/P1 language/runtime pieces stabilize.
+Package management now has a local-first first slice (`jtml add` installs files/directories into `jtml_modules`, records `jtml.packages.json`, writes deterministic `jtml.lock.json` fingerprints, `jtml install` restores/verifies package state for CI, and bare imports resolve through nearest `jtml_modules`). The CLI implementation now has explicit module/package owners in `cli/module_loader.*` and `cli/package_manager.*`; semantic explain now reports structured import records and module files. Remote registries, semantic versions, richer object/collection type diagnostics, deeper package-aware editor intelligence, and runtime component objects remain planned after the P0/P1 language/runtime pieces stabilize.
 
 ## Tier 4: Moonshots
 
@@ -73,12 +73,17 @@ language needs:
 - Bare package imports such as `use Button from "ui-kit"` resolve through the
   nearest `jtml_modules/ui-kit/index.jtml` or `package.jtml`.
 - A real module graph resolved relative to the importing file with cycle
-  detection (first slice shipped for Friendly `use`, including imported
-  components before lowering).
+  detection. The current first slice covers Friendly `use`, nested relative
+  imports from each importer, and shared `check` / `build` / `serve --watch` /
+  `dev` / `explain` graph loading.
 - Per-file scoped state, components, and stores; only `use`-declared names
-  cross the boundary. First explicit-export slice shipped: Friendly `export`
-  marks public top-level declarations, and named imports include only matching
-  exports when a module opts into exported APIs.
+  cross the boundary. Explicit-export filtering now powers named imports in
+  the compatibility lowering path: requested names must be exported, missing
+  exports list available public names, duplicate exports are errors, and
+  private declarations do not cross named-import boundaries. Re-export barrels
+  such as `export use Card from "./card.jtml"` forward public declarations.
+  Remaining P1 work: full semantic module ownership and imported store
+  identity polish.
 - An app shape under `pages/`, `components/`, `stores/`, `assets/` consumed by
   `jtml dev app/` and `jtml build app/ --out dist`.
 
@@ -150,11 +155,13 @@ Detailed plan: [`media-graphics-roadmap.md`](media-graphics-roadmap.md).
 12. Next: replace compatibility source expansion with direct non-expanded runtime `ComponentInstance` template execution. The scoped environment + runtime-plan registry bridge above is the migration surface.
 13. ✅ Route layout first slice: `route "/path" as Page layout AppLayout` injects route content into the layout component's `slot`, so shared chrome (nav, footer) wraps multiple routes.
 14. Next: Studio as the language home — new `00-welcome` JTML-authored lesson, every lesson in Friendly syntax, Studio default tab is the home lesson.
-15. ✅ JTML code modularization first slice: Friendly `use … from` is resolved before lowering so imported Friendly components, state, stores, and actions can participate in `check`, `build`, `serve --watch`, and `dev` module graphs with cycle detection.
+15. ✅ JTML code modularization first slice: Friendly `use … from` is resolved before lowering so imported Friendly components, state, and actions can participate in `check`, `build`, `serve --watch`, `dev`, and `explain` module graphs with cycle detection. Nested relative imports resolve from each importing file.
 16. ✅ Per-file export scopes first slice: Friendly `export let`, `export when`,
     `export make`, `export store`, and related top-level declarations are
-    accepted; named imports from exporting modules include only matching public
-    declarations while side-effect imports preserve compatibility.
+    accepted; named imports require matching public declarations, missing
+    exports list available names, duplicate exports are diagnostics, private
+    declarations stay private under named imports, and side-effect imports
+    still load whole files for compatibility.
 17. ✅ App folder shape first slice: `jtml new app <dir>` creates `index.jtml`, `components/`, `stores/`, and `assets/`, and the generated app builds through the same zero-config module graph.
 18. ✅ Framework export first slice: `jtml export <file> --target html|react|vue -o out` emits static HTML or iframe-based React/Vue wrapper components for incremental adoption.
 19. ✅ Custom element export first slice: `jtml export <file> --target custom-element -o jtml-app.js` emits a standards-based `<jtml-app>` Web Component that can be embedded by plain HTML, React, Vue, Svelte, Angular, or any CMS shell.

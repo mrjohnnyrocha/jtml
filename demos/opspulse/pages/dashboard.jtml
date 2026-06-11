@@ -1,0 +1,24 @@
+jtml 2
+
+use "../stores/app-state.jtml"
+use "../stores/filter-state.jtml"
+use "../components/layouts/shell.jtml"
+use "../components/ui/filter-panel.jtml"
+use "../components/ui/common.jtml"
+
+make Dashboard
+  Shell "Dashboard" "OpsPulse"
+    fieldset class "panel"
+      h2 "Overview"
+      FilterPanel
+      table width "100%" cellpadding "8" cellspacing "0" class "metric-grid"
+        tr
+          td valign "top"
+            MetricCard "Total interactions" "1,247" "This month" "primary"
+          td valign "top"
+            MetricCard "Active users" "842" filterState.selectedRegion "good"
+          td valign "top"
+            MetricCard "Avg response" "1.2s" filterState.selectedTool "warn"
+          td valign "top"
+            MetricCard "Cost estimate" "€4,812" filterState.selectedPeriod "neutral"
+      text "Dashboard content will load here with real data from stores."

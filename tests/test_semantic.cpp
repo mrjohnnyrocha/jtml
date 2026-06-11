@@ -63,6 +63,14 @@ const jtml::SemanticFetch* findFetchRecord(const jtml::SemanticProgram& semantic
     return it == semantic.fetchRecords.end() ? nullptr : &*it;
 }
 
+const jtml::SemanticImport* findImportRecord(const jtml::SemanticProgram& semantic,
+                                             const std::string& specifier) {
+    auto it = std::find_if(semantic.importRecords.begin(), semantic.importRecords.end(), [&](const auto& import) {
+        return import.specifier == specifier;
+    });
+    return it == semantic.importRecords.end() ? nullptr : &*it;
+}
+
 const jtml::SemanticComponentDefinition* findComponentDefinition(
         const jtml::SemanticProgram& semantic,
         const std::string& name) {
@@ -604,12 +612,45 @@ TEST(SemanticProgram, CapturesFriendlyImportShapes) {
     const auto semantic = jtml::analyzeSemanticProgram(program, source);
 
     ASSERT_EQ(semantic.imports.size(), 3u) << semantic.imports.size();
+    ASSERT_EQ(semantic.importRecords.size(), 3u) << semantic.importRecords.size();
     EXPECT_TRUE(contains(semantic.imports, "./side-effects.jtml"));
     EXPECT_TRUE(contains(semantic.imports, "./widget.jtml"));
     EXPECT_TRUE(contains(semantic.imports, "./money.jtml"));
+    const auto* sideEffect = findImportRecord(semantic, "./side-effects.jtml");
+    ASSERT_NE(sideEffect, nullptr);
+    EXPECT_EQ(sideEffect->kind, "side-effect");
+    EXPECT_TRUE(sideEffect->names.empty());
+    const auto* widget = findImportRecord(semantic, "./widget.jtml");
+    ASSERT_NE(widget, nullptr);
+    EXPECT_EQ(widget->kind, "named");
+    ASSERT_EQ(widget->names.size(), 1u);
+    EXPECT_EQ(widget->names[0], "Widget");
+    const auto* money = findImportRecord(semantic, "./money.jtml");
+    ASSERT_NE(money, nullptr);
+    EXPECT_EQ(money->kind, "destructured");
+    ASSERT_EQ(money->names.size(), 2u);
+    EXPECT_EQ(money->names[0], "formatMoney");
+    EXPECT_EQ(money->names[1], "parseDate");
     EXPECT_TRUE(hasEdge(semantic, "module", "./side-effects.jtml", "imports"));
     EXPECT_TRUE(hasEdge(semantic, "module", "./widget.jtml", "imports"));
     EXPECT_TRUE(hasEdge(semantic, "module", "./money.jtml", "imports"));
+}
+
+TEST(SemanticProgram, CapturesFriendlyReExportImportRecords) {
+    const std::string source =
+        "jtml 2\n"
+        "export use Card from \"./card.jtml\"\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+
+    const auto* record = findImportRecord(semantic, "./card.jtml");
+    ASSERT_NE(record, nullptr);
+    EXPECT_EQ(record->kind, "named");
+    ASSERT_EQ(record->names.size(), 1u);
+    EXPECT_EQ(record->names[0], "Card");
+    EXPECT_TRUE(record->reExport);
+    EXPECT_TRUE(hasEdge(semantic, "module:re-export", "./card.jtml", "imports"));
 }
 
 TEST(SemanticProgram, UsageAnalysisComesFromSemanticGraph) {

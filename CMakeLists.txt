@@ -96,6 +96,8 @@ jtml_apply_version_defs(jtml_c)
 # ---------------------------------------------------------------------------
 set(JTML_CLI_LIB_SOURCES
     cli/util.cpp
+    cli/module_loader.cpp
+    cli/package_manager.cpp
     cli/diagnostic_json.cpp
     cli/cmd_basic.cpp
     cli/cmd_fix.cpp

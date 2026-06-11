@@ -174,6 +174,26 @@ The current focus is the semantic-core transition:
   event bindings, slot/body shape, and a `runtimePlan`; component instances
   expose their owning runtime environment and validate actions against that
   semantic definition before dispatch.
+- P1 module graph hardening: ✅ Relative imports now resolve from the directory
+  of each importing file across nested Friendly graphs, and the shared loader is
+  exercised by `check`, `build --target browser`, `explain --json`, and source
+  file collection. Missing import diagnostics now include the specifier,
+  importer, and attempted resolved path. ✅ Named imports now require exported
+  declarations, missing exports report available public names, duplicate
+  exports are diagnostics, and private declarations stay private under named
+  imports. ✅ Re-export barrels such as `export use Card from "./card.jtml"`
+  forward public declarations through the same module loader. ✅ Repo cleanup:
+  CLI module graph ownership moved out of `cli/util.cpp` into
+  `cli/module_loader.*`, and local package install/lockfile ownership moved out
+  of `cli/cmd_basic.cpp` into `cli/package_manager.*`. ✅ First semantic
+  ownership slice: `jtml explain --json` now reports structured
+  `semantic.importRecords` plus `semantic.moduleFiles` sourced from the shared
+  loader. Remaining module work: full per-file AST/IR ownership and imported
+  store identity polish.
+- P1 repo modularization skeleton: ✅ Production-grade destination folders now
+  exist for `syntax`, `semantic`, `runtime`, `emit`, `tooling`, `interop`, CLI
+  command/service/studio ownership, and test fixtures. Current flat files move
+  into those buckets incrementally after tests cover each boundary.
 - P2 component instances: keep the existing runtime-plan bridge stable while
   moving beyond source expansion as the semantic truth.
 - P3 semantic styling: ✅ First slice. `theme`, UI primitives, utility
@@ -190,14 +210,14 @@ The current focus is the semantic-core transition:
   custom elements, WebGL/Three.js, and framework/package boundaries after the
   browser-local runtime has a stable backend contract.
 
-Priority order after the semantic usage cleanup is:
+Priority order after the semantic usage cleanup and import-resolution hardening is:
 
-1. Semantic styling and UI primitives.
-2. Browser-local production runtime.
-3. Interop and full web-platform escape hatches.
-4. Direct non-expanded component template execution where those slices expose
+1. Finish module/export semantic boundaries on top of the now-correct graph.
+2. Browser-local production runtime parity.
+3. Direct non-expanded component template execution where those slices expose
    weak ownership.
-5. Studio/docs hardening on top of the same semantics.
+4. Interop and full web-platform escape hatches.
+5. Studio/docs hardening on top of the same semantics and module graph.
 
 In parallel, keep Friendly JTML as the only default authoring dialect, keep the
 Classic-compatible backend stable for migration/embedding/artifacts, make every bundled

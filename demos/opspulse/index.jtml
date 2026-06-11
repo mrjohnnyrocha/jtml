@@ -1,0 +1,511 @@
+jtml 2
+
+// ============================================================================
+// OpsPulse - Modularized Single-File JTML App
+// Demonstrates modularization patterns for medium-sized JTML applications
+// ============================================================================
+
+// ============================================================================
+// STORES - Shared Application State
+// ============================================================================
+
+store appState
+  let currentUser = "João"
+  let currentRole = "Admin"
+  let sidebarOpen = true
+  let darkMode = false
+  let alertMessage = ""
+
+  when toggleSidebar
+    sidebarOpen = !sidebarOpen
+
+  when toggleTheme
+    darkMode = !darkMode
+
+  when showAlert message
+    alertMessage = message
+
+  when dismissAlert
+    alertMessage = ""
+
+  get themeClass = darkMode ? "app app-dark" : "app"
+  get sidebarClass = sidebarOpen ? "sidebar sidebar-open" : "sidebar sidebar-closed"
+  get hasAlert = alertMessage != ""
+
+store filterState
+  let selectedRegion = "All"
+  let selectedPlatform = "All"
+  let selectedTool = "All"
+  let selectedPriority = "All"
+  let selectedPeriod = "30d"
+  let search = ""
+
+  when pickRegion region
+    selectedRegion = region
+
+  when pickPlatform platform
+    selectedPlatform = platform
+
+  when pickTool tool
+    selectedTool = tool
+
+  when pickPriority priority
+    selectedPriority = priority
+
+  when clearSearch
+    search = ""
+
+  when resetFilters
+    selectedRegion = "All"
+    selectedPlatform = "All"
+    selectedTool = "All"
+    selectedPriority = "All"
+
+  get isFiltered = selectedRegion != "All" || selectedPlatform != "All" || selectedTool != "All" || selectedPriority != "All"
+  get filterSummary = selectedRegion + " / " + selectedPlatform + " / " + selectedTool
+  get hasSearch = search != ""
+
+// ============================================================================
+// UI COMPONENTS - Reusable building blocks
+// ============================================================================
+
+make AlertBar message
+  table width "100%" cellpadding "12" cellspacing "0" bgcolor "#eff6ff"
+    tr
+      td
+        strong message
+      td width "120" align "right"
+        button "Dismiss" click appState.dismissAlert
+
+make MetricCard label value detail tone
+  fieldset class "metric-card {tone}"
+    legend label
+    h2 value
+    text detail
+
+make LoadingBlock resource
+  fieldset class "loading"
+    legend "Loading {resource}"
+    text "Please wait..."
+
+make ErrorBlock resource error
+  fieldset class "error"
+    legend "Could not load {resource}"
+    text error
+    button "Retry"
+
+make EmptyBlock label
+  fieldset class "empty"
+    legend "Nothing here"
+    text label
+
+// ============================================================================
+// LAYOUT COMPONENTS - Page structure
+// ============================================================================
+
+make AppHeader title appName
+  header class "topbar"
+    table width "100%" cellpadding "14" cellspacing "0" bgcolor "#ffffff"
+      tr
+        td width "48" valign "middle"
+          button "☰" class "icon-button" click appState.toggleSidebar
+        td valign "middle"
+          h1 appName
+          text title
+        td width "460" valign "middle" align "right"
+          input "Search..." into filterState.search
+          if filterState.hasSearch
+            button "Clear" click filterState.clearSearch
+          button "Refresh"
+          button "Theme" click appState.toggleTheme
+          text appState.currentUser
+          text appState.currentRole
+
+make AppSidebar
+  nav class "{appState.sidebarClass}"
+    table width "100%" cellpadding "14" cellspacing "0" bgcolor "#f8fafc"
+      tr
+        td
+          h3 "Navigation"
+          list
+            item
+              link "Dashboard" to "/"
+            item
+              link "Usage" to "/usage"
+            item
+              link "People" to "/people"
+            item
+              link "Incidents" to "/incidents"
+            item
+              link "Settings" to "/settings"
+          hr
+          strong "Filters"
+          text filterState.filterSummary
+          if filterState.isFiltered
+            button "Reset" click filterState.resetFilters
+
+make FilterPanel
+  fieldset class "filters"
+    legend "Filters"
+    table width "100%" cellpadding "8" cellspacing "0"
+      tr
+        td valign "top"
+          strong "Region"
+          br
+          button "All" click filterState.pickRegion("All")
+          button "Portugal" click filterState.pickRegion("Portugal")
+          button "Spain" click filterState.pickRegion("Spain")
+          button "Brazil" click filterState.pickRegion("Brazil")
+        td valign "top"
+          strong "Platform"
+          br
+          button "All" click filterState.pickPlatform("All")
+          button "Web" click filterState.pickPlatform("Web")
+          button "Mobile" click filterState.pickPlatform("Mobile")
+          button "Internal" click filterState.pickPlatform("Internal")
+        td valign "top"
+          strong "Tool"
+          br
+          button "All" click filterState.pickTool("All")
+          button "ChatGPT" click filterState.pickTool("ChatGPT")
+          button "Copilot" click filterState.pickTool("Copilot")
+          button "Claude" click filterState.pickTool("Claude")
+
+make Shell title appName
+  page class "{appState.themeClass}"
+    AppHeader title appName
+    table width "100%" cellpadding "0" cellspacing "0" bgcolor "#f4f7fb"
+      tr
+        td width "230" valign "top" bgcolor "#f8fafc"
+          AppSidebar
+        td valign "top"
+          table width "100%" cellpadding "24" cellspacing "0"
+            tr
+              td valign "top"
+                if appState.hasAlert
+                  AlertBar appState.alertMessage
+                slot
+
+// ============================================================================
+// PAGE COMPONENTS - Routes and page layouts
+// ============================================================================
+
+make Dashboard
+  Shell "Dashboard" "OpsPulse"
+    fieldset class "panel"
+      h2 "Overview"
+      FilterPanel
+      table width "100%" cellpadding "8" cellspacing "0" class "metric-grid"
+        tr
+          td valign "top"
+            MetricCard "Total interactions" "1,247" filterState.selectedPeriod "primary"
+          td valign "top"
+            MetricCard "Active users" "842" filterState.selectedRegion "good"
+          td valign "top"
+            MetricCard "Avg response" "1.2s" filterState.selectedTool "warn"
+          td valign "top"
+            MetricCard "Cost estimate" "€4,812" filterState.selectedPlatform "neutral"
+      fieldset class "card"
+        h3 "Quick Stats"
+        text "Interactions: 1,247"
+        text "Users: 842"
+        text "Success rate: 98.2%"
+        text "Avg latency: 1.2s"
+
+make UsagePage
+  Shell "Usage explorer" "OpsPulse"
+    fieldset class "panel"
+      h2 "Usage Explorer"
+      FilterPanel
+      fieldset class "card"
+        h3 "Usage by Tool"
+        text "ChatGPT: 34%"
+        text "Copilot: 28%"
+        text "Claude: 22%"
+        text "Other: 16%"
+      fieldset class "card"
+        h3 "By Region"
+        text "Portugal: 45%"
+        text "Spain: 30%"
+        text "Brazil: 25%"
+
+make PeoplePage
+  Shell "People and segments" "OpsPulse"
+    fieldset class "panel"
+      h2 "People"
+      input "Search people..." into filterState.search
+      fieldset class "card"
+        h3 "Professionals"
+        text "Total: 2,341"
+        text "Active this month: 1,847"
+        text "Growth: +12%"
+
+make IncidentsPage
+  Shell "Incidents" "OpsPulse"
+    fieldset class "panel"
+      h2 "Incident Centre"
+      box class "filters"
+        button "All" click filterState.pickPriority("All")
+        button "High" click filterState.pickPriority("High")
+        button "Medium" click filterState.pickPriority("Medium")
+        button "Low" click filterState.pickPriority("Low")
+      fieldset class "card"
+        h3 "Recent Incidents"
+        text "3 incidents open"
+        text "Last 7 days: 12 resolved"
+
+make SettingsPage
+  Shell "Settings" "OpsPulse"
+    fieldset class "panel"
+      h2 "Workspace Settings"
+      fieldset class "form-card"
+        input "Workspace name" value "OpsPulse"
+        input "Default region" value filterState.selectedRegion
+        input "Default platform" value filterState.selectedPlatform
+        checkbox "Dark mode" into appState.darkMode
+        button "Save settings"
+      fieldset class "card"
+        h3 "Observable State"
+        text "Theme: {appState.themeClass}"
+        text "Sidebar: {appState.sidebarClass}"
+        text "Filters: {filterState.filterSummary}"
+        text "Search active: {filterState.hasSearch}"
+
+make NotFoundPage
+  Shell "Not found" "OpsPulse"
+    fieldset class "panel"
+      h2 "Page not found"
+      text "This route does not exist."
+      link "Back to dashboard" to "/"
+
+// ============================================================================
+// ROUTES - Navigation
+// ============================================================================
+
+route "/" as Dashboard
+route "/usage" as UsagePage
+route "/people" as PeoplePage
+route "/incidents" as IncidentsPage
+route "/settings" as SettingsPage
+route "*" as NotFoundPage
+
+// ============================================================================
+// STYLES - Global theming
+// ============================================================================
+
+style
+  body
+    margin: 0
+    background: #f4f7fb
+    color: #172026
+    font-family: Inter, system-ui, sans-serif
+    font-size: 14px
+
+  .app
+    min-height: 100vh
+    display: grid
+
+  .app-dark
+    background: #1a1a1a
+    color: #f0f0f0
+
+  .topbar
+    background: white
+    border-bottom: 1px solid #e5e7eb
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1)
+
+  .topbar h1
+    margin: 0
+    font-size: 18px
+    font-weight: 800
+
+  .topbar button
+    margin: 0 4px
+
+  .topbar input
+    padding: 8px 12px
+    border: 1px solid #bbc5ca
+    border-radius: 4px
+    font: inherit
+
+  .sidebar
+    background: #f8fafc
+    border-right: 1px solid #e5e7eb
+    overflow: hidden
+    transition: width 0.3s
+    padding: 14px 0
+
+  .sidebar-open
+    width: 230px
+
+  .sidebar-closed
+    width: 0
+
+  .sidebar h3
+    margin: 0 0 12px 14px
+    font-size: 14px
+    text-transform: uppercase
+    color: #666
+
+  .sidebar list
+    margin: 0
+    padding: 0 14px
+
+  .sidebar item
+    margin: 8px 0
+
+  .sidebar a
+    text-decoration: none
+    color: #172026
+    padding: 8px 12px
+    border-radius: 4px
+    display: block
+
+  .sidebar a:hover
+    background: #e5e7eb
+
+  .sidebar hr
+    border: none
+    border-top: 1px solid #ddd7ca
+    margin: 14px 0
+
+  .panel
+    background: white
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    padding: 22px
+    display: grid
+    gap: 14px
+    margin: 12px
+
+  .panel h2
+    margin: 0 0 12px 0
+    font-size: 24px
+
+  .panel h3
+    margin: 0 0 8px 0
+    font-size: 18px
+
+  .card
+    background: #fbfaf7
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    padding: 14px
+    display: grid
+    gap: 8px
+
+  .card h3
+    margin: 0
+    font-size: 16px
+    font-weight: 800
+
+  .metric-grid
+    display: grid
+    grid-template-columns: repeat(4, minmax(0, 1fr))
+    gap: 12px
+
+  .metric-card
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    padding: 16px
+    background: white
+    display: grid
+    gap: 8px
+
+  .metric-card.primary
+    border-top: 4px solid #2563eb
+
+  .metric-card.good
+    border-top: 4px solid #0f766e
+
+  .metric-card.warn
+    border-top: 4px solid #f59e0b
+
+  .metric-card.neutral
+    border-top: 4px solid #6b7280
+
+  .metric-card h2
+    margin: 8px 0 0 0
+    font-size: 24px
+
+  .metric-card legend
+    font-size: 12px
+    font-weight: 800
+    text-transform: uppercase
+    color: #666
+
+  .filters
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    padding: 14px
+    background: #fbfaf7
+    display: grid
+    gap: 12px
+
+  .filters table
+    gap: 14px
+
+  .filters button
+    margin-right: 4px
+    margin-bottom: 8px
+
+  .form-card
+    border: 1px solid #ddd7ca
+    border-radius: 8px
+    padding: 14px
+    background: #fbfaf7
+    display: grid
+    gap: 10px
+
+  button
+    background: white
+    border: 1px solid #aab5bd
+    border-radius: 8px
+    padding: 10px 12px
+    font-weight: 800
+    cursor: pointer
+    transition: border-color 0.2s
+
+  button:hover
+    border-color: #0f766e
+    background: #f0f0f0
+
+  .icon-button
+    background: transparent
+    border: 1px solid #ccc
+    padding: 8px 12px
+    border-radius: 4px
+
+  input
+    border: 1px solid #bbc5ca
+    border-radius: 8px
+    padding: 11px 12px
+    font: inherit
+
+  input:focus
+    outline: none
+    border-color: #0f766e
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1)
+
+  checkbox
+    margin-right: 8px
+
+  @media (max-width: 900px)
+    .sidebar-open
+      width: 100%
+      position: absolute
+      z-index: 1000
+      height: 100vh
+
+    .metric-grid
+      grid-template-columns: repeat(2, minmax(0, 1fr))
+
+    .filters table
+      display: block
+
+    .filters table tr
+      display: block
+      margin-bottom: 12px
+
+    .filters table td
+      display: block

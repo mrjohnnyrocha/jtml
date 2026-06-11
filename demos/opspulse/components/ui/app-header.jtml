@@ -1,0 +1,21 @@
+jtml 2
+
+use "../../stores/app-state.jtml"
+
+make AppHeader title appName
+  header class "topbar"
+    table width "100%" cellpadding "14" cellspacing "0" bgcolor "#ffffff"
+      tr
+        td width "48" valign "middle"
+          button "☰" class "icon-button" click appState.toggleSidebar
+        td valign "middle"
+          h1 appName
+          text title
+        td width "460" valign "middle" align "right"
+          input "Search" into filterState.search
+          if filterState.hasSearch
+            button "Clear" click filterState.clearSearch
+          button "Refresh" class "icon-button"
+          button "Theme" click appState.toggleTheme
+          text appState.currentUser
+          text appState.currentRole

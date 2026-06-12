@@ -74,6 +74,16 @@ struct SemanticImport {
     std::string kind;
     std::vector<std::string> names;
     bool reExport = false;
+    int sourceLine = 0;
+    int sourceColumn = 0;
+};
+
+struct SemanticExport {
+    std::string name;
+    std::string kind;
+    std::string specifier;
+    bool reExport = false;
+    int sourceLine = 0;
 };
 
 struct SemanticProperty {
@@ -124,6 +134,7 @@ struct SemanticProgram {
     std::vector<std::string> effects;
     std::vector<std::string> imports;
     std::vector<SemanticImport> importRecords;
+    std::vector<SemanticExport> exportRecords;
     std::vector<std::string> externs;
     std::vector<std::string> uiPrimitives;
     std::vector<SemanticUiUse> uiUses;

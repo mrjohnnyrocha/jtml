@@ -365,6 +365,20 @@ TEST(CliModules, NamedImportCanUseReExportedDeclaration) {
     EXPECT_TRUE(contains(app / "index.jtml"));
     EXPECT_TRUE(contains(app / "components" / "index.jtml"));
     EXPECT_TRUE(contains(app / "components" / "card.jtml"));
+
+    jtml::cli::Options explain;
+    explain.inputFile = (app / "index.jtml").string();
+    explain.syntax = jtml::SyntaxMode::Auto;
+    explain.json = true;
+    const auto explained = captureCommand([&] { return jtml::cli::cmdExplain(explain); });
+    ASSERT_EQ(explained.code, 0) << explained.out << explained.err;
+    const auto report = nlohmann::json::parse(explained.out);
+    const auto& modules = report["semantic"]["project"]["modules"];
+    ASSERT_EQ(modules.size(), 3u) << report.dump(2);
+    ASSERT_EQ(modules[0]["imports"][0]["resolvedSymbols"].size(), 1u) << report.dump(2);
+    EXPECT_EQ(modules[0]["imports"][0]["resolvedSymbols"][0]["name"], "Card");
+    EXPECT_EQ(modules[0]["imports"][0]["resolvedSymbols"][0]["kind"], "make");
+    EXPECT_EQ(modules[0]["imports"][0]["resolvedSymbols"][0]["module"], modules[2]["id"]);
 }
 
 TEST(CliPackages, AddWritesManifestLockfileAndInstallVerifies) {
@@ -485,6 +499,134 @@ TEST(CliLint, ObservableWarningsCatchDeadStateUnusedDerivedAndUnboundAction) {
     EXPECT_EQ(result.code, 0);
     EXPECT_NE(result.err.find("JTML_UNUSED_DERIVED"), std::string::npos) << result.err;
     EXPECT_NE(result.err.find("JTML_UNBOUND_ACTION"), std::string::npos) << result.err;
+}
+
+TEST(CliExplain, JsonProjectGraphPreservesPerFileImporterOwnership) {
+    const auto root = makeTempDir("explain-module-graph");
+    writeTempFile(root / "stores" / "app-state.jtml",
+        "jtml 2\n"
+        "export store appState\n"
+        "  let user = \"Ada\"\n");
+    writeTempFile(root / "pages" / "dashboard.jtml",
+        "jtml 2\n"
+        "use appState from \"../stores/app-state.jtml\"\n"
+        "export make Dashboard\n"
+        "  page\n"
+        "    text appState.user\n");
+    writeTempFile(root / "index.jtml",
+        "jtml 2\n"
+        "use Dashboard from \"./pages/dashboard.jtml\"\n"
+        "page\n"
+        "  Dashboard\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = (root / "index.jtml").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.json = true;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdExplain(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+    const auto report = nlohmann::json::parse(result.out);
+    const auto& modules = report["semantic"]["project"]["modules"];
+    ASSERT_EQ(modules.size(), 3u) << report.dump(2);
+    ASSERT_TRUE(report["semantic"]["project"].contains("issues")) << report.dump(2);
+    EXPECT_TRUE(report["semantic"]["project"]["issues"].empty()) << report.dump(2);
+    ASSERT_EQ(modules[0]["imports"].size(), 1u) << report.dump(2);
+    ASSERT_EQ(modules[1]["imports"].size(), 1u) << report.dump(2);
+    ASSERT_EQ(modules[2]["exports"].size(), 1u) << report.dump(2);
+    EXPECT_TRUE(modules[0]["semantic"]["components"].empty()) << report.dump(2);
+    EXPECT_EQ(modules[0]["imports"][0]["importer"], modules[0]["id"]);
+    EXPECT_EQ(modules[0]["imports"][0]["resolved"], modules[1]["id"]);
+    ASSERT_EQ(modules[0]["imports"][0]["resolvedSymbols"].size(), 1u) << report.dump(2);
+    EXPECT_EQ(modules[0]["imports"][0]["resolvedSymbols"][0]["name"], "Dashboard");
+    EXPECT_EQ(modules[0]["imports"][0]["resolvedSymbols"][0]["kind"], "make");
+    EXPECT_EQ(modules[0]["imports"][0]["resolvedSymbols"][0]["module"], modules[1]["id"]);
+    EXPECT_EQ(modules[0]["imports"][0]["span"]["line"], 2);
+    EXPECT_EQ(modules[0]["imports"][0]["span"]["column"], 1);
+    EXPECT_EQ(modules[1]["imports"][0]["importer"], modules[1]["id"]);
+    EXPECT_EQ(modules[1]["imports"][0]["resolved"], modules[2]["id"]);
+    ASSERT_EQ(modules[1]["imports"][0]["resolvedSymbols"].size(), 1u) << report.dump(2);
+    EXPECT_EQ(modules[1]["imports"][0]["resolvedSymbols"][0]["name"], "appState");
+    EXPECT_EQ(modules[1]["imports"][0]["resolvedSymbols"][0]["kind"], "store");
+    EXPECT_EQ(modules[1]["imports"][0]["resolvedSymbols"][0]["module"], modules[2]["id"]);
+    EXPECT_EQ(modules[1]["imports"][0]["span"]["line"], 2);
+    EXPECT_EQ(modules[1]["imports"][0]["span"]["column"], 1);
+    EXPECT_EQ(modules[2]["exports"][0]["name"], "appState");
+    EXPECT_EQ(modules[2]["exports"][0]["kind"], "store");
+    ASSERT_EQ(modules[1]["semantic"]["components"].size(), 1u) << report.dump(2);
+    ASSERT_EQ(modules[2]["semantic"]["stores"].size(), 1u) << report.dump(2);
+    EXPECT_EQ(modules[1]["semantic"]["components"][0], "Dashboard");
+    EXPECT_EQ(modules[2]["semantic"]["stores"][0], "appState");
+    ASSERT_TRUE(modules[0].contains("ir")) << report.dump(2);
+    EXPECT_TRUE(modules[0]["ir"]["available"]) << report.dump(2);
+    EXPECT_EQ(modules[0]["ir"]["syntax"], "friendly+import-stubs");
+    EXPECT_GE(modules[0]["ir"]["totalNodeCount"].get<int>(), 1);
+    EXPECT_NE(modules[0]["ir"]["topLevelNodes"].dump().find("ImportStatement"),
+              std::string::npos) << report.dump(2);
+    EXPECT_TRUE(modules[1]["ir"]["available"]) << report.dump(2);
+    EXPECT_NE(modules[1]["ir"]["topLevelNodes"].dump().find("JtmlElement"),
+              std::string::npos) << report.dump(2);
+    EXPECT_NE(modules[1]["ir"]["nodeCounts"].dump().find("ImportStatement"),
+              std::string::npos) << report.dump(2);
+    EXPECT_TRUE(modules[2]["imports"].empty()) << report.dump(2);
+    ASSERT_TRUE(report.contains("runtimeProjectPlan")) << report.dump(2);
+    const auto& runtimeProject = report["runtimeProjectPlan"];
+    EXPECT_EQ(runtimeProject["sourceOfTruth"], "SemanticProject retained per-file AST + semantic IR");
+    EXPECT_EQ(runtimeProject["entry"], modules[0]["id"]);
+    ASSERT_EQ(runtimeProject["modules"].size(), 3u) << report.dump(2);
+    EXPECT_TRUE(runtimeProject["modules"][0]["astAvailable"]) << report.dump(2);
+    EXPECT_TRUE(runtimeProject["modules"][1]["astAvailable"]) << report.dump(2);
+    ASSERT_EQ(runtimeProject["modules"][1]["plan"]["componentDefinitions"].size(), 1u)
+        << report.dump(2);
+    EXPECT_EQ(runtimeProject["modules"][1]["plan"]["componentDefinitions"][0]["name"],
+              "Dashboard");
+    ASSERT_EQ(runtimeProject["modules"][2]["plan"]["semantic"]["stores"].size(), 1u)
+        << report.dump(2);
+    EXPECT_EQ(runtimeProject["modules"][2]["plan"]["semantic"]["stores"][0], "appState");
+}
+
+TEST(CliExplain, TextReportsSemanticProjectModulesImportsAndExports) {
+    const auto root = makeTempDir("explain-module-text");
+    writeTempFile(root / "stores" / "app-state.jtml",
+        "jtml 2\n"
+        "export store appState\n"
+        "  let user = \"Ada\"\n");
+    writeTempFile(root / "pages" / "dashboard.jtml",
+        "jtml 2\n"
+        "use appState from \"../stores/app-state.jtml\"\n"
+        "export make Dashboard\n"
+        "  page\n"
+        "    text appState.user\n");
+    writeTempFile(root / "index.jtml",
+        "jtml 2\n"
+        "use Dashboard from \"./pages/dashboard.jtml\"\n"
+        "page\n"
+        "  Dashboard\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = (root / "index.jtml").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdExplain(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+    EXPECT_NE(result.out.find("Project modules (3):"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("[entry]"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("Dashboard from \"./pages/dashboard.jtml\""), std::string::npos)
+        << result.out;
+    EXPECT_NE(result.out.find("[make Dashboard]"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("appState from \"../stores/app-state.jtml\""), std::string::npos)
+        << result.out;
+    EXPECT_NE(result.out.find("[store appState]"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("exports: make Dashboard"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("exports: store appState"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("semantic: 1 component(s)"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("semantic: 1 store(s)"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("ir:"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("typed node"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("friendly+import-stubs"), std::string::npos) << result.out;
+    EXPECT_NE(result.out.find("JtmlElement:template"), std::string::npos)
+        << result.out;
+    EXPECT_EQ(result.out.find("Project issues"), std::string::npos) << result.out;
 }
 
 TEST(CliExplain, JsonReportsObservableDepthAndStoreActions) {
@@ -704,7 +846,9 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_NE(tiers.find("stable"), std::string::npos);
     EXPECT_NE(tiers.find("first_slice"), std::string::npos);
     EXPECT_NE(tiers.find("experimental"), std::string::npos);
-    EXPECT_NE(tiers.find("component runtimePlan"), std::string::npos);
+    EXPECT_NE(tiers.find("first browser-local direct component body-plan execution"),
+              std::string::npos);
+    EXPECT_NE(tiers.find("component body-plan parity"), std::string::npos);
     EXPECT_NE(tiers.find("jtl 1"), std::string::npos);
 
     const std::string gates = report["verificationGates"].dump();
@@ -713,7 +857,7 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_NE(gates.find("asan-ubsan"), std::string::npos);
 
     const std::string targets = report["nextArchitectureTargets"].dump();
-    EXPECT_NE(targets.find("direct non-expanded ComponentInstance template execution"),
+    EXPECT_NE(targets.find("complete direct ComponentInstance body-plan parity"),
               std::string::npos);
     EXPECT_NE(targets.find("Studio content externalization"), std::string::npos);
 }
@@ -948,4 +1092,64 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
     EXPECT_NE(html.find("id=\"__jtml_client_manifest\""), std::string::npos) << html;
     EXPECT_NE(html.find("const browserLocalRuntime = true;"), std::string::npos) << html;
     EXPECT_NE(html.find("Browser-local runtime active"), std::string::npos) << html;
+}
+
+TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
+    const auto root = makeTempDir("browser-project-plan");
+    writeTempFile(root / "stores" / "app-state.jtml",
+        "jtml 2\n"
+        "export store appState\n"
+        "  let user = \"Ada\"\n");
+    writeTempFile(root / "pages" / "dashboard.jtml",
+        "jtml 2\n"
+        "use appState from \"../stores/app-state.jtml\"\n"
+        "export make Dashboard title\n"
+        "  panel title title\n"
+        "    text appState.user\n");
+    writeTempFile(root / "index.jtml",
+        "jtml 2\n"
+        "use Dashboard from \"./pages/dashboard.jtml\"\n"
+        "page\n"
+        "  Dashboard \"Home\"\n");
+
+    const auto outDir = std::filesystem::temp_directory_path() /
+                        ("jtml-browser-project-plan-" +
+                         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+
+    jtml::cli::Options opts;
+    opts.inputFile = (root / "index.jtml").string();
+    opts.outputFile = outDir.string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.target = "browser";
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdBuild(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+
+    const auto htmlPath = outDir / "index.html";
+    ASSERT_TRUE(std::filesystem::exists(htmlPath));
+    std::ifstream input(htmlPath);
+    const std::string html((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    EXPECT_NE(html.find("mergeProjectManifest"), std::string::npos) << html;
+    EXPECT_NE(html.find("runtimeManifestSource"), std::string::npos) << html;
+    EXPECT_NE(html.find("projectManifest"), std::string::npos) << html;
+    const std::string open = "<script type=\"application/json\" id=\"__jtml_client_manifest\">";
+    const std::string close = "</script>";
+    const auto start = html.find(open);
+    ASSERT_NE(start, std::string::npos) << html;
+    const auto end = html.find(close, start);
+    ASSERT_NE(end, std::string::npos) << html;
+    const auto manifest = nlohmann::json::parse(
+        html.substr(start + open.size(), end - (start + open.size())));
+    ASSERT_TRUE(manifest.contains("project")) << manifest.dump(2);
+    const auto& project = manifest["project"];
+    EXPECT_EQ(project["sourceOfTruth"], "SemanticProject retained per-file AST + semantic IR");
+    ASSERT_EQ(project["modules"].size(), 3u) << project.dump(2);
+    EXPECT_TRUE(project["modules"][0]["astAvailable"]) << project.dump(2);
+    ASSERT_EQ(project["modules"][1]["plan"]["componentDefinitions"].size(), 1u)
+        << project.dump(2);
+    EXPECT_EQ(project["modules"][1]["plan"]["componentDefinitions"][0]["name"],
+              "Dashboard");
+    ASSERT_EQ(project["modules"][2]["plan"]["semantic"]["stores"].size(), 1u)
+        << project.dump(2);
+    EXPECT_EQ(project["modules"][2]["plan"]["semantic"]["stores"][0], "appState");
 }

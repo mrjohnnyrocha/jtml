@@ -2,6 +2,7 @@
 
 #include "jtml/expression_source.h"
 
+#include <algorithm>
 #include <cctype>
 #include <sstream>
 
@@ -121,6 +122,15 @@ bool isAssignmentBodyLine(const std::vector<std::string>& tokens) {
            tokens[1] == "*=" || tokens[1] == "/=" || tokens[1] == "%=";
 }
 
+std::string joinTokens(const std::vector<std::string>& tokens, size_t start) {
+    std::ostringstream out;
+    for (size_t i = start; i < tokens.size(); ++i) {
+        if (i > start) out << ' ';
+        out << tokens[i];
+    }
+    return out.str();
+}
+
 std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
         const std::string& bodySource) {
     std::vector<RuntimePlanComponentBodyNode> plan;
@@ -146,15 +156,28 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
         node.kind = isAssignmentBodyLine(tokens) ? "assignment" : componentBodyNodeKind(node.head);
         if (node.kind == "assignment") {
             node.name = cleanComponentNameToken(tokens[0]);
+            node.operatorToken = tokens[1];
+            node.expression = joinTokens(tokens, 2);
         } else if ((node.kind == "state" || node.kind == "derived" ||
              node.kind == "action" || node.kind == "effect") &&
             tokens.size() > 1) {
             node.name = cleanComponentNameToken(tokens[1]);
+            const auto equals = std::find(tokens.begin(), tokens.end(), "=");
+            if (equals != tokens.end()) {
+                node.operatorToken = "=";
+                node.expression = joinTokens(tokens, static_cast<size_t>((equals - tokens.begin()) + 1));
+            }
         } else if (node.kind == "template") {
             node.name = cleanComponentNameToken(tokens[0]);
+            node.expression = joinTokens(tokens, 1);
         }
         node.renderRoot = node.indent == 0 && node.kind == "template";
+        const int parentIndex = node.parentIndex;
         plan.push_back(std::move(node));
+        if (parentIndex >= 0 && static_cast<size_t>(parentIndex) < plan.size()) {
+            plan[static_cast<size_t>(parentIndex)].childIndices.push_back(
+                static_cast<int>(plan.size() - 1));
+        }
         openAncestors.push_back(plan.size() - 1);
     }
     return plan;
@@ -234,6 +257,28 @@ RuntimePlan buildRuntimePlan(const std::vector<std::unique_ptr<ASTNode>>& progra
     }
 
     return plan;
+}
+
+RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project) {
+    RuntimeProjectPlan projectPlan;
+    projectPlan.entry = project.entry;
+
+    const std::vector<std::unique_ptr<ASTNode>> emptyProgram;
+    projectPlan.linkedPlan = buildRuntimePlan(emptyProgram, project.linkedProgram);
+
+    for (const auto& module : project.modules) {
+        RuntimeModulePlan modulePlan;
+        modulePlan.id = module.id;
+        modulePlan.path = module.path;
+        modulePlan.astAvailable = module.ast && module.ast->available;
+        modulePlan.syntax = module.ast ? module.ast->syntax : "";
+        modulePlan.plan = modulePlan.astAvailable
+            ? buildRuntimePlan(module.ast->nodes, module.semantic)
+            : buildRuntimePlan(emptyProgram, module.semantic);
+        projectPlan.modules.push_back(std::move(modulePlan));
+    }
+
+    return projectPlan;
 }
 
 } // namespace jtml

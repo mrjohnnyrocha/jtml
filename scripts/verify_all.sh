@@ -849,8 +849,9 @@ runtime_smoke() {
   local fetch_post_port=$((smoke_base + 2))
   local routes_port=$((smoke_base + 3))
   local store_port=$((smoke_base + 4))
-  local components_port=$((smoke_base + 5))
-  local studio_port=$((smoke_base + 6))
+  local store_action_port=$((smoke_base + 5))
+  local components_port=$((smoke_base + 6))
+  local studio_port=$((smoke_base + 7))
 
   # ---- 1. fetch GET seeds bindings.state.<name> with {data,error,loading} ----
   echo "[runtime-smoke] 1/8 fetch GET..."
@@ -917,9 +918,9 @@ page
   text "Region: {filterState.selectedRegion}"
   button "Portugal" click filterState.pickRegion("Portugal")
 JTML
-  start_serve "$artifacts_dir/store-action.jtml" "$store_port" \
+  start_serve "$artifacts_dir/store-action.jtml" "$store_action_port" \
     "$artifacts_dir/store-action.log"
-  curl -fsS "http://localhost:$store_port/" > "$artifacts_dir/store-action.html"
+  curl -fsS "http://localhost:$store_action_port/" > "$artifacts_dir/store-action.html"
   grep -q 'filterState_pickRegion(\\&quot;Portugal\\&quot;)' "$artifacts_dir/store-action.html" \
     || { echo "store action: quoted argument was not preserved in event emission" >&2; exit 1; }
   STORE_ACTION_HTML="$artifacts_dir/store-action.html" \
@@ -938,7 +939,7 @@ JTML
       args: [match[2]]
     }));
   "
-  curl -fsS -X POST "http://localhost:$store_port/api/event" \
+  curl -fsS -X POST "http://localhost:$store_action_port/api/event" \
     -H 'Content-Type: application/json' \
     --data "@$artifacts_dir/store-action-payload.json" \
     > "$artifacts_dir/store-action-event.json"

@@ -60,7 +60,9 @@ set(JTML_CORE_SOURCES
     src/linter.cpp
     src/refactor.cpp
     src/runtime_plan.cpp
+    src/runtime_plan_json.cpp
     src/semantic.cpp
+    src/semantic_project_json.cpp
     src/jtml/semantic/module_graph.cpp
     src/environment.cpp
     src/array.cpp

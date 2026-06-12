@@ -12,6 +12,7 @@ namespace jtml {
 
 std::string emitClientManifestScript(const std::vector<std::unique_ptr<ASTNode>>& program);
 std::string emitClientManifestScript(const RuntimePlan& plan);
+std::string emitClientManifestScript(const RuntimeProjectPlan& plan);
 
 } // namespace jtml
 

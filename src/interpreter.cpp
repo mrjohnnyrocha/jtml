@@ -421,10 +421,13 @@ std::string Interpreter::getComponentDefinitionsJSON() {
             out.push_back({
                 {"indent", node.indent},
                 {"parentIndex", node.parentIndex},
+                {"childIndices", node.childIndices},
                 {"kind", node.kind},
                 {"head", node.head},
                 {"name", node.name},
                 {"text", node.text},
+                {"operator", node.operatorToken},
+                {"expression", node.expression},
                 {"renderRoot", node.renderRoot},
             });
         }
@@ -1164,10 +1167,13 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
                 def.bodyPlan.push_back({
                     plannedNode.indent,
                     plannedNode.parentIndex,
+                    plannedNode.childIndices,
                     plannedNode.kind,
                     plannedNode.head,
                     plannedNode.name,
                     plannedNode.text,
+                    plannedNode.operatorToken,
+                    plannedNode.expression,
                     plannedNode.renderRoot,
                 });
             }

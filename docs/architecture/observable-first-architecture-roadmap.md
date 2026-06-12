@@ -120,8 +120,12 @@ params, local state, local derived values, local actions, local effects, event
 bindings, slot presence, body/root-template counts, source line, encoded body
 payload, and a semantic `runtimePlan`. Component instances expose their owning
 runtime environment and validate local action dispatch through that definition.
-The remaining architectural step is direct non-expanded component template
-execution.
+The first browser-local direct body-plan execution slice can now render common
+component templates, initialize local state, render simple conditionals and
+loops, run simple local assignment actions, and re-render the owning instance.
+The remaining architectural step is full parity: `else`, slots, nested
+component calls, richer attributes/modifiers, action arguments, and a matching
+live-interpreter execution path over the same body-plan contract.
 
 ### P3: Semantic Styling
 

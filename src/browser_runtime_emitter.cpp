@@ -47,6 +47,7 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
       const __jtml_media_actions = {};
       let componentInstances = [];
       let componentDefinitions = [];
+      const componentScopes = {};
 
       window.jtmlEventValue = function (event) {
         const target = event && event.target;
@@ -102,6 +103,249 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         return document.querySelector('[data-jtml-component-def="' + escapeSelectorValue(name) + '"]');
       }
 
+      function splitComponentWords(source) {
+        const words = [];
+        let current = '';
+        let quote = '';
+        source = String(source || '');
+        for (let i = 0; i < source.length; i += 1) {
+          const ch = source[i];
+          if (quote) {
+            current += ch;
+            if (ch === '\\' && i + 1 < source.length) current += source[++i];
+            else if (ch === quote) quote = '';
+            continue;
+          }
+          if (ch === '"' || ch === "'") {
+            quote = ch;
+            current += ch;
+            continue;
+          }
+          if (/\s/.test(ch)) {
+            if (current) {
+              words.push(current);
+              current = '';
+            }
+          } else {
+            current += ch;
+          }
+        }
+        if (current) words.push(current);
+        return words;
+      }
+
+      function unquoteComponentText(value) {
+        value = String(value || '').trim();
+        if ((value[0] === '"' && value[value.length - 1] === '"') ||
+            (value[0] === "'" && value[value.length - 1] === "'")) {
+          return value.slice(1, -1);
+        }
+        return value;
+      }
+
+      function escapeHtml(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function componentTagName(name) {
+        const map = {
+          page: 'main',
+          box: 'div',
+          stack: 'div',
+          cluster: 'div',
+          split: 'div',
+          grid: 'div',
+          card: 'section',
+          panel: 'section',
+          text: 'p',
+          title: 'h1',
+          subtitle: 'p'
+        };
+        return map[name] || name;
+      }
+
+      function componentScopeFor(instance, definition) {
+        if (!instance || !instance.id) return {};
+        if (componentScopes[instance.id]) return componentScopes[instance.id];
+        const scope = {};
+        Object.assign(scope, instance.params || {});
+        (definition.bodyPlan || []).forEach(function (node) {
+          if (!node || node.kind !== 'state' || !node.name || node.parentIndex !== -1) return;
+          const result = evaluateClientBodyExpression(node.expression || '', scope);
+          scope[node.name] = result.found ? result.value : unquoteComponentText(node.expression || '');
+        });
+        componentScopes[instance.id] = scope;
+        return scope;
+      }
+
+      function applyComponentDerived(scope, definition) {
+        (definition.bodyPlan || []).forEach(function (node) {
+          if (!node || node.kind !== 'derived' || !node.name) return;
+          const result = evaluateClientBodyExpression(node.expression || '', scope);
+          if (result.found) scope[node.name] = result.value;
+        });
+      }
+
+      function componentNodeChildren(definition, node) {
+        return (node.childIndices || [])
+          .map(function (index) { return (definition.bodyPlan || [])[index]; })
+          .filter(Boolean);
+      }
+
+      function renderComponentExpression(expr, scope) {
+        const literal = unquoteComponentText(expr);
+        if (literal !== String(expr || '').trim()) return literal;
+        const result = evaluateClientExpression(expr, scope);
+        return result.found ? renderTemplateValue(result.value) : literal;
+      }
+
+      function renderComponentPlanNode(definition, instance, node, scope) {
+        if (!node || node.kind !== 'template') return '';
+        const words = splitComponentWords(node.text || '');
+        const head = node.name || words[0] || 'box';
+        const children = componentNodeChildren(definition, node)
+          .map(function (child) { return renderComponentPlanNode(definition, instance, child, scope); })
+          .join('');
+        if (head === 'slot') return '';
+        if (head === 'if') {
+          const condition = evaluateClientExpression(node.expression || words.slice(1).join(' '), scope);
+          return condition.found && condition.value ? children : '';
+        }
+        if (head === 'for') {
+          const raw = node.expression || words.slice(1).join(' ');
+          const match = String(raw || '').match(/^([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(.+)$/);
+          if (!match) return '';
+          const result = evaluateClientExpression(match[2], scope);
+          if (!result.found) return '';
+          let values = result.value;
+          if (values == null) values = [];
+          if (!Array.isArray(values)) {
+            if (typeof values === 'string') values = values.split('');
+            else if (typeof values === 'object') values = Object.values(values);
+            else values = [values];
+          }
+          return values.map(function (item) {
+            const childScope = Object.assign({}, scope);
+            childScope[match[1]] = item;
+            return componentNodeChildren(definition, node)
+              .map(function (child) {
+                return renderComponentPlanNode(definition, instance, child, childScope);
+              })
+              .join('');
+          }).join('');
+        }
+        if (head === 'show' || head === 'text') {
+          const expr = head === 'show'
+            ? (node.expression || words.slice(1).join(' '))
+            : (node.expression || words.slice(1).join(' '));
+          return '<p>' + escapeHtml(renderComponentExpression(expr, scope)) + '</p>' + children;
+        }
+        if (head === 'button') {
+          const clickIndex = words.indexOf('click');
+          const labelExpr = clickIndex === -1
+            ? words.slice(1).join(' ')
+            : words.slice(1, clickIndex).join(' ');
+          const actionName = clickIndex === -1 ? '' : unquoteComponentText(words[clickIndex + 1] || '');
+          const label = renderComponentExpression(labelExpr || '"Button"', scope);
+          const attrs = actionName
+            ? ' data-jtml-direct-component-id="' + escapeHtml(instance.id) + '"' +
+              ' data-jtml-direct-component-action="' + escapeHtml(actionName) + '"'
+            : '';
+          return '<button type="button"' + attrs + '>' + escapeHtml(label) + '</button>' + children;
+        }
+        const tag = componentTagName(head);
+        const contentExpr = (node.expression || '').trim();
+        const inline = children ? '' : (contentExpr ? escapeHtml(renderComponentExpression(contentExpr, scope)) : '');
+        return '<' + tag + ' data-jtml-direct-node="' + escapeHtml(head) + '">' +
+          inline + children + '</' + tag + '>';
+      }
+
+      function runComponentPlanStatements(definition, scope, nodes) {
+        (nodes || []).forEach(function (node) {
+          if (!node) return;
+          if (node.kind === 'assignment') {
+            const result = evaluateClientBodyExpression(node.expression || '', scope);
+            const next = result.found ? result.value : unquoteComponentText(node.expression || '');
+            if (node.operator === '+=') scope[node.name] = Number(scope[node.name] || 0) + Number(next);
+            else if (node.operator === '-=') scope[node.name] = Number(scope[node.name] || 0) - Number(next);
+            else if (node.operator === '*=') scope[node.name] = Number(scope[node.name] || 0) * Number(next);
+            else if (node.operator === '/=') scope[node.name] = Number(scope[node.name] || 0) / Number(next);
+            else scope[node.name] = next;
+          }
+          runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node));
+        });
+      }
+
+      function renderDirectComponent(instance) {
+        if (!instance || !instance.element) return false;
+        const definition = componentDefinitions.find(function (item) {
+          return item.name === instance.component;
+        });
+        if (!definition || !Array.isArray(definition.bodyPlan) || !definition.bodyPlan.length) {
+          return false;
+        }
+        const roots = definition.bodyPlan.filter(function (node) {
+          return node && node.renderRoot && node.kind === 'template';
+        });
+        if (!roots.length) return false;
+        const scope = componentScopeFor(instance, definition);
+        applyComponentDerived(scope, definition);
+        instance.scope = scope;
+        instance.element.innerHTML = roots.map(function (node) {
+          return renderComponentPlanNode(definition, instance, node, scope);
+        }).join('');
+        instance.element.dataset.jtmlDirectRendered = 'true';
+        return true;
+      }
+
+      function renderDirectComponents() {
+        let rendered = 0;
+        componentInstances.forEach(function (instance) {
+          if (renderDirectComponent(instance)) rendered += 1;
+        });
+        window.jtml = Object.assign(window.jtml || {}, {
+          directComponentExecution: true,
+          directComponentRenderCount: rendered
+        });
+      }
+
+      function runDirectComponentAction(componentId, actionName) {
+        const instance = componentInstances.find(function (item) { return item.id === componentId; });
+        if (!instance) return false;
+        const definition = componentDefinitions.find(function (item) {
+          return item.name === instance.component;
+        });
+        if (!definition || !Array.isArray(definition.bodyPlan)) return false;
+        const actionNode = definition.bodyPlan.find(function (node) {
+          return node && node.kind === 'action' && node.name === actionName;
+        });
+        if (!actionNode) return false;
+        const scope = componentScopeFor(instance, definition);
+        runComponentPlanStatements(definition, scope, componentNodeChildren(definition, actionNode));
+        renderDirectComponent(instance);
+        return true;
+      }
+
+      function startDirectComponentBindings() {
+        if (document.documentElement.dataset.jtmlDirectComponentBindings === 'true') return;
+        document.documentElement.dataset.jtmlDirectComponentBindings = 'true';
+        document.addEventListener('click', function (event) {
+          const button = event.target && event.target.closest &&
+            event.target.closest('[data-jtml-direct-component-action]');
+          if (!button) return;
+          const componentId = button.getAttribute('data-jtml-direct-component-id') || '';
+          const actionName = button.getAttribute('data-jtml-direct-component-action') || '';
+          if (runDirectComponentAction(componentId, actionName)) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        });
+      }
+
       function scanComponentInstances() {
         const manifestInstances = (window.jtml && Array.isArray(window.jtml.componentInstanceManifest))
           ? window.jtml.componentInstanceManifest
@@ -152,12 +396,14 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
               bodyNodeCount: Number(record.bodyNodeCount || 0),
               rootTemplateNodeCount: Number(record.rootTemplateNodeCount || 0),
               slotCount: Number(record.slotCount || 0),
+              bodyPlan: Array.isArray(record.bodyPlan) ? record.bodyPlan.slice() : [],
               runtimePlan: {
                 mode: 'semantic-instance',
                 ownsEnvironment: true,
                 bodyNodeCount: Number(record.bodyNodeCount || 0),
                 rootTemplateNodeCount: Number(record.rootTemplateNodeCount || 0),
                 slotCount: Number(record.slotCount || 0),
+                bodyPlan: Array.isArray(record.bodyPlan) ? record.bodyPlan.slice() : [],
                 actions: Array.isArray(record.localActions) ? record.localActions.slice() : [],
                 state: Array.isArray(record.localState) ? record.localState.slice() : [],
                 derived: Array.isArray(record.localDerived) ? record.localDerived.slice() : [],
@@ -186,8 +432,10 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
                 actions: [],
                 state: [],
                 derived: [],
-                effects: []
+                effects: [],
+                bodyPlan: []
               },
+              bodyPlan: [],
               element: el
             };
           });
@@ -638,6 +886,105 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         return true;
       }
 
+      function ownProperty(object, key) {
+        return Object.prototype.hasOwnProperty.call(Object(object || {}), key);
+      }
+
+      function mergeRuntimeBindings(target, bindings, overwrite) {
+        if (!Array.isArray(bindings)) return target;
+        bindings.forEach(function (binding) {
+          if (!binding || !binding.name) return;
+          if (overwrite || !ownProperty(target, binding.name)) {
+            target[binding.name] = binding.expr || '';
+          }
+        });
+        return target;
+      }
+
+      function mergeRuntimeActions(target, actions, overwrite) {
+        if (!Array.isArray(actions)) return target;
+        actions.forEach(function (action) {
+          if (!action || !action.name) return;
+          if (overwrite || !ownProperty(target, action.name)) {
+            target[action.name] = {
+              params: Array.isArray(action.params) ? action.params.slice() : [],
+              body: Array.isArray(action.body) ? action.body.slice() : []
+            };
+          }
+        });
+        return target;
+      }
+
+      function mergeRuntimeArray(target, additions, keyOf, overwrite) {
+        if (!Array.isArray(additions)) return target;
+        additions.forEach(function (item) {
+          if (!item) return;
+          const key = keyOf(item);
+          const index = target.findIndex(function (existing) {
+            return keyOf(existing) === key;
+          });
+          if (index === -1) {
+            target.push(item);
+          } else if (overwrite) {
+            target[index] = item;
+          }
+        });
+        return target;
+      }
+
+      function mergeRuntimePlanIntoManifest(merged, plan, options) {
+        if (!plan || typeof plan !== 'object') return;
+        options = options || {};
+        const preferDefinitions = !!options.preferDefinitions;
+        mergeRuntimeBindings(merged.state, plan.state, false);
+        mergeRuntimeBindings(merged.derived, plan.derived, false);
+        mergeRuntimeActions(merged.actions, plan.actions, false);
+        mergeRuntimeArray(merged.routes, plan.routes, function (route) {
+          return String(route.path || '') + '|' + String(route.component || '');
+        }, false);
+        mergeRuntimeArray(merged.fetches, plan.fetches, function (fetchNode) {
+          return String(fetchNode.name || '') + '|' + String(fetchNode.url || '');
+        }, false);
+        mergeRuntimeArray(merged.componentDefinitions, plan.componentDefinitions, function (definition) {
+          return String(definition.name || '');
+        }, preferDefinitions);
+        mergeRuntimeArray(merged.componentInstances, plan.componentInstances, function (instance) {
+          return String(instance.id || '') + '|' +
+                 String(instance.component || '') + '|' +
+                 String(instance.sourceLine || '');
+        }, false);
+      }
+
+      function mergeProjectManifest(manifest) {
+        manifest = manifest || {};
+        const merged = Object.assign({}, manifest, {
+          state: Object.assign({}, manifest.state || {}),
+          derived: Object.assign({}, manifest.derived || {}),
+          actions: Object.assign({}, manifest.actions || {}),
+          routes: Array.isArray(manifest.routes) ? manifest.routes.slice() : [],
+          fetches: Array.isArray(manifest.fetches) ? manifest.fetches.slice() : [],
+          componentDefinitions: Array.isArray(manifest.componentDefinitions)
+            ? manifest.componentDefinitions.slice()
+            : [],
+          componentInstances: Array.isArray(manifest.componentInstances)
+            ? manifest.componentInstances.slice()
+            : []
+        });
+
+        const project = manifest.project || {};
+        mergeRuntimePlanIntoManifest(merged, project.linkedPlan, { preferDefinitions: false });
+        if (Array.isArray(project.modules)) {
+          project.modules.forEach(function (modulePlan) {
+            mergeRuntimePlanIntoManifest(
+              merged,
+              modulePlan && modulePlan.plan,
+              { preferDefinitions: true }
+            );
+          });
+        }
+        return merged;
+      }
+
       function bootstrapClientManifest() {
         const el = document.getElementById('__jtml_client_manifest');
         if (!el) return;
@@ -648,6 +995,7 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
           reportStatus('error', 'Invalid browser runtime manifest');
           return;
         }
+        manifest = mergeProjectManifest(manifest);
         const state = manifest.state || {};
         for (const name in state) {
           const result = evaluateClientBodyExpression(state[name]);
@@ -667,6 +1015,8 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
           fetchManifest: fetchManifest,
           componentDefinitionManifest: componentDefinitionManifest,
           componentInstanceManifest: componentInstanceManifest,
+          projectManifest: manifest.project || null,
+          runtimeManifestSource: manifest.project ? 'semantic-project' : 'linked-compatibility',
           runAction: function (name) {
             return executeClientAction(name, Array.prototype.slice.call(arguments, 1));
           }
@@ -1996,6 +2346,8 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         bootstrapClientManifest();
         if (window.__jtml_bindings) applyBindings(window.__jtml_bindings);
         scanComponentInstances();
+        renderDirectComponents();
+        startDirectComponentBindings();
         startFetchBindings();
         startInvalidationBindings();
         startExternBindings();

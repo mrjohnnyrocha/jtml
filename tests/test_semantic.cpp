@@ -652,17 +652,23 @@ TEST(SemanticProgram, CapturesFriendlyImportShapes) {
     ASSERT_NE(sideEffect, nullptr);
     EXPECT_EQ(sideEffect->kind, "side-effect");
     EXPECT_TRUE(sideEffect->names.empty());
+    EXPECT_EQ(sideEffect->sourceLine, 3);
+    EXPECT_EQ(sideEffect->sourceColumn, 1);
     const auto* widget = findImportRecord(semantic, "./widget.jtml");
     ASSERT_NE(widget, nullptr);
     EXPECT_EQ(widget->kind, "named");
     ASSERT_EQ(widget->names.size(), 1u);
     EXPECT_EQ(widget->names[0], "Widget");
+    EXPECT_EQ(widget->sourceLine, 4);
+    EXPECT_EQ(widget->sourceColumn, 1);
     const auto* money = findImportRecord(semantic, "./money.jtml");
     ASSERT_NE(money, nullptr);
     EXPECT_EQ(money->kind, "destructured");
     ASSERT_EQ(money->names.size(), 2u);
     EXPECT_EQ(money->names[0], "formatMoney");
     EXPECT_EQ(money->names[1], "parseDate");
+    EXPECT_EQ(money->sourceLine, 5);
+    EXPECT_EQ(money->sourceColumn, 1);
     EXPECT_TRUE(hasEdge(semantic, "module", "./side-effects.jtml", "imports"));
     EXPECT_TRUE(hasEdge(semantic, "module", "./widget.jtml", "imports"));
     EXPECT_TRUE(hasEdge(semantic, "module", "./money.jtml", "imports"));
@@ -682,7 +688,47 @@ TEST(SemanticProgram, CapturesFriendlyReExportImportRecords) {
     ASSERT_EQ(record->names.size(), 1u);
     EXPECT_EQ(record->names[0], "Card");
     EXPECT_TRUE(record->reExport);
+    EXPECT_EQ(record->sourceLine, 2);
+    EXPECT_EQ(record->sourceColumn, 1);
+    ASSERT_EQ(semantic.exportRecords.size(), 1u);
+    EXPECT_EQ(semantic.exportRecords[0].name, "Card");
+    EXPECT_EQ(semantic.exportRecords[0].kind, "re-export");
+    EXPECT_EQ(semantic.exportRecords[0].specifier, "./card.jtml");
+    EXPECT_TRUE(semantic.exportRecords[0].reExport);
+    EXPECT_EQ(semantic.exportRecords[0].sourceLine, 2);
     EXPECT_TRUE(hasEdge(semantic, "module:re-export", "./card.jtml", "imports"));
+    EXPECT_TRUE(hasEdge(semantic, "module", "Card", "re-exports"));
+}
+
+TEST(SemanticProgram, CapturesFriendlyExportedDeclarations) {
+    const std::string source =
+        "jtml 2\n"
+        "export let theme = \"dark\"\n"
+        "export get label = \"Theme {theme}\"\n"
+        "export when save\n"
+        "  show \"Saved\"\n"
+        "export make Card title\n"
+        "  text title\n"
+        "make Home\n"
+        "  text \"Home\"\n"
+        "export route \"/\" as Home\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+
+    ASSERT_EQ(semantic.exportRecords.size(), 5u);
+    EXPECT_EQ(semantic.exportRecords[0].name, "Card");
+    EXPECT_EQ(semantic.exportRecords[0].kind, "make");
+    EXPECT_EQ(semantic.exportRecords[1].name, "Home");
+    EXPECT_EQ(semantic.exportRecords[1].kind, "route");
+    EXPECT_EQ(semantic.exportRecords[2].name, "label");
+    EXPECT_EQ(semantic.exportRecords[2].kind, "get");
+    EXPECT_EQ(semantic.exportRecords[3].name, "save");
+    EXPECT_EQ(semantic.exportRecords[3].kind, "when");
+    EXPECT_EQ(semantic.exportRecords[4].name, "theme");
+    EXPECT_EQ(semantic.exportRecords[4].kind, "let");
+    EXPECT_TRUE(hasEdge(semantic, "module", "Card", "exports"));
+    EXPECT_TRUE(hasEdge(semantic, "module", "theme", "exports"));
 }
 
 TEST(SemanticProgram, KeepsMultipleImportRecordsForSameSpecifier) {
@@ -724,6 +770,264 @@ TEST(SemanticProject, BuildsModuleRecordsFromLinkedProgram) {
     EXPECT_EQ(project.modules[0].imports[0].names[0], "Card");
     EXPECT_EQ(project.modules[0].imports[0].importer, project.entry);
     EXPECT_EQ(project.modules[0].imports[0].resolved, 1u);
+    EXPECT_EQ(project.modules[0].imports[0].resolvedPath, "/app/components/ui.jtml");
+}
+
+TEST(SemanticProject, UnresolvedImportsUseExplicitInvalidModuleId) {
+    jtml::SemanticProgram semantic;
+    semantic.moduleFiles = {
+        "/app/index.jtml",
+    };
+    semantic.importRecords.push_back({
+        "./missing.jtml",
+        "named",
+        {"Missing"},
+        false,
+    });
+
+    const auto project = jtml::buildSemanticProject(semantic, "/app/index.jtml");
+
+    ASSERT_EQ(project.modules.size(), 1u);
+    ASSERT_EQ(project.modules[0].imports.size(), 1u);
+    EXPECT_EQ(project.modules[0].imports[0].importer, project.entry);
+    EXPECT_EQ(project.modules[0].imports[0].resolved, jtml::InvalidSemanticModuleId);
+    EXPECT_EQ(project.modules[0].imports[0].resolvedPath, "/app/missing.jtml");
+}
+
+TEST(SemanticProject, PerFileModuleSourcesPreserveImporterOwnership) {
+    auto dashboardAst = parseFriendly(
+        "jtml 2\n"
+        "use appState from \"../stores/app-state.jtml\"\n"
+        "export make Dashboard\n"
+        "  text appState.theme\n");
+    auto dashboardIr = jtml::summarizeSemanticAst(dashboardAst, "friendly");
+    auto dashboardOwnedAst = jtml::cloneSemanticAst(dashboardAst, "friendly");
+
+    std::vector<jtml::SemanticModuleSource> modules = {
+        {
+            "/app/index.jtml",
+            jtml::analyzeSemanticProgram({}, "jtml 2\nuse Dashboard from \"./pages/dashboard.jtml\"\n"),
+        },
+        {
+            "/app/pages/dashboard.jtml",
+            jtml::analyzeSemanticProgram(
+                dashboardAst,
+                "jtml 2\n"
+                "use appState from \"../stores/app-state.jtml\"\n"
+                "export make Dashboard\n"
+                "  text appState.theme\n"),
+            dashboardIr,
+            dashboardOwnedAst,
+        },
+        {
+            "/app/stores/app-state.jtml",
+            jtml::analyzeSemanticProgram({}, "jtml 2\nexport store appState\n  let theme = \"light\"\n"),
+        },
+    };
+
+    const auto project = jtml::buildSemanticProject(modules, "/app/index.jtml");
+
+    ASSERT_EQ(project.modules.size(), 3u);
+    EXPECT_EQ(project.entry, 0u);
+    ASSERT_EQ(project.modules[0].imports.size(), 1u);
+    ASSERT_EQ(project.modules[1].imports.size(), 1u);
+    ASSERT_EQ(project.modules[2].exports.size(), 1u);
+    ASSERT_EQ(project.modules[1].semantic.components.size(), 1u);
+    ASSERT_EQ(project.modules[2].semantic.stores.size(), 1u);
+    EXPECT_EQ(project.modules[0].imports[0].importer, 0u);
+    EXPECT_EQ(project.modules[0].imports[0].resolved, 1u);
+    ASSERT_EQ(project.modules[0].imports[0].resolvedSymbols.size(), 1u);
+    EXPECT_EQ(project.modules[0].imports[0].resolvedSymbols[0].name, "Dashboard");
+    EXPECT_EQ(project.modules[0].imports[0].resolvedSymbols[0].kind, "make");
+    EXPECT_EQ(project.modules[0].imports[0].resolvedSymbols[0].module, 1u);
+    EXPECT_EQ(project.modules[1].imports[0].importer, 1u);
+    EXPECT_EQ(project.modules[1].imports[0].resolved, 2u);
+    ASSERT_EQ(project.modules[1].imports[0].resolvedSymbols.size(), 1u);
+    EXPECT_EQ(project.modules[1].imports[0].resolvedSymbols[0].name, "appState");
+    EXPECT_EQ(project.modules[1].imports[0].resolvedSymbols[0].kind, "store");
+    EXPECT_EQ(project.modules[1].imports[0].resolvedSymbols[0].module, 2u);
+    EXPECT_EQ(project.modules[1].semantic.components[0], "Dashboard");
+    EXPECT_TRUE(project.modules[1].ir.available);
+    EXPECT_EQ(project.modules[1].ir.syntax, "friendly");
+    EXPECT_GE(project.modules[1].ir.totalNodeCount, 1u);
+    ASSERT_TRUE(project.modules[1].ast);
+    EXPECT_TRUE(project.modules[1].ast->available);
+    EXPECT_EQ(project.modules[1].ast->syntax, "friendly");
+    ASSERT_EQ(project.modules[1].ast->nodes.size(), dashboardAst.size());
+    ASSERT_TRUE(project.modules[1].ast->nodes[0]);
+    EXPECT_NE(project.modules[1].ast->nodes[0].get(), dashboardAst[0].get());
+    EXPECT_EQ(project.modules[1].ast->nodes[0]->getType(), dashboardAst[0]->getType());
+    ASSERT_FALSE(project.modules[1].ir.topLevelNodes.empty());
+    EXPECT_EQ(project.modules[1].ir.topLevelNodes[0].kind, "JtmlElement");
+    const auto hasImportCount = std::any_of(
+        project.modules[1].ir.nodeCounts.begin(),
+        project.modules[1].ir.nodeCounts.end(),
+        [](const auto& count) {
+            return count.kind == "ImportStatement" && count.count == 1u;
+        });
+    EXPECT_TRUE(hasImportCount);
+    EXPECT_EQ(project.modules[2].semantic.stores[0], "appState");
+    EXPECT_EQ(project.modules[2].exports[0].name, "appState");
+    EXPECT_EQ(project.modules[2].exports[0].kind, "store");
+    EXPECT_TRUE(project.modules[2].imports.empty());
+}
+
+TEST(SemanticProject, AnalysisReportsUnresolvedImportsAndMissingExports) {
+    std::vector<jtml::SemanticModuleSource> modules = {
+        {
+            "/app/index.jtml",
+            jtml::analyzeSemanticProgram(
+                {},
+                "jtml 2\n"
+                "use Missing from \"./missing.jtml\"\n"
+                "use { Card, Button } from \"./ui.jtml\"\n"),
+        },
+        {
+            "/app/ui.jtml",
+            jtml::analyzeSemanticProgram(
+                {},
+                "jtml 2\n"
+                "export make Card title\n"
+                "  text title\n"),
+        },
+    };
+
+    const auto project = jtml::buildSemanticProject(modules, "/app/index.jtml");
+    const auto issues = jtml::analyzeSemanticProject(project);
+
+    ASSERT_EQ(issues.size(), 2u);
+    EXPECT_EQ(issues[0].code, "JTML_UNRESOLVED_IMPORT");
+    EXPECT_EQ(issues[0].specifier, "./missing.jtml");
+    EXPECT_EQ(issues[0].resolvedPath, "/app/missing.jtml");
+    EXPECT_EQ(issues[1].code, "JTML_MISSING_EXPORT");
+    EXPECT_EQ(issues[1].specifier, "./ui.jtml");
+    ASSERT_EQ(issues[1].requested.size(), 1u);
+    ASSERT_EQ(issues[1].available.size(), 1u);
+    EXPECT_EQ(issues[1].requested[0], "Button");
+    EXPECT_EQ(issues[1].available[0], "Card");
+}
+
+TEST(SemanticProject, ImportIdentityFollowsReExportsToUltimateSymbol) {
+    std::vector<jtml::SemanticModuleSource> modules = {
+        {
+            "/app/index.jtml",
+            jtml::analyzeSemanticProgram(
+                {},
+                "jtml 2\n"
+                "use Card from \"./components/index.jtml\"\n"),
+        },
+        {
+            "/app/components/index.jtml",
+            jtml::analyzeSemanticProgram(
+                {},
+                "jtml 2\n"
+                "export use Card from \"./card.jtml\"\n"),
+        },
+        {
+            "/app/components/card.jtml",
+            jtml::analyzeSemanticProgram(
+                {},
+                "jtml 2\n"
+                "export make Card title\n"
+                "  h2 title\n"),
+        },
+    };
+
+    const auto project = jtml::buildSemanticProject(modules, "/app/index.jtml");
+
+    ASSERT_EQ(project.modules.size(), 3u);
+    ASSERT_EQ(project.modules[0].imports.size(), 1u);
+    ASSERT_EQ(project.modules[0].imports[0].resolvedSymbols.size(), 1u);
+    EXPECT_EQ(project.modules[0].imports[0].resolvedSymbols[0].name, "Card");
+    EXPECT_EQ(project.modules[0].imports[0].resolvedSymbols[0].kind, "make");
+    EXPECT_EQ(project.modules[0].imports[0].resolvedSymbols[0].module, 2u);
+    ASSERT_EQ(project.modules[1].imports.size(), 1u);
+    ASSERT_EQ(project.modules[1].imports[0].resolvedSymbols.size(), 1u);
+    EXPECT_EQ(project.modules[1].imports[0].resolvedSymbols[0].name, "Card");
+    EXPECT_EQ(project.modules[1].imports[0].resolvedSymbols[0].kind, "make");
+    EXPECT_EQ(project.modules[1].imports[0].resolvedSymbols[0].module, 2u);
+}
+
+TEST(SemanticProject, AnalysisReportsUnresolvedReExportTargets) {
+    std::vector<jtml::SemanticModuleSource> modules = {
+        {
+            "/app/index.jtml",
+            jtml::analyzeSemanticProgram(
+                {},
+                "jtml 2\n"
+                "use Card from \"./components/index.jtml\"\n"),
+        },
+        {
+            "/app/components/index.jtml",
+            jtml::analyzeSemanticProgram(
+                {},
+                "jtml 2\n"
+                "export use Card from \"./missing-card.jtml\"\n"),
+        },
+    };
+
+    const auto project = jtml::buildSemanticProject(modules, "/app/index.jtml");
+    ASSERT_EQ(project.modules.size(), 2u);
+    ASSERT_EQ(project.modules[0].imports.size(), 1u);
+    EXPECT_TRUE(project.modules[0].imports[0].resolvedSymbols.empty());
+
+    const auto issues = jtml::analyzeSemanticProject(project);
+    const auto unresolvedReExport = std::find_if(
+        issues.begin(),
+        issues.end(),
+        [](const auto& issue) {
+            return issue.code == "JTML_UNRESOLVED_REEXPORT";
+        });
+    ASSERT_NE(unresolvedReExport, issues.end());
+    EXPECT_EQ(unresolvedReExport->module, 0u);
+    EXPECT_EQ(unresolvedReExport->specifier, "./components/index.jtml");
+    ASSERT_EQ(unresolvedReExport->requested.size(), 1u);
+    EXPECT_EQ(unresolvedReExport->requested[0], "Card");
+    EXPECT_EQ(unresolvedReExport->resolvedPath, "/app/components/missing-card.jtml");
+}
+
+TEST(SemanticProject, AnalysisReportsReExportCycles) {
+    std::vector<jtml::SemanticModuleSource> modules = {
+        {
+            "/app/index.jtml",
+            jtml::analyzeSemanticProgram(
+                {},
+                "jtml 2\n"
+                "use Card from \"./components/a.jtml\"\n"),
+        },
+        {
+            "/app/components/a.jtml",
+            jtml::analyzeSemanticProgram(
+                {},
+                "jtml 2\n"
+                "export use Card from \"./b.jtml\"\n"),
+        },
+        {
+            "/app/components/b.jtml",
+            jtml::analyzeSemanticProgram(
+                {},
+                "jtml 2\n"
+                "export use Card from \"./a.jtml\"\n"),
+        },
+    };
+
+    const auto project = jtml::buildSemanticProject(modules, "/app/index.jtml");
+    ASSERT_EQ(project.modules.size(), 3u);
+    ASSERT_EQ(project.modules[0].imports.size(), 1u);
+    EXPECT_TRUE(project.modules[0].imports[0].resolvedSymbols.empty());
+
+    const auto issues = jtml::analyzeSemanticProject(project);
+    const auto cycle = std::find_if(
+        issues.begin(),
+        issues.end(),
+        [](const auto& issue) {
+            return issue.code == "JTML_REEXPORT_CYCLE";
+        });
+    ASSERT_NE(cycle, issues.end());
+    EXPECT_EQ(cycle->module, 0u);
+    EXPECT_EQ(cycle->specifier, "./components/a.jtml");
+    ASSERT_EQ(cycle->requested.size(), 1u);
+    EXPECT_EQ(cycle->requested[0], "Card");
 }
 
 TEST(SemanticProgram, UsageAnalysisComesFromSemanticGraph) {
@@ -878,15 +1182,86 @@ TEST(RuntimePlan, OwnsBrowserLocalRuntimeShapeBeforeManifestEmission) {
     ASSERT_NE(cardIt, plan.componentDefinitions[0].bodyPlan.end());
     const int cardIndex = static_cast<int>(
         std::distance(plan.componentDefinitions[0].bodyPlan.begin(), cardIt));
+    EXPECT_FALSE(cardIt->childIndices.empty());
+    EXPECT_EQ(cardIt->parentIndex, -1);
     EXPECT_TRUE(std::any_of(
         plan.componentDefinitions[0].bodyPlan.begin(),
         plan.componentDefinitions[0].bodyPlan.end(),
         [&](const auto& node) {
             return node.kind == "template" && node.name == "text" &&
-                   node.parentIndex == cardIndex;
+                   node.parentIndex == cardIndex &&
+                   node.expression == "label";
         }));
     EXPECT_TRUE(std::any_of(
         plan.componentInstances.begin(),
         plan.componentInstances.end(),
         [](const auto& instance) { return instance.component == "Counter"; }));
+}
+
+TEST(RuntimePlan, ProjectPlanUsesRetainedPerFileAsts) {
+    const std::string entrySource =
+        "jtml 2\n"
+        "use Dashboard from \"./pages/dashboard.jtml\"\n"
+        "page\n"
+        "  text \"Home\"\n";
+    const std::string dashboardSource =
+        "jtml 2\n"
+        "use appState from \"../stores/app-state.jtml\"\n"
+        "export make Dashboard title\n"
+        "  panel title title\n"
+        "    text appState.user\n";
+    const std::string storeSource =
+        "jtml 2\n"
+        "export store appState\n"
+        "  let user = \"Ada\"\n";
+
+    auto entryAst = parseFriendly(entrySource);
+    auto dashboardAst = parseFriendly(dashboardSource);
+    auto storeAst = parseFriendly(storeSource);
+
+    std::vector<jtml::SemanticModuleSource> modules = {
+        {
+            "/app/index.jtml",
+            jtml::analyzeSemanticProgram(entryAst, entrySource),
+            jtml::summarizeSemanticAst(entryAst, "friendly"),
+            jtml::cloneSemanticAst(entryAst, "friendly"),
+        },
+        {
+            "/app/pages/dashboard.jtml",
+            jtml::analyzeSemanticProgram(dashboardAst, dashboardSource),
+            jtml::summarizeSemanticAst(dashboardAst, "friendly"),
+            jtml::cloneSemanticAst(dashboardAst, "friendly"),
+        },
+        {
+            "/app/stores/app-state.jtml",
+            jtml::analyzeSemanticProgram(storeAst, storeSource),
+            jtml::summarizeSemanticAst(storeAst, "friendly"),
+            jtml::cloneSemanticAst(storeAst, "friendly"),
+        },
+    };
+
+    auto linkedSemantic = jtml::analyzeSemanticProgram(entryAst, entrySource);
+    linkedSemantic.moduleFiles = {
+        "/app/index.jtml",
+        "/app/pages/dashboard.jtml",
+        "/app/stores/app-state.jtml",
+    };
+    const auto project = jtml::buildSemanticProject(modules, "/app/index.jtml", linkedSemantic);
+    const auto projectPlan = jtml::buildRuntimePlan(project);
+
+    ASSERT_EQ(projectPlan.entry, 0u);
+    ASSERT_EQ(projectPlan.modules.size(), 3u);
+    EXPECT_TRUE(projectPlan.modules[0].astAvailable);
+    EXPECT_TRUE(projectPlan.modules[1].astAvailable);
+    EXPECT_TRUE(projectPlan.modules[2].astAvailable);
+    EXPECT_EQ(projectPlan.modules[1].syntax, "friendly");
+    ASSERT_EQ(projectPlan.modules[1].plan.componentDefinitions.size(), 1u);
+    EXPECT_EQ(projectPlan.modules[1].plan.componentDefinitions[0].name, "Dashboard");
+    ASSERT_EQ(projectPlan.modules[1].plan.componentDefinitions[0].params.size(), 1u);
+    EXPECT_EQ(projectPlan.modules[1].plan.componentDefinitions[0].params[0], "title");
+    EXPECT_FALSE(projectPlan.modules[1].plan.componentDefinitions[0].bodyPlan.empty());
+    ASSERT_EQ(projectPlan.modules[2].plan.semantic.stores.size(), 1u);
+    EXPECT_EQ(projectPlan.modules[2].plan.semantic.stores[0], "appState");
+    ASSERT_EQ(projectPlan.modules[2].plan.semantic.state.size(), 1u);
+    EXPECT_EQ(projectPlan.modules[2].plan.semantic.state[0], "appState");
 }

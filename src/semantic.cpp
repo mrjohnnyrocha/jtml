@@ -109,13 +109,20 @@ std::string joinValues(const std::vector<std::string>& values) {
     return out.str();
 }
 
-void addImportRecord(std::set<std::tuple<std::string, std::string, std::string, bool>>& records,
+void addImportRecord(std::set<std::tuple<std::string, std::string, std::string, bool, int, int>>& records,
                      const std::string& specifier,
                      const std::string& kind,
                      const std::vector<std::string>& names,
-                     bool reExport) {
+                     bool reExport,
+                     int line,
+                     int column) {
     if (specifier.empty()) return;
-    records.insert({specifier, kind.empty() ? "side-effect" : kind, joinValues(names), reExport});
+    records.insert({specifier,
+                    kind.empty() ? "side-effect" : kind,
+                    joinValues(names),
+                    reExport,
+                    line,
+                    column});
 }
 
 std::string hexDecode(const std::string& hex) {
@@ -389,7 +396,8 @@ struct SemanticSets {
     std::set<std::string> stores;
     std::set<std::string> effects;
     std::set<std::string> imports;
-    std::set<std::tuple<std::string, std::string, std::string, bool>> importRecords;
+    std::set<std::tuple<std::string, std::string, std::string, bool, int, int>> importRecords;
+    std::set<std::tuple<std::string, std::string, std::string, bool, int>> exportRecords;
     std::set<std::string> externs;
     std::set<std::string> uiPrimitives;
     std::set<std::tuple<std::string, std::string, bool, bool, bool, bool, bool, bool, bool, bool>> uiUses;
@@ -422,10 +430,23 @@ void addImport(SemanticSets& out,
                const std::string& specifier,
                const std::string& kind,
                const std::vector<std::string>& names = {},
-               bool reExport = false) {
+               bool reExport = false,
+               int line = 0,
+               int column = 0) {
     insertSorted(out.imports, specifier);
-    addImportRecord(out.importRecords, specifier, kind, names, reExport);
+    addImportRecord(out.importRecords, specifier, kind, names, reExport, line, column);
     addEdge(out, reExport ? "module:re-export" : "module", specifier, "imports");
+}
+
+void addExport(SemanticSets& out,
+               const std::string& name,
+               const std::string& kind,
+               int line,
+               const std::string& specifier = "",
+               bool reExport = false) {
+    if (name.empty()) return;
+    out.exportRecords.insert({name, kind, specifier, reExport, line});
+    addEdge(out, "module", name, reExport ? "re-exports" : "exports");
 }
 
 void addExpressionEdges(SemanticSets& out,
@@ -919,12 +940,14 @@ bool isThemeTokenLine(const std::vector<std::string>& tokens) {
 
 void collectFriendlyUseRecord(const std::vector<std::string>& tokens,
                               SemanticSets& out,
-                              bool reExport) {
+                              bool reExport,
+                              int line = 0,
+                              int column = 0) {
     const size_t useIndex = reExport ? 1 : 0;
     if (tokens.size() <= useIndex + 1) return;
 
     if (tokens.size() == useIndex + 2) {
-        addImport(out, unquoteToken(tokens[useIndex + 1]), "side-effect", {}, reExport);
+        addImport(out, unquoteToken(tokens[useIndex + 1]), "side-effect", {}, reExport, line, column);
         return;
     }
 
@@ -959,7 +982,79 @@ void collectFriendlyUseRecord(const std::vector<std::string>& tokens,
               unquoteToken(*(from + 1)),
               destructured ? "destructured" : "named",
               names,
-              reExport);
+              reExport,
+              line,
+              column);
+    if (reExport) {
+        for (const auto& name : names) {
+            addExport(out, name, "re-export", line, unquoteToken(*(from + 1)), true);
+        }
+    }
+}
+
+std::string exportSymbolName(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) return {};
+    const std::string kind = tokens[0];
+    if (kind == "route") {
+        for (size_t i = 1; i + 1 < tokens.size(); ++i) {
+            if (tokens[i] == "as") return cleanIdentifier(tokens[i + 1]);
+        }
+        return {};
+    }
+    if (kind == "let" || kind == "const" || kind == "get" || kind == "when" ||
+        kind == "make" || kind == "store" || kind == "extern") {
+        return cleanIdentifier(tokens[1]);
+    }
+    return {};
+}
+
+void collectFriendlyExportRecord(const std::vector<std::string>& tokens,
+                                 SemanticSets& out,
+                                 int line) {
+    if (tokens.size() < 2 || tokens[1] == "use") return;
+    std::vector<std::string> stripped(tokens.begin() + 1, tokens.end());
+    const auto name = exportSymbolName(stripped);
+    if (!name.empty()) addExport(out, name, stripped[0], line);
+}
+
+void collectFriendlyDeclarationRecord(const std::vector<std::string>& tokens,
+                                      const std::string& line,
+                                      SemanticSets& out,
+                                      int lineNumber,
+                                      int column) {
+    if (tokens.empty()) return;
+    const auto second = [&]() {
+        return tokens.size() > 1 ? cleanIdentifier(tokens[1]) : std::string{};
+    };
+    const std::string head = tokens[0];
+    if (head == "store" && tokens.size() > 1) {
+        insertSorted(out.stores, second());
+    } else if (head == "css" && tokens.size() > 1 && tokens[1] == "raw") {
+        ++out.rawCssBlocks;
+    } else if (head == "extern" && tokens.size() > 1) {
+        insertSorted(out.externs, second());
+    } else if (head == "effect" && tokens.size() > 1) {
+        insertSorted(out.effects, second());
+    } else if (head == "route" && tokens.size() >= 4) {
+        insertSorted(out.routes, unquoteToken(tokens[1]) + " -> " + cleanIdentifier(tokens[3]));
+    } else if (head == "use" && tokens.size() > 1) {
+        collectFriendlyUseRecord(tokens, out, false, lineNumber, column);
+    } else if (head == "make" && tokens.size() > 1) {
+        insertSorted(out.components, second());
+    } else if ((head == "let" || head == "define") && tokens.size() > 1) {
+        const auto name = second();
+        insertSorted(out.state, name);
+        if (line.find(" fetch ") != std::string::npos ||
+            line.find("= fetch ") != std::string::npos) {
+            insertSorted(out.fetches, name);
+        }
+    } else if (head == "const" && tokens.size() > 1) {
+        insertSorted(out.constants, second());
+    } else if (head == "get" && tokens.size() > 1) {
+        insertSorted(out.derived, second());
+    } else if (head == "when" && tokens.size() > 1) {
+        insertSorted(out.actions, second());
+    }
 }
 
 void collectFriendlySourceFallback(const std::string& source, SemanticSets& out) {
@@ -967,7 +1062,9 @@ void collectFriendlySourceFallback(const std::string& source, SemanticSets& out)
     std::string raw;
     bool insideTheme = false;
     int themeIndent = -1;
+    int lineNumber = 0;
     while (std::getline(input, raw)) {
+        ++lineNumber;
         std::string line = trimCopy(stripInlineComment(raw));
         if (line.empty() || line == "jtml 2" || line == "jtl 1") continue;
         auto tokens = words(line);
@@ -988,32 +1085,19 @@ void collectFriendlySourceFallback(const std::string& source, SemanticSets& out)
             ++out.authorThemeTokenCount;
             continue;
         }
-        const auto second = [&]() {
-            return tokens.size() > 1 ? cleanIdentifier(tokens[1]) : std::string{};
-        };
-
+        if (indent != 0) continue;
         if (head == "export" && tokens.size() > 1 && tokens[1] == "use") {
-            collectFriendlyUseRecord(tokens, out, true);
-        } else if (head == "store" && tokens.size() > 1) {
-            insertSorted(out.stores, second());
-        } else if (head == "css" && tokens.size() > 1 && tokens[1] == "raw") {
-            ++out.rawCssBlocks;
-        } else if (head == "extern" && tokens.size() > 1) {
-            insertSorted(out.externs, second());
-        } else if (head == "effect" && tokens.size() > 1) {
-            insertSorted(out.effects, second());
-        } else if (head == "route" && tokens.size() >= 4) {
-            insertSorted(out.routes, unquoteToken(tokens[1]) + " -> " + cleanIdentifier(tokens[3]));
-        } else if (head == "use" && tokens.size() > 1) {
-            collectFriendlyUseRecord(tokens, out, false);
-        } else if (head == "make" && tokens.size() > 1) {
-            insertSorted(out.components, second());
-        } else if ((head == "let" || head == "define") && tokens.size() > 1) {
-            const auto name = second();
-            if (line.find(" fetch ") != std::string::npos ||
-                line.find("= fetch ") != std::string::npos) {
-                insertSorted(out.fetches, name);
-            }
+            collectFriendlyUseRecord(tokens, out, true, lineNumber, indent + 1);
+        } else if (head == "export") {
+            collectFriendlyExportRecord(tokens, out, lineNumber);
+            std::vector<std::string> stripped(tokens.begin() + 1, tokens.end());
+            const auto exportPos = line.find("export");
+            const std::string strippedLine = exportPos == std::string::npos
+                ? line
+                : trimCopy(line.substr(exportPos + std::string("export").size()));
+            collectFriendlyDeclarationRecord(stripped, strippedLine, out, lineNumber, indent + 1);
+        } else {
+            collectFriendlyDeclarationRecord(tokens, line, out, lineNumber, indent + 1);
         }
     }
 }
@@ -1099,7 +1183,7 @@ std::vector<SemanticFetch> fetchesToVector(
 }
 
 std::vector<SemanticImport> importsToVector(
-    const std::set<std::tuple<std::string, std::string, std::string, bool>>& values) {
+    const std::set<std::tuple<std::string, std::string, std::string, bool, int, int>>& values) {
     std::set<std::string> specifiersWithFriendlyRecords;
     for (const auto& item : values) {
         if (std::get<1>(item) != "compatibility") {
@@ -1107,7 +1191,7 @@ std::vector<SemanticImport> importsToVector(
         }
     }
 
-    std::set<std::tuple<std::string, std::string, std::string, bool>> emitted;
+    std::set<std::tuple<std::string, std::string, std::string, bool, int, int>> emitted;
     std::vector<SemanticImport> imports;
     for (const auto& item : values) {
         const auto& specifier = std::get<0>(item);
@@ -1121,10 +1205,27 @@ std::vector<SemanticImport> importsToVector(
             kind,
             splitCommaList(std::get<2>(item)),
             std::get<3>(item),
+            std::get<4>(item),
+            std::get<5>(item),
         };
         imports.push_back(std::move(candidate));
     }
     return imports;
+}
+
+std::vector<SemanticExport> exportsToVector(
+    const std::set<std::tuple<std::string, std::string, std::string, bool, int>>& values) {
+    std::vector<SemanticExport> exports;
+    for (const auto& item : values) {
+        exports.push_back({
+            std::get<0>(item),
+            std::get<1>(item),
+            std::get<2>(item),
+            std::get<3>(item),
+            std::get<4>(item),
+        });
+    }
+    return exports;
 }
 
 std::vector<SemanticComponentDefinition> componentDefinitionsToVector(
@@ -1193,6 +1294,7 @@ SemanticProgram analyzeSemanticProgram(
     semantic.effects = toVector(sets.effects);
     semantic.imports = toVector(sets.imports);
     semantic.importRecords = importsToVector(sets.importRecords);
+    semantic.exportRecords = exportsToVector(sets.exportRecords);
     semantic.externs = toVector(sets.externs);
     semantic.uiPrimitives = toVector(sets.uiPrimitives);
     semantic.uiUses = uiUsesToVector(sets.uiUses);

@@ -370,9 +370,10 @@ scripts/verify_all.sh
 toolkit checks, stable/first-slice/experimental feature tiers, required
 verification gates, and the honest platform status: JTML is enterprise-relevant
 but not enterprise-ready yet. Treat `scripts/verify_all.sh` as the local
-predeploy gate; direct non-expanded component execution, browser-local parity,
-Studio content externalization, and internal module boundaries remain the next
-architecture hardening targets.
+predeploy gate; first-slice direct component body-plan execution now exists,
+while full component parity, browser-local parity, Studio content
+externalization, and internal module boundaries remain the next architecture
+hardening targets.
 
 The future public site content is in `site/`, including `site/tools.html` for
 the editor, runner, tutorial, studio, tester, and release-tooling overview.

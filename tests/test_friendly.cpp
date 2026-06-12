@@ -1885,8 +1885,13 @@ TEST(FriendlySyntax, ComponentExpansionAddsInstanceMarker) {
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("\"componentDefinitions\":[{\"name\":\"Badge\",\"params\":[\"label\"]"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("\"bodyPlan\":[{\"indent\":0,\"parentIndex\":-1,\"kind\":\"template\",\"head\":\"text\""),
-              std::string::npos) << html;
+    EXPECT_NE(html.find("\"bodyPlan\":[{"), std::string::npos) << html;
+    EXPECT_NE(html.find("function renderDirectComponent(instance)"), std::string::npos) << html;
+    EXPECT_NE(html.find("directComponentExecution: true"), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-direct-component-action"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"kind\":\"template\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"name\":\"text\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"parentIndex\":-1"), std::string::npos) << html;
     EXPECT_NE(html.find("\"renderRoot\":true"), std::string::npos) << html;
     EXPECT_NE(html.find("\"componentInstances\":[{\"id\":\"Badge_"), std::string::npos) << html;
     EXPECT_NE(html.find("\"component\":\"Badge\""), std::string::npos) << html;
@@ -1917,6 +1922,36 @@ TEST(FriendlySyntax, TwoComponentCallsGetDistinctInstanceIds) {
     auto id1 = classic.substr(pos1, 40);
     auto id2 = classic.substr(pos2, 40);
     EXPECT_NE(id1, id2);
+}
+
+TEST(FriendlySyntax, DirectComponentBodyPlanRendererCoversConditionalsAndLoops) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make ListCard title\n"
+        "  let visible = true\n"
+        "  let items = [\"A\", \"B\"]\n"
+        "  card\n"
+        "    h2 title\n"
+        "    if visible\n"
+        "      for item in items\n"
+        "        text item\n"
+        "page\n"
+        "  ListCard \"Names\"\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("if (head === 'if')"), std::string::npos) << html;
+    EXPECT_NE(html.find("if (head === 'for')"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"text\":\"if visible\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"text\":\"for item in items\""), std::string::npos) << html;
 }
 
 TEST(FriendlySyntax, ComponentMetadataListsIsolatedLocals) {
@@ -2017,12 +2052,18 @@ TEST(FriendlySyntax, InterpreterRegistersComponentInstancesAndLocalState) {
     EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][0]["parentIndex"], -1);
     EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][1]["kind"], "action");
     EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][1]["parentIndex"], -1);
+    ASSERT_EQ(state["componentDefinitions"][0]["bodyPlan"][1]["childIndices"].size(), 1);
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][1]["childIndices"][0], 2);
     EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][2]["kind"], "assignment");
     EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][2]["parentIndex"], 1);
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][2]["name"], "count");
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][2]["operator"], "+=");
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][2]["expression"], "1");
     EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][3]["kind"], "template");
     EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][3]["parentIndex"], -1);
     EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][3]["renderRoot"], true);
-    ASSERT_GE(state["componentDefinitions"][0]["runtimePlan"]["bodyPlan"].size(), 4);
+    EXPECT_EQ(state["componentDefinitions"][0]["bodyPlan"][3]["expression"], "");
+    ASSERT_GE(state["componentDefinitions"][0]["runtimePlan"]["bodyPlan"].size(), 5);
     EXPECT_EQ(state["componentDefinitions"][0]["runtimePlan"]["bodyPlan"][4]["text"], "show count");
     EXPECT_EQ(state["componentDefinitions"][0]["runtimePlan"]["bodyPlan"][4]["parentIndex"], 3);
     EXPECT_EQ(state["componentDefinitions"][0]["rootTemplateNodeCount"], 1);

@@ -147,8 +147,15 @@ missing exports and duplicate exported names are diagnostics, and non-exported
 helpers are not pulled into the importing file. Use side-effect imports only
 for setup modules that are meant to evaluate all top-level declarations.
 Use `export use Card from "./card.jtml"` for small barrel modules that
-re-export public declarations. Remaining module work is deeper per-file
-semantic ownership and imported store identity polish.
+re-export public declarations. Barrel imports now resolve to the ultimate
+exported symbol kind in semantic tooling, and malformed re-export chains have
+dedicated project issue codes. Runtime tooling now exposes a module-scoped
+`runtimeProjectPlan` from retained per-file ASTs, and browser-target builds
+embed that plan under the client manifest `project` key. Browser-local startup
+now merges that project plan into the active runtime manifest, which means
+module-owned component definitions, fetches, routes, actions, and state are
+available to the production target. Full direct component-template execution
+from the module plans remains the next hardening step.
 
 ## Fetch
 

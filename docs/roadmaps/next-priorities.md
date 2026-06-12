@@ -318,9 +318,94 @@ Implementation slices:
    browser-local manifests, and live `/api/component-definitions`.
    Next: use that body plan for direct non-expanded component instance
    execution and live/browser parity checks.
-11. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
+11. ✅ SemanticProject contract cleanup: module imports now use explicit
+   `InvalidSemanticModuleId` for unresolved edges, retain attempted
+   `resolvedPath`, and resolve through the shared `resolveJtmlModulePath()`
+   module resolver instead of a simplified graph-local path joiner.
+12. ✅ RuntimePlan JSON serializer split: core owns
+   `jtml::runtimePlanToJson()` and `jtml::runtimePlanBodyPlanToJson()`; CLI
+   explain and browser manifest body-plan emission now consume the shared
+   serializer instead of duplicating JSON shapes.
+13. ✅ Per-file SemanticProject ownership slice: `SemanticProject` now accepts
+   `SemanticModuleSource` records, and `jtml explain --json` builds project
+   imports from collected source files so nested imports are attributed to the
+   module that authored them.
+14. ✅ Semantic project export/API slice: `SemanticProgram` captures top-level
+   `export` and `export use` records, `SemanticProject` attaches those exports
+   to the owning module, and project graph JSON is emitted by
+   `jtml::semanticProjectToJson()` from core instead of `cmd_basic.cpp`.
+15. ✅ RuntimePlan typed body graph slice: component body nodes now expose
+   parent and child edges, source head/name/text, assignment operators, and
+   expression payloads in the shared RuntimePlan JSON and live interpreter
+   component-definition state.
+16. ✅ Per-file semantic ownership slice: `SemanticProject` modules now retain
+   their own semantic summaries, exported declarations populate the same
+   module-local state/action/component/store buckets, and `explain --json`
+   exposes those summaries beside imports and exports.
+17. ✅ Semantic project diagnostics slice: `analyzeSemanticProject()` reports
+   unresolved imports and missing named exports from the core module graph, and
+   project JSON exposes those issues for `explain`, Studio, and future LSP use.
+18. ✅ Human-readable project explain slice: default `jtml explain` now reports
+   semantic project modules, importer-owned imports, exported declarations,
+   per-module semantic summaries, and project diagnostics so users can debug
+   modular apps without reaching for JSON first.
+19. ✅ Source-first import span slice: `SemanticImport` records now retain
+   `sourceLine` / `sourceColumn`, `SemanticProject` imports copy those
+   coordinates into their span, and project graph JSON exposes the importer
+   location for future diagnostics, Studio, and LSP use.
+20. ✅ Per-file module IR slice: `SemanticModuleSource` and `SemanticProject`
+   now retain a typed structural IR summary for each module that can be parsed
+   in isolation, including syntax mode, top-level AST node order, typed node
+   counts, total node count, and parse errors. `jtml explain` exposes the same
+   summary in text and JSON.
+21. ✅ Import-aware isolated parse slice: explain-time module IR now retries
+   Friendly modules with explicit imported-component stubs and reports syntax
+   as `friendly+import-stubs`, allowing entry files with imported route or
+   component references to produce typed structure without whole-graph
+   compatibility expansion.
+22. ✅ Retain full per-file typed AST ownership in `SemanticModuleSource`:
+   module sources and project modules now carry a cloned typed AST record beside
+   their compact IR summary. The record stays copyable through shared ownership,
+   keeps the `friendly+import-stubs` marker when synthetic import stubs are used,
+   and gives future diagnostics/linker/runtime passes real per-file syntax
+   ownership instead of source-only rescans.
+23. ✅ Imported symbol identity slice: `SemanticModuleImport` now records
+   resolved imported symbols and export kinds after module linking, and
+   `jtml explain` / `jtml explain --json` expose that `Dashboard` is a `make`
+   component while `appState` is a `store`.
+24. ✅ Re-export identity slice: project import identity now follows
+   `export use ... from ...` barrel modules to the ultimate exported
+   module/kind, so a `Card` imported through `components/index.jtml` still
+   resolves as `make Card` from the component implementation file.
+25. ✅ Re-export diagnostics slice: `analyzeSemanticProject()` now reports
+   unresolved re-export targets and re-export cycles as semantic project
+   issues instead of letting malformed barrel modules collapse into anonymous
+   missing-symbol behavior.
+26. ✅ First retained-AST runtime slice: `RuntimeProjectPlan` now consumes
+   `SemanticProject` retained per-file ASTs and emits module-scoped runtime
+   plans through `jtml explain --json`, preserving the old linked `runtimePlan`
+   while giving backends a module-owned execution surface.
+27. ✅ Browser manifest project-plan slice: browser-target transpile/build now
+   embeds the `RuntimeProjectPlan` under the client manifest `project` key,
+   while preserving existing linked-manifest fields for runtime compatibility.
+28. ✅ Browser runtime project-consumption slice: browser-local startup now
+   merges the embedded semantic project plan into the active runtime manifest.
+   Module-owned component definitions can replace linked compatibility
+   definitions, while state/actions/fetches/routes fill missing runtime
+   surface area conservatively.
+29. ✅ First direct component body-plan execution slice: browser-local
+   component instances now render common templates from
+   `RuntimePlan.componentDefinitions[].bodyPlan`, initialize per-instance local
+   state, recompute derived values, render simple `if` and `for` nodes, execute
+   simple local assignment actions, and re-render the owning instance. This is
+   the first real break from expanded compatibility DOM as the component render
+   surface.
+30. Complete direct component parity: add body-plan `else`, slots, nested
+   component calls, semantic UI modifiers/attributes, action arguments, and the
+   matching live-interpreter path over the same body-plan contract.
+31. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
    same catalog endpoint pattern.
-12. Add security, compatibility, deprecation, contribution, benchmark, and
+32. Add security, compatibility, deprecation, contribution, benchmark, and
    release-policy docs once the internal contracts stop moving every slice.
 
 ## Decision

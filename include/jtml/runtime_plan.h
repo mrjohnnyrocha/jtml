@@ -2,6 +2,7 @@
 
 #include "jtml/ast.h"
 #include "jtml/semantic.h"
+#include "jtml/semantic/module_graph.h"
 
 #include <memory>
 #include <string>
@@ -32,10 +33,13 @@ struct RuntimePlanAction {
 struct RuntimePlanComponentBodyNode {
     int indent = 0;
     int parentIndex = -1;
+    std::vector<int> childIndices;
     std::string kind;
     std::string head;
     std::string name;
     std::string text;
+    std::string operatorToken;
+    std::string expression;
     bool renderRoot = false;
 };
 
@@ -78,9 +82,25 @@ struct RuntimePlan {
     std::vector<RuntimePlanComponentInstance> componentInstances;
 };
 
+struct RuntimeModulePlan {
+    SemanticModuleId id = InvalidSemanticModuleId;
+    std::string path;
+    bool astAvailable = false;
+    std::string syntax;
+    RuntimePlan plan;
+};
+
+struct RuntimeProjectPlan {
+    SemanticModuleId entry = InvalidSemanticModuleId;
+    RuntimePlan linkedPlan;
+    std::vector<RuntimeModulePlan> modules;
+};
+
 RuntimePlan buildRuntimePlan(const std::vector<std::unique_ptr<ASTNode>>& program);
 
 RuntimePlan buildRuntimePlan(const std::vector<std::unique_ptr<ASTNode>>& program,
                              const SemanticProgram& semantic);
+
+RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project);
 
 } // namespace jtml

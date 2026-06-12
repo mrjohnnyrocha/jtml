@@ -1,5 +1,6 @@
 #include "jtml/client_manifest_emitter.h"
 #include "jtml/expression_source.h"
+#include "jtml/runtime_plan_json.h"
 
 #include <sstream>
 
@@ -42,23 +43,23 @@ std::string clientStatementsJson(const std::vector<RuntimePlanStatement>& nodes)
     return out.str();
 }
 
-std::string componentBodyPlanJson(const std::vector<RuntimePlanComponentBodyNode>& nodes) {
+std::string wrapClientManifestJson(const std::string& manifestJson) {
     std::ostringstream out;
-    out << '[';
-    for (size_t i = 0; i < nodes.size(); ++i) {
-        if (i) out << ',';
-        const auto& node = nodes[i];
-        out << "{\"indent\":" << node.indent
-            << ",\"parentIndex\":" << node.parentIndex
-            << ",\"kind\":" << jsonString(node.kind)
-            << ",\"head\":" << jsonString(node.head)
-            << ",\"name\":" << jsonString(node.name)
-            << ",\"text\":" << jsonString(node.text)
-            << ",\"renderRoot\":" << (node.renderRoot ? "true" : "false")
-            << "}";
-    }
-    out << ']';
+    out << "<script type=\"application/json\" id=\"__jtml_client_manifest\">"
+        << manifestJson
+        << "</script>\n";
     return out.str();
+}
+
+std::string appendProjectManifest(std::string manifestJson, const RuntimeProjectPlan& projectPlan) {
+    if (manifestJson.empty() || manifestJson.back() != '}') {
+        return manifestJson;
+    }
+    manifestJson.pop_back();
+    manifestJson += ",\"project\":";
+    manifestJson += runtimeProjectPlanToJson(projectPlan).dump();
+    manifestJson += '}';
+    return manifestJson;
 }
 
 } // namespace
@@ -163,7 +164,7 @@ std::string emitClientManifestScript(const RuntimePlan& plan) {
                              << ",\"localEffects\":" << stringVectorJson(definition.localEffects)
                              << ",\"eventBindings\":" << stringVectorJson(definition.eventBindings)
                              << ",\"bodyHex\":" << jsonString(definition.bodyHex)
-                             << ",\"bodyPlan\":" << componentBodyPlanJson(definition.bodyPlan)
+                             << ",\"bodyPlan\":" << runtimePlanBodyPlanToJson(definition.bodyPlan).dump()
                              << ",\"hasSlot\":" << (definition.hasSlot ? "true" : "false")
                              << ",\"bodyNodeCount\":" << definition.bodyNodeCount
                              << ",\"rootTemplateNodeCount\":" << definition.rootTemplateNodeCount
@@ -217,12 +218,25 @@ std::string emitClientManifestScript(const RuntimePlan& plan) {
     json << derived.str() << routes.str() << fetches.str()
          << componentDefinitions.str() << componentInstances.str() << actions.str();
 
-    std::ostringstream out;
-    out << "<script type=\"application/json\" id=\"__jtml_client_manifest\">"
-        << json.str()
-        << "</script>\n";
-    return out.str();
+    return wrapClientManifestJson(json.str());
 }
 
+std::string emitClientManifestScript(const RuntimeProjectPlan& plan) {
+    std::string manifestJson;
+    {
+        const auto script = emitClientManifestScript(plan.linkedPlan);
+        const std::string open = "<script type=\"application/json\" id=\"__jtml_client_manifest\">";
+        const std::string close = "</script>\n";
+        const auto start = script.find(open);
+        const auto end = script.rfind(close);
+        if (start != std::string::npos && end != std::string::npos && end >= start + open.size()) {
+            manifestJson = script.substr(start + open.size(), end - (start + open.size()));
+        }
+    }
+    if (manifestJson.empty()) {
+        return emitClientManifestScript(plan.linkedPlan);
+    }
+    return wrapClientManifestJson(appendProjectManifest(std::move(manifestJson), plan));
+}
 
 } // namespace jtml

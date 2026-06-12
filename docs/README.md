@@ -108,7 +108,10 @@ prose blocks.
 JTML is enterprise-relevant but not enterprise-ready yet. The enterprise lane
 is tracked through `ROADMAP.md`, `roadmaps/next-priorities.md`, and
 `jtml doctor --json`; the priority is reducing compatibility bridges and
-monolithic implementation debt while strengthening semantic IR ownership.
+monolithic implementation debt while strengthening semantic IR ownership. The
+current component lane has first-slice browser-local body-plan execution; full
+component parity is still planned before expanded compatibility output can be
+treated as optional.
 
 ## Authoring Policy
 

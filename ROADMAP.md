@@ -173,7 +173,10 @@ The current focus is the semantic-core transition:
   slice: component definitions now carry local state/actions/derived/effects,
   event bindings, slot/body shape, and a `runtimePlan`; component instances
   expose their owning runtime environment and validate actions against that
-  semantic definition before dispatch.
+  semantic definition before dispatch. ✅ Typed body-plan slice: runtime
+  component body nodes now expose child indices, assignment operators, and
+  expression payloads through the shared RuntimePlan JSON and live interpreter
+  component-definition state.
 - P1 module graph hardening: ✅ Relative imports now resolve from the directory
   of each importing file across nested Friendly graphs, and the shared loader is
   exercised by `check`, `build --target browser`, `explain --json`, and source
@@ -188,14 +191,69 @@ The current focus is the semantic-core transition:
   of `cli/cmd_basic.cpp` into `cli/package_manager.*`. ✅ First semantic
   ownership slice: `jtml explain --json` now reports structured
   `semantic.importRecords` plus `semantic.moduleFiles` sourced from the shared
-  loader. Remaining module work: full per-file AST/IR ownership and imported
-  store identity polish.
+  loader. ✅ Project contract slice: unresolved import edges use an explicit
+  invalid module id, attempted `resolvedPath` is retained, project graph JSON is
+  core-owned, and each semantic module now exposes public `exportRecords`.
+  ✅ Per-file semantic ownership slice: `SemanticProject` modules now retain a
+  compact `SemanticProgram` summary for their own file, exported declarations
+  contribute to the same module-level semantic buckets, and `explain --json`
+  exposes those per-module summaries. ✅ Project diagnostics slice:
+  `analyzeSemanticProject` now reports unresolved imports and missing named
+  exports from the core module graph, and `explain --json` exposes those
+  project issues. ✅ Human explain slice: default `jtml explain` now reports
+  project modules, importer-owned imports, exported declarations, per-module
+  semantic summaries, and semantic project issues so module debugging is not
+  JSON-only. ✅ Source span slice: semantic import records now retain
+  `sourceLine` / `sourceColumn`, project imports copy those coordinates into
+  their span, and JSON project graphs expose the importer location for future
+  source-first diagnostics. ✅ Per-file IR slice: `SemanticModuleSource` and
+  `SemanticProject` now retain a typed structural IR summary for each module
+  when it can be parsed in isolation, and project JSON/default explain expose
+  top-level AST node order, typed node counts, syntax mode, and parse errors.
+  ✅ Import-aware isolated parse slice: explain-time per-file IR now retries
+  Friendly modules with explicit imported-component stubs and marks the syntax
+  as `friendly+import-stubs`, so route/component entry files can expose typed
+  structure without falling back to whole-graph compatibility expansion.
+  ✅ Per-file AST ownership slice: `SemanticModuleSource` and `SemanticProject`
+  now retain copyable cloned typed AST records beside their compact IR summaries,
+  preserving the `friendly+import-stubs` marker where needed for honest tooling.
+  ✅ Imported symbol identity slice: project imports now expose resolved imported
+  symbols with their export kinds, so explain/JSON can say `appState` resolves
+  to a `store` and `Dashboard` resolves to a `make` component. ✅ Re-export
+  identity slice: barrel modules such as `export use Card from "./card.jtml"`
+  now resolve imported symbol identity to the ultimate exported module/kind
+  instead of stopping at `re-export`. ✅ Re-export diagnostics slice:
+  `analyzeSemanticProject` now distinguishes unresolved re-export targets and
+  re-export cycles from plain missing imports, so semantic tooling can report
+  bad barrel chains without inventing source scans. Remaining module work: use
+  retained per-file ASTs in linker/runtime passes, and add recoverable project
+  loading for editor/explain flows that want JSON even when the filesystem
+  loader rejects an import cycle early. ✅ First retained-AST runtime slice:
+  `RuntimeProjectPlan` now builds module-scoped runtime plans from
+  `SemanticProject` retained per-file ASTs, and `explain --json` exposes
+  `runtimeProjectPlan` beside the legacy linked `runtimePlan`. ✅ Browser
+  manifest project-plan slice: `jtml transpile/build --target browser` now
+  attaches the same `RuntimeProjectPlan` to the client manifest under a
+  backward-compatible `project` key, giving browser-local backends a
+  module-owned runtime surface while preserving current linked manifest fields.
+  ✅ Browser runtime project-consumption slice: browser-local startup now
+  merges the embedded semantic project plan into its active manifest, so
+  module-owned component definitions, fetches, routes, actions, and state are
+  visible to production execution instead of being explain-only metadata.
 - P1 repo modularization skeleton: ✅ Production-grade destination folders now
   exist for `syntax`, `semantic`, `runtime`, `emit`, `tooling`, `interop`, CLI
   command/service/studio ownership, and test fixtures. Current flat files move
   into those buckets incrementally after tests cover each boundary.
 - P2 component instances: keep the existing runtime-plan bridge stable while
-  moving beyond source expansion as the semantic truth.
+  moving beyond source expansion as the semantic truth. ✅ First browser-local
+  direct body-plan execution slice: component instances can now render common
+  templates from `RuntimePlan.componentDefinitions[].bodyPlan`, initialize
+  per-instance state from planned `let` nodes, recompute planned `get` nodes,
+  render simple `if` and `for` body-plan nodes, run simple local assignment
+  actions, and re-render the owning instance without depending on the expanded
+  compatibility DOM as the rendered surface. Remaining parity work: `else`,
+  slots, nested component calls, richer attribute/modifier lowering, action
+  arguments, and matching live-interpreter execution over the same body plan.
 - P3 semantic styling: ✅ First slice. `theme`, UI primitives, utility
   modifiers, generated stylesheet, semantic primitive/theme counts, the
   structured `jtml explain --json` `semantic.ui` contract, and raw CSS escape
@@ -273,3 +331,20 @@ hardened, or planned.
   `runtimePlan.componentDefinitions[].bodyPlan`, giving direct component
   execution, Studio, LSP, and parity tooling a semantic component-body surface
   instead of requiring each backend to parse encoded source strings.
+- SemanticProject contract cleanup. ✅ — module graph records now use an
+  explicit `InvalidSemanticModuleId` sentinel instead of letting unresolved
+  imports default to entry module `0`, expose the attempted `resolvedPath`, and
+  reuse the same `resolveJtmlModulePath()` resolver as the loader for relative
+  and bare-package paths. The graph is still a linked-program provenance view;
+  per-file AST ownership remains the next project-graph milestone.
+- RuntimePlan JSON serializer split. ✅ — the `RuntimePlan` JSON contract moved
+  into `src/runtime_plan_json.cpp`; `jtml explain --json` and browser manifest
+  body-plan emission now consume the shared core serializer instead of owning
+  duplicate command/backend serializers.
+- Per-file SemanticProject ownership slice. ✅ — `SemanticProject` now has a
+  `SemanticModuleSource` API so module imports can be attached to the file that
+  authored them instead of always being attributed to the entrypoint.
+  `jtml explain --json` now builds its project graph from collected source
+  files and reports nested importer/resolved edges for real multi-file apps.
+  This is still not a full linker with retained per-file ASTs, but it closes
+  the misleading "all imports belong to entry" gap.

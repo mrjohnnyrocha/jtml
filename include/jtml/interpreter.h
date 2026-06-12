@@ -143,10 +143,13 @@ private:
         struct BodyPlanNode {
             int indent = 0;
             int parentIndex = -1;
+            std::vector<int> childIndices;
             std::string kind;
             std::string head;
             std::string name;
             std::string text;
+            std::string operatorToken;
+            std::string expression;
             bool renderRoot = false;
         };
         std::vector<BodyPlanNode> bodyPlan;

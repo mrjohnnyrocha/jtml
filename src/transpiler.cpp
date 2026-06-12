@@ -35,6 +35,10 @@ void JtmlTranspiler::setBrowserLocalRuntime(bool enabled) {
     browserLocalRuntime = enabled;
 }
 
+void JtmlTranspiler::setRuntimeProjectPlan(const jtml::RuntimeProjectPlan& plan) {
+    runtimeProjectPlan = plan;
+}
+
 std::string JtmlTranspiler::transpile(const std::vector<std::unique_ptr<ASTNode>>& program) {
     uniqueElemId = 0;
     uniqueVarId  = 0;
@@ -406,6 +410,9 @@ std::string JtmlTranspiler::transpileChildren(const std::vector<std::unique_ptr<
 }
 
 std::string JtmlTranspiler::generateClientManifest(const std::vector<std::unique_ptr<ASTNode>>& program) {
+    if (runtimeProjectPlan) {
+        return jtml::emitClientManifestScript(*runtimeProjectPlan);
+    }
     return jtml::emitClientManifestScript(program);
 }
 

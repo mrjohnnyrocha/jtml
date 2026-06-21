@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <iostream>
 #include <atomic>
+#include <exception>
 
 namespace JTMLInterpreter {
 
@@ -56,6 +57,10 @@ namespace JTMLInterpreter {
                 wsServer.run();
             } catch (const websocketpp::exception& e) {
                 std::cerr << "[WebSocket] Server error: " << e.what() << "\n";
+            } catch (const std::exception& e) {
+                std::cerr << "[WebSocket] Server error: " << e.what() << "\n";
+            } catch (...) {
+                std::cerr << "[WebSocket] Server error: unknown exception\n";
             }
             isRunning = false;
         }
@@ -69,6 +74,10 @@ namespace JTMLInterpreter {
                 wsServer.stop();
             } catch (const websocketpp::exception& e) {
                 std::cerr << "[WebSocket] Stop failed: " << e.what() << "\n";
+            } catch (const std::exception& e) {
+                std::cerr << "[WebSocket] Stop failed: " << e.what() << "\n";
+            } catch (...) {
+                std::cerr << "[WebSocket] Stop failed: unknown exception\n";
             }
         }
 

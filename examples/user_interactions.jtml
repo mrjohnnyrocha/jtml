@@ -1,21 +1,33 @@
 jtml 2
+
 let user = { "name": "Alice", "hoverCount": 0 }
 let userInput = ""
 
 when setUserName newName
-  let user["name"] = newName
+  userInput = newName
 
 when applyName
-  let user["name"] = "j"
+  user["name"] = userInput
 
 when incrementHover
-  let user["hoverCount"] = user["hoverCount"] + 1
+  user["hoverCount"] = user["hoverCount"] + 1
+
 get userClicksSquare = user["hoverCount"] * 2
+get userHoverCount = user["hoverCount"]
+get userName = user["name"]
 
 box class "app-container"
-  show "Current user: " + user["name"]
+  box class "current-user"
+    text ("Current user: " + userName)
+
   input "Enter new name" id "nameInput" input setUserName
+
   button id "applyBtn" click applyName
     show "Apply Name"
+
   box class "hover-area" id "hoverDiv" hover incrementHover
-    show (("Hover over me! Hover count: " + user["hoverCount"] + " and square of it: ") + userClicksSquare)
+    text (("Hover over me! Hover count: " + userHoverCount + " and square of it: ") + userClicksSquare)
+
+style
+  .current-user
+    color: blue

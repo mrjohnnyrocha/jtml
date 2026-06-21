@@ -13,6 +13,7 @@
 #include "jtml/value.h"  // so we can reference JTML::VarValue, ValueVariant, DictType
 #include "jtml/function.h"
 #include "jtml/renderer.h"
+#include "jtml/semantic/module_graph.h"
 #include "jtml/websocket_server.h"
 #include <unordered_map>
 #include <unordered_set>
@@ -119,39 +120,58 @@ private:
 
     std::unordered_map<std::string, std::shared_ptr<ClassDeclarationNode>> classDeclarations;
 
+    struct BodyPlanNode {
+        jtml::SemanticModuleId definitionModule = jtml::InvalidSemanticModuleId;
+        int indent = 0;
+        int parentIndex = -1;
+        std::vector<int> childIndices;
+        std::string kind;
+        std::string head;
+        std::string name;
+        std::string text;
+        std::string operatorToken;
+        std::string expression;
+        std::string keyExpression;
+        bool renderRoot = false;
+    };
+
+    struct RuntimeComponentEventHandler {
+        std::string name;
+        nlohmann::json args = nlohmann::json::array();
+    };
+
     struct RuntimeComponentInstance {
+        jtml::SemanticModuleId moduleId = jtml::InvalidSemanticModuleId;
+        jtml::SemanticModuleId definitionModule = jtml::InvalidSemanticModuleId;
         std::string id;
+        std::string parentId;
         std::string component;
         std::string role;
         int sourceLine = 0;
         JTML::InstanceID instanceID = 0;
         std::map<std::string, std::string> params;
         std::map<std::string, std::string> locals;
+        std::map<std::string, RuntimeComponentEventHandler> eventHandlers;
+        std::vector<BodyPlanNode> slotPlan;
         std::shared_ptr<JTML::Environment> environment;
         bool runtimeReady = false;
         std::vector<std::string> stateNames;
         std::vector<std::string> derivedNames;
         std::vector<std::string> actionNames;
         std::vector<std::string> effectNames;
+        std::size_t lastSeenRenderGeneration = 0;
     };
 
     struct RuntimeComponentDefinition {
+        jtml::SemanticModuleId moduleId = jtml::InvalidSemanticModuleId;
         std::string name;
         int sourceLine = 0;
         std::vector<std::string> params;
+        std::vector<std::string> emits;
+        std::map<std::string, int> emitArity;
+        std::map<std::string, std::vector<std::string>> emitPayloads;
+        std::map<std::string, std::vector<std::string>> emitPayloadTypes;
         std::string body;
-        struct BodyPlanNode {
-            int indent = 0;
-            int parentIndex = -1;
-            std::vector<int> childIndices;
-            std::string kind;
-            std::string head;
-            std::string name;
-            std::string text;
-            std::string operatorToken;
-            std::string expression;
-            bool renderRoot = false;
-        };
         std::vector<BodyPlanNode> bodyPlan;
         std::vector<std::string> localState;
         std::vector<std::string> localDerived;
@@ -166,6 +186,8 @@ private:
 
     std::vector<RuntimeComponentInstance> componentInstances;
     std::vector<RuntimeComponentDefinition> componentDefinitions;
+    std::unordered_map<std::string, RuntimeComponentInstance> dynamicComponentInstances;
+    std::size_t componentRenderGeneration = 0;
 
     // Function Execution
     std::shared_ptr<JTML::VarValue> executeFunction(
@@ -214,6 +236,10 @@ private:
     void collectComponentDefinitions(const ASTNode& node, std::vector<RuntimeComponentDefinition>& out);
     void attachComponentEnvironment(RuntimeComponentInstance& instance);
     const RuntimeComponentDefinition* findComponentDefinition(const std::string& name) const;
+    const RuntimeComponentDefinition* findComponentDefinition(
+        const std::string& name,
+        jtml::SemanticModuleId preferredModule,
+        jtml::SemanticModuleId fallbackModule) const;
     RuntimeComponentInstance* findComponentInstance(const std::string& id);
     RuntimeComponentInstance* findComponentInstanceForElement(const JtmlElementNode& elem);
     std::shared_ptr<JTML::Environment> environmentForInstance(JTML::InstanceID instanceID) const;

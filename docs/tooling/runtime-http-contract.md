@@ -21,6 +21,7 @@ Returns the CLI version and the runtime contract.
       "state": "/api/state",
       "components": "/api/components",
       "componentDefinitions": "/api/component-definitions",
+      "renderedComponents": "/api/rendered-components",
       "runtime": "/api/runtime",
       "event": "/api/event",
       "componentAction": "/api/component-action"
@@ -74,8 +75,9 @@ Values are serialized as JSON when possible.
 
 ### `GET /api/runtime`
 
-Returns `contract`, `bindings`, and `state` in one response. Use this for IDEs,
-test runners, previews, and framework hosts that want a single snapshot.
+Returns `contract`, `bindings`, `state`, `renderedComponents`, and component
+definitions in one response. Use this for IDEs, test runners, previews, and
+framework hosts that want a single snapshot.
 
 ### `GET /api/components`
 
@@ -127,6 +129,7 @@ compatibility-expanded DOM.
   "ok": true,
   "componentDefinitions": [
     {
+      "moduleId": 0,
       "name": "Counter",
       "sourceLine": 2,
       "params": ["label"],
@@ -140,6 +143,7 @@ compatibility-expanded DOM.
       "eventBindings": ["add"],
       "runtimePlan": {
         "mode": "semantic-instance",
+        "moduleId": 0,
         "ownsEnvironment": true,
         "state": ["count"],
         "actions": ["add"],
@@ -148,9 +152,59 @@ compatibility-expanded DOM.
         "bodyNodeCount": 4,
         "rootTemplateNodeCount": 1,
         "slotCount": 0,
-        "hasSlot": false
+        "hasSlot": false,
+        "bodyPlan": [
+          {
+            "definitionModule": null,
+            "kind": "template",
+            "name": "box",
+            "renderRoot": true
+          }
+        ]
       },
       "body": "0:let count = 0\n0:when add\n2:count += 1\n0:box\n2:show count\n"
+    }
+  ]
+}
+```
+
+`moduleId` identifies the module that authored the component definition.
+Nested component-call body-plan nodes carry `definitionModule` when the target
+component was resolved through a module import/export boundary; `null` means the
+node is a platform element, unresolved, or compatibility-only.
+
+### `GET /api/rendered-components`
+
+Returns the first-slice live body-plan render surface. Components whose
+body-plan templates are supported include `renderedHtml`; unsupported or empty
+renders explicitly keep `renderedHtmlSupported: false` and
+`fallback: "compatibility-dom"`. Supported component wrappers may already be
+rendered from this body-plan HTML in the initially served document and marked
+with `data-jtml-live-body-plan-transport="body-plan"` plus a
+`data-jtml-live-body-plan-rendered-hash` value. The browser runtime compares
+that hash with future `/api/rendered-components` payloads, so already-current
+server-rendered body-plan components do not need a startup DOM patch. The
+endpoint remains available for fallback refreshes, `/api/event`, and
+`/api/component-action`, while leaving the older binding-based DOM path in
+place for unsupported fallback shapes. Supported rendered buttons include
+`data-jtml-direct-component-*` action attributes so rendered live templates can
+call `/api/component-action` without falling back to generated compatibility
+events.
+
+```json
+{
+  "ok": true,
+  "mode": "live-body-plan",
+  "supported": true,
+  "fallback": "compatibility-dom",
+  "components": [
+    {
+      "id": "Card_1",
+      "component": "Card",
+      "supported": true,
+      "fallback": "",
+      "renderedHtmlSupported": true,
+      "renderedHtml": "<section class=\"jtml-card\">...</section>"
     }
   ]
 }
@@ -175,6 +229,7 @@ On success:
   "ok": true,
   "bindings": {},
   "state": {},
+  "renderedComponents": {},
   "contract": {}
 }
 ```
@@ -204,8 +259,11 @@ is returned.
 }
 ```
 
-On success the response includes fresh `bindings`, `state`, `components`, and
-`contract`.
+On success the response includes fresh `bindings`, `state`,
+`renderedComponents`, `components`, and `contract`. Browser-rendered component
+templates and patched live body-plan templates both use this endpoint for
+direct component action dispatch where the body-plan action subset is
+supported.
 
 ## CORS
 

@@ -100,6 +100,54 @@ std::vector<std::string> splitCommaList(const std::string& value) {
     return out;
 }
 
+std::map<std::string, int> parseDelimitedIntMap(const std::string& value) {
+    std::map<std::string, int> out;
+    std::istringstream input(value);
+    std::string item;
+    while (std::getline(input, item, ';')) {
+        item = trimCopy(item);
+        if (item.empty()) continue;
+        const auto equals = item.find('=');
+        if (equals == std::string::npos) continue;
+        const std::string key = trimCopy(item.substr(0, equals));
+        if (key.empty()) continue;
+        try {
+            out[key] = std::stoi(trimCopy(item.substr(equals + 1)));
+        } catch (...) {
+            out[key] = 0;
+        }
+    }
+    return out;
+}
+
+std::map<std::string, std::vector<std::string>> parseDelimitedStringListMap(const std::string& value) {
+    std::map<std::string, std::vector<std::string>> out;
+    std::stringstream input(value);
+    std::string item;
+    while (std::getline(input, item, ';')) {
+        item = trimCopy(item);
+        if (item.empty()) continue;
+        const auto equals = item.find('=');
+        if (equals == std::string::npos) continue;
+        const std::string key = trimCopy(item.substr(0, equals));
+        if (key.empty()) continue;
+        out[key] = splitCommaList(item.substr(equals + 1));
+    }
+    return out;
+}
+
+std::vector<std::string> splitComponentParamList(const std::string& value) {
+    std::vector<std::string> out;
+    const char delimiter = value.find(';') == std::string::npos ? ',' : ';';
+    std::stringstream input(value);
+    std::string item;
+    while (std::getline(input, item, delimiter)) {
+        item = trimCopy(item);
+        if (!item.empty()) out.push_back(item);
+    }
+    return out;
+}
+
 std::string joinValues(const std::vector<std::string>& values) {
     std::ostringstream out;
     for (size_t i = 0; i < values.size(); ++i) {
@@ -385,8 +433,9 @@ struct SemanticSets {
     std::set<std::string> actions;
     std::set<std::string> components;
     std::set<std::tuple<std::string, std::string, std::string, std::string, std::string,
-                        std::string, std::string, std::string, bool, int, int, int, int>> componentDefinitions;
-    std::set<std::tuple<std::string, std::string, int, std::string, std::string, std::string, int>> componentInstances;
+                        std::string, std::string, std::string, std::string, std::string,
+                        std::string, std::string, bool, int, int, int, int>> componentDefinitions;
+    std::set<std::tuple<std::string, std::string, int, std::string, std::string, std::string, std::string, int>> componentInstances;
     std::set<std::string> routes;
     std::set<std::tuple<std::string, std::string, std::string, std::string>> routeRecords;
     std::set<std::string> fetches;
@@ -733,15 +782,27 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
     if (attributeLiteral(elem, "data-jtml-component-def", value)) {
         insertSorted(out.components, value);
         std::string params;
+        std::string emits;
+        std::string emitArity;
+        std::string emitPayloads;
+        std::string emitPayloadTypes;
         std::string bodyHex;
         std::string sourceLine;
         attributeLiteral(elem, "data-jtml-component-def-params", params);
+        attributeLiteral(elem, "data-jtml-component-def-emits", emits);
+        attributeLiteral(elem, "data-jtml-component-def-emit-arity", emitArity);
+        attributeLiteral(elem, "data-jtml-component-def-emit-payloads", emitPayloads);
+        attributeLiteral(elem, "data-jtml-component-def-emit-payload-types", emitPayloadTypes);
         attributeLiteral(elem, "data-jtml-component-body-hex", bodyHex);
         attributeLiteral(elem, "data-jtml-source-line", sourceLine);
         const auto summary = summarizeComponentBody(bodyHex);
         out.componentDefinitions.insert({
             value,
             params,
+            emits,
+            emitArity,
+            emitPayloads,
+            emitPayloadTypes,
             joinValues(toVector(summary.localState)),
             joinValues(toVector(summary.localDerived)),
             joinValues(toVector(summary.localActions)),
@@ -761,15 +822,17 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
         std::string role;
         std::string params;
         std::string locals;
+        std::string slotHex;
         std::string sourceLine;
         attributeLiteral(elem, "data-jtml-instance", id);
         attributeLiteral(elem, "data-jtml-instance-id", instanceId);
         attributeLiteral(elem, "data-jtml-component-role", role);
         attributeLiteral(elem, "data-jtml-component-params", params);
         attributeLiteral(elem, "data-jtml-component-locals", locals);
+        attributeLiteral(elem, "data-jtml-component-slot-hex", slotHex);
         attributeLiteral(elem, "data-jtml-source-line", sourceLine);
         out.componentInstances.insert({id, value, parseIntLiteral(instanceId), role.empty() ? "component" : role,
-                                       params, locals, parseIntLiteral(sourceLine)});
+                                       params, locals, slotHex, parseIntLiteral(sourceLine)});
     }
     if (attributeLiteral(elem, "data-jtml-timeline", value)) {
         ++out.timelineCount;
@@ -1230,30 +1293,35 @@ std::vector<SemanticExport> exportsToVector(
 
 std::vector<SemanticComponentDefinition> componentDefinitionsToVector(
     const std::set<std::tuple<std::string, std::string, std::string, std::string, std::string,
-                              std::string, std::string, std::string, bool, int, int, int, int>>& values) {
+                              std::string, std::string, std::string, std::string, std::string,
+                              std::string, std::string, bool, int, int, int, int>>& values) {
     std::vector<SemanticComponentDefinition> definitions;
     for (const auto& definition : values) {
         definitions.push_back({
             std::get<0>(definition),
-            splitCommaList(std::get<1>(definition)),
-            splitCommaList(std::get<2>(definition)),
-            splitCommaList(std::get<3>(definition)),
-            splitCommaList(std::get<4>(definition)),
-            splitCommaList(std::get<5>(definition)),
+            splitComponentParamList(std::get<1>(definition)),
+            splitComponentParamList(std::get<2>(definition)),
+            parseDelimitedIntMap(std::get<3>(definition)),
+            parseDelimitedStringListMap(std::get<4>(definition)),
+            parseDelimitedStringListMap(std::get<5>(definition)),
             splitCommaList(std::get<6>(definition)),
-            std::get<7>(definition),
-            std::get<8>(definition),
-            std::get<9>(definition),
-            std::get<10>(definition),
+            splitCommaList(std::get<7>(definition)),
+            splitCommaList(std::get<8>(definition)),
+            splitCommaList(std::get<9>(definition)),
+            splitCommaList(std::get<10>(definition)),
             std::get<11>(definition),
             std::get<12>(definition),
+            std::get<13>(definition),
+            std::get<14>(definition),
+            std::get<15>(definition),
+            std::get<16>(definition),
         });
     }
     return definitions;
 }
 
 std::vector<SemanticComponentInstance> componentInstancesToVector(
-    const std::set<std::tuple<std::string, std::string, int, std::string, std::string, std::string, int>>& values) {
+    const std::set<std::tuple<std::string, std::string, int, std::string, std::string, std::string, std::string, int>>& values) {
     std::vector<SemanticComponentInstance> instances;
     for (const auto& instance : values) {
         instances.push_back({
@@ -1264,6 +1332,7 @@ std::vector<SemanticComponentInstance> componentInstancesToVector(
             splitPropertyMap(std::get<4>(instance)),
             splitPropertyMap(std::get<5>(instance)),
             std::get<6>(instance),
+            std::get<7>(instance),
         });
     }
     return instances;

@@ -83,6 +83,8 @@ nlohmann::json semanticModuleIrToJson(const SemanticModuleIr& ir) {
         {"available", ir.available},
         {"syntax", ir.syntax},
         {"parseError", ir.parseError},
+        {"parseErrorLine", ir.parseErrorLine},
+        {"parseErrorColumn", ir.parseErrorColumn},
         {"topLevelCount", ir.topLevelCount},
         {"totalNodeCount", ir.totalNodeCount},
         {"topLevelNodes", topLevel},
@@ -118,6 +120,9 @@ nlohmann::json semanticProjectIssuesToJson(const std::vector<SemanticProjectIssu
             {"importIndex", issue.importIndex},
             {"specifier", issue.specifier},
             {"resolvedPath", issue.resolvedPath},
+            {"path", issue.path},
+            {"line", issue.line},
+            {"column", issue.column},
             {"requested", issue.requested},
             {"available", issue.available},
         });

@@ -1,5 +1,6 @@
 #include "jtml/semantic/module_graph.h"
 
+#include "jtml/diagnostic.h"
 #include "jtml/module_resolver.h"
 
 #include <algorithm>
@@ -345,6 +346,23 @@ std::vector<SemanticProjectIssue> analyzeSemanticProject(const SemanticProject& 
     std::map<std::string, SemanticModuleId> idsByPath;
     for (const auto& module : project.modules) {
         idsByPath.emplace(module.path, module.id);
+
+        if (!module.ir.available && !module.ir.parseError.empty()) {
+            const auto diagnostic = diagnosticFromMessage(module.ir.parseError);
+            SemanticProjectIssue issue;
+            issue.code = "JTML_MODULE_PARSE";
+            issue.module = module.id;
+            issue.path = module.path;
+            issue.resolvedPath = module.path;
+            issue.line = module.ir.parseErrorLine > 0
+                ? module.ir.parseErrorLine
+                : (diagnostic.line > 0 ? static_cast<std::size_t>(diagnostic.line) : 0);
+            issue.column = module.ir.parseErrorColumn > 0
+                ? module.ir.parseErrorColumn
+                : (diagnostic.column > 0 ? static_cast<std::size_t>(diagnostic.column) : 0);
+            issue.message = "Cannot parse module " + module.path + ": " + module.ir.parseError;
+            issues.push_back(std::move(issue));
+        }
     }
 
     enum class ReExportResolution {

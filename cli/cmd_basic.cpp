@@ -26,6 +26,7 @@
 #include <map>
 #include <set>
 #include <sstream>
+#include <utility>
 #include <vector>
 
 namespace jtml::cli {
@@ -245,6 +246,8 @@ nlohmann::json semanticComponentDefinitionsToJson(const jtml::SemanticProgram& s
         out.push_back({
             {"name", definition.name},
             {"params", definition.params},
+            {"emits", definition.emits},
+            {"emitArity", definition.emitArity},
             {"localState", definition.localState},
             {"localDerived", definition.localDerived},
             {"localActions", definition.localActions},
@@ -271,6 +274,7 @@ nlohmann::json semanticComponentInstancesToJson(const jtml::SemanticProgram& sem
             {"role", instance.role},
             {"params", semanticPropertiesToJson(instance.params)},
             {"locals", semanticPropertiesToJson(instance.locals)},
+            {"slotHex", instance.slotHex},
             {"sourceLine", instance.sourceLine},
         });
     }
@@ -341,6 +345,39 @@ std::string trimDisplay(std::string value) {
         value.pop_back();
     }
     return value;
+}
+
+std::pair<std::size_t, std::size_t> locateModuleParseError(
+        const std::string& source,
+        const std::string& message) {
+    const auto diagnostic = jtml::diagnosticFromMessage(message);
+    if (diagnostic.line > 0) {
+        return {
+            static_cast<std::size_t>(diagnostic.line),
+            diagnostic.column > 0 ? static_cast<std::size_t>(diagnostic.column) : 0,
+        };
+    }
+
+    const std::string marker = "friendly JTML line:";
+    const auto markerPos = message.find(marker);
+    if (markerPos == std::string::npos) return {0, 0};
+    const std::string fragment = trimDisplay(message.substr(markerPos + marker.size()));
+    if (fragment.empty()) return {0, 0};
+
+    std::istringstream input(source);
+    std::string line;
+    std::size_t lineNo = 0;
+    while (std::getline(input, line)) {
+        ++lineNo;
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        const auto trimmed = trimDisplay(line);
+        if (trimmed == fragment || trimmed.find(fragment) != std::string::npos ||
+            fragment.find(trimmed) != std::string::npos) {
+            const auto column = line.find_first_not_of(" \t");
+            return {lineNo, column == std::string::npos ? 1 : column + 1};
+        }
+    }
+    return {0, 0};
 }
 
 std::string importedComponentStubsForExplain(const std::string& source) {
@@ -455,6 +492,7 @@ ParsedModuleForExplain parseStandaloneModuleForExplain(const std::string& source
 jtml::RuntimeProjectPlan buildRuntimeProjectPlanForInput(
         const std::string& inputFile,
         SyntaxMode syntax,
+        const std::vector<std::unique_ptr<ASTNode>>& linkedProgram,
         const jtml::SemanticProgram& linkedSemantic) {
     std::set<std::string> seenModuleFiles;
     std::vector<jtml::SemanticModuleSource> moduleSources;
@@ -479,6 +517,9 @@ jtml::RuntimeProjectPlan buildRuntimeProjectPlanForInput(
             ir.available = false;
             ir.syntax = "unknown";
             ir.parseError = e.what();
+            const auto location = locateModuleParseError(moduleSource, ir.parseError);
+            ir.parseErrorLine = location.first;
+            ir.parseErrorColumn = location.second;
         }
 
         moduleSources.push_back({
@@ -492,7 +533,9 @@ jtml::RuntimeProjectPlan buildRuntimeProjectPlanForInput(
     const auto project = moduleSources.empty()
         ? jtml::buildSemanticProject(linkedSemantic, inputFile)
         : jtml::buildSemanticProject(moduleSources, inputFile, linkedSemantic);
-    return jtml::buildRuntimePlan(project);
+    return jtml::buildRuntimePlan(
+        project,
+        jtml::buildRuntimePlan(linkedProgram, linkedSemantic));
 }
 
 struct DepthSummary {
@@ -742,15 +785,35 @@ int cmdDoctor(const Options& o) {
             "component body-plan parity before expanded compatibility removal",
             "advanced browser-local runtime parity",
             "extern/custom-element/framework export boundaries",
+            "contract-first JTL API modules for governed backend operations (planned)",
             "remote package registry and semantic version solving",
         }},
     };
     const std::vector<std::string> nextTargets = {
         "complete direct ComponentInstance body-plan parity",
         "browser-local production runtime parity with live runtime semantics",
+        "contract-first JTL API design: types, errors, operation signatures, OpenAPI generation, policies, adapters, and JTML fetch/call integration",
         "Studio content externalization out of embedded C++ literals",
         "internal module boundaries for friendly, semantic, runtime, emit, lsp, and studio code",
         "security, release, deprecation, benchmark, and compatibility policies",
+    };
+    const nlohmann::json runtimeCapabilities = {
+        {"directComponentExecution", {
+            {"browserLocalFirstSlice", true},
+            {"bodyPlanTemplates", true},
+            {"ifElseFor", true},
+            {"slots", true},
+            {"nestedComponentCalls", true},
+            {"commonAttributes", true},
+            {"simpleActionArguments", true},
+            {"liveInterpreterParity", false},
+            {"fullParity", false},
+        }},
+        {"contractFirstJtlApis", {
+            {"planned", true},
+            {"implemented", false},
+            {"syntax", "planned"},
+        }},
     };
     auto findProjectRoot = [] {
         fs::path cursor = fs::current_path();
@@ -818,6 +881,7 @@ int cmdDoctor(const Options& o) {
             {"enterpriseReady", false},
             {"readiness", "promising observable-first language platform; not enterprise-ready yet"},
             {"architectureSourceOfTruth", "Friendly JTML -> typed AST -> semantic IR -> observable graph -> backends"},
+            {"runtimeCapabilities", runtimeCapabilities},
             {"stabilityTiers", tierJson},
             {"verificationGates", gateJson},
             {"nextArchitectureTargets", nextTargets},
@@ -988,14 +1052,19 @@ int cmdExplain(const Options& o) {
     std::vector<std::unique_ptr<ASTNode>> program;
     {
         SilenceStdout silence;
-        program = parseProgramFromFile(o.inputFile, o.syntax);
+        try {
+            program = parseProgramFromFile(o.inputFile, o.syntax);
+        } catch (const std::exception&) {
+            auto parsedEntry = parseStandaloneModuleForExplain(source, o.syntax);
+            program = std::move(parsedEntry.program);
+        }
     }
     JtmlLinter linter;
     auto diagnostics = linter.lint(program);
     auto semantic = jtml::analyzeSemanticProgram(program, source);
     std::set<std::string> seenModuleFiles;
     std::vector<jtml::SemanticModuleSource> moduleSources;
-    for (const auto& file : collectSourceFiles(o.inputFile, o.syntax)) {
+    for (const auto& file : collectSourceFilesRecoverable(o.inputFile, o.syntax)) {
         const auto path = file.generic_string();
         if (seenModuleFiles.insert(path).second) {
             semantic.moduleFiles.push_back(path);
@@ -1016,6 +1085,9 @@ int cmdExplain(const Options& o) {
                 ir.available = false;
                 ir.syntax = "unknown";
                 ir.parseError = e.what();
+                const auto location = locateModuleParseError(moduleSource, ir.parseError);
+                ir.parseErrorLine = location.first;
+                ir.parseErrorColumn = location.second;
             }
             moduleSources.push_back({
                 path,
@@ -1031,7 +1103,7 @@ int cmdExplain(const Options& o) {
         : jtml::buildSemanticProject(moduleSources, o.inputFile, semantic);
     const auto projectIssues = jtml::analyzeSemanticProject(project);
     const auto runtimePlan = jtml::buildRuntimePlan(program, semantic);
-    const auto runtimeProjectPlan = jtml::buildRuntimePlan(project);
+    const auto runtimeProjectPlan = jtml::buildRuntimePlan(project, runtimePlan);
     const auto depth = classifyDepth(semantic);
 
     // Build action profiles map for easy lookup
@@ -1103,8 +1175,8 @@ int cmdExplain(const Options& o) {
                 {"dependencies", semanticEdgesToJson(semantic)},
                 {"sourceOfTruth", "typed AST -> semantic analysis -> observable graph"}
             }},
-            {"runtimePlan", jtml::runtimePlanToJson(runtimePlan)},
-            {"runtimeProjectPlan", jtml::runtimeProjectPlanToJson(runtimeProjectPlan)},
+            {"runtimePlan", jtml::runtimePlanToExplainJson(runtimePlan)},
+            {"runtimeProjectPlan", jtml::runtimeProjectPlanToExplainJson(runtimeProjectPlan)},
             {"issues", {
                 {"deadState",          listJson(usage.deadState)},
                 {"zombieState",        listJson(usage.zombieState)},
@@ -1235,7 +1307,16 @@ int cmdExplain(const Options& o) {
         if (!projectIssues.empty()) {
             std::cout << "\nProject issues (" << projectIssues.size() << "):\n";
             for (const auto& issue : projectIssues) {
-                std::cout << "  ! " << issue.code << ": " << issue.message << "\n";
+                std::cout << "  ! " << issue.code << ": " << issue.message;
+                if (!issue.path.empty()) {
+                    std::cout << " [" << compactProjectPath(issue.path);
+                    if (issue.line > 0) {
+                        std::cout << ":" << issue.line;
+                        if (issue.column > 0) std::cout << ":" << issue.column;
+                    }
+                    std::cout << "]";
+                }
+                std::cout << "\n";
             }
         }
     }
@@ -1287,6 +1368,9 @@ int cmdExplain(const Options& o) {
             if (definition.sourceLine > 0) std::cout << "  line " << definition.sourceLine;
             if (definition.hasSlot) std::cout << "  slot";
             std::cout << "\n";
+            if (!definition.emits.empty()) {
+                std::cout << "      emits: " << joinDisplay(definition.emits) << "\n";
+            }
             if (!definition.localState.empty()) {
                 std::cout << "      state: " << joinDisplay(definition.localState) << "\n";
             }
@@ -1539,7 +1623,7 @@ int cmdTranspile(const Options& o) {
         transpiler.setBrowserLocalRuntime(true);
         const auto semantic = jtml::analyzeSemanticProgram(program, readFile(o.inputFile));
         transpiler.setRuntimeProjectPlan(
-            buildRuntimeProjectPlanForInput(o.inputFile, o.syntax, semantic));
+            buildRuntimeProjectPlanForInput(o.inputFile, o.syntax, program, semantic));
     }
     std::string html = transpiler.transpile(program);
 
@@ -1578,7 +1662,7 @@ int cmdBuild(const Options& o) {
         transpiler.setBrowserLocalRuntime(true);
         const auto semantic = jtml::analyzeSemanticProgram(program, readFile(input.string()));
         transpiler.setRuntimeProjectPlan(
-            buildRuntimeProjectPlanForInput(input.string(), o.syntax, semantic));
+            buildRuntimeProjectPlanForInput(input.string(), o.syntax, program, semantic));
     }
     std::string html = transpiler.transpile(program);
 

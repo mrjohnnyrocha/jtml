@@ -36,6 +36,42 @@ void writeTempFile(const std::filesystem::path& path, const std::string& source)
     out << source;
 }
 
+std::string readTextFile(const std::filesystem::path& path) {
+    std::ifstream input(path);
+    return {std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+}
+
+size_t countOccurrences(const std::string& haystack, const std::string& needle) {
+    size_t count = 0;
+    size_t pos = 0;
+    while ((pos = haystack.find(needle, pos)) != std::string::npos) {
+        ++count;
+        pos += needle.size();
+    }
+    return count;
+}
+
+nlohmann::json extractClientManifestJson(const std::string& html) {
+    const std::string open = "<script type=\"application/json\" id=\"__jtml_client_manifest\">";
+    const std::string close = "</script>";
+    const auto start = html.find(open);
+    EXPECT_NE(start, std::string::npos) << html;
+    const auto end = html.find(close, start);
+    EXPECT_NE(end, std::string::npos) << html;
+    return nlohmann::json::parse(
+        html.substr(start + open.size(), end - (start + open.size())));
+}
+
+std::string extractClientManifestText(const std::string& html) {
+    const std::string open = "<script type=\"application/json\" id=\"__jtml_client_manifest\">";
+    const std::string close = "</script>";
+    const auto start = html.find(open);
+    EXPECT_NE(start, std::string::npos) << html;
+    const auto end = html.find(close, start);
+    EXPECT_NE(end, std::string::npos) << html;
+    return html.substr(start + open.size(), end - (start + open.size()));
+}
+
 struct ScopedCurrentPath {
     std::filesystem::path previous = std::filesystem::current_path();
 
@@ -629,6 +665,46 @@ TEST(CliExplain, TextReportsSemanticProjectModulesImportsAndExports) {
     EXPECT_EQ(result.out.find("Project issues"), std::string::npos) << result.out;
 }
 
+TEST(CliExplain, JsonReportsRecoverableImportedModuleParseIssues) {
+    const auto root = makeTempDir("explain-module-parse");
+    writeTempFile(root / "broken.jtml",
+        "jtml 2\n"
+        "export make Broken\n"
+        "  text \"unterminated\n");
+    writeTempFile(root / "index.jtml",
+        "jtml 2\n"
+        "use \"./broken.jtml\"\n"
+        "page\n"
+        "  text \"Entry still explains\"\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = (root / "index.jtml").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.json = true;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdExplain(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+    const auto report = nlohmann::json::parse(result.out);
+    const auto& project = report["semantic"]["project"];
+    ASSERT_EQ(project["modules"].size(), 2u) << report.dump(2);
+
+    const auto& broken = project["modules"][1];
+    EXPECT_EQ(broken["path"], std::filesystem::weakly_canonical(root / "broken.jtml").generic_string())
+        << report.dump(2);
+    EXPECT_EQ(broken["ir"]["available"], false) << report.dump(2);
+    EXPECT_FALSE(broken["ir"]["parseError"].get<std::string>().empty()) << report.dump(2);
+
+    ASSERT_EQ(project["issues"].size(), 1u) << report.dump(2);
+    const auto& issue = project["issues"][0];
+    EXPECT_EQ(issue["code"], "JTML_MODULE_PARSE") << report.dump(2);
+    EXPECT_EQ(issue["module"], broken["id"]) << report.dump(2);
+    EXPECT_EQ(issue["path"], broken["path"]) << report.dump(2);
+    EXPECT_EQ(issue["resolvedPath"], broken["path"]) << report.dump(2);
+    EXPECT_NE(issue["message"].get<std::string>().find("Cannot parse module"),
+              std::string::npos) << report.dump(2);
+    EXPECT_GE(issue["line"].get<int>(), 1) << report.dump(2);
+}
+
 TEST(CliExplain, JsonReportsObservableDepthAndStoreActions) {
     const auto file = writeTempJtml(
         "observable-explain",
@@ -841,6 +917,16 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
               std::string::npos);
     EXPECT_NE(report["architectureSourceOfTruth"].get<std::string>().find("semantic IR"),
               std::string::npos);
+    ASSERT_TRUE(report.contains("runtimeCapabilities")) << report.dump(2);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["browserLocalFirstSlice"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["slots"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["nestedComponentCalls"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["commonAttributes"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["simpleActionArguments"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["liveInterpreterParity"], false);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["fullParity"], false);
+    EXPECT_EQ(report["runtimeCapabilities"]["contractFirstJtlApis"]["planned"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["contractFirstJtlApis"]["implemented"], false);
 
     const std::string tiers = report["stabilityTiers"].dump();
     EXPECT_NE(tiers.find("stable"), std::string::npos);
@@ -850,6 +936,7 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
               std::string::npos);
     EXPECT_NE(tiers.find("component body-plan parity"), std::string::npos);
     EXPECT_NE(tiers.find("jtl 1"), std::string::npos);
+    EXPECT_NE(tiers.find("contract-first JTL API modules"), std::string::npos);
 
     const std::string gates = report["verificationGates"].dump();
     EXPECT_NE(gates.find("scripts/verify_all.sh"), std::string::npos);
@@ -859,6 +946,7 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     const std::string targets = report["nextArchitectureTargets"].dump();
     EXPECT_NE(targets.find("complete direct ComponentInstance body-plan parity"),
               std::string::npos);
+    EXPECT_NE(targets.find("OpenAPI generation"), std::string::npos);
     EXPECT_NE(targets.find("Studio content externalization"), std::string::npos);
 }
 
@@ -1127,29 +1215,79 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
 
     const auto htmlPath = outDir / "index.html";
     ASSERT_TRUE(std::filesystem::exists(htmlPath));
-    std::ifstream input(htmlPath);
-    const std::string html((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    const std::string html = readTextFile(htmlPath);
     EXPECT_NE(html.find("mergeProjectManifest"), std::string::npos) << html;
     EXPECT_NE(html.find("runtimeManifestSource"), std::string::npos) << html;
     EXPECT_NE(html.find("projectManifest"), std::string::npos) << html;
-    const std::string open = "<script type=\"application/json\" id=\"__jtml_client_manifest\">";
-    const std::string close = "</script>";
-    const auto start = html.find(open);
-    ASSERT_NE(start, std::string::npos) << html;
-    const auto end = html.find(close, start);
-    ASSERT_NE(end, std::string::npos) << html;
-    const auto manifest = nlohmann::json::parse(
-        html.substr(start + open.size(), end - (start + open.size())));
+    EXPECT_EQ(countOccurrences(html, "id=\"__jtml_client_manifest\""), 1u) << html;
+    EXPECT_EQ(html.find(root.string()), std::string::npos) << html;
+    const auto manifest = extractClientManifestJson(html);
+    EXPECT_EQ(manifest.dump().find("bodySource"), std::string::npos)
+        << manifest.dump(2);
+    EXPECT_EQ(manifest.dump().find("bodyHex"), std::string::npos)
+        << manifest.dump(2);
     ASSERT_TRUE(manifest.contains("project")) << manifest.dump(2);
     const auto& project = manifest["project"];
-    EXPECT_EQ(project["sourceOfTruth"], "SemanticProject retained per-file AST + semantic IR");
+    EXPECT_EQ(project["sourceOfTruth"], "runtime client manifest");
     ASSERT_EQ(project["modules"].size(), 3u) << project.dump(2);
-    EXPECT_TRUE(project["modules"][0]["astAvailable"]) << project.dump(2);
-    ASSERT_EQ(project["modules"][1]["plan"]["componentDefinitions"].size(), 1u)
-        << project.dump(2);
-    EXPECT_EQ(project["modules"][1]["plan"]["componentDefinitions"][0]["name"],
-              "Dashboard");
-    ASSERT_EQ(project["modules"][2]["plan"]["semantic"]["stores"].size(), 1u)
-        << project.dump(2);
-    EXPECT_EQ(project["modules"][2]["plan"]["semantic"]["stores"][0], "appState");
+    for (const auto& module : project["modules"]) {
+        ASSERT_TRUE(module.contains("executable")) << project.dump(2);
+        if (module["executable"].get<bool>()) {
+            ASSERT_TRUE(module.contains("plan")) << project.dump(2);
+            EXPECT_FALSE(module["plan"].contains("semantic")) << project.dump(2);
+        } else {
+            EXPECT_FALSE(module.contains("plan")) << project.dump(2);
+        }
+    }
+    EXPECT_TRUE(manifest["componentInstances"].is_array()) << manifest.dump(2);
+}
+
+TEST(CliBuild, BrowserClientManifestEscapesScriptBreakingTextAndOmitsExplainFields) {
+    const auto file = writeTempJtml(
+        "manifest-script-safety",
+        "jtml 2\n"
+        "let message = \"</script><script>window.__bad=1</script>\"\n"
+        "make Notice\n"
+        "  text \"</script><script>window.__bad=1</script>\"\n"
+        "page\n"
+        "  Notice\n");
+    const auto outDir = std::filesystem::temp_directory_path() /
+                        ("jtml-manifest-script-safety-" +
+                         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+
+    jtml::cli::Options buildOpts;
+    buildOpts.inputFile = file.string();
+    buildOpts.outputFile = outDir.string();
+    buildOpts.syntax = jtml::SyntaxMode::Auto;
+    buildOpts.target = "browser";
+    const auto buildResult = captureCommand([&] { return jtml::cli::cmdBuild(buildOpts); });
+    ASSERT_EQ(buildResult.code, 0) << buildResult.out << buildResult.err;
+
+    const std::string html = readTextFile(outDir / "index.html");
+    EXPECT_EQ(countOccurrences(html, "id=\"__jtml_client_manifest\""), 1u) << html;
+    const auto manifestText = extractClientManifestText(html);
+    EXPECT_EQ(manifestText.find("</script><script>window.__bad=1"), std::string::npos)
+        << manifestText;
+    EXPECT_NE(manifestText.find("\\u003c/script\\u003e\\u003cscript\\u003ewindow.__bad=1\\u003c/script\\u003e"),
+              std::string::npos) << manifestText;
+    const auto manifest = extractClientManifestJson(html);
+    ASSERT_TRUE(manifest["state"]["message"].is_string()) << manifest.dump(2);
+    EXPECT_EQ(manifest["state"]["message"].get<std::string>().find("</script><script>window.__bad=1"),
+              std::string::npos);
+    EXPECT_NE(manifest["state"]["message"].get<std::string>().find("\\u003c/script\\u003e"),
+              std::string::npos);
+    EXPECT_EQ(manifest.dump().find("bodySource"), std::string::npos);
+    EXPECT_EQ(manifest.dump().find("bodyHex"), std::string::npos);
+
+    jtml::cli::Options explainOpts;
+    explainOpts.inputFile = file.string();
+    explainOpts.syntax = jtml::SyntaxMode::Auto;
+    explainOpts.json = true;
+    const auto explainResult = captureCommand([&] { return jtml::cli::cmdExplain(explainOpts); });
+    ASSERT_EQ(explainResult.code, 0) << explainResult.out << explainResult.err;
+    const auto explain = nlohmann::json::parse(explainResult.out);
+    ASSERT_TRUE(explain["runtimePlan"].contains("componentDefinitions"));
+    ASSERT_FALSE(explain["runtimePlan"]["componentDefinitions"].empty());
+    EXPECT_TRUE(explain["runtimePlan"]["componentDefinitions"][0].contains("bodySource"));
+    EXPECT_TRUE(explain["runtimePlan"]["componentDefinitions"][0].contains("bodyHex"));
 }

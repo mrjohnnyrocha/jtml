@@ -33,6 +33,11 @@ struct OpenBlock {
 struct ComponentDef {
     std::string name;
     std::vector<std::string> params;
+    std::vector<std::string> emits;
+    std::map<std::string, int> emitArity;
+    std::map<std::string, std::vector<std::string>> emitPayloads;
+    std::map<std::string, std::vector<std::string>> emitPayloadTypes;
+    std::map<std::string, int> actionArity;
     std::vector<Line> body;
     int number = 0;
 };
@@ -67,6 +72,13 @@ bool isIdentifierStart(char ch) {
 bool isIdentifierPart(char ch) {
     const auto c = static_cast<unsigned char>(ch);
     return std::isalnum(c) || ch == '_';
+}
+
+bool isIdentifier(const std::string& value) {
+    if (value.empty() || !isIdentifierStart(value.front())) return false;
+    return std::all_of(value.begin() + 1, value.end(), [](char ch) {
+        return isIdentifierPart(ch);
+    });
 }
 
 bool isFriendlyHeader(const std::string& text) {
@@ -326,6 +338,135 @@ std::vector<std::string> splitTokens(const std::string& line) {
     }
     flush();
     return tokens;
+}
+
+std::vector<std::string> splitCommaArgs(const std::string& text) {
+    std::vector<std::string> args;
+    std::string current;
+    char quoteChar = '\0';
+    int parenDepth = 0;
+    int bracketDepth = 0;
+    int braceDepth = 0;
+
+    auto flush = [&]() {
+        std::string trimmed = trim(current);
+        if (!trimmed.empty()) args.push_back(trimmed);
+        current.clear();
+    };
+
+    for (size_t i = 0; i < text.size(); ++i) {
+        char ch = text[i];
+        if (quoteChar != '\0') {
+            current.push_back(ch);
+            if (ch == '\\' && i + 1 < text.size()) {
+                current.push_back(text[++i]);
+            } else if (ch == quoteChar) {
+                quoteChar = '\0';
+            }
+            continue;
+        }
+        if (ch == '"' || ch == '\'') {
+            quoteChar = ch;
+            current.push_back(ch);
+            continue;
+        }
+        if (ch == '(') ++parenDepth;
+        if (ch == ')' && parenDepth > 0) --parenDepth;
+        if (ch == '[') ++bracketDepth;
+        if (ch == ']' && bracketDepth > 0) --bracketDepth;
+        if (ch == '{') ++braceDepth;
+        if (ch == '}' && braceDepth > 0) --braceDepth;
+        if (ch == ',' && parenDepth == 0 && bracketDepth == 0 && braceDepth == 0) {
+            flush();
+        } else {
+            current.push_back(ch);
+        }
+    }
+    flush();
+    return args;
+}
+
+struct CallLikeSpec {
+    std::string name;
+    int argCount = 0;
+    std::vector<std::string> args;
+    std::vector<std::string> argTypes;
+};
+
+struct CompactPayloadSpec {
+    std::string name;
+    std::string type;
+};
+
+CompactPayloadSpec parseCompactTypedPayload(const std::string& raw,
+                                            const std::string& context,
+                                            int lineNumber) {
+    CompactPayloadSpec out;
+    const size_t colon = raw.find(':');
+    out.name = trim(colon == std::string::npos ? raw : raw.substr(0, colon));
+    out.type = colon == std::string::npos ? "" : trim(raw.substr(colon + 1));
+    if (!isIdentifier(out.name)) {
+        throw std::runtime_error("Invalid " + context + " payload name '" + out.name +
+                                 "' at line " + std::to_string(lineNumber));
+    }
+    if (!out.type.empty() && !isIdentifier(out.type)) {
+        throw std::runtime_error("Invalid " + context + " payload type '" + out.type +
+                                 "' at line " + std::to_string(lineNumber));
+    }
+    return out;
+}
+
+CallLikeSpec parseCallLikeToken(const std::string& token,
+                                const std::string& context,
+                                int lineNumber) {
+    CallLikeSpec spec;
+    const size_t open = token.find('(');
+    if (open == std::string::npos) {
+        spec.name = token;
+        spec.argCount = 0;
+    } else {
+        if (token.empty() || token.back() != ')') {
+            throw std::runtime_error("Expected " + context + " call shape 'name(...)' at line " +
+                                     std::to_string(lineNumber));
+        }
+        spec.name = token.substr(0, open);
+        const std::string args = token.substr(open + 1, token.size() - open - 2);
+        spec.args = trim(args).empty() ? std::vector<std::string>{} : splitCommaArgs(args);
+        spec.argCount = static_cast<int>(spec.args.size());
+        if (context == "emitted event") {
+            std::vector<std::string> names;
+            std::vector<std::string> types;
+            for (const auto& arg : spec.args) {
+                const auto payload = parseCompactTypedPayload(arg, context, lineNumber);
+                names.push_back(payload.name);
+                types.push_back(payload.type);
+            }
+            spec.args = std::move(names);
+            spec.argTypes = std::move(types);
+        }
+    }
+    if (!isIdentifier(spec.name)) {
+        throw std::runtime_error("Invalid " + context + " name '" + spec.name +
+                                 "' at line " + std::to_string(lineNumber));
+    }
+    return spec;
+}
+
+std::string callLikeName(const std::string& token, int lineNumber) {
+    return parseCallLikeToken(token, "handler", lineNumber).name;
+}
+
+std::map<std::string, int> collectActionArities(const std::vector<Line>& lines) {
+    std::map<std::string, int> arities;
+    for (const auto& line : lines) {
+        if (line.indent != 0) continue;
+        const auto tokens = splitTokens(line.text);
+        if (tokens.empty()) continue;
+        if (tokens[0] != "when" || tokens.size() < 2) continue;
+        if (!isIdentifier(tokens[1])) continue;
+        arities[tokens[1]] = static_cast<int>(tokens.size()) - 2;
+    }
+    return arities;
 }
 
 std::vector<Line> collectLines(const std::string& source) {
@@ -1352,6 +1493,38 @@ std::vector<Line> normalizeChildBlock(const std::vector<Line>& lines,
     return block;
 }
 
+std::string slotLineName(const Line& line) {
+    const auto tokens = splitTokens(line.text);
+    if (tokens.empty() || tokens[0] != "slot") return "";
+    return tokens.size() > 1 ? tokens[1] : "";
+}
+
+std::vector<Line> selectSlotLines(const std::vector<Line>& slotLines,
+                                  const std::string& requestedName) {
+    std::vector<Line> selected;
+    for (size_t i = 0; i < slotLines.size();) {
+        const auto tokens = splitTokens(slotLines[i].text);
+        const bool isSlotGroup = !tokens.empty() && tokens[0] == "slot";
+        if (!isSlotGroup) {
+            if (requestedName.empty()) selected.push_back(slotLines[i]);
+            ++i;
+            continue;
+        }
+
+        const std::string groupName = tokens.size() > 1 ? tokens[1] : "";
+        const size_t groupEnd = findBlockEnd(slotLines, i);
+        if (groupName == requestedName) {
+            auto children = normalizeChildBlock(slotLines, i + 1, groupEnd);
+            selected.insert(selected.end(), children.begin(), children.end());
+        } else if (requestedName.empty() && groupName.empty()) {
+            auto children = normalizeChildBlock(slotLines, i + 1, groupEnd);
+            selected.insert(selected.end(), children.begin(), children.end());
+        }
+        i = groupEnd;
+    }
+    return selected;
+}
+
 std::vector<Line> stripExportModifiers(std::vector<Line> lines) {
     for (auto& line : lines) {
         auto tokens = splitTokens(line.text);
@@ -1618,10 +1791,32 @@ collectComponentDefs(const std::vector<Line>& lines) {
         ComponentDef def;
         def.name = tokens[1];
         def.number = lines[i].number;
-        for (const auto& param : parseTypedIdentifiers(tokens, 2, lines[i].number)) {
+        size_t emitsIndex = tokens.size();
+        for (size_t tokenIndex = 2; tokenIndex < tokens.size(); ++tokenIndex) {
+            if (tokens[tokenIndex] == "emits") {
+                emitsIndex = tokenIndex;
+                break;
+            }
+        }
+        std::vector<std::string> paramTokens(tokens.begin(), tokens.begin() + emitsIndex);
+        for (const auto& param : parseTypedIdentifiers(paramTokens, 2, lines[i].number)) {
             def.params.push_back(param.name);
         }
+        if (emitsIndex < tokens.size()) {
+            if (emitsIndex + 1 == tokens.size()) {
+                throw std::runtime_error("Expected emitted event name after 'emits' in component '" +
+                                         def.name + "' at line " + std::to_string(lines[i].number));
+            }
+            for (size_t eventIndex = emitsIndex + 1; eventIndex < tokens.size(); ++eventIndex) {
+                const auto event = parseCallLikeToken(tokens[eventIndex], "emitted event", lines[i].number);
+                def.emits.push_back(event.name);
+                def.emitArity[event.name] = event.argCount;
+                def.emitPayloads[event.name] = event.args;
+                def.emitPayloadTypes[event.name] = event.argTypes;
+            }
+        }
         def.body = normalizeChildBlock(lines, i + 1, end);
+        def.actionArity = collectActionArities(def.body);
         components[def.name] = std::move(def);
         i = end - 1;
     }
@@ -1788,9 +1983,43 @@ std::string serializedComponentParams(const std::vector<std::string>& params) {
     return out.str();
 }
 
+std::string serializedIntMap(const std::map<std::string, int>& values) {
+    std::ostringstream out;
+    bool first = true;
+    for (const auto& [key, value] : values) {
+        if (!first) out << ";";
+        first = false;
+        out << componentMetadataValue(key) << "=" << value;
+    }
+    return out.str();
+}
+
+std::string serializedStringListMap(const std::map<std::string, std::vector<std::string>>& values) {
+    std::ostringstream out;
+    bool first = true;
+    for (const auto& [key, list] : values) {
+        if (!first) out << ";";
+        first = false;
+        out << componentMetadataValue(key) << "=";
+        for (size_t i = 0; i < list.size(); ++i) {
+            if (i > 0) out << ",";
+            out << componentMetadataValue(list[i]);
+        }
+    }
+    return out.str();
+}
+
 std::string serializedComponentBodyHex(const ComponentDef& def) {
     std::ostringstream body;
     for (const auto& line : def.body) {
+        body << line.indent << ":" << line.text << "\n";
+    }
+    return hexEncode(body.str());
+}
+
+std::string serializedLinesHex(const std::vector<Line>& lines) {
+    std::ostringstream body;
+    for (const auto& line : lines) {
         body << line.indent << ":" << line.text << "\n";
     }
     return hexEncode(body.str());
@@ -1800,6 +2029,10 @@ std::string componentDefinitionLine(const ComponentDef& def) {
     std::ostringstream line;
     line << "@template data-jtml-component-def=" << quote(def.name)
          << " data-jtml-component-def-params=" << quote(serializedComponentParams(def.params))
+         << " data-jtml-component-def-emits=" << quote(serializedComponentParams(def.emits))
+         << " data-jtml-component-def-emit-arity=" << quote(serializedIntMap(def.emitArity))
+         << " data-jtml-component-def-emit-payloads=" << quote(serializedStringListMap(def.emitPayloads))
+         << " data-jtml-component-def-emit-payload-types=" << quote(serializedStringListMap(def.emitPayloadTypes))
          << " data-jtml-source-line=" << quote(std::to_string(def.number))
          << " data-jtml-component-body-hex=" << quote(serializedComponentBodyHex(def))
          << "\\\\";
@@ -1812,6 +2045,7 @@ std::string componentInstanceLine(const ComponentDef& def,
                                   const std::map<std::string, std::string>& paramBindings,
                                   int sourceLine,
                                   const std::string& role = "",
+                                  const std::string& slotHex = "",
                                   const std::string& extraAttrs = "") {
     const std::string instanceName = def.name + "_" + std::to_string(instanceId);
     std::ostringstream line;
@@ -1821,6 +2055,9 @@ std::string componentInstanceLine(const ComponentDef& def,
          << " data-jtml-component-locals=" << quote(serializedComponentMap(localBindings))
          << " data-jtml-component-params=" << quote(serializedComponentMap(paramBindings))
          << " data-jtml-source-line=" << quote(std::to_string(sourceLine));
+    if (!slotHex.empty()) {
+        line << " data-jtml-component-slot-hex=" << quote(slotHex);
+    }
     if (!role.empty()) {
         line << " data-jtml-component-role=" << quote(role);
     }
@@ -1853,9 +2090,73 @@ std::string joinParamNames(const std::vector<std::string>& params) {
     return out.str();
 }
 
+struct ComponentCallParts {
+    std::vector<std::string> args;
+    std::map<std::string, std::string> eventHandlers;
+};
+
+ComponentCallParts parseComponentCallParts(const std::vector<std::string>& tokens,
+                                           size_t paramCount,
+                                           const std::vector<std::string>& declaredEmits,
+                                           const std::map<std::string, int>& emitArity,
+                                           const std::map<std::string, int>& availableActions,
+                                           int lineNumber,
+                                           const std::string& componentName) {
+    ComponentCallParts parts;
+    size_t index = 1;
+    for (size_t p = 0; p < paramCount; ++p) {
+        if (index >= tokens.size() || tokens[index] == "on") {
+            throw std::runtime_error("Component '" + componentName + "' expects " +
+                                     std::to_string(paramCount) + " argument(s) at line " +
+                                     std::to_string(lineNumber));
+        }
+        parts.args.push_back(tokens[index++]);
+    }
+
+    while (index < tokens.size()) {
+        if (tokens[index] != "on") {
+            throw std::runtime_error("Unexpected token '" + tokens[index] +
+                                     "' in component call '" + componentName +
+                                     "' at line " + std::to_string(lineNumber) +
+                                     "; use 'on event handler' for emitted component events");
+        }
+        if (index + 2 >= tokens.size()) {
+            throw std::runtime_error("Expected 'on event handler' in component call '" +
+                                     componentName + "' at line " +
+                                     std::to_string(lineNumber));
+        }
+        const std::string eventName = tokens[index + 1];
+        if (!declaredEmits.empty() &&
+            std::find(declaredEmits.begin(), declaredEmits.end(), eventName) == declaredEmits.end()) {
+            throw std::runtime_error("Component '" + componentName + "' does not emit event '" +
+                                     eventName + "' at line " + std::to_string(lineNumber));
+        }
+        const std::string handlerToken = tokens[index + 2];
+        const auto handler = parseCallLikeToken(handlerToken, "event handler", lineNumber);
+        const auto actionIt = availableActions.find(handler.name);
+        if (actionIt != availableActions.end()) {
+            const auto emittedIt = emitArity.find(eventName);
+            const int emittedCount = emittedIt == emitArity.end() ? 0 : emittedIt->second;
+            const int expected = handler.argCount + emittedCount;
+            if (actionIt->second != expected) {
+                throw std::runtime_error("Component event '" + eventName + "' on '" + componentName +
+                                         "' forwards " + std::to_string(expected) +
+                                         " argument(s) to handler '" + handler.name +
+                                         "', but the handler declares " +
+                                         std::to_string(actionIt->second) + " at line " +
+                                         std::to_string(lineNumber));
+            }
+        }
+        parts.eventHandlers[eventName] = handlerToken;
+        index += 3;
+    }
+    return parts;
+}
+
 std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
                                            const std::map<std::string, ComponentDef>& components,
                                            int& instanceCounter,
+                                           const std::map<std::string, int>& availableActions,
                                            int depth = 0) {
     if (depth > 32) {
         throw std::runtime_error("Component expansion exceeded the recursion limit");
@@ -1954,7 +2255,8 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
                     (routeLoads.empty() ? "" : " data-jtml-route-load " + quote(joinParamNames(routeLoads))),
                 lines[i].number
             });
-            std::vector<Line> body = expandComponentLinesImpl(def.body, components, instanceCounter, depth + 1);
+            std::vector<Line> body = expandComponentLinesImpl(def.body, components, instanceCounter,
+                                                              def.actionArity, depth + 1);
             auto localBindings = componentLocalBindings(def, body, instanceCounter);
             int routeInstanceId = localBindings.empty() ? ++instanceCounter : instanceCounter;
             std::vector<Line> routeBody;
@@ -1983,13 +2285,17 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
                 continue;
             }
 
-            std::vector<Line> layoutBody = expandComponentLinesImpl(layoutDef->body, components, instanceCounter, depth + 1);
+            std::vector<Line> layoutBody = expandComponentLinesImpl(layoutDef->body, components,
+                                                                    instanceCounter,
+                                                                    layoutDef->actionArity,
+                                                                    depth + 1);
             auto layoutBindings = componentLocalBindings(*layoutDef, layoutBody, instanceCounter);
             int layoutInstanceId = layoutBindings.empty() ? ++instanceCounter : instanceCounter;
             expanded.push_back({
                 lines[i].indent + 2,
                 componentInstanceLine(*layoutDef, layoutInstanceId, layoutBindings, {},
                                       lines[i].number, "layout",
+                                      "",
                                       "data-jtml-layout=" + quote(layoutDef->name)),
                 lines[i].number
             });
@@ -2032,22 +2338,25 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
         }
 
         const ComponentDef& def = componentIt->second;
-        if (tokens.size() - 1 != def.params.size()) {
-            throw std::runtime_error("Component '" + def.name + "' expects " +
-                                     std::to_string(def.params.size()) + " argument(s) at line " +
-                                     std::to_string(lines[i].number));
-        }
+        const auto callParts = parseComponentCallParts(tokens, def.params.size(),
+                                                       def.emits,
+                                                       def.emitArity,
+                                                       availableActions,
+                                                       lines[i].number, def.name);
 
         size_t callEnd = findBlockEnd(lines, i);
         std::vector<Line> slotLines = normalizeChildBlock(lines, i + 1, callEnd);
-        slotLines = expandComponentLinesImpl(slotLines, components, instanceCounter, depth + 1);
+        slotLines = expandComponentLinesImpl(slotLines, components, instanceCounter,
+                                             availableActions, depth + 1);
+        const std::string slotHex = serializedLinesHex(slotLines);
 
         std::map<std::string, std::string> bindings;
         for (size_t p = 0; p < def.params.size(); ++p) {
-            bindings[def.params[p]] = tokens[p + 1];
+            bindings[def.params[p]] = callParts.args[p];
         }
 
-        std::vector<Line> body = expandComponentLinesImpl(def.body, components, instanceCounter, depth + 1);
+        std::vector<Line> body = expandComponentLinesImpl(def.body, components, instanceCounter,
+                                                          def.actionArity, depth + 1);
         auto localBindings = componentLocalBindings(def, body, instanceCounter);
         // Claim a unique instance ID (componentLocalBindings may not have incremented).
         int instanceId;
@@ -2057,12 +2366,15 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
             instanceId = instanceCounter;
         }
         const std::string instanceMarker =
-            componentInstanceLine(def, instanceId, localBindings, bindings, lines[i].number);
+            componentInstanceLine(def, instanceId, localBindings, bindings,
+                                  lines[i].number, "", slotHex);
         expanded.push_back({lines[i].indent, instanceMarker, lines[i].number});
         for (const auto& bodyLine : body) {
             auto bodyTokens = splitTokens(bodyLine.text);
             if (!bodyTokens.empty() && bodyTokens[0] == "slot") {
-                for (const auto& slotLine : slotLines) {
+                const std::string requestedSlot = bodyTokens.size() > 1 ? bodyTokens[1] : "";
+                const auto selectedSlotLines = selectSlotLines(slotLines, requestedSlot);
+                for (const auto& slotLine : selectedSlotLines) {
                     Line injected = slotLine;
                     injected.indent = lines[i].indent + 2 + bodyLine.indent + slotLine.indent;
                     expanded.push_back(injected);
@@ -2088,7 +2400,7 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
 std::vector<Line> expandComponentLines(const std::vector<Line>& lines,
                                        const std::map<std::string, ComponentDef>& components) {
     int instanceCounter = 0;
-    return expandComponentLinesImpl(lines, components, instanceCounter);
+    return expandComponentLinesImpl(lines, components, instanceCounter, collectActionArities(lines));
 }
 
 struct ElementResult {
@@ -3067,7 +3379,14 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
             if (tokens.size() < 4 || tokens[2] != "in") {
                 throw std::runtime_error("Expected 'for name in expression' at line " + std::to_string(line.number));
             }
-            emitLine(out, level, "for (" + tokens[1] + " in " + joinTokens(tokens, 3) + ")\\\\");
+            auto keyIt = std::find(tokens.begin() + 3, tokens.end(), "key");
+            const std::string iterable = keyIt == tokens.end()
+                ? joinTokens(tokens, 3)
+                : joinTokens(std::vector<std::string>(tokens.begin(), keyIt), 3);
+            if (iterable.empty()) {
+                throw std::runtime_error("Expected iterable expression before 'key' at line " + std::to_string(line.number));
+            }
+            emitLine(out, level, "for (" + tokens[1] + " in " + iterable + ")\\\\");
             stack.push_back({line.indent, "\\\\"});
         } else if (head == "while") {
             if (tokens.size() < 2) {

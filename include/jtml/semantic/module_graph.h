@@ -35,6 +35,8 @@ struct SemanticModuleIr {
     bool available = false;
     std::string syntax;
     std::string parseError;
+    std::size_t parseErrorLine = 0;
+    std::size_t parseErrorColumn = 0;
     std::size_t topLevelCount = 0;
     std::size_t totalNodeCount = 0;
     std::vector<SemanticAstNodeRecord> topLevelNodes;
@@ -88,6 +90,9 @@ struct SemanticProjectIssue {
     std::size_t importIndex = 0;
     std::string specifier;
     std::string resolvedPath;
+    std::string path;
+    std::size_t line = 0;
+    std::size_t column = 0;
     std::vector<std::string> requested;
     std::vector<std::string> available;
 };

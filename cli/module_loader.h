@@ -15,4 +15,7 @@ std::string loadCompilationUnit(const std::string& inputFile,
 std::vector<std::filesystem::path>
 collectSourceFiles(const std::string& inputFile, SyntaxMode syntax);
 
+std::vector<std::filesystem::path>
+collectSourceFilesRecoverable(const std::string& inputFile, SyntaxMode syntax);
+
 } // namespace jtml::cli

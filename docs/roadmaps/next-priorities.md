@@ -396,21 +396,157 @@ Implementation slices:
 29. ✅ First direct component body-plan execution slice: browser-local
    component instances now render common templates from
    `RuntimePlan.componentDefinitions[].bodyPlan`, initialize per-instance local
-   state, recompute derived values, render simple `if` and `for` nodes, execute
-   simple local assignment actions, and re-render the owning instance. This is
-   the first real break from expanded compatibility DOM as the component render
-   surface.
-30. Complete direct component parity: add body-plan `else`, slots, nested
-   component calls, semantic UI modifiers/attributes, action arguments, and the
-   matching live-interpreter path over the same body-plan contract.
-31. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
+   state, recompute derived values, render simple `if`, `else`, and `for`
+   nodes, execute simple local assignment actions, carry authored slot plans,
+   render slots and nested component calls, preserve common attributes, pass
+   simple action arguments, and re-render the owning instance. This is the first
+   real break from expanded compatibility DOM as the component render surface.
+30. ✅ Manifest safety/runtime identity slice: explain serializers and client
+   serializers are now separate. Browser manifests omit absolute source paths,
+   body source/hex payloads, semantic summaries, and parse metadata; embedded
+   JSON is script-escaped; `friendly+import-stubs` modules are tooling-only for
+   client plans; component lookup carries module identity before falling back
+   to name-only compatibility.
+31. ✅ Live body-plan action parity slice: the live interpreter now exposes
+   slot plans, executes simple component body-plan assignment actions,
+   guarded `if`/`else`, array `for`, and guarded `while` action bodies with action arguments, preserves
+   numeric/string `+=` semantics plus numeric `-=`, `*=`, `/=`, and `%=`, fails closed to compatibility dispatch for
+   unsupported action bodies, and has a browser/live metadata parity
+   regression.
+32. ✅ Live body-plan template surface slice: `/api/state` component records now
+   include `renderedHtml` generated from the same body plan for common
+   templates, parameter expressions, slots, and nested component calls. This is
+   a tooling/parity surface; the live DOM transport still has compatibility
+   fallback.
+33. ✅ Direct nested ownership and semantic UI render parity slice:
+   browser-local nested component calls now register dynamic runtime identities
+   so nested local actions can target their owning instance; browser-local and
+   live body-plan renderers preserve semantic UI primitives plus modifiers as
+   `jtml-*` classes and `data-jtml-ui*` attributes.
+34. ✅ Live body-plan transport patch slice: `jtml serve` exposes
+   `/api/rendered-components`, `/api/event` and `/api/component-action`
+   responses carry `renderedComponents`, and the browser runtime patches
+   supported live component wrappers from body-plan HTML while keeping
+   compatibility DOM fallback for unsupported shapes.
+35. ✅ Recoverable project diagnostics slice: `jtml explain` now falls back to
+   a standalone entry parse when imported modules fail, uses a recoverable
+   source-file collector for tooling, preserves unavailable module IR with
+   source coordinates, and reports `JTML_MODULE_PARSE` as a semantic project
+   issue instead of losing the module graph.
+36. ✅ Module-aware live component identity slice: interpreter runtime
+   component definitions and instances now carry `moduleId` /
+   `definitionModule`, `/api/state` and `/api/component-definitions` expose
+   those identities, and live nested/component action lookup prefers
+   `(moduleId, componentName)` before name-only compatibility fallback. Project
+   runtime-plan tests now pin duplicate exported component names across modules
+   so a `Card` import resolves to its authored module instead of whichever
+   global `Card` appears first.
+37. ✅ Import-aware nested body-plan identity slice: component body-plan nodes
+   now carry `definitionModule`, so imported nested component calls inside
+   encoded component bodies bind to the module that exported the target
+   component. Browser-local and live nested renderers consume that field before
+   parent-module/name-only fallback.
+38. ✅ Live rendered component action bridge: buttons emitted by the live
+   body-plan renderer now preserve direct component action metadata and simple
+   action arguments. The browser runtime routes patched live button clicks to
+   `/api/component-action`, applies returned bindings/render patches, and pins
+   this with browser/live parity regressions.
+39. ✅ Body-plan render support truthfulness slice: live component state and
+   `/api/rendered-components` now expose `renderedHtmlSupported`, so components
+   with action/state semantics but no renderable template explicitly stay on
+   compatibility DOM fallback instead of reporting template parity.
+40. ✅ Initial live body-plan transport ownership slice: `jtml serve` now
+   injects supported component wrappers from body-plan HTML into the initially
+   served document, marks them with `data-jtml-live-body-plan-transport="body-plan"`
+   and a stable rendered hash, and lets the browser runtime verify current
+   markup without a startup DOM patch while still using `/api/rendered-components`
+   for event/action updates. The same slice pins route-link parity so
+   `link ... to` keeps hash-link interception metadata after live body-plan
+   rendering.
+41. ✅ Rich platform attribute parity slice: browser-local and live body-plan
+   renderers now share a broader attribute/boolean surface for forms, media,
+   SVG, `aria-*`, `data-*`, quoted values with spaces, and Friendly aliases
+   such as `link`, `navlink`, `image`, `file`, `dropzone`, and `checkbox`.
+   The input aliases default to the expected platform `type` where the author
+   did not provide one.
+42. ✅ Live nested component instance ownership slice: the live body-plan
+   renderer now retains dynamic nested component instances for supported
+   rendered components, routes their local buttons through `/api/component-action`,
+   evaluates nested `let`/param values as real runtime values, and gives nested
+   components inside `for` loops loop-aware identities so repeated children keep
+   separate local state. Browser-local action-argument parsing now uses the same
+   top-level argument splitting contract for quoted strings with spaces.
+43. ✅ Live nested component cleanup slice: after each supported top-level
+   body-plan render, the interpreter prunes stale dynamic nested descendants
+   that were not rendered in the current pass. Removed loop/branch children can
+   no longer receive stale `/api/component-action` dispatches.
+44. ✅ First keyed/reordered lifecycle slice: Friendly component loops may now
+   use `for item in items key item.id`. Classic compatibility lowering strips
+   the key tail, while the semantic body plan keeps `keyExpression`; browser
+   and live nested component IDs prefer that key over the loop index so local
+   state follows reordered items. Browser-local direct renders now also prune
+   stale dynamic descendants after each body-plan render, matching the live
+   cleanup path for removed keyed children.
+45. ✅ First named/multiple slot insertion slice: component definitions may use
+   named `slot header` / `slot footer` sites plus the default `slot`; call
+   sites provide matching `slot name` blocks; compatibility expansion injects
+   only selected slot groups; and browser/live body-plan renderers select from
+   the same `slotPlan`.
+46. ✅ First emitted component-event bridge and `emits` contract: component
+   definitions may declare `make Child emits picked cancelled`, named payloads
+   with `make Child emits picked(item)`, or first-slice typed payload metadata
+   with `make Child emits picked(item: string)`. Semantic analysis, runtime
+   plans, browser manifests, explain JSON, and live component-definition JSON
+   expose the emitted-event list, `emitArity` map, `emitPayloads`, and
+   `emitPayloadTypes` metadata. Browser-local and live direct component
+   dispatch enforce simple emitted payload types before forwarding to parent
+   handlers.
+   Nested component
+   calls may use `Child on picked choose` or `Child on picked choose("preset")`;
+   buttons or other direct component actions that fire `picked(...)` on the
+   child route through the explicit parent mapping when no local child action
+   exists. If a component declares emits, `on event handler` is validated
+   against that list; if a payload arity is declared and the parent action is
+   known, preset handler args plus emitted args are checked against the parent
+   action signature. Browser-local and live body-plan paths both append emitted
+   args after any preset handler args and re-render the owning parent instance.
+47. ✅ Nested named-slot plan parity: nested component calls inside component
+   body plans now carry a reindexed authored `slotPlan`, so default and named
+   slots work when a component composes another component. Browser-local and
+   live body-plan renderers both use this cloned slot plan instead of relying
+   on compatibility-expanded DOM.
+48. ✅ First body-plan action-call node: component action bodies can now contain
+   direct calls such as `incBy(2)` and `picked("Ada Lovelace")`. The runtime
+   plan marks these as `kind: "call"` instead of misclassifying them as
+   templates. Browser-local and live direct execution first dispatch to local
+   component actions with evaluated arguments; if no local action exists, the
+   same node can emit a declared component event through the existing `emits`
+   contract. This reduces compatibility fallback pressure for composed
+   component actions.
+49. Complete direct/live component parity: keep expanding the supported
+   body-plan subset until the live compatibility DOM transport is needed only
+   for explicit fail-closed fallback cases. Shipped follow-up: direct live
+   action execution restores top-level and nested action parameters plus loop
+   iterators instead of leaking temporary bindings, and typed emitted-event
+   diagnostics name the authored payload and component definition line. Next
+   gaps: broader keyed collection diff semantics, richer
+   action expressions, advanced
+   media/graphics attributes, and broader browser/live behavior parity checks.
+50. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
    same catalog endpoint pattern.
-32. Add security, compatibility, deprecation, contribution, benchmark, and
+51. Add contract-first JTL backend API design docs and prototypes only after
+   runtime/module semantics are stable. Target governed internal operations:
+   approval consoles, incident consoles, AI governance, cost controls, and
+   deployment controls. Planned phases are contracts/types/errors, OpenAPI,
+   policies/validation, runtime adapters, JTML `fetch`/future `call`
+   integration, and enterprise hardening.
+52. Add security, compatibility, deprecation, contribution, benchmark, and
    release-policy docs once the internal contracts stop moving every slice.
 
 ## Decision
 
 Do semantic styling, browser-local runtime parity, direct component template
-execution, and platform modularization in a balanced loop. Interop and export
-targets should follow once the browser/local runtime contract is stable enough
-that external hosts are not binding to transitional behavior.
+execution, and platform modularization in a balanced loop. Contract-first JTL
+backend APIs, interop, and export targets should follow once the browser/local
+runtime contract is stable enough that external hosts are not binding to
+transitional behavior.

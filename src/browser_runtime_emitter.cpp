@@ -48,6 +48,9 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
       let componentInstances = [];
       let componentDefinitions = [];
       const componentScopes = {};
+      const dynamicComponentInstances = {};
+      const componentRenderPath = [];
+      const dynamicComponentRenderStack = [];
 
       window.jtmlEventValue = function (event) {
         const target = event && event.target;
@@ -88,6 +91,29 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         return map;
       }
 
+      function parseComponentIntMap(value) {
+        const map = {};
+        String(value || '').split(';').forEach(function (entry) {
+          if (!entry) return;
+          const pos = entry.indexOf('=');
+          if (pos === -1) return;
+          const parsed = Number(entry.slice(pos + 1));
+          map[entry.slice(0, pos)] = Number.isFinite(parsed) ? parsed : 0;
+        });
+        return map;
+      }
+
+      function parseComponentStringListMap(value) {
+        const map = {};
+        String(value || '').split(';').forEach(function (entry) {
+          if (!entry) return;
+          const pos = entry.indexOf('=');
+          if (pos === -1) return;
+          map[entry.slice(0, pos)] = entry.slice(pos + 1).split(',').filter(Boolean);
+        });
+        return map;
+      }
+
       function escapeSelectorValue(value) {
         if (window.CSS && CSS.escape) return CSS.escape(value);
         return String(value || '').replace(/["\\]/g, '\\$&');
@@ -95,7 +121,8 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
 
       function componentElementFor(id) {
         if (!id) return null;
-        return document.querySelector('[data-jtml-instance="' + escapeSelectorValue(id) + '"]');
+        return document.querySelector('[data-jtml-instance="' + escapeSelectorValue(id) + '"]') ||
+          document.querySelector('[data-jtml-direct-instance="' + escapeSelectorValue(id) + '"]');
       }
 
       function componentDefinitionElementFor(name) {
@@ -151,21 +178,270 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
           .replace(/"/g, '&quot;');
       }
 
+      function escapeAttribute(value) {
+        return escapeHtml(value).replace(/'/g, '&#39;');
+      }
+
       function componentTagName(name) {
         const map = {
+          app: 'div',
           page: 'main',
+          shell: 'div',
+          topbar: 'header',
+          sidebar: 'aside',
+          content: 'main',
+          panel: 'section',
+          card: 'section',
+          metric: 'article',
+          toolbar: 'div',
+          tabs: 'div',
+          tab: 'button',
+          alert: 'div',
+          badge: 'span',
+          modal: 'section',
+          drawer: 'aside',
+          toast: 'div',
+          loading: 'div',
+          error: 'div',
+          empty: 'div',
+          field: 'label',
+          spacer: 'div',
           box: 'div',
           stack: 'div',
           cluster: 'div',
           split: 'div',
           grid: 'div',
-          card: 'section',
-          panel: 'section',
           text: 'p',
+          link: 'a',
+          navlink: 'a',
+          image: 'img',
+          list: 'ul',
+          listOrdered: 'ol',
+          item: 'li',
+          checkbox: 'input',
+          file: 'input',
+          dropzone: 'input',
           title: 'h1',
           subtitle: 'p'
         };
         return map[name] || name;
+      }
+
+      function semanticUiPrimitiveNames() {
+        return {
+          app: true,
+          shell: true,
+          topbar: true,
+          sidebar: true,
+          content: true,
+          panel: true,
+          card: true,
+          metric: true,
+          stack: true,
+          cluster: true,
+          split: true,
+          grid: true,
+          toolbar: true,
+          tabs: true,
+          tab: true,
+          alert: true,
+          badge: true,
+          modal: true,
+          drawer: true,
+          toast: true,
+          loading: true,
+          error: true,
+          empty: true,
+          field: true,
+          spacer: true
+        };
+      }
+
+      function isSemanticUiPrimitiveName(name) {
+        return !!semanticUiPrimitiveNames()[String(name || '')];
+      }
+
+      function semanticUiModifierNames() {
+        return {
+          cols: true,
+          gap: true,
+          pad: true,
+          radius: true,
+          shadow: true,
+          tone: true,
+          align: true,
+          justify: true,
+          width: true,
+          surface: true
+        };
+      }
+
+      function isSemanticUiModifierName(name) {
+        return !!semanticUiModifierNames()[String(name || '')];
+      }
+
+      function componentAttributeNames() {
+        return {
+          id: true,
+          class: true,
+          style: true,
+          role: true,
+          href: true,
+          src: true,
+          alt: true,
+          title: true,
+          type: true,
+          name: true,
+          value: true,
+          placeholder: true,
+          for: true,
+          rel: true,
+          target: true,
+          method: true,
+          action: true,
+          enctype: true,
+          autocomplete: true,
+          inputmode: true,
+          pattern: true,
+          accept: true,
+          poster: true,
+          preload: true,
+          kind: true,
+          srclang: true,
+          label: true,
+          width: true,
+          height: true,
+          min: true,
+          max: true,
+          step: true,
+          minlength: true,
+          maxlength: true,
+          rows: true,
+          cols: true,
+          cx: true,
+          cy: true,
+          r: true,
+          x: true,
+          y: true,
+          x1: true,
+          y1: true,
+          x2: true,
+          y2: true,
+          d: true,
+          points: true,
+          viewBox: true,
+          fill: true,
+          stroke: true,
+          'stroke-width': true,
+          transform: true,
+          opacity: true
+        };
+      }
+
+      function isComponentAttributeName(name) {
+        name = String(name || '');
+        return !!componentAttributeNames()[name] ||
+          name.indexOf('aria-') === 0 ||
+          name.indexOf('data-') === 0;
+      }
+
+      function isComponentBooleanAttribute(name) {
+        return {
+          disabled: true,
+          required: true,
+          checked: true,
+          selected: true,
+          multiple: true,
+          readonly: true,
+          autofocus: true,
+          playsinline: true,
+          open: true,
+          hidden: true,
+          controls: true,
+          autoplay: true,
+          loop: true,
+          muted: true
+        }[String(name || '')] === true;
+      }
+
+      function sameRuntimeModule(left, right) {
+        if (left == null || right == null) return false;
+        return String(left) === String(right);
+      }
+
+      function componentDefinitionForInstance(instance) {
+        if (!instance) return null;
+        const name = instance.component || '';
+        if (instance.definitionModule != null) {
+          const byDefinitionModule = componentDefinitions.find(function (item) {
+            return item.name === name && sameRuntimeModule(item.moduleId, instance.definitionModule);
+          });
+          if (byDefinitionModule) return byDefinitionModule;
+        }
+        if (instance.moduleId != null) {
+          const byInstanceModule = componentDefinitions.find(function (item) {
+            return item.name === name && sameRuntimeModule(item.moduleId, instance.moduleId);
+          });
+          if (byInstanceModule) return byInstanceModule;
+        }
+        return componentDefinitions.find(function (item) { return item.name === name; }) || null;
+      }
+
+      function componentDefinitionForName(name, moduleId, fallbackModuleId) {
+        if (moduleId != null) {
+          const byModule = componentDefinitions.find(function (item) {
+            return item.name === name && sameRuntimeModule(item.moduleId, moduleId);
+          });
+          if (byModule) return byModule;
+        }
+        if (fallbackModuleId != null) {
+          const byFallback = componentDefinitions.find(function (item) {
+            return item.name === name && sameRuntimeModule(item.moduleId, fallbackModuleId);
+          });
+          if (byFallback) return byFallback;
+        }
+        return componentDefinitions.find(function (item) { return item.name === name; }) || null;
+      }
+
+      function findRuntimeComponentInstance(id) {
+        if (!id) return null;
+        const staticInstance = componentInstances.find(function (item) { return item.id === id; });
+        if (staticInstance) return staticInstance;
+        return dynamicComponentInstances[id] || null;
+      }
+
+      function registerDynamicComponentInstance(instance) {
+        if (!instance || !instance.id) return instance;
+        if (dynamicComponentRenderStack.length) {
+          dynamicComponentRenderStack[dynamicComponentRenderStack.length - 1].add(instance.id);
+        }
+        const existing = dynamicComponentInstances[instance.id];
+        if (existing) {
+          existing.moduleId = instance.moduleId;
+          existing.definitionModule = instance.definitionModule;
+          existing.component = instance.component;
+          existing.params = instance.params || existing.params || {};
+          existing.locals = instance.locals || existing.locals || {};
+          existing.eventHandlers = instance.eventHandlers || existing.eventHandlers || {};
+          existing.slotHtml = instance.slotHtml != null ? instance.slotHtml : existing.slotHtml;
+          existing.slotPlan = Array.isArray(instance.slotPlan) ? instance.slotPlan.slice() : (existing.slotPlan || []);
+          existing.element = componentElementFor(instance.id) || existing.element || null;
+          return existing;
+        }
+        instance.element = componentElementFor(instance.id) || null;
+        dynamicComponentInstances[instance.id] = instance;
+        return instance;
+      }
+
+      function pruneDynamicComponentSubtree(parentId, activeIds) {
+        if (!parentId) return;
+        const prefix = String(parentId) + '__';
+        Object.keys(dynamicComponentInstances).forEach(function (id) {
+          if (id.indexOf(prefix) !== 0) return;
+          if (activeIds && activeIds.has(id)) return;
+          delete dynamicComponentInstances[id];
+          delete componentScopes[id];
+        });
       }
 
       function componentScopeFor(instance, definition) {
@@ -196,6 +472,94 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
           .filter(Boolean);
       }
 
+      function componentNodeHead(node) {
+        const words = splitComponentWords(node && node.text ? node.text : '');
+        return node && (node.name || words[0]) || '';
+      }
+
+      function isElseComponentNode(node) {
+        return componentNodeHead(node) === 'else';
+      }
+
+      function componentElseSibling(definition, node) {
+        const plan = definition.bodyPlan || [];
+        const index = plan.indexOf(node);
+        if (index === -1) return null;
+        for (let i = index + 1; i < plan.length; i += 1) {
+          const candidate = plan[i];
+          if (!candidate) continue;
+          if (candidate.parentIndex === node.parentIndex) {
+            return isElseComponentNode(candidate) ? candidate : null;
+          }
+        }
+        return null;
+      }
+
+      function renderComponentChildren(definition, instance, node, scope) {
+        return componentNodeChildren(definition, node)
+          .filter(function (child) { return !isElseComponentNode(child); })
+          .map(function (child) { return renderComponentPlanNode(definition, instance, child, scope); })
+          .join('');
+      }
+
+      function componentSlotName(node) {
+        const words = splitComponentWords(node && node.text ? node.text : '');
+        return words[0] === 'slot' && words.length > 1 ? words[1] : '';
+      }
+
+      function renderComponentSlot(instance, scope, name) {
+        const requestedName = String(name || '');
+        if (!requestedName && instance && instance.slotHtml != null) return String(instance.slotHtml);
+        if (requestedName && instance && instance.slotHtmlByName &&
+            Object.prototype.hasOwnProperty.call(instance.slotHtmlByName, requestedName)) {
+          return String(instance.slotHtmlByName[requestedName]);
+        }
+        const slotPlan = instance && Array.isArray(instance.slotPlan) ? instance.slotPlan : [];
+        if (!slotPlan.length) return '';
+        const slotDefinition = { name: '__slot', bodyPlan: slotPlan };
+        const output = [];
+        slotPlan.forEach(function (node) {
+          if (!node || node.parentIndex !== -1 ||
+              (node.kind !== 'template' && node.kind !== 'slot')) {
+            return;
+          }
+          if (componentNodeHead(node) === 'slot') {
+            const slotName = componentSlotName(node);
+            if (slotName === requestedName) {
+              output.push(renderComponentChildren(slotDefinition, instance, node, scope));
+            }
+            return;
+          }
+          if (!requestedName) {
+            output.push(renderComponentPlanNode(slotDefinition, instance, node, scope));
+          }
+        });
+        return output.join('');
+      }
+
+      function slotPlanForComponentNode(definition, node) {
+        const plan = definition && Array.isArray(definition.bodyPlan) ? definition.bodyPlan : [];
+        const output = [];
+        function cloneSubtree(source, parentIndex) {
+          if (!source) return -1;
+          const clone = Object.assign({}, source);
+          const index = output.length;
+          clone.parentIndex = parentIndex;
+          clone.childIndices = [];
+          output.push(clone);
+          (source.childIndices || []).forEach(function (childIndex) {
+            const child = plan[childIndex];
+            const clonedChildIndex = cloneSubtree(child, index);
+            if (clonedChildIndex >= 0) clone.childIndices.push(clonedChildIndex);
+          });
+          return index;
+        }
+        (node && node.childIndices || []).forEach(function (childIndex) {
+          cloneSubtree(plan[childIndex], -1);
+        });
+        return output;
+      }
+
       function renderComponentExpression(expr, scope) {
         const literal = unquoteComponentText(expr);
         if (literal !== String(expr || '').trim()) return literal;
@@ -203,17 +567,193 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         return result.found ? renderTemplateValue(result.value) : literal;
       }
 
-      function renderComponentPlanNode(definition, instance, node, scope) {
-        if (!node || node.kind !== 'template') return '';
+      function evaluateComponentValue(expr, scope) {
+        const literal = unquoteComponentText(expr);
+        if (literal !== String(expr || '').trim()) return literal;
+        const result = evaluateClientExpression(expr, scope);
+        return result.found ? result.value : literal;
+      }
+
+      function parseComponentElementParts(words, start, scope, stopWords) {
+        const attrs = [];
+        const modifiers = [];
+        const content = [];
+        const stops = stopWords || {};
+        for (let i = start; i < words.length; i += 1) {
+          const token = words[i];
+          if (stops[token]) break;
+          if (isSemanticUiModifierName(token)) {
+            const raw = i + 1 < words.length ? words[i + 1] : '';
+            if (raw && !stops[raw] && !isComponentAttributeName(raw) &&
+                !isComponentBooleanAttribute(raw) && !isSemanticUiModifierName(raw)) {
+              modifiers.push({
+                name: token,
+                value: renderTemplateValue(evaluateComponentValue(raw, scope))
+              });
+              i += 1;
+            } else {
+              modifiers.push({ name: token, value: '' });
+            }
+            continue;
+          }
+          if (isComponentAttributeName(token)) {
+            const raw = i + 1 < words.length ? words[i + 1] : '';
+            if (raw && !isComponentAttributeName(raw) && !isComponentBooleanAttribute(raw) && !stops[raw]) {
+              attrs.push({ name: token, value: renderTemplateValue(evaluateComponentValue(raw, scope)) });
+              i += 1;
+            } else {
+              content.push(token);
+            }
+            continue;
+          }
+          if (isComponentBooleanAttribute(token)) {
+            attrs.push({ name: token, boolean: true });
+            continue;
+          }
+          content.push(token);
+        }
+        return { content: content.join(' '), attrs: attrs, modifiers: modifiers };
+      }
+
+      function renderComponentAttributes(parts, extra) {
+        const attrs = [];
+        let classValue = '';
+        (parts && parts.attrs || []).forEach(function (attr) {
+          if (!attr || !attr.name) return;
+          if (attr.name === 'class' && !attr.boolean) {
+            classValue = (classValue ? classValue + ' ' : '') + attr.value;
+          } else if (attr.boolean) attrs.push(' ' + attr.name);
+          else attrs.push(' ' + attr.name + '="' + escapeAttribute(attr.value) + '"');
+        });
+        Object.keys(extra || {}).forEach(function (name) {
+          if (extra[name] == null || extra[name] === '') return;
+          if (name === 'class') classValue = (classValue ? classValue + ' ' : '') + extra[name];
+          else attrs.push(' ' + name + '="' + escapeAttribute(extra[name]) + '"');
+        });
+        if (classValue) attrs.unshift(' class="' + escapeAttribute(classValue) + '"');
+        return attrs.join('');
+      }
+
+      function componentPartsHaveAttribute(parts, name) {
+        return (parts && parts.attrs || []).some(function (attr) {
+          return attr && attr.name === name;
+        });
+      }
+
+      function semanticUiRenderExtras(head, parts) {
+        const extras = {};
+        const classes = [];
+        if (isSemanticUiPrimitiveName(head)) {
+          classes.push('jtml-' + head);
+          extras['data-jtml-ui'] = head;
+        }
+        (parts && parts.modifiers || []).forEach(function (modifier) {
+          if (!modifier || !modifier.name) return;
+          const suffix = modifier.value ? '-' + String(modifier.value).replace(/[^A-Za-z0-9_-]/g, '-') : '';
+          classes.push('jtml-' + modifier.name + suffix);
+          extras['data-jtml-ui-' + modifier.name] = modifier.value || 'true';
+        });
+        if (classes.length) extras.class = classes.join(' ');
+        return extras;
+      }
+
+      function componentPathSegment(value) {
+        const raw = String(value == null ? '' : value);
+        const safe = raw.replace(/[^A-Za-z0-9_-]/g, '_').replace(/^_+|_+$/g, '');
+        return safe || 'empty';
+      }
+
+      function parseComponentActionInvocation(raw, scope) {
+        raw = String(raw || '').trim();
+        const match = raw.match(/^([A-Za-z_][A-Za-z0-9_\.]*)(?:\((.*)\))?$/);
+        if (!match) return { name: raw, args: [] };
+        const args = [];
+        const argSource = String(match[2] || '').trim();
+        if (argSource) {
+          splitTopLevelList(argSource).forEach(function (expr) {
+            args.push(evaluateComponentValue(expr, scope));
+          });
+        }
+        return { name: match[1], args: args };
+      }
+
+      function parseComponentEventHandlers(words, paramCount, scope) {
+        const handlers = {};
+        let i = 1 + Number(paramCount || 0);
+        while (i < words.length) {
+          if (words[i] !== 'on') {
+            i += 1;
+            continue;
+          }
+          if (i + 2 >= words.length) break;
+          const eventName = words[i + 1] || '';
+          const handler = parseComponentActionInvocation(words[i + 2] || '', scope);
+          if (eventName && handler && handler.name) handlers[eventName] = handler;
+          i += 3;
+        }
+        return handlers;
+      }
+
+      function renderNestedComponentCall(parentDefinition, parentInstance, node, scope, name) {
+        const nestedDefinition = componentDefinitionForName(
+          name,
+          node && node.definitionModule != null
+            ? node.definitionModule
+            : parentDefinition && parentDefinition.moduleId,
+          parentInstance && parentInstance.moduleId
+        );
+        if (!nestedDefinition) return null;
         const words = splitComponentWords(node.text || '');
-        const head = node.name || words[0] || 'box';
-        const children = componentNodeChildren(definition, node)
-          .map(function (child) { return renderComponentPlanNode(definition, instance, child, scope); })
+        const params = {};
+        (nestedDefinition.params || []).forEach(function (param, index) {
+          const raw = words[index + 1] || '';
+          params[param] = evaluateComponentValue(raw, scope);
+        });
+        const index = (parentDefinition.bodyPlan || []).indexOf(node);
+        const pathSuffix = componentRenderPath.length
+          ? '_' + componentRenderPath.join('_')
+          : '';
+        const nestedInstance = {
+          moduleId: parentDefinition && parentDefinition.moduleId,
+          definitionModule: nestedDefinition.moduleId,
+          id: String(parentInstance && parentInstance.id || 'component') + '__' +
+            name + '_' + String(index < 0 ? 'x' : index) + pathSuffix,
+          parentId: parentInstance && parentInstance.id || '',
+          component: name,
+          params: params,
+          locals: {},
+          eventHandlers: parseComponentEventHandlers(words, (nestedDefinition.params || []).length, scope),
+          slotPlan: slotPlanForComponentNode(parentDefinition, node),
+          slotHtml: renderComponentChildren(parentDefinition, parentInstance, node, scope)
+        };
+        registerDynamicComponentInstance(nestedInstance);
+        const nestedScope = componentScopeFor(nestedInstance, nestedDefinition);
+        applyComponentDerived(nestedScope, nestedDefinition);
+        const html = (nestedDefinition.bodyPlan || [])
+          .filter(function (candidate) {
+            return candidate && candidate.renderRoot && candidate.kind === 'template';
+          })
+          .map(function (candidate) {
+            return renderComponentPlanNode(nestedDefinition, nestedInstance, candidate, nestedScope);
+          })
           .join('');
-        if (head === 'slot') return '';
+        return '<div data-jtml-direct-instance="' + escapeAttribute(nestedInstance.id) + '"' +
+          ' data-jtml-component="' + escapeAttribute(name) + '"' +
+          ' data-jtml-component-parent="' + escapeAttribute(nestedInstance.parentId || '') + '"' +
+          ' data-jtml-nested-component="true">' + html + '</div>';
+      }
+
+      function renderComponentPlanNode(definition, instance, node, scope) {
+        if (!node || (node.kind !== 'template' && node.kind !== 'slot')) return '';
+        const words = splitComponentWords(node.text || '');
+        const head = componentNodeHead(node) || 'box';
+        if (head === 'slot') return renderComponentSlot(instance, scope, words[1] || '');
+        if (head === 'else') return '';
         if (head === 'if') {
           const condition = evaluateClientExpression(node.expression || words.slice(1).join(' '), scope);
-          return condition.found && condition.value ? children : '';
+          if (condition.found && condition.value) return renderComponentChildren(definition, instance, node, scope);
+          const elseNode = componentElseSibling(definition, node);
+          return elseNode ? renderComponentChildren(definition, instance, elseNode, scope) : '';
         }
         if (head === 'for') {
           const raw = node.expression || words.slice(1).join(' ');
@@ -228,16 +768,26 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
             else if (typeof values === 'object') values = Object.values(values);
             else values = [values];
           }
-          return values.map(function (item) {
+          return values.map(function (item, itemIndex) {
             const childScope = Object.assign({}, scope);
             childScope[match[1]] = item;
-            return componentNodeChildren(definition, node)
-              .map(function (child) {
-                return renderComponentPlanNode(definition, instance, child, childScope);
-              })
-              .join('');
+            const nodeIndex = (definition.bodyPlan || []).indexOf(node);
+            let keySegment = String(itemIndex);
+            if (node.keyExpression) {
+              const keyResult = evaluateClientExpression(node.keyExpression, childScope);
+              if (keyResult.found) keySegment = componentPathSegment(renderTemplateValue(keyResult.value));
+            }
+            componentRenderPath.push('for' + String(nodeIndex < 0 ? 'x' : nodeIndex) + '_' + keySegment);
+            try {
+              return renderComponentChildren(definition, instance, node, childScope);
+            } finally {
+              componentRenderPath.pop();
+            }
           }).join('');
         }
+        const children = renderComponentChildren(definition, instance, node, scope);
+        const nested = renderNestedComponentCall(definition, instance, node, scope, head);
+        if (nested != null) return nested;
         if (head === 'show' || head === 'text') {
           const expr = head === 'show'
             ? (node.expression || words.slice(1).join(' '))
@@ -246,45 +796,174 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         }
         if (head === 'button') {
           const clickIndex = words.indexOf('click');
-          const labelExpr = clickIndex === -1
-            ? words.slice(1).join(' ')
-            : words.slice(1, clickIndex).join(' ');
-          const actionName = clickIndex === -1 ? '' : unquoteComponentText(words[clickIndex + 1] || '');
+          const parts = parseComponentElementParts(
+            words,
+            1,
+            scope,
+            { click: true }
+          );
+          const labelExpr = parts.content;
+          const invocation = clickIndex === -1
+            ? { name: '', args: [] }
+            : parseComponentActionInvocation(words[clickIndex + 1] || '', scope);
           const label = renderComponentExpression(labelExpr || '"Button"', scope);
-          const attrs = actionName
+          const attrs = invocation.name
             ? ' data-jtml-direct-component-id="' + escapeHtml(instance.id) + '"' +
-              ' data-jtml-direct-component-action="' + escapeHtml(actionName) + '"'
+              ' data-jtml-direct-component-action="' + escapeHtml(invocation.name) + '"' +
+              ' data-jtml-direct-component-args="' + escapeAttribute(JSON.stringify(invocation.args || [])) + '"'
             : '';
-          return '<button type="button"' + attrs + '>' + escapeHtml(label) + '</button>' + children;
+          return '<button type="button"' + renderComponentAttributes(parts, semanticUiRenderExtras(head, parts)) + attrs + '>' +
+            escapeHtml(label) + '</button>' + children;
         }
         const tag = componentTagName(head);
-        const contentExpr = (node.expression || '').trim();
+        const parts = parseComponentElementParts(words, 1, scope);
+        const contentExpr = parts.content || (node.expression || '').trim();
         const inline = children ? '' : (contentExpr ? escapeHtml(renderComponentExpression(contentExpr, scope)) : '');
-        return '<' + tag + ' data-jtml-direct-node="' + escapeHtml(head) + '">' +
+        const extras = semanticUiRenderExtras(head, parts);
+        if (head === 'checkbox' && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'checkbox';
+        if ((head === 'file' || head === 'dropzone') && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'file';
+        extras['data-jtml-direct-node'] = head;
+        return '<' + tag + renderComponentAttributes(parts, extras) + '>' +
           inline + children + '</' + tag + '>';
       }
 
-      function runComponentPlanStatements(definition, scope, nodes) {
-        (nodes || []).forEach(function (node) {
-          if (!node) return;
-          if (node.kind === 'assignment') {
-            const result = evaluateClientBodyExpression(node.expression || '', scope);
-            const next = result.found ? result.value : unquoteComponentText(node.expression || '');
-            if (node.operator === '+=') scope[node.name] = Number(scope[node.name] || 0) + Number(next);
-            else if (node.operator === '-=') scope[node.name] = Number(scope[node.name] || 0) - Number(next);
-            else if (node.operator === '*=') scope[node.name] = Number(scope[node.name] || 0) * Number(next);
-            else if (node.operator === '/=') scope[node.name] = Number(scope[node.name] || 0) / Number(next);
-            else scope[node.name] = next;
+      function applyComponentAssignment(scope, node) {
+        if (!node || node.kind !== 'assignment' || !node.name) return false;
+        const result = evaluateClientBodyExpression(node.expression || '', scope);
+        const next = result.found ? result.value : unquoteComponentText(node.expression || '');
+        const current = scope[node.name];
+        const op = node.operator || '=';
+        if (op === '=') scope[node.name] = next;
+        else if (op === '+=') {
+          if (typeof current === 'number' && typeof next === 'number') {
+            scope[node.name] = current + next;
+          } else if (Number.isFinite(Number(current)) && Number.isFinite(Number(next))) {
+            scope[node.name] = Number(current) + Number(next);
+          } else {
+            scope[node.name] = String(current == null ? '' : current) + String(next == null ? '' : next);
           }
-          runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node));
+        } else if (op === '-=') scope[node.name] = Number(current || 0) - Number(next);
+        else if (op === '*=') scope[node.name] = Number(current || 0) * Number(next);
+        else if (op === '/=') scope[node.name] = Number(current || 0) / Number(next);
+        else if (op === '%=') scope[node.name] = Number(current || 0) % Number(next);
+        else return false;
+        return true;
+      }
+
+      function componentActionArgsFromExpression(expression, scope) {
+        const args = [];
+        const source = String(expression || '').trim();
+        if (!source) return args;
+        splitTopLevelList(source).forEach(function (expr) {
+          args.push(evaluateComponentValue(expr, scope));
         });
+        return args;
+      }
+
+      function runComponentPlanStatements(definition, scope, nodes, instance) {
+        const list = nodes || [];
+        for (let i = 0; i < list.length; i += 1) {
+          const node = list[i];
+          if (!node) continue;
+          const head = componentNodeHead(node);
+          if (isElseComponentNode(node)) continue;
+          if (node.kind === 'assignment') {
+            if (!applyComponentAssignment(scope, node)) return false;
+            if ((node.childIndices || []).length) return false;
+            continue;
+          }
+          if (node.kind === 'call' && node.name) {
+            const callArgs = componentActionArgsFromExpression(node.expression || '', scope);
+            const actionNode = (definition.bodyPlan || []).find(function (candidate) {
+              return candidate && candidate.kind === 'action' && candidate.name === node.name;
+            });
+            if (!actionNode) {
+              if (instance && emitComponentEvent(instance, node.name, callArgs)) continue;
+              return false;
+            }
+            const actionWords = splitComponentWords(actionNode.text || '');
+            const previous = {};
+            const hadPrevious = {};
+            (actionWords.slice(2) || []).forEach(function (param, index) {
+              if (!param) return;
+              hadPrevious[param] = Object.prototype.hasOwnProperty.call(scope, param);
+              previous[param] = scope[param];
+              scope[param] = callArgs[index];
+            });
+            const nestedOk = runComponentPlanStatements(
+                definition,
+                scope,
+                componentNodeChildren(definition, actionNode),
+                instance);
+            (actionWords.slice(2) || []).forEach(function (param) {
+              if (!param) return;
+              if (hadPrevious[param]) scope[param] = previous[param];
+              else delete scope[param];
+            });
+            if (!nestedOk) return false;
+            continue;
+          }
+          if (node.kind === 'template' && head === 'if') {
+            const words = splitComponentWords(node.text || '');
+            const condition = evaluateClientExpression(node.expression || words.slice(1).join(' '), scope);
+            if (condition.found && condition.value) {
+              if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance)) return false;
+            } else {
+              const elseNode = componentElseSibling(definition, node);
+              if (elseNode &&
+                  !runComponentPlanStatements(definition, scope, componentNodeChildren(definition, elseNode), instance)) {
+                return false;
+              }
+            }
+            continue;
+          }
+          if (node.kind === 'template' && head === 'for') {
+            const words = splitComponentWords(node.text || '');
+            const raw = node.expression || words.slice(1).join(' ');
+            const match = String(raw || '').match(/^([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(.+)$/);
+            if (!match) return false;
+            const result = evaluateClientExpression(match[2], scope);
+            if (!result.found) return false;
+            let values = result.value;
+            if (values == null) values = [];
+            if (!Array.isArray(values)) {
+              if (typeof values === 'string') values = values.split('');
+              else if (typeof values === 'object') values = Object.values(values);
+              else values = [values];
+            }
+            const previous = Object.prototype.hasOwnProperty.call(scope, match[1])
+              ? scope[match[1]]
+              : undefined;
+            const hadPrevious = Object.prototype.hasOwnProperty.call(scope, match[1]);
+            for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1) {
+              scope[match[1]] = values[itemIndex];
+              if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance)) return false;
+            }
+            if (hadPrevious) scope[match[1]] = previous;
+            else delete scope[match[1]];
+            continue;
+          }
+          if (node.kind === 'template' && head === 'while') {
+            const words = splitComponentWords(node.text || '');
+            const conditionExpr = node.expression || words.slice(1).join(' ');
+            let guard = 0;
+            while (true) {
+              const condition = evaluateClientExpression(conditionExpr, scope);
+              if (!condition.found) return false;
+              if (!condition.value) break;
+              if (guard++ > 10000) return false;
+              if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance)) return false;
+            }
+            continue;
+          }
+          return false;
+        }
+        return true;
       }
 
       function renderDirectComponent(instance) {
         if (!instance || !instance.element) return false;
-        const definition = componentDefinitions.find(function (item) {
-          return item.name === instance.component;
-        });
+        const definition = componentDefinitionForInstance(instance);
         if (!definition || !Array.isArray(definition.bodyPlan) || !definition.bodyPlan.length) {
           return false;
         }
@@ -295,14 +974,24 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         const scope = componentScopeFor(instance, definition);
         applyComponentDerived(scope, definition);
         instance.scope = scope;
-        instance.element.innerHTML = roots.map(function (node) {
-          return renderComponentPlanNode(definition, instance, node, scope);
-        }).join('');
+        const renderedDynamicIds = new Set();
+        dynamicComponentRenderStack.push(renderedDynamicIds);
+        let html = '';
+        try {
+          html = roots.map(function (node) {
+            return renderComponentPlanNode(definition, instance, node, scope);
+          }).join('');
+        } finally {
+          dynamicComponentRenderStack.pop();
+        }
+        pruneDynamicComponentSubtree(instance.id, renderedDynamicIds);
+        instance.element.innerHTML = html;
         instance.element.dataset.jtmlDirectRendered = 'true';
         return true;
       }
 
       function renderDirectComponents() {
+        if (!browserLocalRuntime) return;
         let rendered = 0;
         componentInstances.forEach(function (instance) {
           if (renderDirectComponent(instance)) rendered += 1;
@@ -313,33 +1002,141 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         });
       }
 
-      function runDirectComponentAction(componentId, actionName) {
-        const instance = componentInstances.find(function (item) { return item.id === componentId; });
+      function componentEventPayloadTypeMatches(value, declaredType) {
+        const type = String(declaredType || '').trim().toLowerCase();
+        if (!type || type === 'any' || type === 'unknown') return true;
+        if (type === 'string') return typeof value === 'string';
+        if (type === 'number' || type === 'float' || type === 'double' || type === 'int') {
+          return typeof value === 'number' && Number.isFinite(value);
+        }
+        if (type === 'boolean' || type === 'bool') return typeof value === 'boolean';
+        if (type === 'array' || type.endsWith('[]')) return Array.isArray(value);
+        if (type === 'object' || type === 'dict' || type === 'record') {
+          return value !== null && typeof value === 'object' && !Array.isArray(value);
+        }
+        if (type === 'null') return value === null;
+        return true;
+      }
+
+      function emitComponentEvent(instance, eventName, args) {
+        if (!instance || !eventName) return false;
+        const definition = componentDefinitionForInstance(instance);
+        const declaredEmits = definition && Array.isArray(definition.emits) ? definition.emits : [];
+        if (declaredEmits.length && declaredEmits.indexOf(eventName) === -1) return false;
+        const arityMap = definition && definition.emitArity && typeof definition.emitArity === 'object'
+          ? definition.emitArity
+          : {};
+        if (Object.prototype.hasOwnProperty.call(arityMap, eventName)) {
+          const forwardedCount = Array.isArray(args) ? args.length : 0;
+          if (forwardedCount !== Number(arityMap[eventName] || 0)) return false;
+        }
+        const typeMap = definition && definition.emitPayloadTypes && typeof definition.emitPayloadTypes === 'object'
+          ? definition.emitPayloadTypes
+          : {};
+        if (Object.prototype.hasOwnProperty.call(typeMap, eventName)) {
+          const forwardedArgs = Array.isArray(args) ? args : [];
+          const declaredTypes = Array.isArray(typeMap[eventName]) ? typeMap[eventName] : [];
+          for (let i = 0; i < declaredTypes.length; i += 1) {
+            if (!componentEventPayloadTypeMatches(forwardedArgs[i], declaredTypes[i])) return false;
+          }
+        }
+        const handlers = instance.eventHandlers || {};
+        const handler = handlers[eventName];
+        if (!handler || !handler.name || !instance.parentId) return false;
+        const parent = findRuntimeComponentInstance(instance.parentId);
+        if (!parent) return false;
+        const forwardedArgs = Array.isArray(args) ? args : [];
+        const presetArgs = Array.isArray(handler.args) ? handler.args : [];
+        return runDirectComponentAction(
+          parent.id,
+          handler.name,
+          presetArgs.concat(forwardedArgs)
+        );
+      }
+
+      function runDirectComponentAction(componentId, actionName, args) {
+        if (!browserLocalRuntime) return false;
+        const instance = findRuntimeComponentInstance(componentId);
         if (!instance) return false;
-        const definition = componentDefinitions.find(function (item) {
-          return item.name === instance.component;
-        });
+        if (!instance.element) instance.element = componentElementFor(instance.id);
+        const definition = componentDefinitionForInstance(instance);
         if (!definition || !Array.isArray(definition.bodyPlan)) return false;
         const actionNode = definition.bodyPlan.find(function (node) {
           return node && node.kind === 'action' && node.name === actionName;
         });
-        if (!actionNode) return false;
+        if (!actionNode) return emitComponentEvent(instance, actionName, args);
         const scope = componentScopeFor(instance, definition);
-        runComponentPlanStatements(definition, scope, componentNodeChildren(definition, actionNode));
+        const actionWords = splitComponentWords(actionNode.text || '');
+        (actionWords.slice(2) || []).forEach(function (param, index) {
+          if (!param) return;
+          scope[param] = (args || [])[index];
+        });
+        if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, actionNode), instance)) {
+          return false;
+        }
         renderDirectComponent(instance);
         return true;
+      }
+
+      function runDirectComponentFallbackAction(componentId, actionName) {
+        if (!browserLocalRuntime) return false;
+        const instance = findRuntimeComponentInstance(componentId);
+        if (!instance) return false;
+        const loweredName = instance.locals && instance.locals[actionName]
+          ? instance.locals[actionName]
+          : actionName;
+        return executeClientAction(loweredName, []);
+      }
+
+      async function runLiveComponentAction(componentId, actionName, args) {
+        if (browserLocalRuntime || !componentId || !actionName) return false;
+        try {
+          const res = await fetch('/api/component-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              componentId: componentId,
+              action: actionName,
+              args: args || []
+            })
+          });
+          const data = await res.json();
+          if (!data || data.ok === false) {
+            if (data && data.error) reportStatus('error', data.error);
+            return false;
+          }
+          if (data.bindings) applyBindings(data.bindings);
+          if (data.renderedComponents) applyLiveBodyPlanRender(data.renderedComponents);
+          else if (data.state) applyLiveBodyPlanRender(data.state);
+          if (data.components && window.jtml) window.jtml.liveComponents = data.components;
+          return true;
+        } catch (err) {
+          reportStatus('error', err && err.message ? err.message : 'component action failed');
+          console.error('[jtml] component action failed:', err);
+          return false;
+        }
       }
 
       function startDirectComponentBindings() {
         if (document.documentElement.dataset.jtmlDirectComponentBindings === 'true') return;
         document.documentElement.dataset.jtmlDirectComponentBindings = 'true';
-        document.addEventListener('click', function (event) {
+        document.addEventListener('click', async function (event) {
           const button = event.target && event.target.closest &&
             event.target.closest('[data-jtml-direct-component-action]');
           if (!button) return;
           const componentId = button.getAttribute('data-jtml-direct-component-id') || '';
           const actionName = button.getAttribute('data-jtml-direct-component-action') || '';
-          if (runDirectComponentAction(componentId, actionName)) {
+          let args = [];
+          try {
+            args = JSON.parse(button.getAttribute('data-jtml-direct-component-args') || '[]');
+          } catch (_) {
+            args = [];
+          }
+          const handled = browserLocalRuntime
+            ? (runDirectComponentAction(componentId, actionName, args) ||
+               runDirectComponentFallbackAction(componentId, actionName))
+            : await runLiveComponentAction(componentId, actionName, args);
+          if (handled) {
             event.preventDefault();
             event.stopPropagation();
           }
@@ -356,12 +1153,15 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         if (manifestInstances.length) {
           componentInstances = manifestInstances.map(function (record) {
             return {
+              moduleId: record.moduleId == null ? null : record.moduleId,
+              definitionModule: record.definitionModule == null ? null : record.definitionModule,
               id: record.id || '',
               component: record.component || '',
               instanceId: Number(record.instanceId || 0),
               role: record.role || 'component',
               params: record.params || {},
               locals: record.locals || {},
+              slotPlan: Array.isArray(record.slotPlan) ? record.slotPlan.slice() : [],
               sourceLine: Number(record.sourceLine || 0),
               element: componentElementFor(record.id || '')
             };
@@ -371,12 +1171,17 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
             document.querySelectorAll('[data-jtml-instance]')
           ).map(function (el) {
             return {
+              moduleId: null,
+              definitionModule: null,
               id: el.getAttribute('data-jtml-instance') || '',
               component: el.getAttribute('data-jtml-component') || '',
               instanceId: Number(el.getAttribute('data-jtml-instance-id') || 0),
               role: el.getAttribute('data-jtml-component-role') || 'component',
               params: parseComponentMap(el.getAttribute('data-jtml-component-params') || ''),
               locals: parseComponentMap(el.getAttribute('data-jtml-component-locals') || ''),
+              slotPlan: bodyPlanFromEncodedSource(
+                decodeHex(el.getAttribute('data-jtml-component-slot-hex') || '')
+              ),
               sourceLine: Number(el.getAttribute('data-jtml-source-line') || 0),
               element: el
             };
@@ -385,8 +1190,13 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         if (manifestDefinitions.length) {
           componentDefinitions = manifestDefinitions.map(function (record) {
             return {
+              moduleId: record.moduleId == null ? null : record.moduleId,
               name: record.name || '',
               params: Array.isArray(record.params) ? record.params.slice() : [],
+              emits: Array.isArray(record.emits) ? record.emits.slice() : [],
+              emitArity: record.emitArity && typeof record.emitArity === 'object' ? Object.assign({}, record.emitArity) : {},
+              emitPayloads: record.emitPayloads && typeof record.emitPayloads === 'object' ? Object.assign({}, record.emitPayloads) : {},
+              emitPayloadTypes: record.emitPayloadTypes && typeof record.emitPayloadTypes === 'object' ? Object.assign({}, record.emitPayloadTypes) : {},
               localState: Array.isArray(record.localState) ? record.localState.slice() : [],
               localDerived: Array.isArray(record.localDerived) ? record.localDerived.slice() : [],
               localActions: Array.isArray(record.localActions) ? record.localActions.slice() : [],
@@ -405,6 +1215,10 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
                 slotCount: Number(record.slotCount || 0),
                 bodyPlan: Array.isArray(record.bodyPlan) ? record.bodyPlan.slice() : [],
                 actions: Array.isArray(record.localActions) ? record.localActions.slice() : [],
+                emits: Array.isArray(record.emits) ? record.emits.slice() : [],
+                emitArity: record.emitArity && typeof record.emitArity === 'object' ? Object.assign({}, record.emitArity) : {},
+                emitPayloads: record.emitPayloads && typeof record.emitPayloads === 'object' ? Object.assign({}, record.emitPayloads) : {},
+                emitPayloadTypes: record.emitPayloadTypes && typeof record.emitPayloadTypes === 'object' ? Object.assign({}, record.emitPayloadTypes) : {},
                 state: Array.isArray(record.localState) ? record.localState.slice() : [],
                 derived: Array.isArray(record.localDerived) ? record.localDerived.slice() : [],
                 effects: Array.isArray(record.localEffects) ? record.localEffects.slice() : []
@@ -419,8 +1233,13 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
             document.querySelectorAll('[data-jtml-component-def]')
           ).map(function (el) {
             return {
+              moduleId: null,
               name: el.getAttribute('data-jtml-component-def') || '',
               params: String(el.getAttribute('data-jtml-component-def-params') || '').split(';').filter(Boolean),
+              emits: String(el.getAttribute('data-jtml-component-def-emits') || '').split(';').filter(Boolean),
+              emitArity: parseComponentIntMap(el.getAttribute('data-jtml-component-def-emit-arity') || ''),
+              emitPayloads: parseComponentStringListMap(el.getAttribute('data-jtml-component-def-emit-payloads') || ''),
+              emitPayloadTypes: parseComponentStringListMap(el.getAttribute('data-jtml-component-def-emit-payload-types') || ''),
               sourceLine: Number(el.getAttribute('data-jtml-source-line') || 0),
               body: decodeHex(el.getAttribute('data-jtml-component-body-hex') || ''),
               runtimePlan: {
@@ -429,6 +1248,10 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
                 bodyNodeCount: 0,
                 rootTemplateNodeCount: 0,
                 slotCount: 0,
+                emits: String(el.getAttribute('data-jtml-component-def-emits') || '').split(';').filter(Boolean),
+                emitArity: parseComponentIntMap(el.getAttribute('data-jtml-component-def-emit-arity') || ''),
+                emitPayloads: parseComponentStringListMap(el.getAttribute('data-jtml-component-def-emit-payloads') || ''),
+                emitPayloadTypes: parseComponentStringListMap(el.getAttribute('data-jtml-component-def-emit-payload-types') || ''),
                 actions: [],
                 state: [],
                 derived: [],
@@ -441,9 +1264,7 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
           });
         }
         componentInstances.forEach(function (instance) {
-          const definition = componentDefinitions.find(function (item) {
-            return item.name === instance.component;
-          }) || {};
+          const definition = componentDefinitionForInstance(instance) || {};
           instance.runtime = {
             mode: 'semantic-instance',
             ownsEnvironment: true,
@@ -488,6 +1309,76 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
           out += String.fromCharCode(code);
         }
         return out;
+      }
+
+      function bodyPlanFromEncodedSource(source) {
+        const lines = String(source || '').split(/\r?\n/);
+        const plan = [];
+        const ancestors = [];
+        const cleanName = function (token) {
+          return String(token || '').replace(/[\\(),:]+$/g, '').split(':')[0];
+        };
+        const kindFor = function (head, words) {
+          if (words.length >= 2 && ['=', '+=', '-=', '*=', '/=', '%='].indexOf(words[1]) !== -1) return 'assignment';
+          if (words.length === 1 && /^[A-Za-z_][A-Za-z0-9_]*\(.*\)$/.test(words[0])) return 'call';
+          if (head === 'let' || head === 'const') return 'state';
+          if (head === 'get') return 'derived';
+          if (head === 'when') return 'action';
+          if (head === 'effect') return 'effect';
+          if (head === 'slot') return 'slot';
+          return 'template';
+        };
+        lines.forEach(function (line) {
+          if (!line) return;
+          const colon = line.indexOf(':');
+          const indent = colon === -1 ? 0 : Number(line.slice(0, colon) || 0);
+          const text = (colon === -1 ? line : line.slice(colon + 1)).trim();
+          if (!text) return;
+          const words = splitComponentWords(text);
+          if (!words.length) return;
+          while (ancestors.length && plan[ancestors[ancestors.length - 1]].indent >= indent) {
+            ancestors.pop();
+          }
+          const parentIndex = ancestors.length ? ancestors[ancestors.length - 1] : -1;
+          const head = words[0];
+          const kind = kindFor(head, words);
+          const keyIndex = head === 'for' ? words.indexOf('key') : -1;
+          const templateExpression = kind === 'template'
+            ? (keyIndex === -1 ? words.slice(1).join(' ') : words.slice(1, keyIndex).join(' '))
+            : '';
+          const node = {
+            indent: indent,
+            parentIndex: parentIndex,
+            childIndices: [],
+            kind: kind,
+            head: head,
+            name: kind === 'assignment' ? cleanName(words[0]) :
+              (kind === 'call' ? cleanName(words[0].slice(0, words[0].indexOf('('))) :
+              (['state', 'derived', 'action', 'effect'].indexOf(kind) !== -1 ? cleanName(words[1]) :
+                (kind === 'template' ? cleanName(head) : ''))),
+            text: text,
+            operator: kind === 'assignment' ? words[1] : '',
+            expression: kind === 'assignment' ? words.slice(2).join(' ') :
+              (kind === 'call'
+                ? words[0].slice(words[0].indexOf('(') + 1, -1)
+                : templateExpression),
+            keyExpression: keyIndex === -1 ? '' : words.slice(keyIndex + 1).join(' '),
+            renderRoot: indent === 0 && kind === 'template'
+          };
+          if (['state', 'derived', 'action', 'effect'].indexOf(kind) !== -1) {
+            const eq = words.indexOf('=');
+            if (eq !== -1) {
+              node.operator = '=';
+              node.expression = words.slice(eq + 1).join(' ');
+            }
+          }
+          plan.push(node);
+          if (parentIndex >= 0 && plan[parentIndex]) {
+            plan[parentIndex].childIndices.push(plan.length - 1);
+          }
+          ancestors.push(plan.length - 1);
+        });
+        return plan;
       }
 
       function normalizeClientExpr(expr) {
@@ -891,7 +1782,12 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
       }
 
       function mergeRuntimeBindings(target, bindings, overwrite) {
-        if (!Array.isArray(bindings)) return target;
+        if (!Array.isArray(bindings)) {
+          Object.keys(bindings || {}).forEach(function (name) {
+            if (overwrite || !ownProperty(target, name)) target[name] = bindings[name];
+          });
+          return target;
+        }
         bindings.forEach(function (binding) {
           if (!binding || !binding.name) return;
           if (overwrite || !ownProperty(target, binding.name)) {
@@ -902,7 +1798,12 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
       }
 
       function mergeRuntimeActions(target, actions, overwrite) {
-        if (!Array.isArray(actions)) return target;
+        if (!Array.isArray(actions)) {
+          Object.keys(actions || {}).forEach(function (name) {
+            if (overwrite || !ownProperty(target, name)) target[name] = actions[name];
+          });
+          return target;
+        }
         actions.forEach(function (action) {
           if (!action || !action.name) return;
           if (overwrite || !ownProperty(target, action.name)) {
@@ -936,6 +1837,11 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         if (!plan || typeof plan !== 'object') return;
         options = options || {};
         const preferDefinitions = !!options.preferDefinitions;
+        const moduleId = options.moduleId == null ? null : options.moduleId;
+        const stampModule = function (item) {
+          if (item && moduleId != null && item.moduleId == null) item.moduleId = moduleId;
+          return item;
+        };
         mergeRuntimeBindings(merged.state, plan.state, false);
         mergeRuntimeBindings(merged.derived, plan.derived, false);
         mergeRuntimeActions(merged.actions, plan.actions, false);
@@ -945,11 +1851,13 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         mergeRuntimeArray(merged.fetches, plan.fetches, function (fetchNode) {
           return String(fetchNode.name || '') + '|' + String(fetchNode.url || '');
         }, false);
-        mergeRuntimeArray(merged.componentDefinitions, plan.componentDefinitions, function (definition) {
-          return String(definition.name || '');
+        mergeRuntimeArray(merged.componentDefinitions, (plan.componentDefinitions || []).map(stampModule), function (definition) {
+          return String(definition.moduleId == null ? '' : definition.moduleId) + '|' +
+                 String(definition.name || '');
         }, preferDefinitions);
-        mergeRuntimeArray(merged.componentInstances, plan.componentInstances, function (instance) {
-          return String(instance.id || '') + '|' +
+        mergeRuntimeArray(merged.componentInstances, (plan.componentInstances || []).map(stampModule), function (instance) {
+          return String(instance.moduleId == null ? '' : instance.moduleId) + '|' +
+                 String(instance.id || '') + '|' +
                  String(instance.component || '') + '|' +
                  String(instance.sourceLine || '');
         }, false);
@@ -975,10 +1883,11 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         mergeRuntimePlanIntoManifest(merged, project.linkedPlan, { preferDefinitions: false });
         if (Array.isArray(project.modules)) {
           project.modules.forEach(function (modulePlan) {
+            if (!modulePlan || modulePlan.executable === false) return;
             mergeRuntimePlanIntoManifest(
               merged,
               modulePlan && modulePlan.plan,
-              { preferDefinitions: true }
+              { preferDefinitions: true, moduleId: modulePlan && modulePlan.id }
             );
           });
         }
@@ -1275,6 +2184,77 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         renderCharts();
         processImageBindings();
         applyRoutes();
+      }
+
+      function jtmlStableHash(value) {
+        value = String(value == null ? '' : value);
+        let hash = 2166136261;
+        const bytes = typeof TextEncoder !== 'undefined'
+          ? new TextEncoder().encode(value)
+          : null;
+        const length = bytes ? bytes.length : value.length;
+        for (let i = 0; i < length; i += 1) {
+          hash ^= bytes ? bytes[i] : (value.charCodeAt(i) & 255);
+          hash = Math.imul(hash, 16777619);
+        }
+        return (hash >>> 0).toString(16);
+      }
+
+      function hasLiveBodyPlanServerRender() {
+        return !!document.querySelector('[data-jtml-live-body-plan-transport="body-plan"]');
+      }
+
+      function applyLiveBodyPlanRender(payload) {
+        if (browserLocalRuntime || !payload) return;
+        const records = Array.isArray(payload.components)
+          ? payload.components
+          : (payload.state && Array.isArray(payload.state.components) ? payload.state.components : []);
+        let patched = 0;
+        records.forEach(function (component) {
+          if (!component || !component.id) return;
+          const runtime = component.runtime || {};
+          const supported = component.supported === true ||
+            component.renderedHtmlSupported === true ||
+            runtime.renderedHtmlSupported === true ||
+            runtime.bodyPlanTemplateRendering === true;
+          const html = component.renderedHtml;
+          if (!supported || typeof html !== 'string' || !html.length) return;
+          const el = componentElementFor(component.id);
+          if (!el) return;
+          const htmlHash = jtmlStableHash(html);
+          if (el.dataset.jtmlLiveBodyPlanRenderedHash === htmlHash) {
+            el.dataset.jtmlLiveBodyPlanTransport = 'body-plan';
+            el.dataset.jtmlLiveBodyPlanRendered = 'current';
+            return;
+          }
+          el.innerHTML = html;
+          el.dataset.jtmlLiveBodyPlanRenderedHash = htmlHash;
+          el.dataset.jtmlLiveBodyPlanRendered = 'current';
+          el.dataset.jtmlLiveBodyPlanTransport = 'body-plan';
+          patched += 1;
+        });
+        if (patched) {
+          window.jtml = Object.assign(window.jtml || {}, {
+            liveBodyPlanTransport: true,
+            liveBodyPlanPatchCount: patched
+          });
+          renderCharts();
+          processImageBindings();
+          applyRoutes();
+        }
+      }
+
+      async function refreshLiveBodyPlanRender(options) {
+        if (browserLocalRuntime) return;
+        if (!(options && options.force === true) && hasLiveBodyPlanServerRender()) return;
+        try {
+          const res = await fetch('/api/rendered-components');
+          const payload = await res.json();
+          applyLiveBodyPlanRender(payload);
+        } catch (_) {
+          // The compatibility DOM remains authoritative if the endpoint is not
+          // available, so this transport layer fails closed.
+        }
       }
 
       function applyAttribute(el, attr, value) {
@@ -2362,6 +3342,7 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         processImageBindings();
         applyClientState();
         applyRoutes();
+        refreshLiveBodyPlanRender();
       }
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', applyInitial);
@@ -2379,7 +3360,10 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
           ws.onmessage = function (event) {
             const m = JSON.parse(event.data);
             reportStatus('connected', 'Runtime connected');
-            if (m.type === 'populateBindings' && m.bindings) applyBindings(m.bindings);
+            if (m.type === 'populateBindings' && m.bindings) {
+              applyBindings(m.bindings);
+              refreshLiveBodyPlanRender();
+            }
             else if (m.type === 'updateBinding') {
               const el = document.getElementById(m.elementId);
               if (el) el.textContent = m.value;
@@ -2434,6 +3418,8 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
           });
           const data = await res.json();
           if (data && data.bindings) applyBindings(data.bindings);
+          if (data && data.renderedComponents) applyLiveBodyPlanRender(data.renderedComponents);
+          else if (data && data.state) applyLiveBodyPlanRender(data.state);
           if (data && data.error) reportStatus('error', data.error);
           if (fnName) await runInvalidations(fnName);
         } catch (err) {

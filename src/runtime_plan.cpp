@@ -75,9 +75,37 @@ std::string trimCopy(const std::string& value) {
 
 std::vector<std::string> words(const std::string& value) {
     std::vector<std::string> out;
-    std::istringstream input(value);
-    std::string word;
-    while (input >> word) out.push_back(word);
+    std::string current;
+    char quote = '\0';
+    int depth = 0;
+    for (size_t i = 0; i < value.size(); ++i) {
+        const char ch = value[i];
+        if (quote != '\0') {
+            current.push_back(ch);
+            if (ch == '\\' && i + 1 < value.size()) {
+                current.push_back(value[++i]);
+            } else if (ch == quote) {
+                quote = '\0';
+            }
+            continue;
+        }
+        if (ch == '"' || ch == '\'') {
+            quote = ch;
+            current.push_back(ch);
+            continue;
+        }
+        if (ch == '(' || ch == '[' || ch == '{') ++depth;
+        if ((ch == ')' || ch == ']' || ch == '}') && depth > 0) --depth;
+        if (std::isspace(static_cast<unsigned char>(ch)) && depth == 0) {
+            if (!current.empty()) {
+                out.push_back(current);
+                current.clear();
+            }
+            continue;
+        }
+        current.push_back(ch);
+    }
+    if (!current.empty()) out.push_back(current);
     return out;
 }
 
@@ -116,6 +144,13 @@ std::string componentBodyNodeKind(const std::string& head) {
     return "template";
 }
 
+bool isCallBodyLine(const std::vector<std::string>& tokens) {
+    if (tokens.size() != 1) return false;
+    const auto& token = tokens[0];
+    const auto open = token.find('(');
+    return open != std::string::npos && open > 0 && token.back() == ')';
+}
+
 bool isAssignmentBodyLine(const std::vector<std::string>& tokens) {
     if (tokens.size() < 2) return false;
     return tokens[1] == "=" || tokens[1] == "+=" || tokens[1] == "-=" ||
@@ -125,6 +160,15 @@ bool isAssignmentBodyLine(const std::vector<std::string>& tokens) {
 std::string joinTokens(const std::vector<std::string>& tokens, size_t start) {
     std::ostringstream out;
     for (size_t i = start; i < tokens.size(); ++i) {
+        if (i > start) out << ' ';
+        out << tokens[i];
+    }
+    return out.str();
+}
+
+std::string joinTokensUntil(const std::vector<std::string>& tokens, size_t start, size_t end) {
+    std::ostringstream out;
+    for (size_t i = start; i < end && i < tokens.size(); ++i) {
         if (i > start) out << ' ';
         out << tokens[i];
     }
@@ -153,11 +197,16 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
             : static_cast<int>(openAncestors.back());
         node.text = text;
         node.head = tokens[0];
-        node.kind = isAssignmentBodyLine(tokens) ? "assignment" : componentBodyNodeKind(node.head);
+        node.kind = isAssignmentBodyLine(tokens) ? "assignment" :
+            (isCallBodyLine(tokens) ? "call" : componentBodyNodeKind(node.head));
         if (node.kind == "assignment") {
             node.name = cleanComponentNameToken(tokens[0]);
             node.operatorToken = tokens[1];
             node.expression = joinTokens(tokens, 2);
+        } else if (node.kind == "call") {
+            const auto open = tokens[0].find('(');
+            node.name = cleanComponentNameToken(tokens[0].substr(0, open));
+            node.expression = tokens[0].substr(open + 1, tokens[0].size() - open - 2);
         } else if ((node.kind == "state" || node.kind == "derived" ||
              node.kind == "action" || node.kind == "effect") &&
             tokens.size() > 1) {
@@ -170,6 +219,14 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
         } else if (node.kind == "template") {
             node.name = cleanComponentNameToken(tokens[0]);
             node.expression = joinTokens(tokens, 1);
+            if (node.name == "for") {
+                auto keyIt = std::find(tokens.begin() + 1, tokens.end(), "key");
+                if (keyIt != tokens.end()) {
+                    const size_t keyIndex = static_cast<size_t>(keyIt - tokens.begin());
+                    node.expression = joinTokensUntil(tokens, 1, keyIndex);
+                    node.keyExpression = joinTokens(tokens, keyIndex + 1);
+                }
+            }
         }
         node.renderRoot = node.indent == 0 && node.kind == "template";
         const int parentIndex = node.parentIndex;
@@ -186,10 +243,16 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
 } // namespace
 
 RuntimePlanComponentDefinition planComponentDefinition(
-        const SemanticComponentDefinition& semantic) {
+        const SemanticComponentDefinition& semantic,
+        SemanticModuleId moduleId = InvalidSemanticModuleId) {
     RuntimePlanComponentDefinition planned;
+    planned.moduleId = moduleId;
     planned.name = semantic.name;
     planned.params = semantic.params;
+    planned.emits = semantic.emits;
+    planned.emitArity = semantic.emitArity;
+    planned.emitPayloads = semantic.emitPayloads;
+    planned.emitPayloadTypes = semantic.emitPayloadTypes;
     planned.localState = semantic.localState;
     planned.localDerived = semantic.localDerived;
     planned.localActions = semantic.localActions;
@@ -207,16 +270,67 @@ RuntimePlanComponentDefinition planComponentDefinition(
 }
 
 RuntimePlanComponentInstance planComponentInstance(
-        const SemanticComponentInstance& semantic) {
-    return {
-        semantic.id,
-        semantic.component,
-        semantic.instanceId,
-        semantic.role.empty() ? "component" : semantic.role,
-        semantic.params,
-        semantic.locals,
-        semantic.sourceLine,
-    };
+        const SemanticComponentInstance& semantic,
+        SemanticModuleId moduleId = InvalidSemanticModuleId,
+        SemanticModuleId definitionModule = InvalidSemanticModuleId) {
+    RuntimePlanComponentInstance planned;
+    planned.moduleId = moduleId;
+    planned.definitionModule = definitionModule;
+    planned.id = semantic.id;
+    planned.component = semantic.component;
+    planned.instanceId = semantic.instanceId;
+    planned.role = semantic.role.empty() ? "component" : semantic.role;
+    planned.params = semantic.params;
+    planned.locals = semantic.locals;
+    planned.slotHex = semantic.slotHex;
+    planned.slotSource = hexDecode(semantic.slotHex);
+    planned.slotPlan = buildComponentBodyPlan(planned.slotSource);
+    planned.sourceLine = semantic.sourceLine;
+    return planned;
+}
+
+SemanticModuleId resolveLocalComponentDefinitionModule(
+        const SemanticProgram& semantic,
+        const std::string& component,
+        SemanticModuleId moduleId) {
+    for (const auto& definition : semantic.componentDefinitions) {
+        if (definition.name == component) return moduleId;
+    }
+    return InvalidSemanticModuleId;
+}
+
+SemanticModuleId resolveImportedComponentDefinitionModule(
+        const SemanticModule& module,
+        const std::string& component) {
+    for (const auto& import : module.imports) {
+        for (const auto& symbol : import.resolvedSymbols) {
+            if (symbol.name == component &&
+                (symbol.kind.empty() || symbol.kind == "make" ||
+                 symbol.kind == "component")) {
+                return symbol.module;
+            }
+        }
+    }
+    return InvalidSemanticModuleId;
+}
+
+SemanticModuleId resolveComponentDefinitionModule(
+        const SemanticModule& module,
+        const std::string& component) {
+    if (component.empty()) return InvalidSemanticModuleId;
+    const auto local = resolveLocalComponentDefinitionModule(
+        module.semantic, component, module.id);
+    if (local != InvalidSemanticModuleId) return local;
+    return resolveImportedComponentDefinitionModule(module, component);
+}
+
+void annotateBodyPlanComponentModules(
+        std::vector<RuntimePlanComponentBodyNode>& bodyPlan,
+        const SemanticModule& module) {
+    for (auto& node : bodyPlan) {
+        if (node.kind != "template" || node.name.empty()) continue;
+        node.definitionModule = resolveComponentDefinitionModule(module, node.name);
+    }
 }
 
 RuntimePlan buildRuntimePlan(const std::vector<std::unique_ptr<ASTNode>>& program) {
@@ -260,21 +374,43 @@ RuntimePlan buildRuntimePlan(const std::vector<std::unique_ptr<ASTNode>>& progra
 }
 
 RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project) {
+    const std::vector<std::unique_ptr<ASTNode>> emptyProgram;
+    return buildRuntimePlan(project, buildRuntimePlan(emptyProgram, project.linkedProgram));
+}
+
+RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project,
+                                    const RuntimePlan& linkedPlan) {
     RuntimeProjectPlan projectPlan;
     projectPlan.entry = project.entry;
+    projectPlan.linkedPlan = linkedPlan;
 
     const std::vector<std::unique_ptr<ASTNode>> emptyProgram;
-    projectPlan.linkedPlan = buildRuntimePlan(emptyProgram, project.linkedProgram);
-
     for (const auto& module : project.modules) {
         RuntimeModulePlan modulePlan;
         modulePlan.id = module.id;
         modulePlan.path = module.path;
         modulePlan.astAvailable = module.ast && module.ast->available;
         modulePlan.syntax = module.ast ? module.ast->syntax : "";
-        modulePlan.plan = modulePlan.astAvailable
+        modulePlan.clientExecutable =
+            modulePlan.astAvailable &&
+            modulePlan.syntax.find("import-stubs") == std::string::npos;
+        modulePlan.plan = modulePlan.clientExecutable
             ? buildRuntimePlan(module.ast->nodes, module.semantic)
             : buildRuntimePlan(emptyProgram, module.semantic);
+        for (auto& definition : modulePlan.plan.componentDefinitions) {
+            definition.moduleId = module.id;
+            annotateBodyPlanComponentModules(definition.bodyPlan, module);
+        }
+        for (auto& instance : modulePlan.plan.componentInstances) {
+            instance.moduleId = module.id;
+            instance.definitionModule = resolveLocalComponentDefinitionModule(
+                module.semantic, instance.component, module.id);
+            if (instance.definitionModule == InvalidSemanticModuleId) {
+                instance.definitionModule =
+                    resolveImportedComponentDefinitionModule(module, instance.component);
+            }
+            annotateBodyPlanComponentModules(instance.slotPlan, module);
+        }
         projectPlan.modules.push_back(std::move(modulePlan));
     }
 

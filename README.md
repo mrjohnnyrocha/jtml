@@ -7,6 +7,12 @@ dialect. The current implementation accepts experimental `jtl 1` files through
 the same Friendly pipeline so core-language examples can begin to share the
 typed AST, semantic IR, and observable graph with JTML.
 
+The backend/API direction is contract-first and planned, not implemented
+syntax yet: future JTL modules should describe governed operations for internal
+tools, generate OpenAPI/adapters, and feed typed JTML `fetch`/future `call`
+usage. Today, use JTML for the web/app surface and normal backend APIs for
+server work.
+
 ## Syntax
 
 The canonical source dialect is Friendly JTML 2. Start files with `jtml 2`,
@@ -318,6 +324,10 @@ edges. This is the first slice of the observable-first architecture: tooling
 should explain language meaning before any particular runtime backend executes
 it.
 
+Browser builds use a separate compact runtime manifest. The client manifest is
+script-escaped and omits source paths, component body source/hex payloads,
+semantic summaries, and parse metadata that belong in `explain` output.
+
 ## Interactive Tutorial
 
 The fastest way to learn the language is the built-in tutorial. It serves a split-view IDE in the browser: prose on top, editable code on the left, live preview on the right, and a `Run` button (or `Cmd/Ctrl+Enter`) that re-transpiles the code and hot-swaps the running interpreter.
@@ -371,9 +381,31 @@ toolkit checks, stable/first-slice/experimental feature tiers, required
 verification gates, and the honest platform status: JTML is enterprise-relevant
 but not enterprise-ready yet. Treat `scripts/verify_all.sh` as the local
 predeploy gate; first-slice direct component body-plan execution now exists,
-while full component parity, browser-local parity, Studio content
-externalization, and internal module boundaries remain the next architecture
-hardening targets.
+including browser-local slots, nested component calls, common attributes, and
+simple action arguments. Nested direct component instances are now registered
+with runtime identity, and direct browser/live body-plan rendering preserves
+semantic UI primitives plus modifiers such as `tone`, `pad`, `gap`, `cols`,
+`width`, and `surface`, plus a first-slice form/media/SVG platform attribute
+surface including `aria-*`, `data-*`, and Friendly input aliases. The live
+interpreter now executes simple component
+body-plan assignment actions through the same contract and has browser/live
+metadata parity tests; `/api/state` exposes a first-slice live `renderedHtml`
+body-plan surface for supported component templates, slots, nested calls, and
+semantic UI classes. Live pages now also expose `/api/rendered-components` and
+inject supported component wrappers from body-plan HTML into the initially
+served document, then use the same endpoint for event/action refreshes. Rendered
+live component buttons keep their direct action metadata and call
+`/api/component-action`, so first-slice live templates are interactive instead
+of display-only. Supported nested live components now retain dynamic runtime
+identity, nested local actions dispatch through the same endpoint, nested
+params/state initialize as runtime values, and repeated nested children inside
+`for` loops keep separate local state. Stale nested descendants are pruned after
+supported top-level renders, so removed loop/branch children cannot keep
+accepting component actions; unsupported shapes still fail closed to the
+compatibility DOM.
+Broadening the supported body-plan subset until compatibility DOM is only an
+explicit fallback, Studio content externalization, and internal module
+boundaries remain the next architecture hardening targets.
 
 The future public site content is in `site/`, including `site/tools.html` for
 the editor, runner, tutorial, studio, tester, and release-tooling overview.

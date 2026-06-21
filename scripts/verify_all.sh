@@ -808,21 +808,32 @@ runtime_smoke() {
     local example="$1"
     local port="$2"
     local log="$3"
-    "$build_dir/jtml" serve "$example" --port "$port" >"$log" 2>&1 &
-    _srv_pid=$!
-    local ready=0
-    for _ in $(seq 1 200); do
-      if curl -fsS "http://localhost:$port/api/health" >/dev/null 2>&1; then
-        ready=1; break
+    local attempt
+    for attempt in 1 2; do
+      : >"$log"
+      "$build_dir/jtml" serve "$example" --port "$port" >"$log" 2>&1 &
+      _srv_pid=$!
+      local ready=0
+      for _ in $(seq 1 200); do
+        if curl -fsS "http://localhost:$port/api/health" >/dev/null 2>&1; then
+          ready=1; break
+        fi
+        if ! kill -0 "$_srv_pid" 2>/dev/null; then
+          break
+        fi
+        sleep 0.1
+      done
+      if [ "$ready" -eq 1 ]; then
+        return 0
       fi
-      sleep 0.1
-    done
-    if [ "$ready" -ne 1 ]; then
-      echo "runtime-smoke: server failed to become ready on port $port" >&2
-      cat "$log" >&2 || true
       cleanup_srv
-      return 1
-    fi
+      if [ "$attempt" -lt 2 ]; then
+        sleep 0.4
+      fi
+    done
+    echo "runtime-smoke: server failed to become ready on port $port" >&2
+    cat "$log" >&2 || true
+    return 1
   }
 
   # `assert_json <file> <label> <node-expression>` evaluates a Node.js
@@ -953,10 +964,21 @@ JTML
   echo "[runtime-smoke] 6/8 component isolation..."
   start_serve "$repo_root/examples/friendly_component_isolation.jtml" "$components_port" \
     "$artifacts_dir/components.log"
+  curl -fsS "http://localhost:$components_port/" > "$artifacts_dir/components-page.html"
+  grep -q 'data-jtml-live-body-plan-transport="body-plan"' "$artifacts_dir/components-page.html" \
+    || { echo "components: initial served HTML was not body-plan-owned" >&2; exit 1; }
+  grep -Eq 'data-jtml-live-body-plan-rendered-hash="[0-9a-f]+"' "$artifacts_dir/components-page.html" \
+    || { echo "components: initial served HTML did not carry a body-plan render hash" >&2; exit 1; }
+  grep -q 'data-jtml-direct-component-action="add"' "$artifacts_dir/components-page.html" \
+    || { echo "components: initial body-plan HTML did not preserve direct action metadata" >&2; exit 1; }
   curl -fsS "http://localhost:$components_port/api/components" > "$artifacts_dir/components-before.json"
   assert_json "$artifacts_dir/components-before.json" \
     "two Counter instances with independent count=0" \
     "Array.isArray(data.components) && data.components.length === 2 && data.components.every(c => c.component === 'Counter') && data.components.every(c => c && c.locals && c.locals.count && c.locals.count.value === 0) && data.components[0].id !== data.components[1].id"
+  curl -fsS "http://localhost:$components_port/api/rendered-components" > "$artifacts_dir/components-rendered.json"
+  assert_json "$artifacts_dir/components-rendered.json" \
+    "live body-plan rendered component patches are exposed" \
+    "data.ok === true && data.mode === 'live-body-plan' && Array.isArray(data.components) && data.components.length === 2 && data.components.every(c => c.supported === true && c.renderedHtmlSupported === true && typeof c.renderedHtml === 'string' && c.renderedHtml.includes('counter-card'))"
   first_id="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$artifacts_dir/components-before.json','utf8')).components[0].id)")"
   second_id="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$artifacts_dir/components-before.json','utf8')).components[1].id)")"
   curl -fsS -X POST "http://localhost:$components_port/api/component-action" \
@@ -971,6 +993,34 @@ JTML
   assert_json "$artifacts_dir/components-after.json" \
     "component isolation: add on first only changes first" \
     "(function(){const f=process.env.FIRST_ID,s=process.env.SECOND_ID;const a=data.components.find(c=>c.id===f);const b=data.components.find(c=>c.id===s);return a && b && a.locals.count.value === 1 && b.locals.count.value === 0;})()"
+  cleanup_srv
+
+  cat > "$artifacts_dir/action-only-component.jtml" <<'JTML'
+jtml 2
+make Worker
+  let count = 0
+  when add
+    count += 1
+page
+  Worker
+JTML
+  start_serve "$artifacts_dir/action-only-component.jtml" "$components_port" \
+    "$artifacts_dir/action-only-component.log"
+  curl -fsS "http://localhost:$components_port/api/rendered-components" \
+    > "$artifacts_dir/action-only-rendered.json"
+  assert_json "$artifacts_dir/action-only-rendered.json" \
+    "action-only component stays on compatibility DOM fallback" \
+    "data.ok === true && data.mode === 'live-body-plan' && Array.isArray(data.components) && data.components.length === 1 && data.components[0].component === 'Worker' && data.components[0].supported === false && data.components[0].renderedHtmlSupported === false && data.components[0].fallback === 'compatibility-dom'"
+  curl -fsS "http://localhost:$components_port/api/components" \
+    > "$artifacts_dir/action-only-components-before.json"
+  action_only_id="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$artifacts_dir/action-only-components-before.json','utf8')).components[0].id)")"
+  curl -fsS -X POST "http://localhost:$components_port/api/component-action" \
+    -H 'Content-Type: application/json' \
+    --data "{\"componentId\":\"$action_only_id\",\"action\":\"add\",\"args\":[]}" \
+    > "$artifacts_dir/action-only-action.json"
+  assert_json "$artifacts_dir/action-only-action.json" \
+    "action-only component can still execute body-plan actions" \
+    "data.ok === true && data.state && data.state.components && data.state.components[0].locals.count.value === 1 && data.renderedComponents && data.renderedComponents.components[0].renderedHtmlSupported === false"
   cleanup_srv
 
   # ---- 7. CSS hex colours inside Friendly `style` blocks survive lowering ----

@@ -22,6 +22,17 @@ std::string normalizeOk(const std::string& src) {
     return classic;
 }
 
+nlohmann::json clientManifestFromHtml(const std::string& html) {
+    const std::string open = "<script type=\"application/json\" id=\"__jtml_client_manifest\">";
+    const std::string close = "</script>";
+    const auto start = html.find(open);
+    EXPECT_NE(start, std::string::npos) << html;
+    const auto end = html.find(close, start);
+    EXPECT_NE(end, std::string::npos) << html;
+    return nlohmann::json::parse(
+        html.substr(start + open.size(), end - (start + open.size())));
+}
+
 // ---------------------------------------------------------------------------
 // Syntax Detection
 // ---------------------------------------------------------------------------
@@ -371,13 +382,23 @@ TEST(FriendlySyntax, BrowserLocalManifestCarriesRouteTable) {
     transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
 
-    EXPECT_NE(html.find("\"routes\":[{\"path\":\"/\",\"name\":\"Home\",\"params\":[],\"load\":[]}"),
-              std::string::npos) << html;
-    EXPECT_NE(html.find("{\"path\":\"/user/:id\",\"name\":\"UserProfile\",\"params\":[\"id\"],\"load\":[\"users\"]}"),
-              std::string::npos) << html;
-    EXPECT_NE(html.find("\"fetches\":[{\"name\":\"users\",\"url\":\"/api/users\",\"method\":\"GET\""),
-              std::string::npos) << html;
-    EXPECT_NE(html.find("\"lazy\":true"), std::string::npos) << html;
+    const auto manifest = clientManifestFromHtml(html);
+    ASSERT_EQ(manifest["routes"].size(), 2u) << manifest.dump(2);
+    EXPECT_EQ(manifest["routes"][0]["path"], "/");
+    EXPECT_EQ(manifest["routes"][0]["name"], "Home");
+    EXPECT_TRUE(manifest["routes"][0]["params"].empty());
+    EXPECT_TRUE(manifest["routes"][0]["load"].empty());
+    EXPECT_EQ(manifest["routes"][1]["path"], "/user/:id");
+    EXPECT_EQ(manifest["routes"][1]["name"], "UserProfile");
+    ASSERT_EQ(manifest["routes"][1]["params"].size(), 1u);
+    EXPECT_EQ(manifest["routes"][1]["params"][0], "id");
+    ASSERT_EQ(manifest["routes"][1]["load"].size(), 1u);
+    EXPECT_EQ(manifest["routes"][1]["load"][0], "users");
+    ASSERT_EQ(manifest["fetches"].size(), 1u) << manifest.dump(2);
+    EXPECT_EQ(manifest["fetches"][0]["name"], "users");
+    EXPECT_EQ(manifest["fetches"][0]["url"], "/api/users");
+    EXPECT_EQ(manifest["fetches"][0]["method"], "GET");
+    EXPECT_TRUE(manifest["fetches"][0]["lazy"]);
     EXPECT_NE(html.find("routeManifest: routeManifest"), std::string::npos) << html;
     EXPECT_NE(html.find("fetchManifest: fetchManifest"), std::string::npos) << html;
     EXPECT_NE(html.find("const manifestRoutes = (window.jtml && Array.isArray(window.jtml.routeManifest))"),
@@ -412,10 +433,17 @@ TEST(FriendlySyntax, BrowserLocalFetchUrlsInterpolateRouteParamsAtRequestTime) {
     transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
 
-    EXPECT_NE(html.find("\"fetches\":[{\"name\":\"user\",\"url\":\"/api/users/{id}\""),
-              std::string::npos) << html;
-    EXPECT_NE(html.find("{\"path\":\"/user/:id\",\"name\":\"UserProfile\",\"params\":[\"id\"],\"load\":[\"user\"]}"),
-              std::string::npos) << html;
+    const auto manifest = clientManifestFromHtml(html);
+    ASSERT_EQ(manifest["fetches"].size(), 1u) << manifest.dump(2);
+    EXPECT_EQ(manifest["fetches"][0]["name"], "user");
+    EXPECT_EQ(manifest["fetches"][0]["url"], "/api/users/{id}");
+    ASSERT_EQ(manifest["routes"].size(), 1u) << manifest.dump(2);
+    EXPECT_EQ(manifest["routes"][0]["path"], "/user/:id");
+    EXPECT_EQ(manifest["routes"][0]["name"], "UserProfile");
+    ASSERT_EQ(manifest["routes"][0]["params"].size(), 1u);
+    EXPECT_EQ(manifest["routes"][0]["params"][0], "id");
+    ASSERT_EQ(manifest["routes"][0]["load"].size(), 1u);
+    EXPECT_EQ(manifest["routes"][0]["load"][0], "user");
     EXPECT_NE(html.find("function resolveFetchUrl(url)"), std::string::npos) << html;
     EXPECT_NE(html.find("const resolvedUrl = resolveFetchUrl(url);"), std::string::npos) << html;
     EXPECT_NE(html.find("const response = await fetch(resolvedUrl, options);"), std::string::npos) << html;
@@ -715,12 +743,15 @@ TEST(FriendlySyntax, FetchDeclarationsSupportTimeoutRetryAndStalePolicy) {
     JtmlTranspiler transpiler;
     transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
-    EXPECT_NE(html.find("\"fetches\":[{\"name\":\"users\",\"url\":\"/api/users\",\"method\":\"GET\""),
-              std::string::npos) << html;
-    EXPECT_NE(html.find("\"timeoutMs\":\"2500\""), std::string::npos) << html;
-    EXPECT_NE(html.find("\"retryCount\":\"2\""), std::string::npos) << html;
-    EXPECT_NE(html.find("\"stalePolicy\":\"keep\""), std::string::npos) << html;
-    EXPECT_NE(html.find("\"refreshAction\":\"reloadUsers\""), std::string::npos) << html;
+    const auto manifest = clientManifestFromHtml(html);
+    ASSERT_EQ(manifest["fetches"].size(), 1u) << manifest.dump(2);
+    EXPECT_EQ(manifest["fetches"][0]["name"], "users");
+    EXPECT_EQ(manifest["fetches"][0]["url"], "/api/users");
+    EXPECT_EQ(manifest["fetches"][0]["method"], "GET");
+    EXPECT_EQ(manifest["fetches"][0]["timeoutMs"], "2500");
+    EXPECT_EQ(manifest["fetches"][0]["retryCount"], "2");
+    EXPECT_EQ(manifest["fetches"][0]["stalePolicy"], "keep");
+    EXPECT_EQ(manifest["fetches"][0]["refreshAction"], "reloadUsers");
     EXPECT_NE(html.find("new AbortController()"), std::string::npos);
     EXPECT_NE(html.find("maxRetries"), std::string::npos);
     EXPECT_NE(html.find("stalePolicy === 'keep'"), std::string::npos);
@@ -1199,6 +1230,68 @@ TEST(FriendlySyntax, ComponentCallsValidateArguments) {
             "  h2 title\n"
             "page\n"
             "  Card\n",
+            jtml::SyntaxMode::Friendly),
+        std::runtime_error);
+}
+
+TEST(FriendlySyntax, ComponentCallsValidateDeclaredEmittedEvents) {
+    EXPECT_NO_THROW(
+        (void)jtml::normalizeSourceSyntax(
+            "jtml 2\n"
+            "make Child emits picked\n"
+            "  button \"Pick\" click picked\n"
+            "make Parent\n"
+            "  when choose\n"
+            "    show \"ok\"\n"
+            "  box\n"
+            "    Child on picked choose\n"
+            "page\n"
+            "  Parent\n",
+            jtml::SyntaxMode::Friendly));
+
+    EXPECT_THROW(
+        (void)jtml::normalizeSourceSyntax(
+            "jtml 2\n"
+            "make Child emits saved\n"
+            "  button \"Pick\" click picked\n"
+            "make Parent\n"
+            "  when choose\n"
+            "    show \"ok\"\n"
+            "  box\n"
+            "    Child on picked choose\n"
+            "page\n"
+            "  Parent\n",
+            jtml::SyntaxMode::Friendly),
+        std::runtime_error);
+}
+
+TEST(FriendlySyntax, ComponentCallsValidateEmittedPayloadArity) {
+    EXPECT_NO_THROW(
+        (void)jtml::normalizeSourceSyntax(
+            "jtml 2\n"
+            "make Child emits picked(item)\n"
+            "  button \"Pick\" click picked(\"Ada\")\n"
+            "make Parent\n"
+            "  when choose source item\n"
+            "    show item\n"
+            "  box\n"
+            "    Child on picked choose(\"team\")\n"
+            "page\n"
+            "  Parent\n",
+            jtml::SyntaxMode::Friendly));
+
+    EXPECT_THROW(
+        (void)jtml::normalizeSourceSyntax(
+            "jtml 2\n"
+            "make Child emits picked(item)\n"
+            "  button \"Pick\" click picked(\"Ada\")\n"
+            "make Parent\n"
+            "  when choose item\n"
+            "    show item\n"
+            "  box\n"
+            "    Child on picked choose(\"team\")\n"
+            "page\n"
+            "  Parent\n",
             jtml::SyntaxMode::Friendly),
         std::runtime_error);
 }
@@ -1883,7 +1976,9 @@ TEST(FriendlySyntax, ComponentExpansionAddsInstanceMarker) {
     JtmlTranspiler transpiler;
     transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
-    EXPECT_NE(html.find("\"componentDefinitions\":[{\"name\":\"Badge\",\"params\":[\"label\"]"),
+    EXPECT_NE(html.find("\"componentDefinitions\":[{"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"name\":\"Badge\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"params\":[\"label\"]"),
               std::string::npos) << html;
     EXPECT_NE(html.find("\"bodyPlan\":[{"), std::string::npos) << html;
     EXPECT_NE(html.find("function renderDirectComponent(instance)"), std::string::npos) << html;
@@ -1893,7 +1988,8 @@ TEST(FriendlySyntax, ComponentExpansionAddsInstanceMarker) {
     EXPECT_NE(html.find("\"name\":\"text\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"parentIndex\":-1"), std::string::npos) << html;
     EXPECT_NE(html.find("\"renderRoot\":true"), std::string::npos) << html;
-    EXPECT_NE(html.find("\"componentInstances\":[{\"id\":\"Badge_"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"componentInstances\":[{"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"id\":\"Badge_"), std::string::npos) << html;
     EXPECT_NE(html.find("\"component\":\"Badge\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"params\":{\"label\":\"Gold\"}"), std::string::npos) << html;
     EXPECT_NE(html.find("const componentDefinitionManifest = Array.isArray(manifest.componentDefinitions)"),
@@ -1933,7 +2029,7 @@ TEST(FriendlySyntax, DirectComponentBodyPlanRendererCoversConditionalsAndLoops) 
         "  card\n"
         "    h2 title\n"
         "    if visible\n"
-        "      for item in items\n"
+        "      for item in items key item\n"
         "        text item\n"
         "page\n"
         "  ListCard \"Names\"\n");
@@ -1950,8 +2046,416 @@ TEST(FriendlySyntax, DirectComponentBodyPlanRendererCoversConditionalsAndLoops) 
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("if (head === 'if')"), std::string::npos) << html;
     EXPECT_NE(html.find("if (head === 'for')"), std::string::npos) << html;
+    EXPECT_NE(html.find("const dynamicComponentRenderStack = []"), std::string::npos) << html;
+    EXPECT_NE(html.find("function pruneDynamicComponentSubtree(parentId, activeIds)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("pruneDynamicComponentSubtree(instance.id, renderedDynamicIds)"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("\"text\":\"if visible\""), std::string::npos) << html;
-    EXPECT_NE(html.find("\"text\":\"for item in items\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"text\":\"for item in items key item\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"keyExpression\":\"item\""), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, DirectComponentBodyPlanRendererHandlesElseAsControlFlow) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Notice\n"
+        "  let ready = false\n"
+        "  card\n"
+        "    if ready\n"
+        "      text \"Ready\"\n"
+        "    else\n"
+        "      text \"Waiting\"\n"
+        "page\n"
+        "  Notice\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("function componentElseSibling(definition, node)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("if (head === 'else') return '';"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("return elseNode ? renderComponentChildren(definition, instance, elseNode, scope) : '';"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("\"text\":\"else\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"text\":\"text \\\"Waiting\\\"\""), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, DirectComponentSlotsNestedCallsAttributesAndActionArgsUseBodyPlan) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Frame title\n"
+        "  card class \"frame\" style \"padding: 12px\" aria-label title\n"
+        "    h2 title class \"heading\"\n"
+        "    slot\n"
+        "make Picker\n"
+        "  let selected = \"\"\n"
+        "  when pick value\n"
+        "    selected = value\n"
+        "  Frame \"Chooser\"\n"
+        "    text selected\n"
+        "    button \"Ada\" click pick(\"Ada Lovelace\") class \"primary\"\n"
+        "page\n"
+        "  Picker\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+    const auto manifest = clientManifestFromHtml(html);
+    ASSERT_FALSE(manifest["componentInstances"].empty()) << manifest.dump(2);
+    EXPECT_NE(manifest["componentInstances"].dump().find("\"slotPlan\""), std::string::npos)
+        << manifest.dump(2);
+    EXPECT_EQ(manifest.dump().find("slotHex"), std::string::npos) << manifest.dump(2);
+    EXPECT_EQ(manifest.dump().find("slotSource"), std::string::npos) << manifest.dump(2);
+    EXPECT_NE(html.find("function renderComponentSlot(instance, scope, name)"), std::string::npos) << html;
+    EXPECT_NE(html.find("function renderNestedComponentCall(parentDefinition, parentInstance, node, scope, name)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("node && node.definitionModule"), std::string::npos) << html;
+    EXPECT_NE(html.find("const dynamicComponentInstances = {}"), std::string::npos) << html;
+    EXPECT_NE(html.find("function registerDynamicComponentInstance(instance)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-direct-instance"), std::string::npos) << html;
+    EXPECT_NE(html.find("function parseComponentActionInvocation(raw, scope)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("splitTopLevelList(argSource).forEach"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function renderComponentAttributes(parts, extra)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-direct-component-args"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"params\":[\"title\"]"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"params\":[]"), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, DirectNestedComponentActionsUseNestedRuntimeIdentity) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Inner\n"
+        "  let count = 0\n"
+        "  when add\n"
+        "    count += 1\n"
+        "  card class \"inner\"\n"
+        "    text count\n"
+        "    button \"+\" click add\n"
+        "make Outer\n"
+        "  box class \"outer\"\n"
+        "    Inner\n"
+        "page\n"
+        "  Outer\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("function findRuntimeComponentInstance(id)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("registerDynamicComponentInstance(nestedInstance);"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const instance = findRuntimeComponentInstance(componentId);"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("if (!instance.element) instance.element = componentElementFor(instance.id);"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-nested-component=\"true\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"name\":\"Inner\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"name\":\"Outer\""), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, DirectComponentRendererPreservesSemanticUiModifiers) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make UsagePanel\n"
+        "  panel title \"Usage\" pad lg shadow md width wide surface raised\n"
+        "    grid cols 2 gap md\n"
+        "      metric \"Users\" 42 \"Active\" tone good\n"
+        "      card tone primary\n"
+        "        text \"Ready\"\n"
+        "page\n"
+        "  UsagePanel\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("function semanticUiRenderExtras(head, parts)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("isSemanticUiModifierName(token)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-ui-' + modifier.name"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("jtml-' + modifier.name + suffix"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-ui"), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, LiveRuntimeScriptUsesBodyPlanHashesAndFailsClosed) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Card\n"
+        "  card tone good\n"
+        "    text \"Ready\"\n"
+        "page\n"
+        "  Card\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("function applyLiveBodyPlanRender(payload)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function jtmlStableHash(value)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("new TextEncoder().encode(value)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function hasLiveBodyPlanServerRender()"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("if (browserLocalRuntime || !payload) return;"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const res = await fetch('/api/rendered-components');"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("el.dataset.jtmlLiveBodyPlanRenderedHash === htmlHash"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("el.dataset.jtmlLiveBodyPlanTransport = 'body-plan';"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("refreshLiveBodyPlanRender();"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("hasLiveBodyPlanServerRender()) return;"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("if (data && data.renderedComponents) applyLiveBodyPlanRender(data.renderedComponents);"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("component.renderedHtmlSupported === true"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("runtime.renderedHtmlSupported === true"),
+              std::string::npos) << html;
+    EXPECT_EQ(html.find("el.dataset.jtmlLiveBodyPlanTransport === 'initial'"),
+              std::string::npos) << html;
+    EXPECT_EQ(html.find("el.dataset.jtmlLiveBodyPlanRendered === 'initial'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("async function runLiveComponentAction(componentId, actionName, args)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("fetch('/api/component-action'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("await runLiveComponentAction(componentId, actionName, args)"),
+              std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemantics) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Mixed\n"
+        "  let count = 1\n"
+        "  let remainder = 10\n"
+        "  let label = \"A\"\n"
+        "  when add\n"
+        "    count += 2\n"
+        "    remainder %= 4\n"
+        "    label += \"B\"\n"
+        "  when loopUp\n"
+        "    while count < 4\n"
+        "      count += 1\n"
+        "  when guarded\n"
+        "    if count\n"
+        "      label = \"unsafe\"\n"
+        "  box\n"
+        "    text label\n"
+        "    button \"Add\" click add\n"
+        "    button \"Loop\" click loopUp\n"
+        "    button \"Guard\" click guarded\n"
+        "page\n"
+        "  Mixed\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    std::string html = transpiler.transpile(program);
+    EXPECT_NE(html.find("function applyComponentAssignment(scope, node)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("typeof current === 'number' && typeof next === 'number'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("String(current == null ? '' : current) + String(next == null ? '' : next)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("op === '%='"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("node.kind === 'template' && head === 'if'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("node.kind === 'template' && head === 'for'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("node.kind === 'template' && head === 'while'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("scope[match[1]] = values[itemIndex];"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("runComponentPlanStatements(definition, scope, componentNodeChildren(definition, elseNode), instance)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("return false;"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("runDirectComponentFallbackAction"),
+              std::string::npos) << html;
+
+    JtmlTranspiler liveTranspiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(liveTranspiler, config);
+    interpreter.interpret(program);
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    std::string componentId;
+    for (const auto& component : state["components"]) {
+        if (component.value("component", "") == "Mixed") {
+            componentId = component.value("id", "");
+        }
+    }
+    ASSERT_FALSE(componentId.empty()) << state.dump(2);
+    std::string bindings;
+    std::string error;
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        componentId,
+        "add",
+        nlohmann::json::array(),
+        bindings,
+        error)) << error;
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    bool foundMixed = false;
+    for (const auto& component : state["components"]) {
+        if (component.value("id", "") != componentId) continue;
+        foundMixed = true;
+        EXPECT_EQ(component["locals"]["count"]["value"], 3);
+        EXPECT_EQ(component["locals"]["remainder"]["value"], 2);
+        EXPECT_EQ(component["locals"]["label"]["value"], "AB");
+    }
+    EXPECT_TRUE(foundMixed) << state.dump(2);
+
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        componentId,
+        "loopUp",
+        nlohmann::json::array(),
+        bindings,
+        error)) << error;
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    foundMixed = false;
+    for (const auto& component : state["components"]) {
+        if (component.value("id", "") != componentId) continue;
+        foundMixed = true;
+        EXPECT_EQ(component["locals"]["count"]["value"], 4);
+    }
+    EXPECT_TRUE(foundMixed) << state.dump(2);
+}
+
+TEST(FriendlySyntax, DirectComponentActionsCanCallOtherLocalActions) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Counter\n"
+        "  let count = 0\n"
+        "  let amount = 100\n"
+        "  when incBy amount\n"
+        "    count += amount\n"
+        "  when addTwice\n"
+        "    incBy(2)\n"
+        "    incBy(3)\n"
+        "  card\n"
+        "    text count\n"
+        "    button \"Add twice\" click addTwice\n"
+        "page\n"
+        "  Counter\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler browserTranspiler;
+    browserTranspiler.setBrowserLocalRuntime(true);
+    const std::string browserHtml = browserTranspiler.transpile(program);
+    EXPECT_NE(browserHtml.find("function componentActionArgsFromExpression(expression, scope)"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("node.kind === 'call' && node.name"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("emitComponentEvent(instance, node.name, callArgs)"),
+              std::string::npos) << browserHtml;
+    const auto manifest = clientManifestFromHtml(browserHtml);
+    bool foundCallNode = false;
+    for (const auto& definition : manifest["componentDefinitions"]) {
+        if (definition.value("name", "") != "Counter") continue;
+        for (const auto& node : definition["bodyPlan"]) {
+            if (node.value("kind", "") == "call" && node.value("name", "") == "incBy") {
+                foundCallNode = true;
+            }
+        }
+    }
+    EXPECT_TRUE(foundCallNode) << manifest.dump(2);
+
+    JtmlTranspiler liveTranspiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(liveTranspiler, config);
+    interpreter.interpret(program);
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    std::string componentId;
+    for (const auto& component : state["components"]) {
+        if (component.value("component", "") == "Counter") {
+            componentId = component.value("id", "");
+            break;
+        }
+    }
+    ASSERT_FALSE(componentId.empty()) << state.dump(2);
+
+    std::string bindings;
+    std::string error;
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        componentId,
+        "addTwice",
+        nlohmann::json::array(),
+        bindings,
+        error)) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    bool foundCounter = false;
+    for (const auto& component : state["components"]) {
+        if (component.value("id", "") != componentId) continue;
+        foundCounter = true;
+        EXPECT_EQ(component["locals"]["count"]["value"], 5) << component.dump(2);
+        EXPECT_EQ(component["locals"]["amount"]["value"], 100) << component.dump(2);
+        EXPECT_NE(component.value("renderedHtml", "").find(">5</p>"), std::string::npos)
+            << component.dump(2);
+    }
+    EXPECT_TRUE(foundCounter) << state.dump(2);
 }
 
 TEST(FriendlySyntax, ComponentMetadataListsIsolatedLocals) {
@@ -2100,6 +2604,1128 @@ TEST(FriendlySyntax, InterpreterRegistersComponentInstancesAndLocalState) {
         components[1]["id"].get<std::string>(), "missing", nlohmann::json::array(),
         bindings, error));
     EXPECT_NE(error.find("available actions"), std::string::npos) << error;
+}
+
+TEST(FriendlySyntax, InterpreterLiveComponentsExposeSlotsAndRunBodyPlanActionArgs) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Picker\n"
+        "  let selected = \"\"\n"
+        "  when pick value\n"
+        "    selected = value\n"
+        "  card\n"
+        "    slot\n"
+        "    text selected\n"
+        "page\n"
+        "  Picker\n"
+        "    text \"Choose one\"\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(transpiler, config);
+    interpreter.interpret(program);
+
+    auto components = nlohmann::json::parse(interpreter.getComponentsJSON());
+    ASSERT_EQ(components.size(), 1) << components.dump(2);
+    EXPECT_EQ(components[0]["runtime"]["bodyPlanActionExecution"], true);
+    ASSERT_TRUE(components[0].contains("slotPlan")) << components.dump(2);
+    ASSERT_EQ(components[0]["slotPlan"].size(), 1) << components.dump(2);
+    EXPECT_EQ(components[0]["slotPlan"][0]["text"], "text \"Choose one\"");
+
+    std::string bindings;
+    std::string error;
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        components[0]["id"].get<std::string>(),
+        "pick",
+        nlohmann::json::array({"Ada"}),
+        bindings,
+        error)) << error;
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    EXPECT_EQ(state["components"][0]["locals"]["selected"]["value"], "Ada");
+    EXPECT_EQ(state["components"][0]["runtime"]["bodyPlanTemplateRendering"], true);
+    EXPECT_NE(state["components"][0]["renderedHtml"].get<std::string>().find("Choose one"),
+              std::string::npos) << state.dump(2);
+    EXPECT_NE(state["components"][0]["renderedHtml"].get<std::string>().find("Ada"),
+              std::string::npos) << state.dump(2);
+}
+
+TEST(FriendlySyntax, InterpreterLiveBodyPlanActionsFailClosedAndPreservePlusEqualsSemantics) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Mixed\n"
+        "  let count = 1\n"
+        "  let label = \"A\"\n"
+        "  let items = [1, 2, 3]\n"
+        "  let letters = \"xy\"\n"
+        "  when add\n"
+        "    count += 2\n"
+        "    label += \"B\"\n"
+        "  when sum\n"
+        "    count = 0\n"
+        "    for item in items\n"
+        "      count += item\n"
+        "    if count == 6\n"
+        "      label = \"summed\"\n"
+        "  when spell\n"
+        "    label = \"\"\n"
+        "    for letter in letters\n"
+        "      label += letter\n"
+        "  when guarded\n"
+        "    count += 1\n"
+        "    if count\n"
+        "      label = \"guarded\"\n"
+        "  box\n"
+        "    text label\n"
+        "page\n"
+        "  Mixed\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(transpiler, config);
+    interpreter.interpret(program);
+
+    auto components = nlohmann::json::parse(interpreter.getComponentsJSON());
+    ASSERT_EQ(components.size(), 1) << components.dump(2);
+    const auto componentId = components[0]["id"].get<std::string>();
+
+    std::string bindings;
+    std::string error;
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        componentId, "add", nlohmann::json::array(), bindings, error)) << error;
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    EXPECT_EQ(state["components"][0]["locals"]["count"]["value"], 3);
+    EXPECT_EQ(state["components"][0]["locals"]["label"]["value"], "AB");
+
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        componentId, "sum", nlohmann::json::array(), bindings, error)) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    EXPECT_EQ(state["components"][0]["locals"]["count"]["value"], 6);
+    EXPECT_EQ(state["components"][0]["locals"]["label"]["value"], "summed");
+
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        componentId, "spell", nlohmann::json::array(), bindings, error)) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    EXPECT_EQ(state["components"][0]["locals"]["label"]["value"], "xy");
+
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        componentId, "guarded", nlohmann::json::array(), bindings, error)) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    EXPECT_EQ(state["components"][0]["locals"]["count"]["value"], 7);
+    EXPECT_EQ(state["components"][0]["locals"]["label"]["value"], "guarded");
+}
+
+TEST(FriendlySyntax, InterpreterLiveBodyPlanTemplateSupportReflectsRenderedHtml) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Worker\n"
+        "  let count = 0\n"
+        "  when add\n"
+        "    count += 1\n"
+        "page\n"
+        "  Worker\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(transpiler, config);
+    interpreter.interpret(program);
+
+    auto definitions = nlohmann::json::parse(interpreter.getComponentDefinitionsJSON());
+    ASSERT_EQ(definitions.size(), 1) << definitions.dump(2);
+    EXPECT_EQ(definitions[0]["runtimePlan"]["bodyPlanActionExecution"], true);
+    EXPECT_EQ(definitions[0]["runtimePlan"]["bodyPlanTemplateRendering"], false);
+    EXPECT_EQ(definitions[0]["runtimePlan"]["renderedHtmlSupported"], false);
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    EXPECT_EQ(state["components"][0]["runtime"]["bodyPlanActionExecution"], true);
+    EXPECT_EQ(state["components"][0]["runtime"]["bodyPlanTemplateRendering"], false);
+    EXPECT_EQ(state["components"][0]["runtime"]["renderedHtmlSupported"], false);
+    EXPECT_EQ(state["components"][0]["renderedHtmlSupported"], false);
+    EXPECT_EQ(state["components"][0]["renderedHtml"], "");
+
+    std::string bindings;
+    std::string error;
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        state["components"][0]["id"].get<std::string>(),
+        "add",
+        nlohmann::json::array(),
+        bindings,
+        error)) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    EXPECT_EQ(state["components"][0]["locals"]["count"]["value"], 1);
+    EXPECT_EQ(state["components"][0]["runtime"]["bodyPlanTemplateRendering"], false);
+    EXPECT_EQ(state["components"][0]["renderedHtmlSupported"], false);
+}
+
+TEST(FriendlySyntax, BrowserAndLiveComponentBodyPlanMetadataStayInParity) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Picker title\n"
+        "  let selected = \"\"\n"
+        "  when pick value\n"
+        "    selected = value\n"
+        "  card\n"
+        "    h2 title\n"
+        "    slot\n"
+        "    button \"Ada\" click pick(\"Ada\")\n"
+        "page\n"
+        "  Picker \"Chooser\"\n"
+        "    text \"Choose one\"\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler browserTranspiler;
+    browserTranspiler.setBrowserLocalRuntime(true);
+    const auto clientManifest = clientManifestFromHtml(browserTranspiler.transpile(program));
+    ASSERT_EQ(clientManifest["componentDefinitions"].size(), 1) << clientManifest.dump(2);
+    ASSERT_EQ(clientManifest["componentInstances"].size(), 1) << clientManifest.dump(2);
+
+    JtmlTranspiler liveTranspiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(liveTranspiler, config);
+    interpreter.interpret(program);
+    const auto liveState = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(liveState["componentDefinitions"].size(), 1) << liveState.dump(2);
+    ASSERT_EQ(liveState["components"].size(), 1) << liveState.dump(2);
+
+    EXPECT_EQ(clientManifest["componentDefinitions"][0]["name"],
+              liveState["componentDefinitions"][0]["name"]);
+    EXPECT_EQ(clientManifest["componentDefinitions"][0]["params"],
+              liveState["componentDefinitions"][0]["params"]);
+    EXPECT_EQ(clientManifest["componentDefinitions"][0]["bodyPlan"][1]["text"],
+              liveState["componentDefinitions"][0]["bodyPlan"][1]["text"]);
+    EXPECT_EQ(clientManifest["componentDefinitions"][0]["bodyPlan"][2]["operator"],
+              liveState["componentDefinitions"][0]["bodyPlan"][2]["operator"]);
+    EXPECT_EQ(clientManifest["componentInstances"][0]["slotPlan"][0]["text"],
+              liveState["components"][0]["slotPlan"][0]["text"]);
+    EXPECT_EQ(liveState["components"][0]["runtime"]["bodyPlanActionExecution"], true);
+    EXPECT_EQ(liveState["components"][0]["runtime"]["bodyPlanTemplateRendering"], true);
+    EXPECT_EQ(liveState["componentDefinitions"][0]["runtimePlan"]["bodyPlanActionExecution"], true);
+    EXPECT_EQ(liveState["componentDefinitions"][0]["runtimePlan"]["bodyPlanTemplateRendering"], true);
+    EXPECT_NE(liveState["components"][0]["renderedHtml"].get<std::string>().find("<h2"),
+              std::string::npos) << liveState.dump(2);
+    EXPECT_NE(liveState["components"][0]["renderedHtml"].get<std::string>().find(">Chooser</h2>"),
+              std::string::npos) << liveState.dump(2);
+    EXPECT_NE(liveState["components"][0]["renderedHtml"].get<std::string>().find("Choose one"),
+              std::string::npos) << liveState.dump(2);
+    EXPECT_NE(liveState["components"][0]["renderedHtml"].get<std::string>().find("<button"),
+              std::string::npos) << liveState.dump(2);
+    EXPECT_NE(liveState["components"][0]["renderedHtml"].get<std::string>().find("data-jtml-direct-component-id="),
+              std::string::npos) << liveState.dump(2);
+    EXPECT_NE(liveState["components"][0]["renderedHtml"].get<std::string>().find("data-jtml-direct-component-action=\"pick\""),
+              std::string::npos) << liveState.dump(2);
+    EXPECT_NE(liveState["components"][0]["renderedHtml"].get<std::string>().find("data-jtml-direct-component-args=\"[&quot;Ada&quot;]\""),
+              std::string::npos) << liveState.dump(2);
+}
+
+TEST(FriendlySyntax, InterpreterLiveBodyPlanRendererSupportsNestedComponentsAndSlots) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Frame title\n"
+        "  card class \"frame\"\n"
+        "    h2 title\n"
+        "    slot\n"
+        "make Picker\n"
+        "  let selected = \"\"\n"
+        "  when pick value\n"
+        "    selected = value\n"
+        "  Frame \"Chooser\"\n"
+        "    text \"Choose one\"\n"
+        "    button \"Ada\" click pick(\"Ada\")\n"
+        "page\n"
+        "  Picker\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(transpiler, config);
+    interpreter.interpret(program);
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_GE(state["components"].size(), 1) << state.dump(2);
+    std::string html;
+    for (const auto& component : state["components"]) {
+        if (!component.contains("renderedHtml")) continue;
+        const std::string candidate = component["renderedHtml"].get<std::string>();
+        if (candidate.find("class=\"frame jtml-card\"") != std::string::npos &&
+            candidate.find("Choose one") != std::string::npos) {
+            html = candidate;
+            break;
+        }
+    }
+    ASSERT_FALSE(html.empty()) << state.dump(2);
+    EXPECT_NE(html.find("class=\"frame jtml-card\""), std::string::npos) << state.dump(2);
+    EXPECT_NE(html.find("data-jtml-ui=\"card\""), std::string::npos) << state.dump(2);
+    EXPECT_NE(html.find(">Chooser</h2>"), std::string::npos) << state.dump(2);
+    EXPECT_NE(html.find("Choose one"), std::string::npos) << state.dump(2);
+    EXPECT_NE(html.find("<button"), std::string::npos) << state.dump(2);
+    EXPECT_NE(html.find("data-jtml-direct-component-action=\"pick\""),
+              std::string::npos) << state.dump(2);
+    EXPECT_NE(html.find("data-jtml-direct-component-args=\"[&quot;Ada&quot;]\""),
+              std::string::npos) << state.dump(2);
+    for (const auto& component : state["components"]) {
+        EXPECT_EQ(component["runtime"]["bodyPlanTemplateRendering"], true);
+    }
+}
+
+TEST(FriendlySyntax, InterpreterLiveBodyPlanRendererSupportsNamedSlotInsertionSites) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Layout\n"
+        "  card class \"layout\"\n"
+        "    header\n"
+        "      slot header\n"
+        "    main\n"
+        "      slot\n"
+        "    footer\n"
+        "      slot footer\n"
+        "page\n"
+        "  Layout\n"
+        "    slot header\n"
+        "      h1 \"Named title\"\n"
+        "    text \"Default body\"\n"
+        "    slot footer\n"
+        "      button \"Done\"\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler browserTranspiler;
+    browserTranspiler.setBrowserLocalRuntime(true);
+    const std::string browserHtml = browserTranspiler.transpile(program);
+    const auto manifest = clientManifestFromHtml(browserHtml);
+    ASSERT_EQ(manifest["componentInstances"].size(), 1) << manifest.dump(2);
+    ASSERT_EQ(manifest["componentInstances"][0]["slotPlan"].size(), 5)
+        << manifest["componentInstances"][0]["slotPlan"].dump(2);
+    EXPECT_EQ(manifest["componentInstances"][0]["slotPlan"][0]["text"], "slot header");
+    EXPECT_EQ(manifest["componentInstances"][0]["slotPlan"][1]["text"], "h1 \"Named title\"");
+    EXPECT_EQ(manifest["componentInstances"][0]["slotPlan"][2]["text"], "text \"Default body\"");
+    EXPECT_EQ(manifest["componentInstances"][0]["slotPlan"][3]["text"], "slot footer");
+    EXPECT_EQ(manifest["componentInstances"][0]["slotPlan"][4]["text"], "button \"Done\"");
+    EXPECT_NE(browserHtml.find("function componentSlotName(node)"), std::string::npos)
+        << browserHtml;
+    EXPECT_NE(browserHtml.find("renderComponentSlot(instance, scope, words[1] || '')"),
+              std::string::npos) << browserHtml;
+
+    JtmlTranspiler liveTranspiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(liveTranspiler, config);
+    interpreter.interpret(program);
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    ASSERT_EQ(state["components"][0]["slotPlan"].size(), 5) << state.dump(2);
+    const std::string html = state["components"][0]["renderedHtml"].get<std::string>();
+    EXPECT_NE(html.find("<header"), std::string::npos) << html;
+    EXPECT_NE(html.find(">Named title</h1>"), std::string::npos) << html;
+    EXPECT_NE(html.find("<main"), std::string::npos) << html;
+    EXPECT_NE(html.find(">Default body</p>"), std::string::npos) << html;
+    EXPECT_NE(html.find("<footer"), std::string::npos) << html;
+    EXPECT_NE(html.find(">Done</button>"), std::string::npos) << html;
+    EXPECT_LT(html.find(">Named title</h1>"), html.find(">Default body</p>")) << html;
+    EXPECT_LT(html.find(">Default body</p>"), html.find(">Done</button>")) << html;
+    EXPECT_EQ(html.find("slot header"), std::string::npos) << html;
+    EXPECT_EQ(html.find("slot footer"), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, InterpreterLiveNestedComponentCallsCarryNamedSlotPlans) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Frame\n"
+        "  card class \"frame\"\n"
+        "    header\n"
+        "      slot header\n"
+        "    main\n"
+        "      slot\n"
+        "    footer\n"
+        "      slot footer\n"
+        "make Parent\n"
+        "  panel title \"Parent\"\n"
+        "    Frame\n"
+        "      slot header\n"
+        "        h1 \"Nested title\"\n"
+        "      text \"Nested body\"\n"
+        "      slot footer\n"
+        "        button \"Nested done\"\n"
+        "page\n"
+        "  Parent\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler browserTranspiler;
+    browserTranspiler.setBrowserLocalRuntime(true);
+    const std::string browserHtml = browserTranspiler.transpile(program);
+    EXPECT_NE(browserHtml.find("function slotPlanForComponentNode(definition, node)"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("slotPlan: slotPlanForComponentNode(parentDefinition, node)"),
+              std::string::npos) << browserHtml;
+
+    JtmlTranspiler liveTranspiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(liveTranspiler, config);
+    interpreter.interpret(program);
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    std::string html;
+    for (const auto& component : state["components"]) {
+        if (component.value("component", "") != "Parent" ||
+            !component.contains("renderedHtml")) {
+            continue;
+        }
+        html = component["renderedHtml"].get<std::string>();
+        break;
+    }
+    ASSERT_FALSE(html.empty()) << state.dump(2);
+    EXPECT_NE(html.find("data-jtml-component=\"Frame\""), std::string::npos) << html;
+    EXPECT_NE(html.find(">Nested title</h1>"), std::string::npos) << html;
+    EXPECT_NE(html.find(">Nested body</p>"), std::string::npos) << html;
+    EXPECT_NE(html.find(">Nested done</button>"), std::string::npos) << html;
+    EXPECT_LT(html.find(">Nested title</h1>"), html.find(">Nested body</p>")) << html;
+    EXPECT_LT(html.find(">Nested body</p>"), html.find(">Nested done</button>")) << html;
+    EXPECT_EQ(html.find("slot header"), std::string::npos) << html;
+    EXPECT_EQ(html.find("slot footer"), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, InterpreterLiveNestedComponentActionsUseDynamicInstances) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Child\n"
+        "  let count = 0\n"
+        "  when add\n"
+        "    count += 1\n"
+        "  card\n"
+        "    text count\n"
+        "    button \"+\" click add\n"
+        "make Parent\n"
+        "  panel title \"Parent\"\n"
+        "    Child\n"
+        "page\n"
+        "  Parent\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(transpiler, config);
+    interpreter.interpret(program);
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    auto findParentHtml = [](const nlohmann::json& stateJson) {
+        for (const auto& component : stateJson["components"]) {
+            if (component.value("component", "") == "Parent" &&
+                component.contains("renderedHtml")) {
+                return component["renderedHtml"].get<std::string>();
+            }
+        }
+        return std::string{};
+    };
+    std::string html = findParentHtml(state);
+    ASSERT_FALSE(html.empty()) << state.dump(2);
+    EXPECT_NE(html.find("data-jtml-nested-component=\"true\""), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-component=\"Child\""), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-component-parent=\"Parent_"), std::string::npos) << html;
+
+    const std::string marker = "data-jtml-direct-component-id=\"";
+    const auto idStart = html.find(marker);
+    ASSERT_NE(idStart, std::string::npos) << html;
+    const auto idValueStart = idStart + marker.size();
+    const auto idEnd = html.find('"', idValueStart);
+    ASSERT_NE(idEnd, std::string::npos) << html;
+    const std::string nestedId = html.substr(idValueStart, idEnd - idValueStart);
+    EXPECT_NE(nestedId.find("Parent_"), std::string::npos) << nestedId;
+    EXPECT_NE(nestedId.find("__Child_"), std::string::npos) << nestedId;
+    EXPECT_NE(html.find("data-jtml-direct-component-action=\"add\""), std::string::npos) << html;
+
+    std::string bindings;
+    std::string error;
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        nestedId,
+        "add",
+        nlohmann::json::array(),
+        bindings,
+        error)) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    html = findParentHtml(state);
+    ASSERT_FALSE(html.empty()) << state.dump(2);
+    EXPECT_NE(html.find(">1</p>"), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, InterpreterLiveNestedComponentEventsDispatchToParentHandlers) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Child emits picked(name: string)\n"
+        "  card\n"
+        "    button \"Pick Ada\" click picked(\"Ada\")\n"
+        "make Parent\n"
+        "  let chosen = \"\"\n"
+        "  when choose prefix name\n"
+        "    chosen = prefix + name\n"
+        "  panel title \"Chooser\"\n"
+        "    Child on picked choose(\"Selected\")\n"
+        "    text chosen\n"
+        "page\n"
+        "  Parent\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler browserTranspiler;
+    browserTranspiler.setBrowserLocalRuntime(true);
+    const std::string browserHtml = browserTranspiler.transpile(program);
+    const auto manifest = clientManifestFromHtml(browserHtml);
+    ASSERT_EQ(manifest["componentDefinitions"].size(), 2) << manifest.dump(2);
+    bool browserChildHasEmit = false;
+    for (const auto& definition : manifest["componentDefinitions"]) {
+        if (definition.value("name", "") != "Child") continue;
+        browserChildHasEmit = true;
+        ASSERT_EQ(definition["emits"].size(), 1) << definition.dump(2);
+        EXPECT_EQ(definition["emits"][0], "picked");
+        ASSERT_TRUE(definition.contains("emitArity")) << definition.dump(2);
+        EXPECT_EQ(definition["emitArity"]["picked"], 1) << definition.dump(2);
+        ASSERT_TRUE(definition.contains("emitPayloads")) << definition.dump(2);
+        ASSERT_EQ(definition["emitPayloads"]["picked"].size(), 1) << definition.dump(2);
+        EXPECT_EQ(definition["emitPayloads"]["picked"][0], "name") << definition.dump(2);
+        ASSERT_TRUE(definition.contains("emitPayloadTypes")) << definition.dump(2);
+        ASSERT_EQ(definition["emitPayloadTypes"]["picked"].size(), 1) << definition.dump(2);
+        EXPECT_EQ(definition["emitPayloadTypes"]["picked"][0], "string") << definition.dump(2);
+    }
+    EXPECT_TRUE(browserChildHasEmit) << manifest.dump(2);
+    EXPECT_NE(browserHtml.find("function parseComponentEventHandlers(words, paramCount, scope)"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("function emitComponentEvent(instance, eventName, args)"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("function componentEventPayloadTypeMatches(value, declaredType)"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("return runDirectComponentAction(\n          parent.id"),
+              std::string::npos) << browserHtml;
+
+    JtmlTranspiler liveTranspiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(liveTranspiler, config);
+    interpreter.interpret(program);
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["componentDefinitions"].size(), 2) << state.dump(2);
+    bool liveChildHasEmit = false;
+    for (const auto& definition : state["componentDefinitions"]) {
+        if (definition.value("name", "") != "Child") continue;
+        liveChildHasEmit = true;
+        ASSERT_EQ(definition["emits"].size(), 1) << definition.dump(2);
+        EXPECT_EQ(definition["emits"][0], "picked");
+        ASSERT_TRUE(definition.contains("emitArity")) << definition.dump(2);
+        EXPECT_EQ(definition["emitArity"]["picked"], 1) << definition.dump(2);
+        ASSERT_TRUE(definition.contains("emitPayloads")) << definition.dump(2);
+        ASSERT_EQ(definition["emitPayloads"]["picked"].size(), 1) << definition.dump(2);
+        EXPECT_EQ(definition["emitPayloads"]["picked"][0], "name") << definition.dump(2);
+        ASSERT_TRUE(definition.contains("emitPayloadTypes")) << definition.dump(2);
+        ASSERT_EQ(definition["emitPayloadTypes"]["picked"].size(), 1) << definition.dump(2);
+        EXPECT_EQ(definition["emitPayloadTypes"]["picked"][0], "string") << definition.dump(2);
+        ASSERT_EQ(definition["runtimePlan"]["emits"].size(), 1) << definition.dump(2);
+        EXPECT_EQ(definition["runtimePlan"]["emits"][0], "picked");
+        EXPECT_EQ(definition["runtimePlan"]["emitArity"]["picked"], 1) << definition.dump(2);
+        EXPECT_EQ(definition["runtimePlan"]["emitPayloads"]["picked"][0], "name") << definition.dump(2);
+        EXPECT_EQ(definition["runtimePlan"]["emitPayloadTypes"]["picked"][0], "string") << definition.dump(2);
+    }
+    EXPECT_TRUE(liveChildHasEmit) << state.dump(2);
+    auto findParentHtml = [](const nlohmann::json& stateJson) {
+        for (const auto& component : stateJson["components"]) {
+            if (component.value("component", "") == "Parent" &&
+                component.contains("renderedHtml")) {
+                return component["renderedHtml"].get<std::string>();
+            }
+        }
+        return std::string{};
+    };
+    std::string html = findParentHtml(state);
+    ASSERT_FALSE(html.empty()) << state.dump(2);
+    EXPECT_NE(html.find("data-jtml-component=\"Child\""), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-direct-component-action=\"picked\""),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-direct-component-args=\"[&quot;Ada&quot;]\""),
+              std::string::npos) << html;
+    EXPECT_EQ(html.find(">SelectedAda</p>"), std::string::npos) << html;
+
+    const std::string marker = "data-jtml-direct-component-id=\"";
+    const auto idStart = html.find(marker);
+    ASSERT_NE(idStart, std::string::npos) << html;
+    const auto idValueStart = idStart + marker.size();
+    const auto idEnd = html.find('"', idValueStart);
+    ASSERT_NE(idEnd, std::string::npos) << html;
+    const std::string nestedId = html.substr(idValueStart, idEnd - idValueStart);
+    EXPECT_NE(nestedId.find("__Child_"), std::string::npos) << nestedId;
+
+    std::string bindings;
+    std::string error;
+    EXPECT_FALSE(interpreter.dispatchComponentAction(
+        nestedId,
+        "picked",
+        nlohmann::json::array({"Ada", "extra"}),
+        bindings,
+        error));
+    EXPECT_NE(error.find("expected 1 payload argument"), std::string::npos) << error;
+
+    error.clear();
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        nestedId,
+        "picked",
+        nlohmann::json::array({"Ada"}),
+        bindings,
+        error)) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    html = findParentHtml(state);
+    ASSERT_FALSE(html.empty()) << state.dump(2);
+    EXPECT_NE(html.find(">SelectedAda</p>"), std::string::npos) << html;
+    bool foundParentState = false;
+    for (const auto& component : state["components"]) {
+        if (component.value("component", "") != "Parent") continue;
+        foundParentState = true;
+        EXPECT_EQ(component["locals"]["chosen"]["value"], "SelectedAda");
+    }
+    EXPECT_TRUE(foundParentState) << state.dump(2);
+}
+
+TEST(FriendlySyntax, InterpreterLiveActionBodyCanEmitDeclaredComponentEvent) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Child emits picked(name)\n"
+        "  when fire\n"
+        "    picked(\"Ada Lovelace\")\n"
+        "  card\n"
+        "    button \"Fire\" click fire\n"
+        "make Parent\n"
+        "  let chosen = \"\"\n"
+        "  when choose name\n"
+        "    chosen = name\n"
+        "  panel title \"Chooser\"\n"
+        "    Child on picked choose\n"
+        "    text chosen\n"
+        "page\n"
+        "  Parent\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler liveTranspiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(liveTranspiler, config);
+    interpreter.interpret(program);
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    std::string parentId;
+    std::string parentHtml;
+    for (const auto& component : state["components"]) {
+        if (component.value("component", "") == "Parent") {
+            parentId = component.value("id", "");
+            parentHtml = component.value("renderedHtml", "");
+        }
+    }
+    ASSERT_FALSE(parentId.empty()) << state.dump(2);
+    ASSERT_FALSE(parentHtml.empty()) << state.dump(2);
+    const std::string marker = "data-jtml-direct-component-id=\"";
+    const auto idStart = parentHtml.find(marker);
+    ASSERT_NE(idStart, std::string::npos) << parentHtml;
+    const auto idValueStart = idStart + marker.size();
+    const auto idEnd = parentHtml.find('"', idValueStart);
+    ASSERT_NE(idEnd, std::string::npos) << parentHtml;
+    const std::string childId = parentHtml.substr(idValueStart, idEnd - idValueStart);
+    EXPECT_NE(childId.find("__Child_"), std::string::npos) << childId;
+
+    std::string bindings;
+    std::string error;
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        childId,
+        "fire",
+        nlohmann::json::array(),
+        bindings,
+        error)) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    bool foundParent = false;
+    for (const auto& component : state["components"]) {
+        if (component.value("id", "") != parentId) continue;
+        foundParent = true;
+        EXPECT_EQ(component["locals"]["chosen"]["value"], "Ada Lovelace") << component.dump(2);
+        EXPECT_NE(component.value("renderedHtml", "").find(">Ada Lovelace</p>"), std::string::npos)
+            << component.dump(2);
+    }
+    EXPECT_TRUE(foundParent) << state.dump(2);
+}
+
+TEST(FriendlySyntax, InterpreterLiveActionBodyRejectsWrongTypedEmitPayload) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Child emits picked(name: number)\n"
+        "  when fire\n"
+        "    picked(\"Ada Lovelace\")\n"
+        "  card\n"
+        "    button \"Fire\" click fire\n"
+        "make Parent\n"
+        "  let chosen = \"\"\n"
+        "  when choose name\n"
+        "    chosen = name\n"
+        "  panel title \"Chooser\"\n"
+        "    Child on picked choose\n"
+        "    text chosen\n"
+        "page\n"
+        "  Parent\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler liveTranspiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(liveTranspiler, config);
+    interpreter.interpret(program);
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    std::string childId;
+    for (const auto& component : state["components"]) {
+        if (component.value("component", "") != "Parent") continue;
+        const std::string html = component.value("renderedHtml", "");
+        const std::string marker = "data-jtml-direct-component-id=\"";
+        const auto idStart = html.find(marker);
+        ASSERT_NE(idStart, std::string::npos) << html;
+        const auto idValueStart = idStart + marker.size();
+        const auto idEnd = html.find('"', idValueStart);
+        ASSERT_NE(idEnd, std::string::npos) << html;
+        childId = html.substr(idValueStart, idEnd - idValueStart);
+    }
+    ASSERT_FALSE(childId.empty()) << state.dump(2);
+
+    std::string bindings;
+    std::string error;
+    EXPECT_FALSE(interpreter.dispatchComponentAction(
+        childId,
+        "fire",
+        nlohmann::json::array(),
+        bindings,
+        error));
+    EXPECT_NE(error.find("Component 'Child' event 'picked' payload 'name' expected type 'number'"),
+              std::string::npos) << error;
+    EXPECT_NE(error.find("component definition line"), std::string::npos) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    for (const auto& component : state["components"]) {
+        if (component.value("component", "") != "Parent") continue;
+        EXPECT_EQ(component["locals"]["chosen"]["value"], "") << component.dump(2);
+    }
+}
+
+TEST(FriendlySyntax, InterpreterLiveNestedComponentsInsideLoopsKeepSeparateInstances) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Child label\n"
+        "  let count = 0\n"
+        "  when add\n"
+        "    count += 1\n"
+        "  card\n"
+        "    text label\n"
+        "    text count\n"
+        "    button \"+\" click add\n"
+        "make Parent\n"
+        "  let names = [\"Ada\", \"Bo\"]\n"
+        "  when reorder\n"
+        "    names = [\"Bo\", \"Ada\"]\n"
+        "  when trim\n"
+        "    names = [\"Ada\"]\n"
+        "  panel title \"Team\"\n"
+        "    for name in names key name\n"
+        "      Child name\n"
+        "page\n"
+        "  Parent\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(transpiler, config);
+    interpreter.interpret(program);
+
+    auto parentHtml = [](const nlohmann::json& stateJson) {
+        for (const auto& component : stateJson["components"]) {
+            if (component.value("component", "") == "Parent" &&
+                component.contains("renderedHtml")) {
+                return component["renderedHtml"].get<std::string>();
+            }
+        }
+        return std::string{};
+    };
+    auto parentId = [](const nlohmann::json& stateJson) {
+        for (const auto& component : stateJson["components"]) {
+            if (component.value("component", "") == "Parent") {
+                return component.value("id", std::string{});
+            }
+        }
+        return std::string{};
+    };
+    auto extractDirectIds = [](const std::string& html) {
+        std::vector<std::string> ids;
+        const std::string marker = "data-jtml-direct-component-id=\"";
+        size_t pos = 0;
+        while ((pos = html.find(marker, pos)) != std::string::npos) {
+            const auto start = pos + marker.size();
+            const auto end = html.find('"', start);
+            if (end == std::string::npos) break;
+            ids.push_back(html.substr(start, end - start));
+            pos = end + 1;
+        }
+        return ids;
+    };
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    std::string html = parentHtml(state);
+    ASSERT_FALSE(html.empty()) << state.dump(2);
+    auto ids = extractDirectIds(html);
+    ASSERT_EQ(ids.size(), 2) << html;
+    EXPECT_NE(ids[0], ids[1]) << html;
+    EXPECT_NE(ids[0].find("_for"), std::string::npos) << ids[0];
+    EXPECT_NE(ids[1].find("_for"), std::string::npos) << ids[1];
+    EXPECT_NE(ids[0].find("_Ada"), std::string::npos) << ids[0];
+    EXPECT_NE(ids[1].find("_Bo"), std::string::npos) << ids[1];
+    EXPECT_NE(html.find(">Ada</p>"), std::string::npos) << html;
+    EXPECT_NE(html.find(">Bo</p>"), std::string::npos) << html;
+
+    const std::string adaId = ids[0];
+    const std::string boId = ids[1];
+    std::string bindings;
+    std::string error;
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        adaId,
+        "add",
+        nlohmann::json::array(),
+        bindings,
+        error)) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    html = parentHtml(state);
+    ASSERT_FALSE(html.empty()) << state.dump(2);
+    EXPECT_NE(html.find(">1</p>"), std::string::npos) << html;
+    EXPECT_NE(html.find(">0</p>"), std::string::npos) << html;
+
+    const std::string owningParentId = parentId(state);
+    ASSERT_FALSE(owningParentId.empty()) << state.dump(2);
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        owningParentId,
+        "reorder",
+        nlohmann::json::array(),
+        bindings,
+        error)) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    html = parentHtml(state);
+    ASSERT_FALSE(html.empty()) << state.dump(2);
+    ids = extractDirectIds(html);
+    ASSERT_EQ(ids.size(), 2) << html;
+    EXPECT_EQ(ids[0], boId) << html;
+    EXPECT_EQ(ids[1], adaId) << html;
+    EXPECT_LT(html.find(">Bo</p>"), html.find(">Ada</p>")) << html;
+    EXPECT_NE(html.find(">1</p>"), std::string::npos) << html;
+    EXPECT_NE(html.find(">0</p>"), std::string::npos) << html;
+
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        owningParentId,
+        "trim",
+        nlohmann::json::array(),
+        bindings,
+        error)) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    html = parentHtml(state);
+    ASSERT_FALSE(html.empty()) << state.dump(2);
+    ids = extractDirectIds(html);
+    ASSERT_EQ(ids.size(), 1) << html;
+    EXPECT_NE(ids[0].find("_for"), std::string::npos) << ids[0];
+    EXPECT_EQ(ids[0], adaId) << html;
+    EXPECT_NE(html.find(">Ada</p>"), std::string::npos) << html;
+    EXPECT_EQ(html.find(">Bo</p>"), std::string::npos) << html;
+
+    error.clear();
+    EXPECT_FALSE(interpreter.dispatchComponentAction(
+        boId,
+        "add",
+        nlohmann::json::array(),
+        bindings,
+        error));
+    EXPECT_NE(error.find("Component instance not found"), std::string::npos) << error;
+}
+
+TEST(FriendlySyntax, InterpreterLiveBodyPlanRendererPreservesRouteLinks) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "route \"/\" as Home\n"
+        "route \"/user/:id\" as UserProfile\n"
+        "make Home\n"
+        "  page\n"
+        "    nav\n"
+        "      link \"Ada\" to \"/user/ada\" active-class \"active\"\n"
+        "make UserProfile id\n"
+        "  page\n"
+        "    link \"Back\" to \"/\"\n"
+        "page\n"
+        "  Home\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(transpiler, config);
+    interpreter.interpret(program);
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_GE(state["components"].size(), 1) << state.dump(2);
+    const std::string html = state["components"][0]["renderedHtml"].get<std::string>();
+    EXPECT_NE(html.find("<a"), std::string::npos) << html;
+    EXPECT_NE(html.find("href=\"javascript:void(0)\""), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-href=\"#/user/ada\""), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-link=\"true\""), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-active-class=\"active\""), std::string::npos) << html;
+    EXPECT_NE(html.find(">Ada</a>"), std::string::npos) << html;
+    EXPECT_EQ(html.find("to /user/ada"), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, InterpreterLiveBodyPlanRendererPreservesSemanticUiModifiers) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make UsagePanel\n"
+        "  panel title \"Usage\" pad lg shadow md width wide surface raised\n"
+        "    grid cols 2 gap md\n"
+        "      metric \"Users\" 42 \"Active\" tone good\n"
+        "      card tone primary\n"
+        "        text \"Ready\"\n"
+        "page\n"
+        "  UsagePanel\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(transpiler, config);
+    interpreter.interpret(program);
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    const std::string html = state["components"][0]["renderedHtml"].get<std::string>();
+    EXPECT_NE(html.find("data-jtml-ui=\"panel\""), std::string::npos) << html;
+    EXPECT_NE(html.find("class=\"jtml-panel jtml-pad-lg jtml-shadow-md jtml-width-wide jtml-surface-raised\""),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-ui=\"grid\""), std::string::npos) << html;
+    EXPECT_NE(html.find("jtml-grid jtml-cols-2 jtml-gap-md"), std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-ui=\"metric\""), std::string::npos) << html;
+    EXPECT_NE(html.find("jtml-metric jtml-tone-good"), std::string::npos) << html;
+    EXPECT_NE(html.find("jtml-card jtml-tone-primary"), std::string::npos) << html;
+    EXPECT_EQ(html.find("pad lg"), std::string::npos) << html;
+    EXPECT_EQ(html.find("tone good"), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, DirectAndLiveBodyPlanRenderersPreserveRichPlatformAttributes) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make PlatformSurface\n"
+        "  form method \"post\" action \"/signup\" autocomplete \"on\" aria-label \"Signup form\" data-kind \"lead\"\n"
+        "    input type \"email\" name \"email\" placeholder \"you@example.com\" required minlength 3 maxlength 80 inputmode \"email\" pattern \".+@.+\"\n"
+        "    file accept \"image/png\" multiple\n"
+        "    video src \"/intro.mp4\" poster \"/poster.png\" controls playsinline preload \"metadata\"\n"
+        "    svg viewBox \"0 0 100 100\" aria-label \"Usage graphic\"\n"
+        "      circle cx 50 cy 50 r 20 fill \"#2563eb\" stroke-width 2 data-point \"center\"\n"
+        "    checkbox checked\n"
+        "page\n"
+        "  PlatformSurface\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    const std::string browserHtml = transpiler.transpile(program);
+    EXPECT_NE(browserHtml.find("accept: true"), std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("viewBox: true"), std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("playsinline: true"), std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("link: 'a'"), std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("image: 'img'"), std::string::npos) << browserHtml;
+
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(transpiler, config);
+    interpreter.interpret(program);
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    const std::string html = state["components"][0]["renderedHtml"].get<std::string>();
+    EXPECT_NE(html.find("<form"), std::string::npos) << html;
+    EXPECT_NE(html.find("method=\"post\""), std::string::npos) << html;
+    EXPECT_NE(html.find("action=\"/signup\""), std::string::npos) << html;
+    EXPECT_NE(html.find("autocomplete=\"on\""), std::string::npos) << html;
+    EXPECT_NE(html.find("aria-label=\"Signup form\""), std::string::npos) << html;
+    EXPECT_NE(html.find("data-kind=\"lead\""), std::string::npos) << html;
+    EXPECT_NE(html.find("<input"), std::string::npos) << html;
+    EXPECT_NE(html.find("type=\"email\""), std::string::npos) << html;
+    EXPECT_NE(html.find("required"), std::string::npos) << html;
+    EXPECT_NE(html.find("minlength=\"3\""), std::string::npos) << html;
+    EXPECT_NE(html.find("maxlength=\"80\""), std::string::npos) << html;
+    EXPECT_NE(html.find("inputmode=\"email\""), std::string::npos) << html;
+    EXPECT_NE(html.find("pattern=\".+@.+\""), std::string::npos) << html;
+    EXPECT_NE(html.find("type=\"file\""), std::string::npos) << html;
+    EXPECT_NE(html.find("accept=\"image/png\""), std::string::npos) << html;
+    EXPECT_NE(html.find("multiple"), std::string::npos) << html;
+    EXPECT_NE(html.find("<video"), std::string::npos) << html;
+    EXPECT_NE(html.find("poster=\"/poster.png\""), std::string::npos) << html;
+    EXPECT_NE(html.find("playsinline"), std::string::npos) << html;
+    EXPECT_NE(html.find("preload=\"metadata\""), std::string::npos) << html;
+    EXPECT_NE(html.find("<svg"), std::string::npos) << html;
+    EXPECT_NE(html.find("viewBox=\"0 0 100 100\""), std::string::npos) << html;
+    EXPECT_NE(html.find("aria-label=\"Usage graphic\""), std::string::npos) << html;
+    EXPECT_NE(html.find("<circle"), std::string::npos) << html;
+    EXPECT_NE(html.find("cx=\"50\""), std::string::npos) << html;
+    EXPECT_NE(html.find("fill=\"#2563eb\""), std::string::npos) << html;
+    EXPECT_NE(html.find("stroke-width=\"2\""), std::string::npos) << html;
+    EXPECT_NE(html.find("data-point=\"center\""), std::string::npos) << html;
+    EXPECT_NE(html.find("type=\"checkbox\""), std::string::npos) << html;
+    EXPECT_NE(html.find("checked"), std::string::npos) << html;
+    EXPECT_EQ(html.find("viewBox &quot;0"), std::string::npos) << html;
+    EXPECT_EQ(html.find("accept image/png"), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, LiveBodyPlanRendererKeepsInlineContentBeforeTrailingAttributes) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make StatCard title value\n"
+        "  section class \"stat-card\"\n"
+        "    h2 title style \"font-size: 16px; margin: 0\"\n"
+        "    strong value style \"font-size: 28px\"\n"
+        "page\n"
+        "  StatCard \"Revenue\" \"42k\"\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler transpiler;
+    const std::string browserHtml = transpiler.transpile(program);
+    EXPECT_NE(browserHtml.find("content.push(token);"),
+              std::string::npos) << browserHtml;
+
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(transpiler, config);
+    interpreter.interpret(program);
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    const std::string html = state["components"][0]["renderedHtml"].get<std::string>();
+    EXPECT_NE(html.find("<h2"), std::string::npos) << html;
+    EXPECT_NE(html.find("style=\"font-size: 16px; margin: 0\""), std::string::npos) << html;
+    EXPECT_NE(html.find(">Revenue</h2>"), std::string::npos) << html;
+    EXPECT_NE(html.find("style=\"font-size: 28px\""), std::string::npos) << html;
+    EXPECT_NE(html.find(">42k</strong>"), std::string::npos) << html;
+    EXPECT_EQ(html.find("title style"), std::string::npos) << html;
+    EXPECT_EQ(html.find("value style"), std::string::npos) << html;
 }
 
 TEST(FriendlySyntax, DerivedBindingsCanBeRedefinedDuringStudioReloads) {

@@ -121,11 +121,66 @@ bindings, slot presence, body/root-template counts, source line, encoded body
 payload, and a semantic `runtimePlan`. Component instances expose their owning
 runtime environment and validate local action dispatch through that definition.
 The first browser-local direct body-plan execution slice can now render common
-component templates, initialize local state, render simple conditionals and
-loops, run simple local assignment actions, and re-render the owning instance.
-The remaining architectural step is full parity: `else`, slots, nested
-component calls, richer attributes/modifiers, action arguments, and a matching
-live-interpreter execution path over the same body-plan contract.
+component templates, initialize local state, recompute derived values, render
+simple `if`, `else`, `for`, and guarded action-body `while` nodes, run simple local assignment actions,
+carry authored slot plans, render slots and nested component calls, preserve
+common literal attributes and semantic UI modifiers, pass simple action
+arguments, and re-render the owning instance. Nested browser-local component
+calls also get addressable runtime identities for local action dispatch. The
+live interpreter now executes simple component body-plan assignment actions,
+including compound `+=`, `-=`, `*=`, `/=`, and `%=`,
+exposes `renderedHtml` for supported body-plan templates through `/api/state`
+and `/api/rendered-components`, injects supported component wrappers from
+body-plan HTML into the initially served document, skips the first redundant
+client patch, preserves direct component action metadata on rendered buttons,
+bridges those actions back through `/api/component-action`, marks
+unsupported/empty renders explicitly with `renderedHtmlSupported: false`, and
+carries module-aware component identity through runtime
+definitions/instances before falling back to name-only compatibility lookup.
+Component body-plan nodes now also carry `definitionModule`, so imported
+nested component calls inside encoded component bodies can target the module
+that exported the component instead of falling back to global name lookup.
+Browser-local and live body-plan renderers also preserve a broader first-slice
+platform attribute surface for forms, media, SVG, `aria-*`, `data-*`, quoted
+space-containing values, and Friendly aliases such as `link`, `navlink`,
+`image`, `file`, `dropzone`, and `checkbox`. The live body-plan renderer now
+also retains dynamic nested component instances for supported nested calls,
+routes nested local actions through `/api/component-action`, evaluates nested
+params/state as real values instead of display text, and uses loop-aware nested
+identity so repeated children rendered from `for` keep separate local state.
+After each supported top-level live or browser-local body-plan render, stale
+dynamic nested descendants that were not rendered in the current pass are
+pruned, so removed loop/branch children can no longer receive stale
+component-action dispatches.
+Browser-local action argument parsing now uses the same top-level parser for
+quoted strings with spaces.
+Nested component calls now have a first emitted-event bridge and explicit
+contract metadata: `make Child emits picked` exposes emitted events through
+semantic/runtime JSON, and `make Child emits picked(item)` also exposes
+`emitArity` plus `emitPayloads` metadata. `make Child emits picked(item: string)`
+also exposes `emitPayloadTypes`, and browser-local/live direct dispatch enforce
+simple payload types before forwarding. `Child on picked choose("preset")`
+maps child direct
+actions such as `picked("Ada")` to parent body-plan actions in both
+browser-local and live runtimes, forwarding preset args before emitted args.
+When a component declares emits, `on event handler` names are validated against
+that list; when emitted payload arity and the parent handler signature are both
+known, arity is checked during Friendly lowering.
+Action body lines such as `incBy(2)` and `picked("Ada Lovelace")` now become
+body-plan `call` nodes, so browser-local and live direct execution can compose
+component actions or emit declared component events without going through the
+expanded compatibility DOM.
+
+Remaining architectural work: broaden the supported body-plan subset until the
+expanded compatibility DOM is needed only for explicit fallback cases, add
+broader source-first diagnostics beyond the typed emitted-event payload
+messages now naming the authored payload and component definition line, harden
+rich attribute/modifier parity for advanced platform APIs, broaden
+keyed/reordered collection lifecycle semantics beyond the first explicit `key`
+tail slice, and keep expanding browser/live behavior parity checks beyond the
+current component metadata, initial render, route-link, platform-attribute,
+nested-instance, event, and action
+bridge coverage.
 
 ### P3: Semantic Styling
 

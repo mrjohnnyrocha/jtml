@@ -9,6 +9,29 @@ nlohmann::json semanticPropertiesToJson(const std::vector<SemanticProperty>& pro
     return out;
 }
 
+nlohmann::json moduleIdToJson(SemanticModuleId id) {
+    return id == InvalidSemanticModuleId ? nlohmann::json(nullptr) : nlohmann::json(id);
+}
+
+nlohmann::json runtimePlanStatementsToJson(const std::vector<RuntimePlanStatement>& statements);
+
+nlohmann::json runtimePlanBindingsObjectToJson(const std::vector<RuntimePlanBinding>& bindings) {
+    nlohmann::json out = nlohmann::json::object();
+    for (const auto& binding : bindings) out[binding.name] = binding.expr;
+    return out;
+}
+
+nlohmann::json runtimePlanActionsObjectToJson(const std::vector<RuntimePlanAction>& actions) {
+    nlohmann::json out = nlohmann::json::object();
+    for (const auto& action : actions) {
+        out[action.name] = {
+            {"params", action.params},
+            {"body", runtimePlanStatementsToJson(action.body)},
+        };
+    }
+    return out;
+}
+
 nlohmann::json runtimePlanBindingsToJson(const std::vector<RuntimePlanBinding>& bindings) {
     nlohmann::json out = nlohmann::json::array();
     for (const auto& binding : bindings) {
@@ -57,8 +80,10 @@ nlohmann::json runtimePlanRoutesToJson(const std::vector<SemanticRoute>& routes)
     for (const auto& route : routes) {
         out.push_back({
             {"path", route.path},
+            {"name", route.component},
             {"component", route.component},
             {"params", route.params},
+            {"load", route.loads},
             {"loads", route.loads},
         });
     }
@@ -95,8 +120,13 @@ nlohmann::json runtimePlanComponentDefinitionsToJson(
     nlohmann::json out = nlohmann::json::array();
     for (const auto& definition : definitions) {
         out.push_back({
+            {"moduleId", moduleIdToJson(definition.moduleId)},
             {"name", definition.name},
             {"params", definition.params},
+            {"emits", definition.emits},
+            {"emitArity", definition.emitArity},
+            {"emitPayloads", definition.emitPayloads},
+            {"emitPayloadTypes", definition.emitPayloadTypes},
             {"localState", definition.localState},
             {"localDerived", definition.localDerived},
             {"localActions", definition.localActions},
@@ -120,13 +150,64 @@ nlohmann::json runtimePlanComponentInstancesToJson(
     nlohmann::json out = nlohmann::json::array();
     for (const auto& instance : instances) {
         out.push_back({
+            {"moduleId", moduleIdToJson(instance.moduleId)},
+            {"definitionModule", moduleIdToJson(instance.definitionModule)},
             {"id", instance.id},
             {"component", instance.component},
             {"instanceId", instance.instanceId},
             {"role", instance.role},
             {"params", semanticPropertiesToJson(instance.params)},
             {"locals", semanticPropertiesToJson(instance.locals)},
+            {"slotSource", instance.slotSource},
+            {"slotHex", instance.slotHex},
+            {"slotPlan", runtimePlanBodyPlanToJson(instance.slotPlan)},
             {"sourceLine", instance.sourceLine},
+        });
+    }
+    return out;
+}
+
+nlohmann::json runtimePlanComponentDefinitionsToClientJson(
+        const std::vector<RuntimePlanComponentDefinition>& definitions) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& definition : definitions) {
+        out.push_back({
+            {"moduleId", moduleIdToJson(definition.moduleId)},
+            {"name", definition.name},
+            {"params", definition.params},
+            {"emits", definition.emits},
+            {"emitArity", definition.emitArity},
+            {"emitPayloads", definition.emitPayloads},
+            {"emitPayloadTypes", definition.emitPayloadTypes},
+            {"localState", definition.localState},
+            {"localDerived", definition.localDerived},
+            {"localActions", definition.localActions},
+            {"localEffects", definition.localEffects},
+            {"eventBindings", definition.eventBindings},
+            {"bodyPlan", runtimePlanBodyPlanToJson(definition.bodyPlan)},
+            {"hasSlot", definition.hasSlot},
+            {"bodyNodeCount", definition.bodyNodeCount},
+            {"rootTemplateNodeCount", definition.rootTemplateNodeCount},
+            {"slotCount", definition.slotCount},
+        });
+    }
+    return out;
+}
+
+nlohmann::json runtimePlanComponentInstancesToClientJson(
+        const std::vector<RuntimePlanComponentInstance>& instances) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& instance : instances) {
+        out.push_back({
+            {"moduleId", moduleIdToJson(instance.moduleId)},
+            {"definitionModule", moduleIdToJson(instance.definitionModule)},
+            {"id", instance.id},
+            {"component", instance.component},
+            {"instanceId", instance.instanceId},
+            {"role", instance.role},
+            {"params", semanticPropertiesToJson(instance.params)},
+            {"locals", semanticPropertiesToJson(instance.locals)},
+            {"slotPlan", runtimePlanBodyPlanToJson(instance.slotPlan)},
         });
     }
     return out;
@@ -157,6 +238,7 @@ nlohmann::json runtimePlanBodyPlanToJson(
     nlohmann::json out = nlohmann::json::array();
     for (const auto& node : bodyPlan) {
         out.push_back({
+            {"definitionModule", moduleIdToJson(node.definitionModule)},
             {"indent", node.indent},
             {"parentIndex", node.parentIndex},
             {"childIndices", node.childIndices},
@@ -166,13 +248,14 @@ nlohmann::json runtimePlanBodyPlanToJson(
             {"text", node.text},
             {"operator", node.operatorToken},
             {"expression", node.expression},
+            {"keyExpression", node.keyExpression},
             {"renderRoot", node.renderRoot},
         });
     }
     return out;
 }
 
-nlohmann::json runtimePlanToJson(const RuntimePlan& plan) {
+nlohmann::json runtimePlanToExplainJson(const RuntimePlan& plan) {
     return {
         {"sourceOfTruth", "typed AST + semantic IR"},
         {"semantic", runtimePlanSemanticToJson(plan.semantic)},
@@ -186,28 +269,69 @@ nlohmann::json runtimePlanToJson(const RuntimePlan& plan) {
     };
 }
 
-nlohmann::json runtimeProjectPlanToJson(const RuntimeProjectPlan& plan) {
+nlohmann::json runtimeProjectPlanToExplainJson(const RuntimeProjectPlan& plan) {
     nlohmann::json modules = nlohmann::json::array();
     for (const auto& module : plan.modules) {
         modules.push_back({
-            {"id", module.id == InvalidSemanticModuleId
-                ? nlohmann::json(nullptr)
-                : nlohmann::json(module.id)},
+            {"id", moduleIdToJson(module.id)},
             {"path", module.path},
             {"astAvailable", module.astAvailable},
+            {"clientExecutable", module.clientExecutable},
             {"syntax", module.syntax},
-            {"plan", runtimePlanToJson(module.plan)},
+            {"plan", runtimePlanToExplainJson(module.plan)},
         });
     }
 
     return {
         {"sourceOfTruth", "SemanticProject retained per-file AST + semantic IR"},
-        {"entry", plan.entry == InvalidSemanticModuleId
-            ? nlohmann::json(nullptr)
-            : nlohmann::json(plan.entry)},
-        {"linkedPlan", runtimePlanToJson(plan.linkedPlan)},
+        {"entry", moduleIdToJson(plan.entry)},
+        {"linkedPlan", runtimePlanToExplainJson(plan.linkedPlan)},
         {"modules", modules},
     };
+}
+
+nlohmann::json runtimePlanToClientJson(const RuntimePlan& plan) {
+    return {
+        {"state", runtimePlanBindingsObjectToJson(plan.state)},
+        {"derived", runtimePlanBindingsObjectToJson(plan.derived)},
+        {"actions", runtimePlanActionsObjectToJson(plan.actions)},
+        {"routes", runtimePlanRoutesToJson(plan.routes)},
+        {"fetches", runtimePlanFetchesToJson(plan.fetches)},
+        {"componentDefinitions",
+            runtimePlanComponentDefinitionsToClientJson(plan.componentDefinitions)},
+        {"componentInstances",
+            runtimePlanComponentInstancesToClientJson(plan.componentInstances)},
+    };
+}
+
+nlohmann::json runtimeProjectPlanToClientJson(const RuntimeProjectPlan& plan) {
+    nlohmann::json client = runtimePlanToClientJson(plan.linkedPlan);
+    nlohmann::json modules = nlohmann::json::array();
+    for (const auto& module : plan.modules) {
+        nlohmann::json item = {
+            {"id", moduleIdToJson(module.id)},
+            {"executable", module.clientExecutable},
+        };
+        if (module.clientExecutable) {
+            item["plan"] = runtimePlanToClientJson(module.plan);
+        }
+        modules.push_back(std::move(item));
+    }
+    client["project"] = {
+        {"sourceOfTruth", "runtime client manifest"},
+        {"entry", moduleIdToJson(plan.entry)},
+        {"linkedPlan", runtimePlanToClientJson(plan.linkedPlan)},
+        {"modules", modules},
+    };
+    return client;
+}
+
+nlohmann::json runtimePlanToJson(const RuntimePlan& plan) {
+    return runtimePlanToExplainJson(plan);
+}
+
+nlohmann::json runtimeProjectPlanToJson(const RuntimeProjectPlan& plan) {
+    return runtimeProjectPlanToExplainJson(plan);
 }
 
 } // namespace jtml

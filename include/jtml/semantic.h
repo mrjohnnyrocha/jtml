@@ -3,6 +3,7 @@
 #include "jtml/attribute_classifier.h"
 #include "jtml/ast.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -94,6 +95,10 @@ struct SemanticProperty {
 struct SemanticComponentDefinition {
     std::string name;
     std::vector<std::string> params;
+    std::vector<std::string> emits;
+    std::map<std::string, int> emitArity;
+    std::map<std::string, std::vector<std::string>> emitPayloads;
+    std::map<std::string, std::vector<std::string>> emitPayloadTypes;
     std::vector<std::string> localState;
     std::vector<std::string> localDerived;
     std::vector<std::string> localActions;
@@ -114,6 +119,7 @@ struct SemanticComponentInstance {
     std::string role;
     std::vector<SemanticProperty> params;
     std::vector<SemanticProperty> locals;
+    std::string slotHex;
     int sourceLine = 0;
 };
 

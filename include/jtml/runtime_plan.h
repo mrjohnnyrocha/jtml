@@ -4,6 +4,7 @@
 #include "jtml/semantic.h"
 #include "jtml/semantic/module_graph.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -31,6 +32,7 @@ struct RuntimePlanAction {
 };
 
 struct RuntimePlanComponentBodyNode {
+    SemanticModuleId definitionModule = InvalidSemanticModuleId;
     int indent = 0;
     int parentIndex = -1;
     std::vector<int> childIndices;
@@ -40,12 +42,18 @@ struct RuntimePlanComponentBodyNode {
     std::string text;
     std::string operatorToken;
     std::string expression;
+    std::string keyExpression;
     bool renderRoot = false;
 };
 
 struct RuntimePlanComponentDefinition {
+    SemanticModuleId moduleId = InvalidSemanticModuleId;
     std::string name;
     std::vector<std::string> params;
+    std::vector<std::string> emits;
+    std::map<std::string, int> emitArity;
+    std::map<std::string, std::vector<std::string>> emitPayloads;
+    std::map<std::string, std::vector<std::string>> emitPayloadTypes;
     std::vector<std::string> localState;
     std::vector<std::string> localDerived;
     std::vector<std::string> localActions;
@@ -62,12 +70,17 @@ struct RuntimePlanComponentDefinition {
 };
 
 struct RuntimePlanComponentInstance {
+    SemanticModuleId moduleId = InvalidSemanticModuleId;
+    SemanticModuleId definitionModule = InvalidSemanticModuleId;
     std::string id;
     std::string component;
     int instanceId = 0;
     std::string role;
     std::vector<SemanticProperty> params;
     std::vector<SemanticProperty> locals;
+    std::string slotSource;
+    std::string slotHex;
+    std::vector<RuntimePlanComponentBodyNode> slotPlan;
     int sourceLine = 0;
 };
 
@@ -86,6 +99,7 @@ struct RuntimeModulePlan {
     SemanticModuleId id = InvalidSemanticModuleId;
     std::string path;
     bool astAvailable = false;
+    bool clientExecutable = false;
     std::string syntax;
     RuntimePlan plan;
 };
@@ -102,5 +116,8 @@ RuntimePlan buildRuntimePlan(const std::vector<std::unique_ptr<ASTNode>>& progra
                              const SemanticProgram& semantic);
 
 RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project);
+
+RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project,
+                                    const RuntimePlan& linkedPlan);
 
 } // namespace jtml

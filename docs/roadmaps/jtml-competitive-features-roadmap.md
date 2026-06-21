@@ -152,10 +152,10 @@ Detailed plan: [`media-graphics-roadmap.md`](media-graphics-roadmap.md).
 9. ✅ `jtml fix` first slice: safe mechanical repairs for missing Friendly header, tab indentation, trailing whitespace, final newline, plus JSON diagnostics for remaining parse errors.
 10. ✅ `jtml explain --json` richer summary: state, constants, derived values, actions, components, routes, structured semantic route and fetch records, stores, effects, style blocks, diagnostics, first-slice semantic node counts, dependency edges, and attribute classification sourced from the parsed AST.
 11. ✅ Friendly source-map diagnostics first slice: parse diagnostics produced after Friendly-to-Classic lowering are remapped back to original Friendly source lines in `jtml check --json` and `jtml lsp`.
-12. ✅ First direct component body-plan execution slice: browser-local component instances can render common templates from `RuntimePlan.componentDefinitions[].bodyPlan`, initialize per-instance local state, execute simple local assignment actions, and re-render the owning instance. Next: finish parity for conditions, loops, slots, nested component calls, richer attributes/modifiers, and live runtime execution over the same body-plan contract before expanded compatibility output becomes optional.
+12. ✅ First direct component body-plan execution slice: browser-local component instances can render common templates from `RuntimePlan.componentDefinitions[].bodyPlan`, initialize per-instance local state, render simple `if`/`else`/`for` control flow, carry authored slot plans, render slots and nested component calls, preserve common attributes, pass simple action arguments, execute simple local assignment actions, and re-render the owning instance. Nested browser-local component calls now register addressable runtime identities for local action ownership. The live interpreter exposes matching slot/body-plan metadata, executes simple body-plan assignment actions with action arguments while falling back safely for unsupported bodies, and exposes first-slice `renderedHtml` from the same body plan for tooling/parity checks. Browser-local and live body-plan renderers now preserve semantic UI primitives and modifiers as `jtml-*` classes plus `data-jtml-ui*` attributes. `jtml serve` also exposes `/api/rendered-components`, carries `renderedComponents` in event responses, injects supported live component wrappers from body-plan HTML into the initially served document, keeps rendered component buttons interactive through `/api/component-action`, and preserves compatibility DOM fallback for unsupported shapes. Nested component calls also have a first emitted-event bridge and explicit contract: `make Child emits picked`, `make Child emits picked(item)`, and `make Child emits picked(item: string)` are exposed through semantic/runtime JSON with `emitArity`, `emitPayloads`, and `emitPayloadTypes`, and `Child on picked choose("preset")` routes child direct actions through validated parent handlers in browser-local and live runtimes, forwarding emitted args after any preset handler args. Declared payload arity is checked against known parent action signatures, and browser-local/live direct component dispatch enforce simple emitted payload types. Action body lines such as `incBy(2)` and `picked("Ada Lovelace")` now lower to body-plan `call` nodes for direct local-action dispatch or declared event emission. Next: broaden the supported body-plan subset until expanded compatibility output becomes a deliberate fallback rather than the normal supported-component path.
 13. ✅ Route layout first slice: `route "/path" as Page layout AppLayout` injects route content into the layout component's `slot`, so shared chrome (nav, footer) wraps multiple routes.
 14. Next: Studio as the language home — new `00-welcome` JTML-authored lesson, every lesson in Friendly syntax, Studio default tab is the home lesson.
-15. ✅ JTML code modularization first slice: Friendly `use … from` is resolved before lowering so imported Friendly components, state, and actions can participate in `check`, `build`, `serve --watch`, `dev`, and `explain` module graphs with cycle detection. Nested relative imports resolve from each importing file.
+15. ✅ JTML code modularization first slice: Friendly `use … from` is resolved before lowering so imported Friendly components, state, and actions can participate in `check`, `build`, `serve --watch`, `dev`, and `explain` module graphs with cycle detection. Nested relative imports resolve from each importing file. `jtml explain` also has a recoverable module-graph path: if an imported module fails to parse, the entry can still explain, the failed module remains in the semantic project, and `JTML_MODULE_PARSE` reports the module path plus best-known source coordinates.
 16. ✅ Per-file export scopes first slice: Friendly `export let`, `export when`,
     `export make`, `export store`, and related top-level declarations are
     accepted; named imports require matching public declarations, missing
@@ -177,4 +177,64 @@ Detailed plan: [`media-graphics-roadmap.md`](media-graphics-roadmap.md).
     bars, stacked bars, multi-series lines, and series colours.
 29. ✅ Chart export controls shipped: `export svg png csv` adds browser-local export buttons backed by the same SVG renderer and chart data rows.
 30. Next: richer chart mark styling, 3D renderer packages, Studio media inspectors.
-31. Next: remote registry, semantic versions, richer incremental LSP text sync, package-aware auto-imports, stores, richer object field/collection types, and runtime `ComponentInstance` objects once P0 runtime semantics are stable.
+31. ✅ Browser manifest hardening: client manifests now use compact execution
+    serializers, omit source paths/body payloads/tooling summaries, escape
+    script-breaking JSON, mark import-stub modules as tooling-only, and use
+    module-aware component identities before name-only compatibility fallback.
+32. ✅ Live component action parity first slice: direct component action
+    arguments and assignment operators now run in the live interpreter over the
+    same body-plan contract, with browser/live metadata parity tests.
+33. ✅ Live component template surface first slice: live component state now
+    exposes body-plan `renderedHtml` for common templates, parameter
+    expressions, slots, and nested component calls.
+34. ✅ Module-aware live component identity: interpreter runtime definitions,
+    instances, `/api/state`, and `/api/component-definitions` now carry module
+    IDs and prefer module-scoped component lookup before name-only
+    compatibility fallback. Duplicate exported component names are pinned in
+    RuntimeProjectPlan tests.
+35. ✅ Import-aware nested body-plan identity: body-plan template nodes now
+    carry `definitionModule`, so nested component calls authored inside
+    imported component bodies bind to the exported target module before
+    compatibility fallback.
+36. ✅ Live rendered component action bridge: component buttons produced by
+    the live body-plan render surface now carry direct action metadata and the
+    browser runtime dispatches them through `/api/component-action`, preserving
+    simple action arguments and patched rendered HTML updates.
+37. ✅ Body-plan render support truthfulness: component state and
+    `/api/rendered-components` now expose `renderedHtmlSupported`, so
+    state/action-only components do not claim live template parity and stay on
+    compatibility DOM fallback.
+38. ✅ Initial live body-plan transport ownership: supported component wrappers
+    are body-plan-rendered in the initial served HTML and marked with
+    `data-jtml-live-body-plan-transport="body-plan"` plus a stable rendered
+    hash; the browser runtime verifies current markup without a startup DOM
+    patch and uses `/api/rendered-components` only for refresh/action updates.
+    Route links rendered through the live body-plan path preserve hash
+    navigation metadata.
+39. ✅ Rich platform attributes in direct body-plan rendering: browser-local
+    and live body-plan renderers preserve a wider form/media/SVG attribute
+    surface, `aria-*`, `data-*`, quoted values with spaces, and Friendly input
+    aliases with sensible default `type` attributes.
+40. ✅ Live nested body-plan instances: supported nested live components now
+    retain dynamic runtime identity, route nested local actions through
+    `/api/component-action`, evaluate params/state as values, and keep separate
+    local state for repeated nested components inside `for` loops. Stale nested
+    descendants are pruned after supported top-level renders, so removed
+    loop/branch children cannot keep accepting component actions. Browser-local
+    direct action arguments now use the same top-level parser for quoted strings
+    with spaces.
+41. ✅ First keyed/reordered collection lifecycle slice: component `for` loops
+    can carry an explicit `key` tail in the semantic body plan, and nested
+    component identity now follows keyed items through reorder. Next: richer
+    component modifiers, broader keyed diff semantics, remote registry,
+    semantic versions, richer incremental LSP text sync,
+    package-aware auto-imports, stores, richer object field/collection types,
+    and runtime `ComponentInstance` objects once P0 runtime semantics are
+    stable.
+42. Planned, not implemented: contract-first JTL backend APIs for governed
+    internal operations. The intended wedge is operational UI over real backend
+    actions: approval consoles, incident consoles, AI-governance controls,
+    cost controls, deployment controls, and support operations. Phases:
+    `type`/`error`/API operation signatures, OpenAPI generation,
+    policy/validation hooks, runtime adapters, typed JTML `fetch`/future
+    `call` integration, and enterprise hardening.

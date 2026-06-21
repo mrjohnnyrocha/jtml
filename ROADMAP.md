@@ -127,10 +127,12 @@ Near-term platform hardening targets:
 
 1. Direct non-expanded `ComponentInstance` template execution.
 2. Browser-local runtime parity with the live runtime.
-3. Studio content externalized from embedded C++ literals.
-4. Internal module boundaries for Friendly lowering, semantic IR, runtime,
+3. Contract-first JTL API design for governed backend operations, kept planned
+   until runtime/module semantics are safer.
+4. Studio content externalized from embedded C++ literals.
+5. Internal module boundaries for Friendly lowering, semantic IR, runtime,
    emitters, LSP, Studio, interop, and package tooling.
-5. Security, release, compatibility, deprecation, benchmark, and contribution
+6. Security, release, compatibility, deprecation, benchmark, and contribution
    policies.
 
 Stable today means "usable with tests and compatibility expectations." First
@@ -240,6 +242,11 @@ The current focus is the semantic-core transition:
   merges the embedded semantic project plan into its active manifest, so
   module-owned component definitions, fetches, routes, actions, and state are
   visible to production execution instead of being explain-only metadata.
+  ✅ Manifest hardening slice: runtime planning now exposes separate explain
+  and client serializers. Explain JSON stays source-rich for tooling; browser
+  manifests are compact execution data, omit source paths/body payloads, escape
+  script-breaking text, mark `friendly+import-stubs` modules as tooling-only,
+  and carry module-aware component definition identities.
 - P1 repo modularization skeleton: ✅ Production-grade destination folders now
   exist for `syntax`, `semantic`, `runtime`, `emit`, `tooling`, `interop`, CLI
   command/service/studio ownership, and test fixtures. Current flat files move
@@ -249,11 +256,72 @@ The current focus is the semantic-core transition:
   direct body-plan execution slice: component instances can now render common
   templates from `RuntimePlan.componentDefinitions[].bodyPlan`, initialize
   per-instance state from planned `let` nodes, recompute planned `get` nodes,
-  render simple `if` and `for` body-plan nodes, run simple local assignment
-  actions, and re-render the owning instance without depending on the expanded
-  compatibility DOM as the rendered surface. Remaining parity work: `else`,
-  slots, nested component calls, richer attribute/modifier lowering, action
-  arguments, and matching live-interpreter execution over the same body plan.
+  render simple `if` / `else` / `for` body-plan nodes, run simple local
+  assignment actions, carry authored slot plans on component instances, render
+  slots and nested component calls, preserve common static/literal attributes,
+  pass simple action arguments, and re-render the owning instance without
+  depending on the expanded compatibility DOM as the rendered surface. Nested
+  browser-local component calls now register addressable runtime identities, so
+  nested local actions can find and rerender their owning component. ✅
+  Live-interpreter body-plan action slice: the live runtime can execute simple
+  component assignment actions plus guarded `if`/`else`, array `for`, and guarded
+  `while` action bodies with arguments over the same body-plan contract, preserves numeric/string
+  compound-assignment semantics for `+=`, `-=`, `*=`, `/=`, and `%=`, fails closed to the compatibility function for
+  unsupported bodies, and has browser/live metadata parity coverage. ✅ Live
+  template-rendering surface: `/api/state` now exposes
+  first-slice `renderedHtml` generated from the same body plan for common
+  templates, slots, and nested component calls. ✅ Direct semantic UI rendering:
+  browser-local and live body-plan renderers now preserve UI primitives and
+  modifiers as `jtml-*` classes plus `data-jtml-ui*` attributes instead of
+  leaking modifier words into text. ✅ Live body-plan transport patch: `jtml
+  serve` exposes `/api/rendered-components`, event responses carry
+  `renderedComponents`, and the browser runtime patches supported component
+  wrappers from body-plan HTML while failing closed to compatibility DOM. ✅
+  Initial live body-plan transport ownership: supported wrappers are injected
+  from body-plan HTML into the initially served document and marked with
+  `data-jtml-live-body-plan-transport="body-plan"` plus a stable rendered
+  hash, so the browser can verify current markup without a startup DOM patch
+  and uses `/api/rendered-components` for refresh/action updates. ✅ Live nested
+  body-plan instances: supported nested live components
+  now retain dynamic runtime identity, nested local actions dispatch through
+  `/api/component-action`, nested params/state initialize as runtime values, and
+  repeated nested children inside `for` loops keep separate local state.
+  Stale nested descendants are pruned after supported live and browser-local
+  body-plan renders, so removed loop/branch children cannot keep accepting
+  component actions.
+  ✅ First keyed-list lifecycle slice: Friendly component loops may now use
+  `for item in items key item.id`; the compatibility parser still receives a
+  plain `for`, while the semantic body plan carries the key expression and
+  browser/live nested component IDs prefer the key over the item index, so
+  local state follows reordered items and removed keyed descendants are pruned.
+  ✅ First named-slot slice: component definitions can use `slot header`,
+  default `slot`, and `slot footer`; call sites provide matching `slot name`
+  blocks; compatibility expansion injects only the selected group; and
+  browser/live body-plan renderers select named/default slot content from the
+  same `slotPlan`.
+  ✅ First emitted component-event bridge and explicit `emits` contract:
+  component definitions can declare `make Child emits picked`, named payloads
+  with `make Child emits picked(item)`, or first-slice typed payload metadata
+  with `make Child emits picked(item: string)`; semantic analysis, runtime plans,
+  browser manifests, explain JSON, and live component definition JSON expose
+  emitted events plus `emitArity`, `emitPayloads`, and `emitPayloadTypes`.
+  Nested component calls can use
+  `Child on picked choose` or `Child on picked choose("preset")`; child direct
+  actions such as `picked("Ada")` route to the mapped parent body-plan action
+  in browser-local and live runtimes, forwarding preset handler args before
+  emitted args. Declared emits validate `on event handler` names, and declared
+  payload arity is checked against known parent action signatures.
+  ✅ First body-plan action-call node: action body lines such as `incBy(2)` and
+  `picked("Ada Lovelace")` are represented as `kind: "call"` instead of
+  template fallback. Browser-local and live direct execution evaluate call
+  arguments, dispatch to local component actions when present, or emit declared
+  component events when no local action exists.
+  Browser-local direct action arguments now use top-level parsing for quoted
+  strings with spaces. Remaining parity work: broadening the supported
+  body-plan subset until compatibility DOM is only an explicit fallback path,
+  improving source spans beyond typed emitted-event diagnostics, stronger
+  keyed list lifecycle, and broader
+  behavior parity checks.
 - P3 semantic styling: ✅ First slice. `theme`, UI primitives, utility
   modifiers, generated stylesheet, semantic primitive/theme counts, the
   structured `jtml explain --json` `semantic.ui` contract, and raw CSS escape
@@ -267,6 +335,14 @@ The current focus is the semantic-core transition:
 - P6 interop and escape hatches: formalize `extern`, raw HTML/CSS, canvas/SVG,
   custom elements, WebGL/Three.js, and framework/package boundaries after the
   browser-local runtime has a stable backend contract.
+- P7 contract-first governed operations: keep JTML focused on web/app UI while
+  planned JTL API modules define backend operation contracts for internal
+  tools such as approval consoles, incident consoles, AI governance, cost
+  controls, and deployment controls. Intended phases: `type`/`error`/API
+  operation signatures, OpenAPI generation, policy/validation hooks, runtime
+  adapters, typed JTML `fetch`/future `call` integration, and enterprise
+  hardening. The `api`, `operation`, `policy`, and `call` syntax is not
+  implemented yet.
 
 Priority order after the semantic usage cleanup and import-resolution hardening is:
 

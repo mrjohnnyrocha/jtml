@@ -423,6 +423,53 @@ void validateNamedImport(const std::filesystem::path& file,
     }
 }
 
+void collectSourceFilesRecoverable(const std::filesystem::path& inputFile,
+                                   SyntaxMode syntax,
+                                   std::set<std::string>& visited,
+                                   std::vector<std::filesystem::path>& files) {
+    const auto file = normalizePath(inputFile);
+    const auto key = file.string();
+    if (!visited.insert(key).second) return;
+    files.push_back(file);
+
+    std::string source;
+    try {
+        source = readFile(file.string());
+    } catch (...) {
+        return;
+    }
+
+    const bool friendly =
+        syntax == SyntaxMode::Friendly ||
+        (syntax == SyntaxMode::Auto &&
+         (isFriendlySyntax(source) || looksLikeFriendlySyntax(source)));
+    const auto lines = readLines(source);
+    for (const auto& rawLine : lines) {
+        std::string specifier;
+        if (friendly) {
+            FriendlyUseSpec use;
+            if (parseFriendlyUseLine(rawLine, use)) {
+                specifier = use.path;
+            } else {
+                const std::string text = trimCopy(stripLineComment(rawLine));
+                if (startsWithWord(text, "export")) {
+                    const auto exportPos = rawLine.find("export");
+                    const std::string stripped = exportPos == std::string::npos
+                        ? ""
+                        : trimCopy(rawLine.substr(exportPos + std::string("export").size()));
+                    if (parseFriendlyUseLine(stripped, use)) specifier = use.path;
+                }
+            }
+        } else {
+            parseImportLine(rawLine, specifier);
+        }
+        if (specifier.empty()) continue;
+
+        const auto resolved = resolveJtmlModulePath(specifier, file);
+        collectSourceFilesRecoverable(resolved, SyntaxMode::Auto, visited, files);
+    }
+}
+
 FriendlyLoad loadReexport(const FriendlyUseSpec& use,
                           const std::vector<std::string>& selectedNames,
                           const std::filesystem::path& importer,
@@ -593,6 +640,14 @@ std::vector<std::filesystem::path>
 collectSourceFiles(const std::string& inputFile, SyntaxMode syntax) {
     std::vector<std::filesystem::path> files;
     (void)loadCompilationUnit(inputFile, syntax, &files);
+    return files;
+}
+
+std::vector<std::filesystem::path>
+collectSourceFilesRecoverable(const std::string& inputFile, SyntaxMode syntax) {
+    std::set<std::string> visited;
+    std::vector<std::filesystem::path> files;
+    collectSourceFilesRecoverable(std::filesystem::path(inputFile), syntax, visited, files);
     return files;
 }
 

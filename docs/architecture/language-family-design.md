@@ -108,6 +108,29 @@ Primary backend targets:
 
 WebSocket is a backend, not the definition of reactivity.
 
+## Contract-First Backend Operations (Planned)
+
+JTML should remain the production-facing web/app dialect. A future JTL backend
+track should target contract-first governed operations for internal tools:
+approval consoles, incident consoles, AI-governance controls, cost-control
+panels, deployment controls, and other apps where UI actions call real backend
+systems with audit and policy requirements.
+
+The planned sequence is:
+
+1. `type` and `error` declarations for request/response contracts.
+2. API/operation signatures that can generate OpenAPI.
+3. Policy and validation hooks for governed actions.
+4. Runtime adapters for HTTP handlers and host-language integration.
+5. Typed JTML integration so `fetch` and a future `call` primitive consume the
+   same contracts.
+6. Enterprise hardening: auth/session boundaries, audit logs, rate limits,
+   observability, test fixtures, and deployment guidance.
+
+This is design direction only. The `api`, `operation`, `policy`, and `call`
+syntax is not implemented yet; it should wait until browser-local runtime,
+module identity, and component-instance semantics are safer.
+
 ## Core Semantics
 
 The shared language family should keep these concepts stable:
@@ -242,7 +265,9 @@ Implementation belongs in roadmap files, but the design dependency order is:
 5. Add direct component-instance execution.
 6. Add `fn`, `test`, and `expect` only when they can be represented in the
    shared semantic graph.
-7. Grow interop after runtime contracts are stable.
+7. Design contract-first JTL backend APIs only as semantic contracts first,
+   not as ad-hoc runtime syntax.
+8. Grow interop after runtime contracts are stable.
 
 The strategic guardrail:
 

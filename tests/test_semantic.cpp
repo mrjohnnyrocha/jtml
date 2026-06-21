@@ -27,6 +27,17 @@ std::vector<std::unique_ptr<ASTNode>> parseFriendly(const std::string& source) {
     return program;
 }
 
+std::string hexEncode(const std::string& value) {
+    static const char* digits = "0123456789abcdef";
+    std::string out;
+    out.reserve(value.size() * 2);
+    for (unsigned char ch : value) {
+        out.push_back(digits[ch >> 4]);
+        out.push_back(digits[ch & 0x0f]);
+    }
+    return out;
+}
+
 bool contains(const std::vector<std::string>& values, const std::string& value) {
     return std::find(values.begin(), values.end(), value) != values.end();
 }
@@ -271,6 +282,44 @@ TEST(SemanticProgram, ComponentDefinitionsExposeOwnedSemantics) {
     EXPECT_TRUE(contains(card->localEffects, "open"));
     EXPECT_TRUE(contains(card->eventBindings, "toggle"));
     EXPECT_TRUE(card->hasSlot);
+}
+
+TEST(SemanticProgram, ComponentDefinitionsExposeDeclaredEmits) {
+    const std::string source =
+        "jtml 2\n"
+        "make Child emits picked(name: string) cancelled\n"
+        "  button \"Pick\" click picked(\"Ada\")\n"
+        "page\n"
+        "  Child\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto* child = findComponentDefinition(semantic, "Child");
+    ASSERT_NE(child, nullptr);
+    ASSERT_EQ(child->emits.size(), 2u);
+    EXPECT_TRUE(contains(child->emits, "cancelled"));
+    EXPECT_TRUE(contains(child->emits, "picked"));
+    ASSERT_TRUE(child->emitArity.count("picked"));
+    EXPECT_EQ(child->emitArity.at("picked"), 1);
+    ASSERT_TRUE(child->emitPayloads.count("picked"));
+    ASSERT_EQ(child->emitPayloads.at("picked").size(), 1u);
+    EXPECT_EQ(child->emitPayloads.at("picked")[0], "name");
+    ASSERT_TRUE(child->emitPayloadTypes.count("picked"));
+    ASSERT_EQ(child->emitPayloadTypes.at("picked").size(), 1u);
+    EXPECT_EQ(child->emitPayloadTypes.at("picked")[0], "string");
+    ASSERT_TRUE(child->emitArity.count("cancelled"));
+    EXPECT_EQ(child->emitArity.at("cancelled"), 0);
+    ASSERT_TRUE(child->emitPayloads.count("cancelled"));
+    EXPECT_TRUE(child->emitPayloads.at("cancelled").empty());
+
+    const auto plan = jtml::buildRuntimePlan(program, semantic);
+    ASSERT_EQ(plan.componentDefinitions.size(), 1u);
+    EXPECT_EQ(plan.componentDefinitions[0].emits, child->emits);
+    EXPECT_EQ(plan.componentDefinitions[0].emitArity.at("picked"), 1);
+    ASSERT_TRUE(plan.componentDefinitions[0].emitPayloads.count("picked"));
+    EXPECT_EQ(plan.componentDefinitions[0].emitPayloads.at("picked")[0], "name");
+    ASSERT_TRUE(plan.componentDefinitions[0].emitPayloadTypes.count("picked"));
+    EXPECT_EQ(plan.componentDefinitions[0].emitPayloadTypes.at("picked")[0], "string");
 }
 
 TEST(SemanticProgram, ComponentDefinitionManifestsExposeOwnedSemantics) {
@@ -907,6 +956,44 @@ TEST(SemanticProject, AnalysisReportsUnresolvedImportsAndMissingExports) {
     EXPECT_EQ(issues[1].available[0], "Card");
 }
 
+TEST(SemanticProject, AnalysisReportsRecoverableModuleParseIssues) {
+    jtml::SemanticModuleIr brokenIr;
+    brokenIr.available = false;
+    brokenIr.syntax = "unknown";
+    brokenIr.parseError = "Parser error at line 3, column 5: Expected expression";
+    brokenIr.parseErrorLine = 3;
+    brokenIr.parseErrorColumn = 5;
+
+    std::vector<jtml::SemanticModuleSource> modules = {
+        {
+            "/app/index.jtml",
+            jtml::analyzeSemanticProgram(
+                {},
+                "jtml 2\n"
+                "use \"./broken.jtml\"\n"),
+        },
+        {
+            "/app/broken.jtml",
+            jtml::analyzeSemanticProgram({}, "jtml 2\nmake Broken\n  if\n"),
+            brokenIr,
+            nullptr,
+        },
+    };
+
+    const auto project = jtml::buildSemanticProject(modules, "/app/index.jtml");
+    const auto issues = jtml::analyzeSemanticProject(project);
+
+    ASSERT_EQ(issues.size(), 1u);
+    EXPECT_EQ(issues[0].code, "JTML_MODULE_PARSE");
+    EXPECT_EQ(issues[0].module, 1u);
+    EXPECT_EQ(issues[0].path, "/app/broken.jtml");
+    EXPECT_EQ(issues[0].resolvedPath, "/app/broken.jtml");
+    EXPECT_EQ(issues[0].line, 3u);
+    EXPECT_EQ(issues[0].column, 5u);
+    EXPECT_NE(issues[0].message.find("Cannot parse module /app/broken.jtml"),
+              std::string::npos);
+}
+
 TEST(SemanticProject, ImportIdentityFollowsReExportsToUltimateSymbol) {
     std::vector<jtml::SemanticModuleSource> modules = {
         {
@@ -1198,6 +1285,35 @@ TEST(RuntimePlan, OwnsBrowserLocalRuntimeShapeBeforeManifestEmission) {
         [](const auto& instance) { return instance.component == "Counter"; }));
 }
 
+TEST(RuntimePlan, ComponentInstancesCarryAuthoredSlotPlansAndSplitParams) {
+    const std::string source =
+        "jtml 2\n"
+        "make Card title tone\n"
+        "  panel class tone\n"
+        "    h2 title\n"
+        "    slot\n"
+        "page\n"
+        "  Card \"Status\" \"good\"\n"
+        "    text \"Ready\"\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto plan = jtml::buildRuntimePlan(program, semantic);
+
+    ASSERT_EQ(plan.componentDefinitions.size(), 1u);
+    ASSERT_EQ(plan.componentDefinitions[0].params.size(), 2u);
+    EXPECT_EQ(plan.componentDefinitions[0].params[0], "title");
+    EXPECT_EQ(plan.componentDefinitions[0].params[1], "tone");
+    ASSERT_EQ(plan.componentInstances.size(), 1u);
+    EXPECT_FALSE(plan.componentInstances[0].slotHex.empty());
+    EXPECT_NE(plan.componentInstances[0].slotSource.find("text \"Ready\""),
+              std::string::npos);
+    ASSERT_EQ(plan.componentInstances[0].slotPlan.size(), 1u);
+    EXPECT_EQ(plan.componentInstances[0].slotPlan[0].kind, "template");
+    EXPECT_EQ(plan.componentInstances[0].slotPlan[0].name, "text");
+    EXPECT_EQ(plan.componentInstances[0].slotPlan[0].expression, "\"Ready\"");
+}
+
 TEST(RuntimePlan, ProjectPlanUsesRetainedPerFileAsts) {
     const std::string entrySource =
         "jtml 2\n"
@@ -1254,6 +1370,9 @@ TEST(RuntimePlan, ProjectPlanUsesRetainedPerFileAsts) {
     EXPECT_TRUE(projectPlan.modules[0].astAvailable);
     EXPECT_TRUE(projectPlan.modules[1].astAvailable);
     EXPECT_TRUE(projectPlan.modules[2].astAvailable);
+    EXPECT_TRUE(projectPlan.modules[0].clientExecutable);
+    EXPECT_TRUE(projectPlan.modules[1].clientExecutable);
+    EXPECT_TRUE(projectPlan.modules[2].clientExecutable);
     EXPECT_EQ(projectPlan.modules[1].syntax, "friendly");
     ASSERT_EQ(projectPlan.modules[1].plan.componentDefinitions.size(), 1u);
     EXPECT_EQ(projectPlan.modules[1].plan.componentDefinitions[0].name, "Dashboard");
@@ -1264,4 +1383,77 @@ TEST(RuntimePlan, ProjectPlanUsesRetainedPerFileAsts) {
     EXPECT_EQ(projectPlan.modules[2].plan.semantic.stores[0], "appState");
     ASSERT_EQ(projectPlan.modules[2].plan.semantic.state.size(), 1u);
     EXPECT_EQ(projectPlan.modules[2].plan.semantic.state[0], "appState");
+}
+
+TEST(RuntimePlan, ProjectPlanKeepsDuplicateComponentNamesModuleScoped) {
+    jtml::SemanticProgram entrySemantic;
+    entrySemantic.importRecords.push_back(
+        {"./pages/home.jtml", "use", {"Home"}, false, 2, 1});
+
+    jtml::SemanticProgram homeSemantic;
+    homeSemantic.importRecords.push_back(
+        {"../components/primary-card.jtml", "use", {"Card"}, false, 2, 1});
+    homeSemantic.componentDefinitions.push_back(
+        {"Home", {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, hexEncode("0: page\n2: Card \"Nested\"\n"),
+         false, 2, 1, 0, 3});
+    homeSemantic.exportRecords.push_back({"Home", "make", "", false, 3});
+    homeSemantic.componentInstances.push_back(
+        {"card_1", "Card", 1, "component", {{"title", "Primary"}}, {}, "", 4});
+
+    jtml::SemanticProgram primarySemantic;
+    primarySemantic.componentDefinitions.push_back(
+        {"Card", {"title"}, {}, {}, {}, {}, {}, {}, {}, {}, {}, "", false, 1, 1, 0, 2});
+    primarySemantic.exportRecords.push_back({"Card", "make", "", false, 2});
+
+    jtml::SemanticProgram secondarySemantic;
+    secondarySemantic.componentDefinitions.push_back(
+        {"Card", {"title"}, {}, {}, {}, {}, {}, {}, {}, {}, {}, "", false, 1, 1, 0, 2});
+    secondarySemantic.exportRecords.push_back({"Card", "make", "", false, 2});
+
+    std::vector<jtml::SemanticModuleSource> modules = {
+        {"/app/index.jtml", entrySemantic},
+        {"/app/pages/home.jtml", homeSemantic},
+        {"/app/components/primary-card.jtml", primarySemantic},
+        {"/app/components/secondary-card.jtml", secondarySemantic},
+    };
+
+    auto linkedSemantic = entrySemantic;
+    linkedSemantic.moduleFiles = {
+        "/app/index.jtml",
+        "/app/pages/home.jtml",
+        "/app/components/primary-card.jtml",
+        "/app/components/secondary-card.jtml",
+    };
+    const auto project = jtml::buildSemanticProject(modules, "/app/index.jtml", linkedSemantic);
+    const auto projectPlan = jtml::buildRuntimePlan(project);
+
+    ASSERT_EQ(projectPlan.modules.size(), 4u);
+    ASSERT_EQ(projectPlan.modules[2].plan.componentDefinitions.size(), 1u);
+    ASSERT_EQ(projectPlan.modules[3].plan.componentDefinitions.size(), 1u);
+    EXPECT_EQ(projectPlan.modules[2].plan.componentDefinitions[0].name, "Card");
+    EXPECT_EQ(projectPlan.modules[2].plan.componentDefinitions[0].moduleId,
+              projectPlan.modules[2].id);
+    EXPECT_EQ(projectPlan.modules[3].plan.componentDefinitions[0].name, "Card");
+    EXPECT_EQ(projectPlan.modules[3].plan.componentDefinitions[0].moduleId,
+              projectPlan.modules[3].id);
+
+    ASSERT_EQ(projectPlan.modules[1].plan.componentInstances.size(), 1u);
+    const auto& cardInstance = projectPlan.modules[1].plan.componentInstances[0];
+    EXPECT_EQ(cardInstance.component, "Card");
+    EXPECT_EQ(cardInstance.moduleId, projectPlan.modules[1].id);
+    EXPECT_EQ(cardInstance.definitionModule, projectPlan.modules[2].id);
+    EXPECT_NE(cardInstance.definitionModule, projectPlan.modules[3].id);
+
+    ASSERT_EQ(projectPlan.modules[1].plan.componentDefinitions.size(), 1u);
+    const auto& homeDefinition = projectPlan.modules[1].plan.componentDefinitions[0];
+    ASSERT_GE(homeDefinition.bodyPlan.size(), 2u);
+    auto nestedCard = std::find_if(
+        homeDefinition.bodyPlan.begin(),
+        homeDefinition.bodyPlan.end(),
+        [](const auto& node) {
+            return node.kind == "template" && node.name == "Card";
+        });
+    ASSERT_NE(nestedCard, homeDefinition.bodyPlan.end());
+    EXPECT_EQ(nestedCard->definitionModule, projectPlan.modules[2].id);
+    EXPECT_NE(nestedCard->definitionModule, projectPlan.modules[3].id);
 }

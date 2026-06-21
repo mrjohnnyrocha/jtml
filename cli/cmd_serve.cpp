@@ -21,6 +21,7 @@
 #include <cctype>
 #include <chrono>
 #include <cerrno>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -100,18 +101,93 @@ std::string withInitialBindings(std::string html, const std::string& bindingsJso
     return html;
 }
 
+std::string liveBodyPlanRenderHash(const std::string& value) {
+    uint32_t hash = 2166136261u;
+    for (unsigned char ch : value) {
+        hash ^= ch;
+        hash *= 16777619u;
+    }
+    std::ostringstream oss;
+    oss << std::hex << hash;
+    return oss.str();
+}
+
+nlohmann::json renderedComponentsFromState(const nlohmann::json& state);
+
+size_t findMatchingDivClose(const std::string& html, size_t openStart) {
+    const auto openEnd = html.find('>', openStart);
+    if (openEnd == std::string::npos) return std::string::npos;
+    size_t cursor = openEnd + 1;
+    int depth = 1;
+    while (cursor < html.size()) {
+        const auto nextOpen = html.find("<div", cursor);
+        const auto nextClose = html.find("</div>", cursor);
+        if (nextClose == std::string::npos) return std::string::npos;
+        if (nextOpen != std::string::npos && nextOpen < nextClose) {
+            ++depth;
+            cursor = nextOpen + 4;
+            continue;
+        }
+        --depth;
+        if (depth == 0) return nextClose;
+        cursor = nextClose + 6;
+    }
+    return std::string::npos;
+}
+
+std::string withInitialBodyPlanRender(std::string html, const std::string& stateJson) {
+    nlohmann::json state;
+    try {
+        state = nlohmann::json::parse(stateJson);
+    } catch (...) {
+        return html;
+    }
+    const auto rendered = renderedComponentsFromState(state);
+    if (!rendered.contains("components") || !rendered["components"].is_array()) {
+        return html;
+    }
+    for (const auto& component : rendered["components"]) {
+        if (!component.value("supported", false)) continue;
+        const std::string componentId = component.value("id", std::string{});
+        const std::string renderedHtml = component.value("renderedHtml", std::string{});
+        if (componentId.empty() || renderedHtml.empty()) continue;
+        const std::string marker = "data-jtml-instance=\"" + componentId + "\"";
+        const auto markerPos = html.find(marker);
+        if (markerPos == std::string::npos) continue;
+        const auto openStart = html.rfind("<div", markerPos);
+        if (openStart == std::string::npos) continue;
+        const auto openEnd = html.find('>', openStart);
+        if (openEnd == std::string::npos || openEnd < markerPos) continue;
+        const auto closeStart = findMatchingDivClose(html, openStart);
+        if (closeStart == std::string::npos || closeStart < openEnd) continue;
+        html.replace(openEnd + 1, closeStart - (openEnd + 1), renderedHtml);
+        const auto refreshedOpenEnd = html.find('>', openStart);
+        if (refreshedOpenEnd == std::string::npos) continue;
+        const auto openTag = html.substr(openStart, refreshedOpenEnd - openStart);
+        if (openTag.find("data-jtml-live-body-plan-transport=") == std::string::npos) {
+            const std::string hash = liveBodyPlanRenderHash(renderedHtml);
+            html.insert(refreshedOpenEnd,
+                " data-jtml-live-body-plan-transport=\"body-plan\""
+                " data-jtml-live-body-plan-rendered=\"server\""
+                " data-jtml-live-body-plan-rendered-hash=\"" + hash + "\"");
+        }
+    }
+    return html;
+}
+
 nlohmann::json runtimeContractJson(uint16_t wsPort) {
     return {
         {"version", versionString()},
         {"endpoints", {
             {"health", "/api/health"},
-            {"bindings", "/api/bindings"},
-            {"state", "/api/state"},
-            {"components", "/api/components"},
-            {"componentDefinitions", "/api/component-definitions"},
-            {"runtime", "/api/runtime"},
-            {"event", "/api/event"},
-            {"componentAction", "/api/component-action"},
+        {"bindings", "/api/bindings"},
+        {"state", "/api/state"},
+        {"components", "/api/components"},
+        {"componentDefinitions", "/api/component-definitions"},
+        {"renderedComponents", "/api/rendered-components"},
+        {"runtime", "/api/runtime"},
+        {"event", "/api/event"},
+        {"componentAction", "/api/component-action"},
         }},
         {"eventRequest", {
             {"elementId", "elem_1"},
@@ -125,12 +201,46 @@ nlohmann::json runtimeContractJson(uint16_t wsPort) {
     };
 }
 
+nlohmann::json renderedComponentsFromState(const nlohmann::json& state) {
+    nlohmann::json out = {
+        {"mode", "live-body-plan"},
+        {"supported", true},
+        {"fallback", "compatibility-dom"},
+        {"components", nlohmann::json::array()},
+    };
+    if (!state.contains("components") || !state["components"].is_array()) {
+        return out;
+    }
+    for (const auto& component : state["components"]) {
+        const auto runtime = component.value("runtime", nlohmann::json::object());
+        const bool supported = component.value(
+            "renderedHtmlSupported",
+            runtime.value("renderedHtmlSupported",
+                runtime.value("bodyPlanTemplateRendering", false)));
+        const std::string html = component.value("renderedHtml", std::string{});
+        out["components"].push_back({
+            {"moduleId", component.value("moduleId", nlohmann::json())},
+            {"definitionModule", component.value("definitionModule", nlohmann::json())},
+            {"id", component.value("id", std::string{})},
+            {"component", component.value("component", std::string{})},
+            {"role", component.value("role", std::string{})},
+            {"supported", supported && !html.empty()},
+            {"fallback", supported && !html.empty() ? "" : "compatibility-dom"},
+            {"renderedHtmlSupported", supported && !html.empty()},
+            {"renderedHtml", html},
+        });
+    }
+    return out;
+}
+
 nlohmann::json runtimeSnapshotJson(Interpreter& interpreter, uint16_t wsPort) {
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
     return {
         {"ok", true},
         {"contract", runtimeContractJson(wsPort)},
         {"bindings", nlohmann::json::parse(interpreter.getBindingsJSON())},
-        {"state", nlohmann::json::parse(interpreter.getStateJSON())},
+        {"state", state},
+        {"renderedComponents", renderedComponentsFromState(state)},
         {"componentDefinitions", nlohmann::json::parse(interpreter.getComponentDefinitionsJSON())},
     };
 }
@@ -305,6 +415,16 @@ void installRuntimeApi(httplib::Server& svr,
             setJson(res, errorResponseJson(e.what()));
         }
     });
+    svr.Get("/api/rendered-components", [&interpreter](const httplib::Request&, httplib::Response& res) {
+        try {
+            const auto state = nlohmann::json::parse(interpreter->getStateJSON());
+            auto rendered = renderedComponentsFromState(state);
+            rendered["ok"] = true;
+            setJson(res, rendered);
+        } catch (const std::exception& e) {
+            setJson(res, errorResponseJson(e.what()));
+        }
+    });
     svr.Get("/api/runtime", [&interpreter, wsPort](const httplib::Request&, httplib::Response& res) {
         try {
             setJson(res, runtimeSnapshotJson(*interpreter, wsPort));
@@ -324,6 +444,7 @@ void installRuntimeApi(httplib::Server& svr,
             if (ok) {
                 j["bindings"] = nlohmann::json::parse(bindings);
                 j["state"] = nlohmann::json::parse(interpreter->getStateJSON());
+                j["renderedComponents"] = renderedComponentsFromState(j["state"]);
                 j["contract"] = runtimeContractJson(wsPort);
             } else {
                 j["error"] = err;
@@ -345,6 +466,7 @@ void installRuntimeApi(httplib::Server& svr,
             if (ok) {
                 j["bindings"] = nlohmann::json::parse(bindings);
                 j["state"] = nlohmann::json::parse(interpreter->getStateJSON());
+                j["renderedComponents"] = renderedComponentsFromState(j["state"]);
                 j["components"] = nlohmann::json::parse(interpreter->getComponentsJSON());
                 j["contract"] = runtimeContractJson(wsPort);
             } else {
@@ -547,6 +669,7 @@ static void serveOnce(const std::vector<std::unique_ptr<ASTNode>>& program,
         interpreter = std::make_unique<Interpreter>(transpiler, cfg);
         interpreter->interpret(program);
     }
+    html = withInitialBodyPlanRender(std::move(html), interpreter->getStateJSON());
     html = withInitialBindings(std::move(html), interpreter->getBindingsJSON());
 
     httplib::Server svr;
@@ -595,6 +718,7 @@ static void serveWatching(const std::string& inputFile, int port, SyntaxMode syn
                 if (firstLoad) interpreter->interpret(program);
                 else           interpreter->reload(program);
             }
+            html = withInitialBodyPlanRender(std::move(html), interpreter->getStateJSON());
             html = withInitialBindings(std::move(html), interpreter->getBindingsJSON());
             std::lock_guard<std::mutex> lk(htmlMutex);
             currentHtml = std::move(html);
@@ -769,6 +893,7 @@ static void serveStudio(int port) {
                 SilenceStdout silence;
                 html = transpiler.transpile(program);
                 interpreter->reload(program);
+                html = withInitialBodyPlanRender(std::move(html), interpreter->getStateJSON());
                 html = withInitialBindings(std::move(html), interpreter->getBindingsJSON());
             }
             res.set_content(
@@ -868,6 +993,7 @@ static void serveStudio(int port) {
                 SilenceStdout silence;
                 html = transpiler.transpile(program);
                 interpreter->reload(program);
+                html = withInitialBodyPlanRender(std::move(html), interpreter->getStateJSON());
                 html = withInitialBindings(std::move(html), interpreter->getBindingsJSON());
             }
             res.set_content(

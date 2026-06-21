@@ -2,13 +2,17 @@
 #include "jtml/interpreter.h"
 #include "jtml/attribute_classifier.h"
 #include "jtml/friendly.h"
+#include "jtml/lexer.h"
+#include "jtml/parser.h"
 #include "jtml/runtime_plan.h"
 #include "jtml/semantic.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cctype>
 #include <fstream>
 #include <functional>
+#include <set>
 #include <stdexcept>
 #include <sstream>
 #include <thread>
@@ -59,6 +63,33 @@ nlohmann::json stringVectorToJson(const std::vector<std::string>& values) {
     nlohmann::json out = nlohmann::json::array();
     for (const auto& value : values) out.push_back(value);
     return out;
+}
+
+std::string lowerString(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) {
+        return static_cast<char>(std::tolower(ch));
+    });
+    return value;
+}
+
+bool emittedPayloadTypeMatches(const nlohmann::json& value, std::string declaredType) {
+    declaredType = lowerString(declaredType);
+    if (declaredType.empty() || declaredType == "any" || declaredType == "unknown") return true;
+    if (declaredType == "string") return value.is_string();
+    if (declaredType == "number" || declaredType == "float" ||
+        declaredType == "double" || declaredType == "int") {
+        return value.is_number();
+    }
+    if (declaredType == "boolean" || declaredType == "bool") return value.is_boolean();
+    if (declaredType == "array" ||
+        (declaredType.size() >= 2 && declaredType.substr(declaredType.size() - 2) == "[]")) {
+        return value.is_array();
+    }
+    if (declaredType == "object" || declaredType == "dict" || declaredType == "record") {
+        return value.is_object();
+    }
+    if (declaredType == "null") return value.is_null();
+    return true;
 }
 
 std::shared_ptr<JTML::VarValue> jsonToVarValue(const nlohmann::json& value,
@@ -135,6 +166,32 @@ std::vector<std::string> parseRuntimeList(const std::string& encoded) {
     return out;
 }
 
+std::map<std::string, int> parseRuntimeIntMap(const std::string& encoded) {
+    std::map<std::string, int> out;
+    for (const auto& [key, value] : parseRuntimeMap(encoded)) {
+        try {
+            out[key] = value.empty() ? 0 : std::stoi(value);
+        } catch (...) {
+            out[key] = 0;
+        }
+    }
+    return out;
+}
+
+std::map<std::string, std::vector<std::string>> parseRuntimeStringListMap(const std::string& encoded) {
+    std::map<std::string, std::vector<std::string>> out;
+    for (const auto& [key, value] : parseRuntimeMap(encoded)) {
+        std::vector<std::string> items;
+        std::istringstream input(value);
+        std::string item;
+        while (std::getline(input, item, ',')) {
+            if (!item.empty()) items.push_back(item);
+        }
+        out[key] = std::move(items);
+    }
+    return out;
+}
+
 int hexValue(char ch) {
     if (ch >= '0' && ch <= '9') return ch - '0';
     if (ch >= 'a' && ch <= 'f') return ch - 'a' + 10;
@@ -172,6 +229,20 @@ JTML::InstanceID parseInstanceId(const std::string& explicitId,
     const auto pos = instanceName.rfind('_');
     if (pos != std::string::npos) return parseDigits(instanceName.substr(pos + 1));
     return 0;
+}
+
+jtml::SemanticModuleId parseSemanticModuleId(const std::string& value) {
+    if (value.empty()) return jtml::InvalidSemanticModuleId;
+    for (char ch : value) {
+        if (!std::isdigit(static_cast<unsigned char>(ch))) {
+            return jtml::InvalidSemanticModuleId;
+        }
+    }
+    try {
+        return static_cast<jtml::SemanticModuleId>(std::stoul(value));
+    } catch (...) {
+        return jtml::InvalidSemanticModuleId;
+    }
 }
 }
 
@@ -240,6 +311,8 @@ void Interpreter::reset() {
     classDeclarations.clear();
     componentInstances.clear();
     componentDefinitions.clear();
+    dynamicComponentInstances.clear();
+    componentRenderGeneration = 0;
     globalEnv = std::make_shared<JTML::Environment>(nullptr, 0, renderer.get());
     currentEnv = globalEnv;
     globalEnv->setRenderer(renderer.get());
@@ -309,12 +382,748 @@ std::string Interpreter::getBindingsJSON() {
 }
 
 std::string Interpreter::getStateJSON() {
+    auto moduleIdToJson = [](jtml::SemanticModuleId id) {
+        return id == jtml::InvalidSemanticModuleId ? nlohmann::json(nullptr) : nlohmann::json(id);
+    };
+    auto bodyPlanToJson = [&](const auto& bodyPlan) {
+        nlohmann::json out = nlohmann::json::array();
+        for (const auto& node : bodyPlan) {
+            out.push_back({
+                {"definitionModule", moduleIdToJson(node.definitionModule)},
+                {"indent", node.indent},
+                {"parentIndex", node.parentIndex},
+                {"childIndices", node.childIndices},
+                {"kind", node.kind},
+                {"head", node.head},
+                {"name", node.name},
+                {"text", node.text},
+                {"operator", node.operatorToken},
+                {"expression", node.expression},
+                {"keyExpression", node.keyExpression},
+                {"renderRoot", node.renderRoot},
+            });
+        }
+        return out;
+    };
+    auto trimString = [](const std::string& value) {
+        size_t start = 0;
+        while (start < value.size() &&
+               std::isspace(static_cast<unsigned char>(value[start]))) {
+            ++start;
+        }
+        size_t end = value.size();
+        while (end > start &&
+               std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+            --end;
+        }
+        return value.substr(start, end - start);
+    };
+    auto splitWords = [](const std::string& value) {
+        std::vector<std::string> out;
+        std::string current;
+        char quote = '\0';
+        int depth = 0;
+        for (size_t i = 0; i < value.size(); ++i) {
+            const char ch = value[i];
+            if (quote != '\0') {
+                current.push_back(ch);
+                if (ch == '\\' && i + 1 < value.size()) {
+                    current.push_back(value[++i]);
+                } else if (ch == quote) {
+                    quote = '\0';
+                }
+                continue;
+            }
+            if (ch == '"' || ch == '\'') {
+                quote = ch;
+                current.push_back(ch);
+                continue;
+            }
+            if (ch == '(' || ch == '[' || ch == '{') ++depth;
+            if (ch == ')' || ch == ']' || ch == '}') depth = std::max(0, depth - 1);
+            if (std::isspace(static_cast<unsigned char>(ch)) && depth == 0) {
+                if (!current.empty()) {
+                    out.push_back(current);
+                    current.clear();
+                }
+                continue;
+            }
+            current.push_back(ch);
+        }
+        if (!current.empty()) out.push_back(current);
+        return out;
+    };
+    auto splitTopLevelList = [&](const std::string& source) {
+        std::vector<std::string> out;
+        std::string current;
+        char quote = '\0';
+        int depth = 0;
+        for (size_t i = 0; i < source.size(); ++i) {
+            const char ch = source[i];
+            if (quote != '\0') {
+                current.push_back(ch);
+                if (ch == '\\' && i + 1 < source.size()) {
+                    current.push_back(source[++i]);
+                } else if (ch == quote) {
+                    quote = '\0';
+                }
+                continue;
+            }
+            if (ch == '"' || ch == '\'') {
+                quote = ch;
+                current.push_back(ch);
+                continue;
+            }
+            if (ch == '(' || ch == '[' || ch == '{') ++depth;
+            if (ch == ')' || ch == ']' || ch == '}') depth = std::max(0, depth - 1);
+            if (ch == ',' && depth == 0) {
+                const auto trimmed = trimString(current);
+                if (!trimmed.empty()) out.push_back(trimmed);
+                current.clear();
+                continue;
+            }
+            current.push_back(ch);
+        }
+        const auto trimmed = trimString(current);
+        if (!trimmed.empty()) out.push_back(trimmed);
+        return out;
+    };
+    auto unquote = [&](const std::string& value) {
+        const std::string trimmed = trimString(value);
+        if (trimmed.size() >= 2 &&
+            ((trimmed.front() == '"' && trimmed.back() == '"') ||
+             (trimmed.front() == '\'' && trimmed.back() == '\''))) {
+            return trimmed.substr(1, trimmed.size() - 2);
+        }
+        return trimmed;
+    };
+    auto escapeHtml = [](const std::string& value) {
+        std::string out;
+        out.reserve(value.size());
+        for (char ch : value) {
+            if (ch == '&') out += "&amp;";
+            else if (ch == '<') out += "&lt;";
+            else if (ch == '>') out += "&gt;";
+            else if (ch == '"') out += "&quot;";
+            else out.push_back(ch);
+        }
+        return out;
+    };
+    auto escapeAttr = [&](const std::string& value) {
+        std::string out = escapeHtml(value);
+        std::string replaced;
+        replaced.reserve(out.size());
+        for (char ch : out) {
+            if (ch == '\'') replaced += "&#39;";
+            else replaced.push_back(ch);
+        }
+        return replaced;
+    };
+    auto tagName = [](const std::string& head) {
+        if (head == "app" || head == "shell") return std::string("div");
+        if (head == "topbar") return std::string("header");
+        if (head == "sidebar" || head == "drawer") return std::string("aside");
+        if (head == "content") return std::string("main");
+        if (head == "metric") return std::string("article");
+        if (head == "toolbar" || head == "tabs" || head == "alert" ||
+            head == "toast" || head == "loading" || head == "error" ||
+            head == "empty" || head == "spacer") {
+            return std::string("div");
+        }
+        if (head == "tab") return std::string("button");
+        if (head == "badge") return std::string("span");
+        if (head == "modal") return std::string("section");
+        if (head == "field") return std::string("label");
+        if (head == "page") return std::string("main");
+        if (head == "box" || head == "stack" || head == "cluster" ||
+            head == "split" || head == "grid") {
+            return std::string("div");
+        }
+        if (head == "card" || head == "panel") return std::string("section");
+        if (head == "text") return std::string("p");
+        if (head == "link" || head == "navlink") return std::string("a");
+        if (head == "image") return std::string("img");
+        if (head == "list") return std::string("ul");
+        if (head == "listOrdered") return std::string("ol");
+        if (head == "item") return std::string("li");
+        if (head == "checkbox" || head == "file" || head == "dropzone") return std::string("input");
+        if (head == "title") return std::string("h1");
+        if (head == "subtitle") return std::string("p");
+        return head;
+    };
+    auto isUiPrimitive = [](const std::string& name) {
+        static const std::vector<std::string> primitives = {
+            "app", "shell", "topbar", "sidebar", "content", "panel", "card",
+            "metric", "stack", "cluster", "split", "grid", "toolbar", "tabs",
+            "tab", "alert", "badge", "modal", "drawer", "toast", "loading",
+            "error", "empty", "field", "spacer"
+        };
+        return std::find(primitives.begin(), primitives.end(), name) != primitives.end();
+    };
+    auto isUiModifier = [](const std::string& name) {
+        static const std::vector<std::string> modifiers = {
+            "cols", "gap", "pad", "radius", "shadow", "tone",
+            "align", "justify", "width", "surface"
+        };
+        return std::find(modifiers.begin(), modifiers.end(), name) != modifiers.end();
+    };
+    auto isAttrName = [](const std::string& name) {
+        static const std::vector<std::string> attrs = {
+            "id", "class", "style", "role", "href", "src", "alt", "title",
+            "type", "name", "value", "placeholder", "for", "rel", "target",
+            "method", "action", "enctype", "autocomplete", "inputmode",
+            "pattern", "accept", "poster", "preload", "kind", "srclang",
+            "label", "width", "height", "min", "max", "step", "minlength",
+            "maxlength", "rows", "cols", "cx", "cy", "r", "x", "y", "x1",
+            "y1", "x2", "y2", "d", "points", "viewBox", "fill", "stroke",
+            "stroke-width", "transform", "opacity"
+        };
+        return std::find(attrs.begin(), attrs.end(), name) != attrs.end() ||
+               name.rfind("aria-", 0) == 0 ||
+               name.rfind("data-", 0) == 0;
+    };
+    auto isBooleanAttr = [](const std::string& name) {
+        static const std::vector<std::string> attrs = {
+            "disabled", "required", "checked", "selected", "multiple",
+            "readonly", "autofocus", "playsinline", "open", "hidden",
+            "controls", "autoplay", "loop", "muted"
+        };
+        return std::find(attrs.begin(), attrs.end(), name) != attrs.end();
+    };
+    auto evalComponentExpression = [&](const std::string& expr,
+                                       const std::shared_ptr<JTML::Environment>& env)
+            -> std::shared_ptr<JTML::VarValue> {
+        const std::string source = "jtml 2\nlet __jtml_render_expr = " + expr + "\n";
+        const std::string lowered = jtml::normalizeSourceSyntax(source, jtml::SyntaxMode::Friendly);
+        Lexer lexer(lowered);
+        auto tokens = lexer.tokenize();
+        if (!lexer.getErrors().empty()) return nullptr;
+        Parser parser(std::move(tokens));
+        auto parsed = parser.parseProgram();
+        if (!parser.getErrors().empty() || parsed.empty() ||
+            parsed.front()->getType() != ASTNodeType::DefineStatement) {
+            return nullptr;
+        }
+        const auto& define = static_cast<const DefineStatementNode&>(*parsed.front());
+        try {
+            return evaluateExpression(define.expression.get(), env);
+        } catch (...) {
+            return nullptr;
+        }
+    };
+    auto expressionText = [&](const std::string& expr,
+                              const std::shared_ptr<JTML::Environment>& env) {
+        const std::string trimmed = trimString(expr);
+        if (trimmed.empty()) return std::string{};
+        if (trimmed != unquote(trimmed)) return unquote(trimmed);
+        const bool simpleIdentifier = !trimmed.empty() &&
+            (std::isalpha(static_cast<unsigned char>(trimmed.front())) ||
+             trimmed.front() == '_') &&
+            std::all_of(trimmed.begin() + 1, trimmed.end(), [](char ch) {
+                return std::isalnum(static_cast<unsigned char>(ch)) || ch == '_';
+            });
+        if (simpleIdentifier && env) {
+            try {
+                auto value = env->getVariable(JTML::CompositeKey{env->instanceID, trimmed});
+                if (value) return value->toString();
+            } catch (...) {
+            }
+        }
+        auto value = evalComponentExpression(trimmed, env);
+        return value ? value->toString() : trimmed;
+    };
+    auto expressionValue = [&](const std::string& expr,
+                               const std::shared_ptr<JTML::Environment>& env) {
+        const std::string trimmed = trimString(expr);
+        if (trimmed.empty()) return std::make_shared<JTML::VarValue>(std::string{});
+        if (trimmed != unquote(trimmed)) {
+            return std::make_shared<JTML::VarValue>(unquote(trimmed));
+        }
+        if (auto value = evalComponentExpression(trimmed, env)) return value;
+        return std::make_shared<JTML::VarValue>(trimmed);
+    };
+    auto parseComponentActionInvocation = [&](const std::string& raw,
+                                              const std::shared_ptr<JTML::Environment>& env) {
+        const std::string source = trimString(raw);
+        nlohmann::json out = {
+            {"name", source},
+            {"args", nlohmann::json::array()},
+        };
+        if (source.empty()) return out;
+        const auto open = source.find('(');
+        if (open == std::string::npos || source.back() != ')') {
+            return out;
+        }
+        out["name"] = trimString(source.substr(0, open));
+        const std::string inner = source.substr(open + 1, source.size() - open - 2);
+        for (const auto& argExpr : splitTopLevelList(inner)) {
+            if (auto value = evalComponentExpression(argExpr, env)) {
+                out["args"].push_back(varValueToJson(value));
+            } else {
+                out["args"].push_back(unquote(argExpr));
+            }
+        }
+        return out;
+    };
+    auto childNodes = [](const RuntimeComponentDefinition& def,
+                         const BodyPlanNode& node) {
+        std::vector<const BodyPlanNode*> out;
+        for (int index : node.childIndices) {
+            if (index < 0 || static_cast<size_t>(index) >= def.bodyPlan.size()) continue;
+            out.push_back(&def.bodyPlan[static_cast<size_t>(index)]);
+        }
+        return out;
+    };
+    std::function<std::string(const RuntimeComponentDefinition&,
+                              const RuntimeComponentInstance&,
+                              const BodyPlanNode&,
+                              const std::shared_ptr<JTML::Environment>&,
+                              const std::string&)> renderNode;
+    std::function<std::string(const RuntimeComponentDefinition&,
+                              const RuntimeComponentInstance&,
+                              const BodyPlanNode&,
+                              const std::shared_ptr<JTML::Environment>&,
+                              const std::string&)> renderChildren =
+        [&](const RuntimeComponentDefinition& def,
+            const RuntimeComponentInstance& instance,
+            const BodyPlanNode& node,
+            const std::shared_ptr<JTML::Environment>& env,
+            const std::string& slotHtml) {
+            std::string out;
+            for (const auto* child : childNodes(def, node)) {
+                if (!child || child->name == "else") continue;
+                out += renderNode(def, instance, *child, env, slotHtml);
+            }
+            return out;
+        };
+    auto slotName = [&](const BodyPlanNode& node) {
+        const auto slotWords = splitWords(node.text);
+        return !slotWords.empty() && slotWords[0] == "slot" && slotWords.size() > 1
+            ? slotWords[1]
+            : std::string{};
+    };
+    auto renderSlotPlan = [&](const RuntimeComponentInstance& instance,
+                              const std::shared_ptr<JTML::Environment>& env,
+                              const std::string& requestedName) {
+        RuntimeComponentDefinition slotDef;
+        slotDef.name = "__slot";
+        slotDef.bodyPlan = instance.slotPlan;
+        std::string out;
+        for (const auto& node : slotDef.bodyPlan) {
+            if (node.parentIndex != -1 ||
+                (node.kind != "template" && node.kind != "slot")) {
+                continue;
+            }
+            if (node.kind == "slot" || node.name == "slot") {
+                if (slotName(node) == requestedName) {
+                    out += renderChildren(slotDef, instance, node, env, "");
+                }
+                continue;
+            }
+            if (requestedName.empty()) {
+                out += renderNode(slotDef, instance, node, env, "");
+            }
+        }
+        return out;
+    };
+    auto elseSibling = [&](const RuntimeComponentDefinition& def,
+                           const BodyPlanNode& node) -> const BodyPlanNode* {
+        auto it = std::find_if(def.bodyPlan.begin(), def.bodyPlan.end(),
+            [&](const BodyPlanNode& candidate) { return &candidate == &node; });
+        if (it == def.bodyPlan.end()) return nullptr;
+        for (++it; it != def.bodyPlan.end(); ++it) {
+            if (it->parentIndex == node.parentIndex) {
+                return it->name == "else" ? &(*it) : nullptr;
+            }
+        }
+        return nullptr;
+    };
+    auto nodeIndexString = [](const RuntimeComponentDefinition& def,
+                              const BodyPlanNode& node) {
+        const auto indexIt = std::find_if(def.bodyPlan.begin(), def.bodyPlan.end(),
+            [&](const BodyPlanNode& candidate) { return &candidate == &node; });
+        return indexIt == def.bodyPlan.end()
+            ? std::string("x")
+            : std::to_string(std::distance(def.bodyPlan.begin(), indexIt));
+    };
+    auto pathSegment = [](const std::string& value) {
+        std::string out;
+        for (char ch : value) {
+            if (std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == '-') {
+                out.push_back(ch);
+            } else {
+                out.push_back('_');
+            }
+        }
+        while (!out.empty() && out.front() == '_') out.erase(out.begin());
+        while (!out.empty() && out.back() == '_') out.pop_back();
+        return out.empty() ? std::string("empty") : out;
+    };
+    auto slotPlanForNode = [&](const RuntimeComponentDefinition& def,
+                               const BodyPlanNode& node) {
+        std::vector<BodyPlanNode> out;
+        std::function<int(const BodyPlanNode&, int)> cloneSubtree =
+            [&](const BodyPlanNode& source, int parentIndex) {
+                BodyPlanNode copy = source;
+                const int newIndex = static_cast<int>(out.size());
+                copy.parentIndex = parentIndex;
+                copy.childIndices.clear();
+                out.push_back(copy);
+                for (int childIndex : source.childIndices) {
+                    if (childIndex < 0 || static_cast<size_t>(childIndex) >= def.bodyPlan.size()) {
+                        continue;
+                    }
+                    const int clonedChildIndex = cloneSubtree(
+                        def.bodyPlan[static_cast<size_t>(childIndex)],
+                        newIndex);
+                    if (clonedChildIndex >= 0) {
+                        out[static_cast<size_t>(newIndex)].childIndices.push_back(clonedChildIndex);
+                    }
+                }
+                return newIndex;
+            };
+        for (int childIndex : node.childIndices) {
+            if (childIndex < 0 || static_cast<size_t>(childIndex) >= def.bodyPlan.size()) {
+                continue;
+            }
+            cloneSubtree(def.bodyPlan[static_cast<size_t>(childIndex)], -1);
+        }
+        return out;
+    };
+    std::vector<std::string> renderPath;
+    auto renderNested = [&](const RuntimeComponentDefinition& parentDef,
+                            const RuntimeComponentInstance& parentInstance,
+                            const BodyPlanNode& node,
+                            const std::shared_ptr<JTML::Environment>& env,
+                            const std::string& name) {
+        const auto* nestedDef = findComponentDefinition(
+            name,
+            node.definitionModule == jtml::InvalidSemanticModuleId
+                ? parentDef.moduleId
+                : node.definitionModule,
+            parentInstance.moduleId);
+        if (!nestedDef) return std::string{};
+        const auto nodeIndex = nodeIndexString(parentDef, node);
+        std::string pathSuffix;
+        for (const auto& part : renderPath) {
+            pathSuffix += "_" + part;
+        }
+        const std::string nestedId = parentInstance.id + "__" + name + "_" + nodeIndex + pathSuffix;
+        auto dynamicIt = dynamicComponentInstances.find(nestedId);
+        if (dynamicIt == dynamicComponentInstances.end()) {
+            RuntimeComponentInstance nestedInstance;
+            nestedInstance.moduleId = parentDef.moduleId;
+            nestedInstance.definitionModule = nestedDef->moduleId;
+            nestedInstance.id = nestedId;
+            nestedInstance.parentId = parentInstance.id;
+            nestedInstance.component = name;
+            nestedInstance.role = "nested";
+            nestedInstance.instanceID = static_cast<JTML::InstanceID>(
+                100000 + (std::hash<std::string>{}(nestedId) % 800000));
+            nestedInstance.environment = std::make_shared<JTML::Environment>(
+                env, nestedInstance.instanceID, renderer.get());
+            nestedInstance.environment->setRenderer(renderer.get());
+            nestedInstance.stateNames = nestedDef->localState;
+            nestedInstance.derivedNames = nestedDef->localDerived;
+            nestedInstance.actionNames = nestedDef->localActions;
+            nestedInstance.effectNames = nestedDef->localEffects;
+            dynamicIt = dynamicComponentInstances.emplace(nestedId, std::move(nestedInstance)).first;
+        }
+        RuntimeComponentInstance& nestedInstance = dynamicIt->second;
+        nestedInstance.lastSeenRenderGeneration = componentRenderGeneration;
+        nestedInstance.moduleId = parentDef.moduleId;
+        nestedInstance.definitionModule = nestedDef->moduleId;
+        nestedInstance.parentId = parentInstance.id;
+        nestedInstance.component = name;
+        nestedInstance.role = "nested";
+        nestedInstance.stateNames = nestedDef->localState;
+        nestedInstance.derivedNames = nestedDef->localDerived;
+        nestedInstance.actionNames = nestedDef->localActions;
+        nestedInstance.effectNames = nestedDef->localEffects;
+        if (!nestedInstance.environment) {
+            nestedInstance.environment = std::make_shared<JTML::Environment>(
+                env, nestedInstance.instanceID, renderer.get());
+        }
+        nestedInstance.environment->setRenderer(renderer.get());
+        const auto words = splitWords(node.text);
+        for (size_t i = 0; i < nestedDef->params.size(); ++i) {
+            const std::string raw = i + 1 < words.size() ? words[i + 1] : "";
+            JTML::CompositeKey key{nestedInstance.environment->instanceID, nestedDef->params[i]};
+            auto value = expressionValue(raw, env);
+            if (nestedInstance.environment->hasVariable(key)) {
+                nestedInstance.environment->setVariable(key, value);
+            } else {
+                nestedInstance.environment->defineVariable(key, value);
+            }
+        }
+        nestedInstance.eventHandlers.clear();
+        for (size_t i = 1 + nestedDef->params.size(); i + 2 < words.size();) {
+            if (words[i] != "on") {
+                ++i;
+                continue;
+            }
+            const std::string eventName = words[i + 1];
+            const auto handler = parseComponentActionInvocation(words[i + 2], env);
+            const std::string handlerName = handler.value("name", std::string{});
+            if (!eventName.empty() && !handlerName.empty()) {
+                nestedInstance.eventHandlers[eventName] = {
+                    handlerName,
+                    handler.value("args", nlohmann::json::array()),
+                };
+            }
+            i += 3;
+        }
+        nestedInstance.slotPlan = slotPlanForNode(parentDef, node);
+        for (const auto& planned : nestedDef->bodyPlan) {
+            if (planned.parentIndex != -1 || planned.name.empty()) continue;
+            if (planned.kind == "state") {
+                JTML::CompositeKey key{nestedInstance.environment->instanceID, planned.name};
+                if (!nestedInstance.environment->hasVariable(key)) {
+                    nestedInstance.environment->defineVariable(
+                        key,
+                        expressionValue(planned.expression, nestedInstance.environment));
+                }
+            } else if (planned.kind == "derived") {
+                JTML::CompositeKey key{nestedInstance.environment->instanceID, planned.name};
+                nestedInstance.environment->defineVariable(
+                    key,
+                    expressionValue(planned.expression, nestedInstance.environment));
+            }
+        }
+        const std::string slotHtml = renderChildren(parentDef, parentInstance, node, env, "");
+        std::string out;
+        for (const auto& root : nestedDef->bodyPlan) {
+            if (root.renderRoot && root.kind == "template") {
+                out += renderNode(*nestedDef, nestedInstance, root, nestedInstance.environment, slotHtml);
+            }
+        }
+        return "<div data-jtml-direct-instance=\"" + escapeAttr(nestedInstance.id) + "\"" +
+               " data-jtml-component=\"" + escapeAttr(name) + "\"" +
+               " data-jtml-component-parent=\"" + escapeAttr(parentInstance.id) + "\"" +
+               " data-jtml-nested-component=\"true\">" + out + "</div>";
+    };
+    renderNode = [&](const RuntimeComponentDefinition& def,
+                     const RuntimeComponentInstance& instance,
+                     const BodyPlanNode& node,
+                     const std::shared_ptr<JTML::Environment>& env,
+                     const std::string& slotHtml) {
+        if (node.kind != "template" && node.kind != "slot") return std::string{};
+        const auto words = splitWords(node.text);
+        const std::string head = node.name.empty()
+            ? (words.empty() ? std::string("box") : words[0])
+            : node.name;
+        if (head == "slot") {
+            const std::string requestedSlot = words.size() > 1 ? words[1] : "";
+            return requestedSlot.empty() && !slotHtml.empty()
+                ? slotHtml
+                : renderSlotPlan(instance, env, requestedSlot);
+        }
+        if (head == "else") return std::string{};
+        if (head == "if") {
+            const std::string condition = node.expression.empty()
+                ? (words.size() > 1 ? node.text.substr(node.text.find(words[1])) : "")
+                : node.expression;
+            auto value = evalComponentExpression(condition, env);
+            if (value && isTruthy(value->toString())) {
+                return renderChildren(def, instance, node, env, slotHtml);
+            }
+            if (const auto* elseNode = elseSibling(def, node)) {
+                return renderChildren(def, instance, *elseNode, env, slotHtml);
+            }
+            return std::string{};
+        }
+        if (head == "for") {
+            const std::string raw = node.expression.empty()
+                ? (words.size() > 1 ? node.text.substr(node.text.find(words[1])) : "")
+                : node.expression;
+            const auto inPos = raw.find(" in ");
+            if (inPos == std::string::npos) return std::string{};
+            const std::string itemName = trimString(raw.substr(0, inPos));
+            const std::string listExpr = trimString(raw.substr(inPos + 4));
+            auto value = evalComponentExpression(listExpr, env);
+            if (!value || !value->isArray()) return std::string{};
+            std::string out;
+            size_t itemIndex = 0;
+            for (const auto& item : value->getArray()->getArrayData()) {
+                assignLoopIterator(env, itemName, item);
+                std::string keySegment = std::to_string(itemIndex++);
+                if (!node.keyExpression.empty()) {
+                    keySegment = pathSegment(expressionText(node.keyExpression, env));
+                }
+                renderPath.push_back("for" + nodeIndexString(def, node) + "_" + keySegment);
+                out += renderChildren(def, instance, node, env, slotHtml);
+                renderPath.pop_back();
+            }
+            return out;
+        }
+        const auto preferredModule = node.definitionModule == jtml::InvalidSemanticModuleId
+            ? def.moduleId
+            : node.definitionModule;
+        if (const auto* nested = findComponentDefinition(head, preferredModule, instance.moduleId)) {
+            (void)nested;
+            return renderNested(def, instance, node, env, head);
+        }
+        const std::string children = renderChildren(def, instance, node, env, slotHtml);
+        if (head == "show" || head == "text") {
+            const std::string expr = node.expression.empty()
+                ? (words.size() > 1 ? node.text.substr(node.text.find(words[1])) : "")
+                : node.expression;
+            return "<p>" + escapeHtml(expressionText(expr, env)) + "</p>" + children;
+        }
+        std::vector<std::pair<std::string, std::string>> attrs;
+        std::vector<std::pair<std::string, std::string>> modifiers;
+        std::vector<std::string> boolAttrs;
+        std::vector<std::string> content;
+        for (size_t i = 1; i < words.size(); ++i) {
+            const std::string& token = words[i];
+            if (token == "click") break;
+            if ((head == "link" || head == "navlink") && token == "to" && i + 1 < words.size()) {
+                const std::string routeTarget = expressionText(words[++i], env);
+                const std::string routeHref = routeTarget.empty() || routeTarget.front() == '#'
+                    ? routeTarget
+                    : "#" + routeTarget;
+                attrs.push_back({"href", "javascript:void(0)"});
+                attrs.push_back({"data-jtml-href", routeHref.empty() ? "#/" : routeHref});
+                attrs.push_back({"data-jtml-link", "true"});
+                if (i + 2 < words.size() && words[i + 1] == "active-class") {
+                    attrs.push_back({"data-jtml-active-class", expressionText(words[i + 2], env)});
+                    i += 2;
+                }
+                continue;
+            }
+            if (isUiModifier(token)) {
+                if (i + 1 < words.size() &&
+                    !isAttrName(words[i + 1]) &&
+                    !isBooleanAttr(words[i + 1]) &&
+                    !isUiModifier(words[i + 1]) &&
+                    words[i + 1] != "click") {
+                    modifiers.push_back({token, expressionText(words[i + 1], env)});
+                    ++i;
+                } else {
+                    modifiers.push_back({token, "true"});
+                }
+            } else if (isAttrName(token)) {
+                if (i + 1 < words.size() &&
+                    !isAttrName(words[i + 1]) &&
+                    !isBooleanAttr(words[i + 1]) &&
+                    words[i + 1] != "click") {
+                    attrs.push_back({token, expressionText(words[i + 1], env)});
+                    ++i;
+                } else {
+                    content.push_back(token);
+                }
+            } else if (isBooleanAttr(token)) {
+                boolAttrs.push_back(token);
+            } else {
+                content.push_back(token);
+            }
+        }
+        std::string attrHtml;
+        std::string classValue;
+        auto hasAttr = [&](const std::string& needle) {
+            return std::any_of(attrs.begin(), attrs.end(),
+                [&](const auto& attr) { return attr.first == needle; });
+        };
+        if (head == "checkbox" && !hasAttr("type")) attrs.push_back({"type", "checkbox"});
+        if ((head == "file" || head == "dropzone") && !hasAttr("type")) attrs.push_back({"type", "file"});
+        for (const auto& [name, value] : attrs) {
+            if (value.empty()) continue;
+            if (name == "class") {
+                if (!classValue.empty()) classValue += " ";
+                classValue += value;
+            } else {
+                attrHtml += " " + name + "=\"" + escapeAttr(value) + "\"";
+            }
+        }
+        for (const auto& name : boolAttrs) attrHtml += " " + name;
+        if (isUiPrimitive(head)) {
+            if (!classValue.empty()) classValue += " ";
+            classValue += "jtml-" + head;
+            attrHtml += " data-jtml-ui=\"" + escapeAttr(head) + "\"";
+        }
+        for (const auto& [name, value] : modifiers) {
+            std::string safeValue;
+            for (char ch : value) {
+                if (std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == '-') {
+                    safeValue.push_back(ch);
+                } else {
+                    safeValue.push_back('-');
+                }
+            }
+            if (!classValue.empty()) classValue += " ";
+            classValue += "jtml-" + name +
+                (safeValue.empty() || safeValue == "true" ? std::string{} : "-" + safeValue);
+            attrHtml += " data-jtml-ui-" + name + "=\"" + escapeAttr(value) + "\"";
+        }
+        if (!classValue.empty()) {
+            attrHtml = " class=\"" + escapeAttr(classValue) + "\"" + attrHtml;
+        }
+        if (head != "button") attrHtml += " data-jtml-live-body-plan=\"" + escapeAttr(head) + "\"";
+        const std::string tag = head == "button" ? std::string("button") : tagName(head);
+        std::string inlineText;
+        if (children.empty() && (!content.empty() || !node.expression.empty())) {
+            std::ostringstream expr;
+            if (!content.empty()) {
+                for (size_t i = 0; i < content.size(); ++i) {
+                    if (i > 0) expr << ' ';
+                    expr << content[i];
+                }
+            } else {
+                expr << node.expression;
+            }
+            inlineText = escapeHtml(expressionText(expr.str(), env));
+        }
+        if (head == "button") {
+            auto clickIt = std::find(words.begin(), words.end(), "click");
+            if (clickIt != words.end() && ++clickIt != words.end()) {
+                const auto invocation = parseComponentActionInvocation(*clickIt, env);
+                const std::string actionName = invocation.value("name", std::string{});
+                if (!actionName.empty()) {
+                    attrHtml += " data-jtml-direct-component-id=\"" +
+                        escapeAttr(instance.id) + "\"";
+                    attrHtml += " data-jtml-direct-component-action=\"" +
+                        escapeAttr(actionName) + "\"";
+                    attrHtml += " data-jtml-direct-component-args=\"" +
+                        escapeAttr(invocation["args"].dump()) + "\"";
+                }
+            }
+            return "<button type=\"button\"" + attrHtml + ">" +
+                   inlineText + children + "</button>";
+        }
+        return "<" + tag + attrHtml + ">" + inlineText + children + "</" + tag + ">";
+    };
+    auto renderComponent = [&](const RuntimeComponentInstance& instance) {
+        const auto* definition = findComponentDefinition(
+            instance.component, instance.definitionModule, instance.moduleId);
+        auto env = instance.environment ? instance.environment : globalEnv;
+        if (!definition || !env) return std::string{};
+        std::string out;
+        for (const auto& node : definition->bodyPlan) {
+            if (node.renderRoot && node.kind == "template") {
+                out += renderNode(*definition, instance, node, env, "");
+            }
+        }
+        const std::string descendantPrefix = instance.id + "__";
+        for (auto it = dynamicComponentInstances.begin();
+             it != dynamicComponentInstances.end();) {
+            const bool ownedDescendant = it->first.rfind(descendantPrefix, 0) == 0;
+            if (ownedDescendant &&
+                it->second.lastSeenRenderGeneration != componentRenderGeneration) {
+                it = dynamicComponentInstances.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        return out;
+    };
+
     nlohmann::json out;
     out["variables"] = nlohmann::json::object();
     out["functions"] = nlohmann::json::object();
     out["componentDefinitions"] = nlohmann::json::parse(getComponentDefinitionsJSON());
     out["components"] = nlohmann::json::array();
     if (!globalEnv) return out.dump();
+    ++componentRenderGeneration;
 
     for (const auto& [key, info] : globalEnv->variables) {
         if (!info) continue;
@@ -381,7 +1190,11 @@ std::string Interpreter::getStateJSON() {
             }
             locals[publicName] = local;
         }
+        const std::string renderedHtml = renderComponent(instance);
+        const bool renderedHtmlSupported = !renderedHtml.empty();
         out["components"].push_back({
+            {"moduleId", moduleIdToJson(instance.moduleId)},
+            {"definitionModule", moduleIdToJson(instance.definitionModule)},
             {"id", instance.id},
             {"component", instance.component},
             {"role", instance.role},
@@ -390,9 +1203,17 @@ std::string Interpreter::getStateJSON() {
             {"sourceLine", instance.sourceLine},
             {"params", instance.params},
             {"locals", locals},
+            {"slotPlan", bodyPlanToJson(instance.slotPlan)},
+            {"renderedHtmlSupported", renderedHtmlSupported},
+            {"renderedHtml", renderedHtml},
             {"runtime", {
                 {"mode", "semantic-instance"},
+                {"moduleId", moduleIdToJson(instance.moduleId)},
+                {"definitionModule", moduleIdToJson(instance.definitionModule)},
                 {"ownsEnvironment", true},
+                {"bodyPlanActionExecution", true},
+                {"bodyPlanTemplateRendering", renderedHtmlSupported},
+                {"renderedHtmlSupported", renderedHtmlSupported},
                 {"ready", instance.runtimeReady},
                 {"environmentId", instance.environment ? instance.environment->instanceID : instance.instanceID},
                 {"definition", instance.component},
@@ -400,6 +1221,8 @@ std::string Interpreter::getStateJSON() {
                 {"state", stringVectorToJson(instance.stateNames)},
                 {"derived", stringVectorToJson(instance.derivedNames)},
                 {"effects", stringVectorToJson(instance.effectNames)},
+                {"slotPlan", bodyPlanToJson(instance.slotPlan)},
+                {"renderedHtml", renderedHtml},
             }},
         });
     }
@@ -415,10 +1238,16 @@ std::string Interpreter::getComponentsJSON() {
 }
 
 std::string Interpreter::getComponentDefinitionsJSON() {
+    auto moduleIdToJson = [](jtml::SemanticModuleId id) {
+        return id == jtml::InvalidSemanticModuleId ? nlohmann::json(nullptr) : nlohmann::json(id);
+    };
     auto componentBodyPlanToJson = [](const auto& bodyPlan) {
         nlohmann::json out = nlohmann::json::array();
         for (const auto& node : bodyPlan) {
             out.push_back({
+                {"definitionModule", node.definitionModule == jtml::InvalidSemanticModuleId
+                    ? nlohmann::json(nullptr)
+                    : nlohmann::json(node.definitionModule)},
                 {"indent", node.indent},
                 {"parentIndex", node.parentIndex},
                 {"childIndices", node.childIndices},
@@ -428,6 +1257,7 @@ std::string Interpreter::getComponentDefinitionsJSON() {
                 {"text", node.text},
                 {"operator", node.operatorToken},
                 {"expression", node.expression},
+                {"keyExpression", node.keyExpression},
                 {"renderRoot", node.renderRoot},
             });
         }
@@ -436,10 +1266,16 @@ std::string Interpreter::getComponentDefinitionsJSON() {
 
     nlohmann::json out = nlohmann::json::array();
     for (const auto& def : componentDefinitions) {
+        const bool hasRenderableTemplate = def.rootTemplateNodeCount > 0;
         out.push_back({
+            {"moduleId", moduleIdToJson(def.moduleId)},
             {"name", def.name},
             {"sourceLine", def.sourceLine},
             {"params", def.params},
+            {"emits", def.emits},
+            {"emitArity", def.emitArity},
+            {"emitPayloads", def.emitPayloads},
+            {"emitPayloadTypes", def.emitPayloadTypes},
             {"body", def.body},
             {"bodyPlan", componentBodyPlanToJson(def.bodyPlan)},
             {"localState", stringVectorToJson(def.localState)},
@@ -453,8 +1289,16 @@ std::string Interpreter::getComponentDefinitionsJSON() {
             {"slotCount", def.slotCount},
             {"runtimePlan", {
                 {"mode", "semantic-instance"},
+                {"moduleId", moduleIdToJson(def.moduleId)},
                 {"ownsEnvironment", true},
+                {"bodyPlanActionExecution", true},
+                {"bodyPlanTemplateRendering", hasRenderableTemplate},
+                {"renderedHtmlSupported", hasRenderableTemplate},
                 {"actions", stringVectorToJson(def.localActions)},
+                {"emits", stringVectorToJson(def.emits)},
+                {"emitArity", def.emitArity},
+                {"emitPayloads", def.emitPayloads},
+                {"emitPayloadTypes", def.emitPayloadTypes},
                 {"state", stringVectorToJson(def.localState)},
                 {"derived", stringVectorToJson(def.localDerived)},
                 {"effects", stringVectorToJson(def.localEffects)},
@@ -556,31 +1400,461 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
         return false;
     }
 
+    const auto* definition = findComponentDefinition(
+        instance->component, instance->definitionModule, instance->moduleId);
+
+    auto dispatchEmittedEvent = [&](const std::string& emittedName,
+                                    const nlohmann::json& emittedArgs) -> bool {
+        const auto handlerIt = instance->eventHandlers.find(emittedName);
+        if (handlerIt == instance->eventHandlers.end() ||
+            handlerIt->second.name.empty() ||
+            instance->parentId.empty()) {
+            return false;
+        }
+        if (definition && !definition->emits.empty() &&
+            std::find(definition->emits.begin(), definition->emits.end(), emittedName) ==
+                definition->emits.end()) {
+            errorOut = "Component '" + instance->component + "' does not emit event '" +
+                       emittedName + "'";
+            return false;
+        }
+        if (definition) {
+            const auto arityIt = definition->emitArity.find(emittedName);
+            if (arityIt != definition->emitArity.end()) {
+                const int got = emittedArgs.is_array() ? static_cast<int>(emittedArgs.size()) : 0;
+                if (got != arityIt->second) {
+                    errorOut = "Component event '" + emittedName + "' expected " +
+                               std::to_string(arityIt->second) + " payload argument(s), got " +
+                               std::to_string(got);
+                    return false;
+                }
+            }
+            const auto typeIt = definition->emitPayloadTypes.find(emittedName);
+            if (typeIt != definition->emitPayloadTypes.end()) {
+                const int got = emittedArgs.is_array() ? static_cast<int>(emittedArgs.size()) : 0;
+                for (int i = 0; i < static_cast<int>(typeIt->second.size()); ++i) {
+                    const nlohmann::json value = i < got ? emittedArgs.at(i) : nlohmann::json(nullptr);
+                    if (!emittedPayloadTypeMatches(value, typeIt->second[i])) {
+                        std::string payloadName = std::to_string(i);
+                        const auto payloadIt = definition->emitPayloads.find(emittedName);
+                        if (payloadIt != definition->emitPayloads.end() &&
+                            i < static_cast<int>(payloadIt->second.size()) &&
+                            !payloadIt->second[static_cast<size_t>(i)].empty()) {
+                            payloadName = payloadIt->second[static_cast<size_t>(i)];
+                        }
+                        errorOut = "Component '" + definition->name + "' event '" + emittedName +
+                                   "' payload '" + payloadName + "' expected type '" +
+                                   typeIt->second[i] + "'";
+                        if (definition->sourceLine > 0) {
+                            errorOut += " at component definition line " +
+                                        std::to_string(definition->sourceLine);
+                        }
+                        return false;
+                    }
+                }
+            }
+        }
+        nlohmann::json forwardedArgs = nlohmann::json::array();
+        if (handlerIt->second.args.is_array()) {
+            for (const auto& arg : handlerIt->second.args) {
+                forwardedArgs.push_back(arg);
+            }
+        }
+        if (emittedArgs.is_array()) {
+            for (const auto& arg : emittedArgs) {
+                forwardedArgs.push_back(arg);
+            }
+        }
+        return dispatchComponentAction(
+            instance->parentId,
+            handlerIt->second.name,
+            forwardedArgs,
+            updatedBindingsJSON,
+            errorOut);
+    };
+
     auto hasDeclaredAction = [&](const std::string& name) {
         if (instance->actionNames.empty()) return true;
         return std::find(instance->actionNames.begin(), instance->actionNames.end(), name) != instance->actionNames.end();
     };
     if (!hasDeclaredAction(actionName)) {
+        if (dispatchEmittedEvent(actionName, args)) return true;
+        if (!errorOut.empty()) return false;
         nlohmann::json available = stringVectorToJson(instance->actionNames);
         errorOut = "Component action not declared on " + componentId + "." + actionName +
                    "; available actions: " + available.dump();
         return false;
     }
 
+    auto bodyPlanChildren = [](const RuntimeComponentDefinition& def,
+                               const BodyPlanNode& node) {
+        std::vector<const BodyPlanNode*> children;
+        for (int index : node.childIndices) {
+            if (index < 0 || static_cast<size_t>(index) >= def.bodyPlan.size()) continue;
+            children.push_back(&def.bodyPlan[static_cast<size_t>(index)]);
+        }
+        return children;
+    };
+    auto bodyPlanElseSibling = [](const RuntimeComponentDefinition& def,
+                                  const BodyPlanNode& node) -> const BodyPlanNode* {
+        auto it = std::find_if(def.bodyPlan.begin(), def.bodyPlan.end(),
+            [&](const BodyPlanNode& candidate) { return &candidate == &node; });
+        if (it == def.bodyPlan.end()) return nullptr;
+        for (++it; it != def.bodyPlan.end(); ++it) {
+            if (it->parentIndex == node.parentIndex) {
+                return it->name == "else" ? &(*it) : nullptr;
+            }
+        }
+        return nullptr;
+    };
+    auto words = [](const std::string& value) {
+        std::vector<std::string> out;
+        std::istringstream input(value);
+        std::string word;
+        while (input >> word) out.push_back(word);
+        return out;
+    };
+    auto setOrDefine = [](const std::shared_ptr<JTML::Environment>& env,
+                          const std::string& name,
+                          const std::shared_ptr<JTML::VarValue>& value) {
+        JTML::CompositeKey key{env->instanceID, name};
+        if (env->hasVariable(key)) env->setVariable(key, value);
+        else env->defineVariable(key, value, JTML::VarKind::Normal);
+    };
+    auto runtimeLocalName = [&](const std::string& publicName) {
+        auto localIt = instance->locals.find(publicName);
+        return localIt == instance->locals.end() ? publicName : localIt->second;
+    };
+    auto parseExpressionValue = [&](const std::string& expr) -> std::shared_ptr<JTML::VarValue> {
+        const std::string source = "jtml 2\nlet __jtml_expr = " + expr + "\n";
+        const std::string lowered = jtml::normalizeSourceSyntax(source, jtml::SyntaxMode::Friendly);
+        Lexer lexer(lowered);
+        auto tokens = lexer.tokenize();
+        if (!lexer.getErrors().empty()) {
+            throw std::runtime_error("Could not tokenize component body-plan expression: " + expr);
+        }
+        Parser parser(std::move(tokens));
+        auto parsed = parser.parseProgram();
+        if (!parser.getErrors().empty() || parsed.empty() ||
+            parsed.front()->getType() != ASTNodeType::DefineStatement) {
+            throw std::runtime_error("Could not parse component body-plan expression: " + expr);
+        }
+        const auto& define = static_cast<const DefineStatementNode&>(*parsed.front());
+        return evaluateExpression(define.expression.get(), instance->environment);
+    };
+    auto splitCallArgs = [](const std::string& source) {
+        std::vector<std::string> out;
+        std::string current;
+        char quote = '\0';
+        int depth = 0;
+        auto trim = [](std::string value) {
+            value.erase(value.begin(), std::find_if(value.begin(), value.end(), [](unsigned char ch) {
+                return !std::isspace(ch);
+            }));
+            value.erase(std::find_if(value.rbegin(), value.rend(), [](unsigned char ch) {
+                return !std::isspace(ch);
+            }).base(), value.end());
+            return value;
+        };
+        for (size_t i = 0; i < source.size(); ++i) {
+            const char ch = source[i];
+            if (quote != '\0') {
+                current.push_back(ch);
+                if (ch == '\\' && i + 1 < source.size()) {
+                    current.push_back(source[++i]);
+                } else if (ch == quote) {
+                    quote = '\0';
+                }
+                continue;
+            }
+            if (ch == '"' || ch == '\'') {
+                quote = ch;
+                current.push_back(ch);
+                continue;
+            }
+            if (ch == '(' || ch == '[' || ch == '{') ++depth;
+            if ((ch == ')' || ch == ']' || ch == '}') && depth > 0) --depth;
+            if (ch == ',' && depth == 0) {
+                auto item = trim(current);
+                if (!item.empty()) out.push_back(item);
+                current.clear();
+                continue;
+            }
+            current.push_back(ch);
+        }
+        auto item = trim(current);
+        if (!item.empty()) out.push_back(item);
+        return out;
+    };
+    auto runBodyPlanAction = [&]() -> bool {
+        if (!definition) return false;
+        auto actionIt = std::find_if(definition->bodyPlan.begin(), definition->bodyPlan.end(),
+            [&](const BodyPlanNode& node) {
+                return node.kind == "action" && node.name == actionName;
+            });
+        if (actionIt == definition->bodyPlan.end()) return false;
+
+        const auto actionWords = words(actionIt->text);
+        std::map<std::string, std::shared_ptr<JTML::VarValue>> previousActionParams;
+        std::set<std::string> hadPreviousActionParams;
+        for (size_t i = 2; i < actionWords.size(); ++i) {
+            const size_t argIndex = i - 2;
+            JTML::CompositeKey key{instance->environment->instanceID, actionWords[i]};
+            if (instance->environment->hasVariable(key)) {
+                hadPreviousActionParams.insert(actionWords[i]);
+                previousActionParams[actionWords[i]] = instance->environment->getVariable(key);
+            }
+            auto value = (args.is_array() && argIndex < args.size())
+                ? jsonToVarValue(args[argIndex], instance->environment)
+                : std::make_shared<JTML::VarValue>(std::string{});
+            setOrDefine(instance->environment, actionWords[i], value);
+        }
+
+        auto applyAssignment = [&](const BodyPlanNode& node) -> bool {
+            if (!node.childIndices.empty()) return false;
+            const std::string targetName = runtimeLocalName(node.name);
+            const std::string op = node.operatorToken.empty() ? "=" : node.operatorToken;
+            if (op != "=" && op != "+=" && op != "-=" && op != "*=" && op != "/=" && op != "%=") return false;
+            const auto next = parseExpressionValue(node.expression);
+            JTML::CompositeKey key{instance->environment->instanceID, targetName};
+            if (op == "=") {
+                setOrDefine(instance->environment, targetName, next);
+            } else if (op == "+=") {
+                std::shared_ptr<JTML::VarValue> current;
+                try {
+                    current = instance->environment->getVariable(key);
+                } catch (...) {
+                    current = std::make_shared<JTML::VarValue>(std::string{});
+                }
+                if (current && current->isNumber() && next && next->isNumber()) {
+                    setOrDefine(instance->environment, targetName,
+                                std::make_shared<JTML::VarValue>(
+                                    current->getNumber() + next->getNumber()));
+                } else {
+                    setOrDefine(instance->environment, targetName,
+                                std::make_shared<JTML::VarValue>(
+                                    (current ? current->toString() : std::string{}) +
+                                    (next ? next->toString() : std::string{})));
+                }
+            } else if (op == "-=" || op == "*=" || op == "/=" || op == "%=") {
+                auto current = instance->environment->getVariable(key);
+                const double left = current && current->isNumber()
+                    ? current->getNumber()
+                    : std::stod(current ? current->toString() : "0");
+                const double right = next && next->isNumber()
+                    ? next->getNumber()
+                    : std::stod(next ? next->toString() : "0");
+                double result = left;
+                if (op == "-=") result = left - right;
+                else if (op == "*=") result = left * right;
+                else if (op == "/=") result = left / right;
+                else if (op == "%=") result = std::fmod(left, right);
+                setOrDefine(instance->environment, targetName,
+                            std::make_shared<JTML::VarValue>(result));
+            }
+            return true;
+        };
+        std::function<bool(const std::vector<const BodyPlanNode*>&)> runStatements;
+        runStatements = [&](const std::vector<const BodyPlanNode*>& nodes) -> bool {
+            for (const auto* node : nodes) {
+                if (!node) continue;
+                if (node->name == "else") continue;
+                if (node->kind == "assignment") {
+                    if (!applyAssignment(*node)) return false;
+                    continue;
+                }
+                if (node->kind == "call" && !node->name.empty()) {
+                    if (!node->childIndices.empty()) return false;
+                    nlohmann::json callArgs = nlohmann::json::array();
+                    std::vector<std::shared_ptr<JTML::VarValue>> callValues;
+                    for (const auto& argExpr : splitCallArgs(node->expression)) {
+                        auto value = parseExpressionValue(argExpr);
+                        callValues.push_back(value);
+                        callArgs.push_back(varValueToJson(value));
+                    }
+                    auto nestedAction = std::find_if(definition->bodyPlan.begin(), definition->bodyPlan.end(),
+                        [&](const BodyPlanNode& candidate) {
+                            return candidate.kind == "action" && candidate.name == node->name;
+                        });
+                    if (nestedAction == definition->bodyPlan.end()) {
+                        if (dispatchEmittedEvent(node->name, callArgs)) continue;
+                        return false;
+                    }
+                    const auto nestedWords = words(nestedAction->text);
+                    std::map<std::string, std::shared_ptr<JTML::VarValue>> previousParams;
+                    std::set<std::string> hadPreviousParams;
+                    for (size_t i = 2; i < nestedWords.size(); ++i) {
+                        const size_t argIndex = i - 2;
+                        JTML::CompositeKey key{instance->environment->instanceID, nestedWords[i]};
+                        if (instance->environment->hasVariable(key)) {
+                            hadPreviousParams.insert(nestedWords[i]);
+                            previousParams[nestedWords[i]] = instance->environment->getVariable(key);
+                        }
+                        auto value = argIndex < callValues.size()
+                            ? callValues[argIndex]
+                            : std::make_shared<JTML::VarValue>(std::string{});
+                        setOrDefine(instance->environment, nestedWords[i], value);
+                    }
+                    const bool nestedOk = runStatements(bodyPlanChildren(*definition, *nestedAction));
+                    for (size_t i = 2; i < nestedWords.size(); ++i) {
+                        const auto& param = nestedWords[i];
+                        JTML::CompositeKey key{instance->environment->instanceID, param};
+                        if (hadPreviousParams.count(param)) {
+                            setOrDefine(instance->environment, param, previousParams[param]);
+                        } else {
+                            instance->environment->variables.erase(key);
+                        }
+                    }
+                    if (!nestedOk) return false;
+                    continue;
+                }
+                if (node->kind == "template" && node->name == "if") {
+                    const std::string condition = node->expression.empty()
+                        ? ([&] {
+                            const auto conditionWords = words(node->text);
+                            return conditionWords.size() > 1
+                                ? node->text.substr(node->text.find(conditionWords[1]))
+                                : std::string{};
+                        })()
+                        : node->expression;
+                    const auto value = parseExpressionValue(condition);
+                    if (value && isTruthy(value->toString())) {
+                        if (!runStatements(bodyPlanChildren(*definition, *node))) return false;
+                    } else if (const auto* elseNode = bodyPlanElseSibling(*definition, *node)) {
+                        if (!runStatements(bodyPlanChildren(*definition, *elseNode))) return false;
+                    }
+                    continue;
+                }
+                if (node->kind == "template" && node->name == "for") {
+                    const std::string raw = node->expression.empty()
+                        ? ([&] {
+                            const auto loopWords = words(node->text);
+                            return loopWords.size() > 1
+                                ? node->text.substr(node->text.find(loopWords[1]))
+                                : std::string{};
+                        })()
+                        : node->expression;
+                    auto trim = [](const std::string& value) {
+                        const auto start = value.find_first_not_of(" \t\r\n");
+                        if (start == std::string::npos) return std::string{};
+                        const auto end = value.find_last_not_of(" \t\r\n");
+                        return value.substr(start, end - start + 1);
+                    };
+                    const auto inPos = raw.find(" in ");
+                    if (inPos == std::string::npos) return false;
+                    const std::string itemName = trim(raw.substr(0, inPos));
+                    const std::string listExpr = trim(raw.substr(inPos + 4));
+                    if (itemName.empty() || listExpr.empty()) return false;
+                    const auto value = parseExpressionValue(listExpr);
+                    if (!value || (!value->isArray() && !value->isString())) return false;
+                    JTML::CompositeKey iteratorKey{instance->environment->instanceID, itemName};
+                    std::shared_ptr<JTML::VarValue> previous;
+                    const bool hadPrevious = instance->environment->hasVariable(iteratorKey);
+                    if (hadPrevious) {
+                        previous = instance->environment->getVariable(iteratorKey);
+                    }
+                    if (value->isArray()) {
+                        for (const auto& item : value->getArray()->getArrayData()) {
+                            setOrDefine(instance->environment, itemName, item);
+                            if (!runStatements(bodyPlanChildren(*definition, *node))) return false;
+                        }
+                    } else {
+                        for (const auto& c : value->getString()) {
+                            setOrDefine(instance->environment, itemName,
+                                        std::make_shared<JTML::VarValue>(std::string(1, c)));
+                            if (!runStatements(bodyPlanChildren(*definition, *node))) return false;
+                        }
+                    }
+                    if (hadPrevious) {
+                        setOrDefine(instance->environment, itemName, previous);
+                    } else {
+                        instance->environment->variables.erase(iteratorKey);
+                    }
+                    continue;
+                }
+                if (node->kind == "template" && node->name == "while") {
+                    const std::string condition = node->expression.empty()
+                        ? ([&] {
+                            const auto conditionWords = words(node->text);
+                            return conditionWords.size() > 1
+                                ? node->text.substr(node->text.find(conditionWords[1]))
+                                : std::string{};
+                        })()
+                        : node->expression;
+                    int guard = 0;
+                    while (true) {
+                        const auto value = parseExpressionValue(condition);
+                        if (!value || !isTruthy(value->toString())) break;
+                        if (++guard > 10000) return false;
+                        if (!runStatements(bodyPlanChildren(*definition, *node))) return false;
+                    }
+                    continue;
+                }
+                return false;
+            }
+            return true;
+        };
+        const bool ok = runStatements(bodyPlanChildren(*definition, *actionIt));
+        for (size_t i = 2; i < actionWords.size(); ++i) {
+            const auto& param = actionWords[i];
+            JTML::CompositeKey key{instance->environment->instanceID, param};
+            if (hadPreviousActionParams.count(param)) {
+                setOrDefine(instance->environment, param, previousActionParams[param]);
+            } else {
+                instance->environment->variables.erase(key);
+            }
+        }
+        if (!ok) return false;
+        return true;
+    };
+
+    bool bodyPlanRan = false;
+    std::string bodyPlanError;
+    try {
+        bodyPlanRan = runBodyPlanAction();
+    } catch (const std::exception& e) {
+        bodyPlanError = e.what();
+    }
+    if (bodyPlanRan) {
+        try {
+            recalcAllDirty();
+            updatedBindingsJSON = getBindingsJSON();
+            return true;
+        } catch (const std::exception& e) {
+            errorOut = e.what();
+            return false;
+        }
+    }
+
+    if (dispatchEmittedEvent(actionName, args)) return true;
+    if (!errorOut.empty()) return false;
+
     std::string runtimeActionName = actionName;
     auto loweredIt = instance->locals.find(actionName);
     if (loweredIt != instance->locals.end()) runtimeActionName = loweredIt->second;
 
     JTML::CompositeKey actionKey{instance->environment->instanceID, actionName};
-    auto fn = instance->environment->getFunction(actionKey);
+    std::shared_ptr<JTMLInterpreter::Function> fn;
+    try {
+        fn = instance->environment->getFunction(actionKey);
+    } catch (...) {
+        fn = nullptr;
+    }
     if (!fn && runtimeActionName != actionName) {
         actionKey = JTML::CompositeKey{instance->environment->instanceID, runtimeActionName};
-        fn = instance->environment->getFunction(actionKey);
+        try {
+            fn = instance->environment->getFunction(actionKey);
+        } catch (...) {
+            fn = nullptr;
+        }
     }
+
     if (!fn) {
         nlohmann::json available = stringVectorToJson(instance->actionNames);
-        errorOut = "Component action not found: " + componentId + "." + actionName +
-                   "; available actions: " + available.dump();
+        errorOut = bodyPlanError.empty()
+            ? "Component action not found: " + componentId + "." + actionName +
+              "; available actions: " + available.dump()
+            : bodyPlanError;
         return false;
     }
 
@@ -1038,6 +2312,10 @@ void Interpreter::collectComponentInstances(const ASTNode& node,
     const std::string id = attrValueFor(elem, "data-jtml-instance");
     if (!id.empty()) {
         RuntimeComponentInstance instance;
+        instance.moduleId =
+            parseSemanticModuleId(attrValueFor(elem, "data-jtml-component-module"));
+        instance.definitionModule =
+            parseSemanticModuleId(attrValueFor(elem, "data-jtml-component-definition-module"));
         instance.id = id;
         instance.component = attrValueFor(elem, "data-jtml-component");
         instance.role = attrValueFor(elem, "data-jtml-component-role");
@@ -1069,6 +2347,8 @@ void Interpreter::collectComponentDefinitions(const ASTNode& node,
     const std::string name = attrValueFor(elem, "data-jtml-component-def");
     if (!name.empty()) {
         RuntimeComponentDefinition def;
+        def.moduleId =
+            parseSemanticModuleId(attrValueFor(elem, "data-jtml-component-def-module"));
         def.name = name;
         try {
             const std::string sourceLine = attrValueFor(elem, "data-jtml-source-line");
@@ -1077,11 +2357,16 @@ void Interpreter::collectComponentDefinitions(const ASTNode& node,
             def.sourceLine = 0;
         }
         def.params = parseRuntimeList(attrValueFor(elem, "data-jtml-component-def-params"));
+        def.emits = parseRuntimeList(attrValueFor(elem, "data-jtml-component-def-emits"));
+        def.emitArity = parseRuntimeIntMap(attrValueFor(elem, "data-jtml-component-def-emit-arity"));
+        def.emitPayloads = parseRuntimeStringListMap(attrValueFor(elem, "data-jtml-component-def-emit-payloads"));
+        def.emitPayloadTypes = parseRuntimeStringListMap(attrValueFor(elem, "data-jtml-component-def-emit-payload-types"));
         def.body = hexDecode(attrValueFor(elem, "data-jtml-component-body-hex"));
 
         auto existing = std::find_if(out.begin(), out.end(),
             [&](const RuntimeComponentDefinition& current) {
-                return current.name == def.name;
+                return current.name == def.name &&
+                       current.moduleId == def.moduleId;
             });
         if (existing == out.end()) out.push_back(std::move(def));
     }
@@ -1099,7 +2384,8 @@ void Interpreter::attachComponentEnvironment(RuntimeComponentInstance& instance)
             renderer.get());
     }
     instance.environment->setRenderer(renderer.get());
-    if (const auto* definition = findComponentDefinition(instance.component)) {
+    if (const auto* definition = findComponentDefinition(
+            instance.component, instance.definitionModule, instance.moduleId)) {
         instance.stateNames = definition->localState;
         instance.derivedNames = definition->localDerived;
         instance.actionNames = definition->localActions;
@@ -1159,12 +2445,18 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
     if (!plan.componentDefinitions.empty() || !plan.componentInstances.empty()) {
         for (const auto& plannedDef : plan.componentDefinitions) {
             RuntimeComponentDefinition def;
+            def.moduleId = plannedDef.moduleId;
             def.name = plannedDef.name;
             def.sourceLine = plannedDef.sourceLine;
             def.params = plannedDef.params;
+            def.emits = plannedDef.emits;
+            def.emitArity = plannedDef.emitArity;
+            def.emitPayloads = plannedDef.emitPayloads;
+            def.emitPayloadTypes = plannedDef.emitPayloadTypes;
             def.body = plannedDef.bodySource;
             for (const auto& plannedNode : plannedDef.bodyPlan) {
                 def.bodyPlan.push_back({
+                    plannedNode.definitionModule,
                     plannedNode.indent,
                     plannedNode.parentIndex,
                     plannedNode.childIndices,
@@ -1174,6 +2466,7 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
                     plannedNode.text,
                     plannedNode.operatorToken,
                     plannedNode.expression,
+                    plannedNode.keyExpression,
                     plannedNode.renderRoot,
                 });
             }
@@ -1189,7 +2482,8 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
 
             auto existing = std::find_if(componentDefinitions.begin(), componentDefinitions.end(),
                 [&](const RuntimeComponentDefinition& current) {
-                    return current.name == def.name;
+                    return current.name == def.name &&
+                           current.moduleId == def.moduleId;
                 });
             if (existing == componentDefinitions.end()) componentDefinitions.push_back(std::move(def));
         }
@@ -1204,6 +2498,8 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
 
         for (const auto& plannedInstance : plan.componentInstances) {
             RuntimeComponentInstance instance;
+            instance.moduleId = plannedInstance.moduleId;
+            instance.definitionModule = plannedInstance.definitionModule;
             instance.id = plannedInstance.id;
             instance.component = plannedInstance.component;
             instance.role = plannedInstance.role.empty() ? "component" : plannedInstance.role;
@@ -1217,6 +2513,22 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
             }
             instance.params = propertiesToMap(plannedInstance.params);
             instance.locals = propertiesToMap(plannedInstance.locals);
+            for (const auto& plannedNode : plannedInstance.slotPlan) {
+                instance.slotPlan.push_back({
+                    plannedNode.definitionModule,
+                    plannedNode.indent,
+                    plannedNode.parentIndex,
+                    plannedNode.childIndices,
+                    plannedNode.kind,
+                    plannedNode.head,
+                    plannedNode.name,
+                    plannedNode.text,
+                    plannedNode.operatorToken,
+                    plannedNode.expression,
+                    plannedNode.keyExpression,
+                    plannedNode.renderRoot,
+                });
+            }
             componentInstances.push_back(std::move(instance));
         }
     } else {
@@ -1243,6 +2555,34 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
 
 const Interpreter::RuntimeComponentDefinition*
 Interpreter::findComponentDefinition(const std::string& name) const {
+    return findComponentDefinition(
+        name, jtml::InvalidSemanticModuleId, jtml::InvalidSemanticModuleId);
+}
+
+const Interpreter::RuntimeComponentDefinition*
+Interpreter::findComponentDefinition(const std::string& name,
+                                     jtml::SemanticModuleId preferredModule,
+                                     jtml::SemanticModuleId fallbackModule) const {
+    auto matches = [&](const RuntimeComponentDefinition& definition,
+                       jtml::SemanticModuleId moduleId) {
+        return moduleId != jtml::InvalidSemanticModuleId &&
+               definition.name == name &&
+               definition.moduleId == moduleId;
+    };
+    auto preferredIt = std::find_if(
+        componentDefinitions.begin(), componentDefinitions.end(),
+        [&](const RuntimeComponentDefinition& definition) {
+            return matches(definition, preferredModule);
+        });
+    if (preferredIt != componentDefinitions.end()) return &(*preferredIt);
+
+    auto fallbackIt = std::find_if(
+        componentDefinitions.begin(), componentDefinitions.end(),
+        [&](const RuntimeComponentDefinition& definition) {
+            return matches(definition, fallbackModule);
+        });
+    if (fallbackIt != componentDefinitions.end()) return &(*fallbackIt);
+
     auto definitionIt = std::find_if(
         componentDefinitions.begin(), componentDefinitions.end(),
         [&](const RuntimeComponentDefinition& definition) {
@@ -1257,7 +2597,17 @@ Interpreter::RuntimeComponentInstance* Interpreter::findComponentInstance(const 
         [&](const RuntimeComponentInstance& instance) {
             return instance.id == id || std::to_string(instance.instanceID) == id;
         });
-    return instanceIt == componentInstances.end() ? nullptr : &(*instanceIt);
+    if (instanceIt != componentInstances.end()) return &(*instanceIt);
+    auto dynamicIt = dynamicComponentInstances.find(id);
+    if (dynamicIt != dynamicComponentInstances.end()) return &dynamicIt->second;
+    auto dynamicByInstance = std::find_if(
+        dynamicComponentInstances.begin(), dynamicComponentInstances.end(),
+        [&](const auto& entry) {
+            return std::to_string(entry.second.instanceID) == id;
+        });
+    return dynamicByInstance == dynamicComponentInstances.end()
+        ? nullptr
+        : &dynamicByInstance->second;
 }
 
 Interpreter::RuntimeComponentInstance* Interpreter::findComponentInstanceForElement(const JtmlElementNode& elem) {
@@ -1275,6 +2625,14 @@ std::shared_ptr<JTML::Environment> Interpreter::environmentForInstance(JTML::Ins
         });
     if (instanceIt != componentInstances.end() && instanceIt->environment) {
         return instanceIt->environment;
+    }
+    auto dynamicIt = std::find_if(
+        dynamicComponentInstances.begin(), dynamicComponentInstances.end(),
+        [&](const auto& entry) {
+            return entry.second.instanceID == instanceID;
+        });
+    if (dynamicIt != dynamicComponentInstances.end() && dynamicIt->second.environment) {
+        return dynamicIt->second.environment;
     }
     return globalEnv;
 }

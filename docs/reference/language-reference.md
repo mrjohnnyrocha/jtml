@@ -719,6 +719,26 @@ semantic instance mode. The current renderer still emits compatibility-expanded
 DOM, but tooling no longer needs to reverse-engineer component ownership from
 that DOM.
 
+Components can declare emitted events:
+
+```jtml
+make Child emits picked(item: string) cancelled
+  when choose
+    picked("Ada")
+  button "Pick" click choose
+
+make Parent
+  Child on picked remember
+```
+
+`picked(item: string)` records the payload name `item` in `emitPayloads`, the
+payload type `string` in `emitPayloadTypes`, and the payload count in
+`emitArity`. Browser-local builds, live `/api/state`,
+`/api/component-definitions`, and `jtml explain` all expose the same event
+contract. Browser-local and live direct component dispatch enforce simple
+payload types (`string`, `number`, `boolean`/`bool`, `array`, `object`, `null`,
+and `any`/`unknown`) before forwarding emitted args to parent handlers.
+
 Relative imports are resolved from the directory of the importing file, parsed
 once per compile graph, and cycles are reported as errors. This is the
 reliable first slice needed by `check`, `build`, `serve --watch`, `dev`, and

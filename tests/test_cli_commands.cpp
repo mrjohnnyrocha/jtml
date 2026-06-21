@@ -923,10 +923,20 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["nestedComponentCalls"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["commonAttributes"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["simpleActionArguments"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["metadataDrivenLeafPatches"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["liveInterpreterParity"], false);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["fullParity"], false);
     EXPECT_EQ(report["runtimeCapabilities"]["contractFirstJtlApis"]["planned"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["contractFirstJtlApis"]["implemented"], false);
+    ASSERT_TRUE(report["runtimeCapabilities"].contains("performanceTarget")) << report.dump(2);
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["benchmarkPath"],
+              "compiler-first browser production target");
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["liveHtmlPatchPath"],
+              "dev/internal runtime backend");
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["bodyPlanReadWriteMetadata"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["optimizedJsCompiler"], "planned");
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("leaf patch"),
+              std::string::npos);
 
     const std::string tiers = report["stabilityTiers"].dump();
     EXPECT_NE(tiers.find("stable"), std::string::npos);
@@ -935,6 +945,7 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_NE(tiers.find("first browser-local direct component body-plan execution"),
               std::string::npos);
     EXPECT_NE(tiers.find("component body-plan parity"), std::string::npos);
+    EXPECT_NE(tiers.find("compiler-first browser production target"), std::string::npos);
     EXPECT_NE(tiers.find("jtl 1"), std::string::npos);
     EXPECT_NE(tiers.find("contract-first JTL API modules"), std::string::npos);
 

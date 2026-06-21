@@ -33,6 +33,7 @@ struct RuntimePlanAction {
 
 struct RuntimePlanComponentBodyNode {
     SemanticModuleId definitionModule = InvalidSemanticModuleId;
+    int sourceLine = 0;
     int indent = 0;
     int parentIndex = -1;
     std::vector<int> childIndices;
@@ -43,6 +44,8 @@ struct RuntimePlanComponentBodyNode {
     std::string operatorToken;
     std::string expression;
     std::string keyExpression;
+    std::vector<std::string> reads;
+    std::vector<std::string> writes;
     bool renderRoot = false;
 };
 

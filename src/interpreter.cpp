@@ -400,6 +400,8 @@ std::string Interpreter::getStateJSON() {
                 {"operator", node.operatorToken},
                 {"expression", node.expression},
                 {"keyExpression", node.keyExpression},
+                {"reads", node.reads},
+                {"writes", node.writes},
                 {"renderRoot", node.renderRoot},
             });
         }
@@ -1248,6 +1250,7 @@ std::string Interpreter::getComponentDefinitionsJSON() {
                 {"definitionModule", node.definitionModule == jtml::InvalidSemanticModuleId
                     ? nlohmann::json(nullptr)
                     : nlohmann::json(node.definitionModule)},
+                {"sourceLine", node.sourceLine},
                 {"indent", node.indent},
                 {"parentIndex", node.parentIndex},
                 {"childIndices", node.childIndices},
@@ -1258,6 +1261,8 @@ std::string Interpreter::getComponentDefinitionsJSON() {
                 {"operator", node.operatorToken},
                 {"expression", node.expression},
                 {"keyExpression", node.keyExpression},
+                {"reads", node.reads},
+                {"writes", node.writes},
                 {"renderRoot", node.renderRoot},
             });
         }
@@ -1586,6 +1591,7 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
         if (!item.empty()) out.push_back(item);
         return out;
     };
+    std::string bodyPlanError;
     auto runBodyPlanAction = [&]() -> bool {
         if (!definition) return false;
         auto actionIt = std::find_if(definition->bodyPlan.begin(), definition->bodyPlan.end(),
@@ -1593,6 +1599,25 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
                 return node.kind == "action" && node.name == actionName;
             });
         if (actionIt == definition->bodyPlan.end()) return false;
+        auto failBodyPlan = [&](const BodyPlanNode* node,
+                                const std::string& reason) -> bool {
+            if (!bodyPlanError.empty()) return false;
+            bodyPlanError = "Unsupported component body-plan action '" +
+                            instance->component + "." + actionName + "'";
+            if (definition->sourceLine > 0) {
+                bodyPlanError += " from component definition line " +
+                                 std::to_string(definition->sourceLine);
+            }
+            if (node && node->sourceLine > 0) {
+                bodyPlanError += ", body line " +
+                                 std::to_string(node->sourceLine);
+            }
+            bodyPlanError += ": " + reason;
+            if (node && !node->text.empty()) {
+                bodyPlanError += " near `" + node->text + "`";
+            }
+            return false;
+        };
 
         const auto actionWords = words(actionIt->text);
         std::map<std::string, std::shared_ptr<JTML::VarValue>> previousActionParams;
@@ -1611,10 +1636,14 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
         }
 
         auto applyAssignment = [&](const BodyPlanNode& node) -> bool {
-            if (!node.childIndices.empty()) return false;
+            if (!node.childIndices.empty()) {
+                return failBodyPlan(&node, "assignment nodes cannot have child statements");
+            }
             const std::string targetName = runtimeLocalName(node.name);
             const std::string op = node.operatorToken.empty() ? "=" : node.operatorToken;
-            if (op != "=" && op != "+=" && op != "-=" && op != "*=" && op != "/=" && op != "%=") return false;
+            if (op != "=" && op != "+=" && op != "-=" && op != "*=" && op != "/=" && op != "%=") {
+                return failBodyPlan(&node, "unsupported assignment operator `" + op + "`");
+            }
             const auto next = parseExpressionValue(node.expression);
             JTML::CompositeKey key{instance->environment->instanceID, targetName};
             if (op == "=") {
@@ -1664,7 +1693,9 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
                     continue;
                 }
                 if (node->kind == "call" && !node->name.empty()) {
-                    if (!node->childIndices.empty()) return false;
+                    if (!node->childIndices.empty()) {
+                        return failBodyPlan(node, "call nodes cannot have child statements");
+                    }
                     nlohmann::json callArgs = nlohmann::json::array();
                     std::vector<std::shared_ptr<JTML::VarValue>> callValues;
                     for (const auto& argExpr : splitCallArgs(node->expression)) {
@@ -1678,7 +1709,7 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
                         });
                     if (nestedAction == definition->bodyPlan.end()) {
                         if (dispatchEmittedEvent(node->name, callArgs)) continue;
-                        return false;
+                        return failBodyPlan(node, "call target is not a local action or declared emitted event");
                     }
                     const auto nestedWords = words(nestedAction->text);
                     std::map<std::string, std::shared_ptr<JTML::VarValue>> previousParams;
@@ -1741,12 +1772,18 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
                         return value.substr(start, end - start + 1);
                     };
                     const auto inPos = raw.find(" in ");
-                    if (inPos == std::string::npos) return false;
+                    if (inPos == std::string::npos) {
+                        return failBodyPlan(node, "for loop must use `item in collection`");
+                    }
                     const std::string itemName = trim(raw.substr(0, inPos));
                     const std::string listExpr = trim(raw.substr(inPos + 4));
-                    if (itemName.empty() || listExpr.empty()) return false;
+                    if (itemName.empty() || listExpr.empty()) {
+                        return failBodyPlan(node, "for loop is missing an iterator or collection expression");
+                    }
                     const auto value = parseExpressionValue(listExpr);
-                    if (!value || (!value->isArray() && !value->isString())) return false;
+                    if (!value || (!value->isArray() && !value->isString())) {
+                        return failBodyPlan(node, "for loop action bodies currently support arrays and strings");
+                    }
                     JTML::CompositeKey iteratorKey{instance->environment->instanceID, itemName};
                     std::shared_ptr<JTML::VarValue> previous;
                     const bool hadPrevious = instance->environment->hasVariable(iteratorKey);
@@ -1785,12 +1822,14 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
                     while (true) {
                         const auto value = parseExpressionValue(condition);
                         if (!value || !isTruthy(value->toString())) break;
-                        if (++guard > 10000) return false;
+                        if (++guard > 10000) {
+                            return failBodyPlan(node, "while loop exceeded the direct-execution guard");
+                        }
                         if (!runStatements(bodyPlanChildren(*definition, *node))) return false;
                     }
                     continue;
                 }
-                return false;
+                return failBodyPlan(node, "unsupported statement kind `" + node->kind + "`");
             }
             return true;
         };
@@ -1809,7 +1848,6 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
     };
 
     bool bodyPlanRan = false;
-    std::string bodyPlanError;
     try {
         bodyPlanRan = runBodyPlanAction();
     } catch (const std::exception& e) {
@@ -1868,7 +1906,9 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
         updatedBindingsJSON = getBindingsJSON();
         return true;
     } catch (const std::exception& e) {
-        errorOut = e.what();
+        errorOut = bodyPlanError.empty()
+            ? e.what()
+            : bodyPlanError + "; compatibility fallback error: " + e.what();
         return false;
     }
 }
@@ -2457,6 +2497,7 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
             for (const auto& plannedNode : plannedDef.bodyPlan) {
                 def.bodyPlan.push_back({
                     plannedNode.definitionModule,
+                    plannedNode.sourceLine,
                     plannedNode.indent,
                     plannedNode.parentIndex,
                     plannedNode.childIndices,
@@ -2467,6 +2508,8 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
                     plannedNode.operatorToken,
                     plannedNode.expression,
                     plannedNode.keyExpression,
+                    plannedNode.reads,
+                    plannedNode.writes,
                     plannedNode.renderRoot,
                 });
             }
@@ -2516,6 +2559,7 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
             for (const auto& plannedNode : plannedInstance.slotPlan) {
                 instance.slotPlan.push_back({
                     plannedNode.definitionModule,
+                    plannedNode.sourceLine,
                     plannedNode.indent,
                     plannedNode.parentIndex,
                     plannedNode.childIndices,
@@ -2526,6 +2570,8 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
                     plannedNode.operatorToken,
                     plannedNode.expression,
                     plannedNode.keyExpression,
+                    plannedNode.reads,
+                    plannedNode.writes,
                     plannedNode.renderRoot,
                 });
             }

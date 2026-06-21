@@ -170,9 +170,35 @@ Action body lines such as `incBy(2)` and `picked("Ada Lovelace")` now become
 body-plan `call` nodes, so browser-local and live direct execution can compose
 component actions or emit declared component events without going through the
 expanded compatibility DOM.
+Body-plan nodes now expose first-slice `reads` and `writes` metadata. That is
+not yet a generated JS compiler, but it is the required update surface for the
+compiler-first production browser target: state changes should eventually
+touch only dependent text, attributes, derived values, and keyed list regions.
+The same nodes now carry authored body source lines, and unsupported direct
+component action fallback records preserve component/action context, component
+definition line, body line, node text, and fallback errors when compatibility
+also fails.
+Browser-local direct component actions now consume this metadata for the first
+fine-grained-update-adjacent optimization: when action writes do not intersect
+the rendered-read dependency closure, the runtime skips a full component
+rerender and exposes the decision as `window.jtml.directComponentLastAction`.
+The next slice is also in place: simple affected leaf body-plan nodes are marked
+with `data-jtml-direct-body-node` and can be replaced directly from the body
+plan when their read set intersects an action write. Unsafe cases such as
+changed control flow, loops, slots, nested component calls, or complex child
+structure fall back to a full body-plan component rerender before any
+compatibility path is considered.
+
+Performance note: `/api/rendered-components` and live HTML patches are the
+right path for Studio, dev preview, internal live apps, debugging, and
+server-owned UI. They are not the benchmark path. Public/performance builds
+should move toward `jtml build --target browser --prod`: static assets,
+generated component functions, precompiled expressions, keyed DOM diffing,
+tiny runtime helpers, and no live patch endpoint requirement.
 
 Remaining architectural work: broaden the supported body-plan subset until the
-expanded compatibility DOM is needed only for explicit fallback cases, add
+expanded compatibility DOM is needed only for explicit fallback cases or can be
+removed from production browser builds entirely, add
 broader source-first diagnostics beyond the typed emitted-event payload
 messages now naming the authored payload and component definition line, harden
 rich attribute/modifier parity for advanced platform APIs, broaden

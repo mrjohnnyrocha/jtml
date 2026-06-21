@@ -113,6 +113,11 @@ Why second:
   reactivity.
 - The semantic usage API and observable graph give this emitter a clearer
   source of truth than the old interpreter-first model.
+- Performance competitiveness requires a compiler-first production browser
+  target. The current manifest/body-plan runtime is a bridge toward generated
+  JS component functions, fine-grained updates, keyed DOM diffing, runtime size
+  budgets, and a dev/prod split. Live HTML patches remain for Studio, dev,
+  internal live apps, and server-owned UI rather than framework benchmarks.
 
 Target:
 
@@ -525,16 +530,36 @@ Implementation slices:
    component actions.
 49. Complete direct/live component parity: keep expanding the supported
    body-plan subset until the live compatibility DOM transport is needed only
-   for explicit fail-closed fallback cases. Shipped follow-up: direct live
-   action execution restores top-level and nested action parameters plus loop
-   iterators instead of leaking temporary bindings, and typed emitted-event
-   diagnostics name the authored payload and component definition line. Next
-   gaps: broader keyed collection diff semantics, richer
+   for explicit fail-closed fallback cases. Shipped follow-up: direct live and
+   browser-local action execution restores top-level and nested action
+   parameters plus loop iterators instead of leaking temporary bindings, and
+   direct body-plan fallback reasons now preserve component/action context,
+   component definition line, authored body line, and nearby authored body-plan
+   text; when compatibility fallback also fails, the source-first body-plan
+   context is preserved beside the compatibility error. Browser-local fallback
+   records are also exposed on `window.jtml.directComponentFallbacks`. Typed
+   emitted-event diagnostics also name the authored payload and component
+   definition line. Body-plan nodes now expose source-line plus first
+   read/write dependency metadata, giving future optimized browser compilation
+   a direct update surface. Browser-local direct component actions now use this
+   metadata for a conservative rerender gate: if action writes do not affect
+   rendered reads, the runtime can skip a full component rerender and expose
+   `directComponentLastAction` telemetry for Studio/compiler diagnostics.
+   Simple affected leaf body-plan nodes now carry direct DOM markers and can be
+   replaced in place from the body plan; unsafe cases fall back to full
+   body-plan rerender before compatibility is considered. Next gaps: broader
+   keyed collection diff semantics, richer
    action expressions, advanced
    media/graphics attributes, and broader browser/live behavior parity checks.
-50. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
+50. Add compiler-first browser production target slices: generate component
+   creation/update functions for simple body-plan templates, precompile
+   expressions where dependencies are known, update only dependent text/attrs,
+   expand the first metadata-driven leaf patches into keyed region and
+   attribute-level updates, add benchmark fixtures, and keep the current
+   manifest interpreter as dev and compatibility fallback.
+51. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
    same catalog endpoint pattern.
-51. Add contract-first JTL backend API design docs and prototypes only after
+52. Add contract-first JTL backend API design docs and prototypes only after
    runtime/module semantics are stable. Target governed internal operations:
    approval consoles, incident consoles, AI governance, cost controls, and
    deployment controls. Planned phases are contracts/types/errors, OpenAPI,

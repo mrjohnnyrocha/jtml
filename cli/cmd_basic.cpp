@@ -784,6 +784,7 @@ int cmdDoctor(const Options& o) {
             "first browser-local direct component body-plan execution",
             "component body-plan parity before expanded compatibility removal",
             "advanced browser-local runtime parity",
+            "compiler-first browser production target with fine-grained updates (planned)",
             "extern/custom-element/framework export boundaries",
             "contract-first JTL API modules for governed backend operations (planned)",
             "remote package registry and semantic version solving",
@@ -806,6 +807,7 @@ int cmdDoctor(const Options& o) {
             {"nestedComponentCalls", true},
             {"commonAttributes", true},
             {"simpleActionArguments", true},
+            {"metadataDrivenLeafPatches", true},
             {"liveInterpreterParity", false},
             {"fullParity", false},
         }},
@@ -813,6 +815,15 @@ int cmdDoctor(const Options& o) {
             {"planned", true},
             {"implemented", false},
             {"syntax", "planned"},
+        }},
+        {"performanceTarget", {
+            {"benchmarkPath", "compiler-first browser production target"},
+            {"liveHtmlPatchPath", "dev/internal runtime backend"},
+            {"optimizedJsCompiler", "planned"},
+            {"fineGrainedUpdates", "first conservative browser-local leaf patch slice; optimized compiler planned"},
+            {"bodyPlanReadWriteMetadata", true},
+            {"keyedListDiffing", "first-slice identity; optimized DOM diff planned"},
+            {"prodDevRuntimeSplit", "planned"},
         }},
     };
     auto findProjectRoot = [] {

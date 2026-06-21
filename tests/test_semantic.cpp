@@ -1196,7 +1196,9 @@ TEST(RuntimePlan, OwnsBrowserLocalRuntimeShapeBeforeManifestEmission) {
         "  invalidate users\n"
         "\n"
         "make Counter title\n"
+        "  let draft = \"\"\n"
         "  card title title\n"
+        "    input \"Draft\" into draft\n"
         "    text label\n"
         "\n"
         "route \"/:title\" as Counter\n"
@@ -1277,7 +1279,25 @@ TEST(RuntimePlan, OwnsBrowserLocalRuntimeShapeBeforeManifestEmission) {
         [&](const auto& node) {
             return node.kind == "template" && node.name == "text" &&
                    node.parentIndex == cardIndex &&
-                   node.expression == "label";
+                   node.expression == "label" &&
+                   contains(node.reads, "label") &&
+                   node.writes.empty();
+        }));
+    EXPECT_TRUE(std::any_of(
+        plan.componentDefinitions[0].bodyPlan.begin(),
+        plan.componentDefinitions[0].bodyPlan.end(),
+        [](const auto& node) {
+            return node.kind == "template" && node.name == "card" &&
+                   contains(node.reads, "title") &&
+                   node.writes.empty();
+        }));
+    EXPECT_TRUE(std::any_of(
+        plan.componentDefinitions[0].bodyPlan.begin(),
+        plan.componentDefinitions[0].bodyPlan.end(),
+        [](const auto& node) {
+            return node.kind == "template" && node.name == "input" &&
+                   node.sourceLine > 0 &&
+                   contains(node.writes, "draft");
         }));
     EXPECT_TRUE(std::any_of(
         plan.componentInstances.begin(),

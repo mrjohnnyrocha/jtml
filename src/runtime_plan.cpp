@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <set>
 #include <sstream>
 
 namespace jtml {
@@ -175,13 +176,175 @@ std::string joinTokensUntil(const std::vector<std::string>& tokens, size_t start
     return out.str();
 }
 
+bool isDependencyStopWord(const std::string& word) {
+    static const std::set<std::string> stops = {
+        "true", "false", "null", "undefined",
+        "if", "else", "for", "in", "while", "key",
+        "let", "const", "get", "when", "effect", "slot",
+        "and", "or", "not",
+        "page", "box", "text", "show", "button", "input", "form",
+        "panel", "card", "metric", "grid", "stack", "cluster", "split",
+        "toolbar", "tabs", "tab", "alert", "badge", "modal", "drawer",
+        "toast", "loading", "error", "empty", "field", "spacer",
+        "class", "style", "id", "title", "href", "src", "alt", "to",
+        "click", "input", "change", "submit", "hover", "scroll",
+        "pad", "gap", "cols", "radius", "shadow", "tone", "align",
+        "justify", "width", "surface",
+    };
+    return stops.count(word) > 0;
+}
+
+bool isIdentifierToken(const std::string& token) {
+    if (token.empty()) return false;
+    if (!(std::isalpha(static_cast<unsigned char>(token.front())) || token.front() == '_')) {
+        return false;
+    }
+    for (const char ch : token) {
+        if (!(std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == '.')) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool isQuotedToken(const std::string& token) {
+    return token.size() >= 2 &&
+           ((token.front() == '"' && token.back() == '"') ||
+            (token.front() == '\'' && token.back() == '\''));
+}
+
+bool isBodyPlanAttributeName(const std::string& token) {
+    static const std::set<std::string> names = {
+        "id", "class", "style", "role", "href", "src", "alt", "title",
+        "type", "name", "value", "placeholder", "for", "rel", "target",
+        "method", "action", "enctype", "autocomplete", "inputmode",
+        "pattern", "accept", "poster", "preload", "kind", "srclang",
+        "label", "width", "height", "min", "max", "step", "minlength",
+        "maxlength", "rows", "cols", "cx", "cy", "r", "x", "y", "x1",
+        "y1", "x2", "y2", "d", "points", "viewBox", "fill", "stroke",
+        "stroke-width", "transform", "opacity", "to", "active-class",
+    };
+    return names.count(token) > 0 ||
+           token.rfind("aria-", 0) == 0 ||
+           token.rfind("data-", 0) == 0;
+}
+
+bool isBodyPlanBooleanAttributeName(const std::string& token) {
+    static const std::set<std::string> names = {
+        "disabled", "required", "checked", "selected", "multiple",
+        "readonly", "autofocus", "playsinline", "open", "hidden",
+        "controls", "autoplay", "loop", "muted",
+    };
+    return names.count(token) > 0;
+}
+
+bool isBodyPlanSemanticModifierName(const std::string& token) {
+    static const std::set<std::string> names = {
+        "cols", "gap", "pad", "radius", "shadow", "tone",
+        "align", "justify", "width", "surface",
+    };
+    return names.count(token) > 0;
+}
+
+std::vector<std::string> expressionDependencies(const std::string& expression) {
+    std::set<std::string> names;
+    std::string current;
+    char quote = '\0';
+    auto flush = [&] {
+        if (current.empty()) return;
+        const std::string token = current;
+        current.clear();
+        if (token.empty()) return;
+        if (std::isdigit(static_cast<unsigned char>(token.front()))) return;
+        if (isDependencyStopWord(token)) return;
+        names.insert(token);
+    };
+    for (size_t i = 0; i < expression.size(); ++i) {
+        const char ch = expression[i];
+        if (quote != '\0') {
+            if (ch == '\\' && i + 1 < expression.size()) {
+                ++i;
+            } else if (ch == quote) {
+                quote = '\0';
+            }
+            continue;
+        }
+        if (ch == '"' || ch == '\'') {
+            flush();
+            quote = ch;
+            continue;
+        }
+        if (std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == '.') {
+            current.push_back(ch);
+        } else {
+            flush();
+        }
+    }
+    flush();
+    return {names.begin(), names.end()};
+}
+
+void appendUnique(std::vector<std::string>& target, const std::string& value);
+void appendUnique(std::vector<std::string>& target, const std::vector<std::string>& values);
+
+std::vector<std::string> templateBindingWrites(const std::vector<std::string>& tokens) {
+    std::vector<std::string> writes;
+    for (size_t i = 1; i + 1 < tokens.size(); ++i) {
+        if (tokens[i] != "into") continue;
+        if (isIdentifierToken(tokens[i + 1])) appendUnique(writes, tokens[i + 1]);
+    }
+    return writes;
+}
+
+std::vector<std::string> templateExpressionDependencies(
+        const std::string& expression,
+        const std::vector<std::string>& tokens) {
+    std::vector<std::string> reads = expressionDependencies(expression);
+    for (size_t i = 1; i + 1 < tokens.size(); ++i) {
+        const std::string& token = tokens[i];
+        if (!isBodyPlanAttributeName(token)) continue;
+        const std::string& value = tokens[i + 1];
+        if (isQuotedToken(value) ||
+            (isBodyPlanAttributeName(value) && value != token) ||
+            isBodyPlanBooleanAttributeName(value) ||
+            isBodyPlanSemanticModifierName(value)) {
+            continue;
+        }
+        if (isIdentifierToken(value)) appendUnique(reads, value);
+    }
+    return reads;
+}
+
+std::vector<std::string> forLoopExpressionDependencies(
+        const std::string& expression,
+        const std::string& keyExpression) {
+    const auto inPos = expression.find(" in ");
+    std::vector<std::string> reads = expressionDependencies(
+        inPos == std::string::npos ? expression : expression.substr(inPos + 4));
+    appendUnique(reads, expressionDependencies(keyExpression));
+    return reads;
+}
+
+void appendUnique(std::vector<std::string>& target, const std::string& value) {
+    if (value.empty()) return;
+    if (std::find(target.begin(), target.end(), value) == target.end()) {
+        target.push_back(value);
+    }
+}
+
+void appendUnique(std::vector<std::string>& target, const std::vector<std::string>& values) {
+    for (const auto& value : values) appendUnique(target, value);
+}
+
 std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
         const std::string& bodySource) {
     std::vector<RuntimePlanComponentBodyNode> plan;
     std::vector<size_t> openAncestors;
     std::istringstream input(bodySource);
     std::string raw;
+    int bodyLine = 0;
     while (std::getline(input, raw)) {
+        ++bodyLine;
         const std::string text = parseBodyText(raw);
         if (text.empty()) continue;
         const auto tokens = words(text);
@@ -196,6 +359,7 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
             ? -1
             : static_cast<int>(openAncestors.back());
         node.text = text;
+        node.sourceLine = bodyLine;
         node.head = tokens[0];
         node.kind = isAssignmentBodyLine(tokens) ? "assignment" :
             (isCallBodyLine(tokens) ? "call" : componentBodyNodeKind(node.head));
@@ -203,10 +367,14 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
             node.name = cleanComponentNameToken(tokens[0]);
             node.operatorToken = tokens[1];
             node.expression = joinTokens(tokens, 2);
+            appendUnique(node.writes, node.name);
+            appendUnique(node.reads, expressionDependencies(node.expression));
+            if (node.operatorToken != "=") appendUnique(node.reads, node.name);
         } else if (node.kind == "call") {
             const auto open = tokens[0].find('(');
             node.name = cleanComponentNameToken(tokens[0].substr(0, open));
             node.expression = tokens[0].substr(open + 1, tokens[0].size() - open - 2);
+            appendUnique(node.reads, expressionDependencies(node.expression));
         } else if ((node.kind == "state" || node.kind == "derived" ||
              node.kind == "action" || node.kind == "effect") &&
             tokens.size() > 1) {
@@ -215,6 +383,12 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
             if (equals != tokens.end()) {
                 node.operatorToken = "=";
                 node.expression = joinTokens(tokens, static_cast<size_t>((equals - tokens.begin()) + 1));
+            }
+            if (node.kind == "state" || node.kind == "derived") {
+                appendUnique(node.writes, node.name);
+                appendUnique(node.reads, expressionDependencies(node.expression));
+            } else if (node.kind == "effect") {
+                appendUnique(node.reads, expressionDependencies(node.expression.empty() ? node.name : node.expression));
             }
         } else if (node.kind == "template") {
             node.name = cleanComponentNameToken(tokens[0]);
@@ -227,6 +401,12 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
                     node.keyExpression = joinTokens(tokens, keyIndex + 1);
                 }
             }
+            if (node.name == "for") {
+                appendUnique(node.reads, forLoopExpressionDependencies(node.expression, node.keyExpression));
+            } else {
+                appendUnique(node.reads, templateExpressionDependencies(node.expression, tokens));
+            }
+            appendUnique(node.writes, templateBindingWrites(tokens));
         }
         node.renderRoot = node.indent == 0 && node.kind == "template";
         const int parentIndex = node.parentIndex;

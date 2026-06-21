@@ -239,6 +239,7 @@ nlohmann::json runtimePlanBodyPlanToJson(
     for (const auto& node : bodyPlan) {
         out.push_back({
             {"definitionModule", moduleIdToJson(node.definitionModule)},
+            {"sourceLine", node.sourceLine},
             {"indent", node.indent},
             {"parentIndex", node.parentIndex},
             {"childIndices", node.childIndices},
@@ -249,6 +250,8 @@ nlohmann::json runtimePlanBodyPlanToJson(
             {"operator", node.operatorToken},
             {"expression", node.expression},
             {"keyExpression", node.keyExpression},
+            {"reads", node.reads},
+            {"writes", node.writes},
             {"renderRoot", node.renderRoot},
         });
     }

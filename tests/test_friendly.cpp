@@ -2312,6 +2312,12 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("op === '%='"),
               std::string::npos) << html;
+    EXPECT_NE(html.find("\"reads\":[\"count\"]"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("\"writes\":[\"count\"]"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("\"writes\":[\"label\"]"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("node.kind === 'template' && head === 'if'"),
               std::string::npos) << html;
     EXPECT_NE(html.find("node.kind === 'template' && head === 'for'"),
@@ -2320,11 +2326,39 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("scope[match[1]] = values[itemIndex];"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("runComponentPlanStatements(definition, scope, componentNodeChildren(definition, elseNode), instance)"),
+    EXPECT_NE(html.find("runComponentPlanStatements(definition, scope, componentNodeChildren(definition, elseNode), instance, changes)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("return false;"),
               std::string::npos) << html;
     EXPECT_NE(html.find("runDirectComponentFallbackAction"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function recordComponentBodyPlanFallback(instance, definition, node, reason)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("directComponentFallbacks: componentBodyPlanFallbacks"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("bodySourceLine: node && node.sourceLine || 0"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function componentRenderedReadSet(definition)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function componentWritesAffectRender(definition, writes)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function componentNodeReadSet(definition, node)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function patchDirectComponentFromWrites(instance, definition, writes)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-direct-body-node"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("directComponentPatchCount"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function noteComponentActionResult(instance, definition, actionName, writes, renderSkipped)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("directComponentLastAction"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const shouldRender = componentWritesAffectRender(definition, Object.keys(changes.writes || {}));"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("!patchDirectComponentFromWrites(instance, definition, changes.writes)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("renderDirectComponent(instance);"),
               std::string::npos) << html;
 
     JtmlTranspiler liveTranspiler;
@@ -2407,6 +2441,12 @@ TEST(FriendlySyntax, DirectComponentActionsCanCallOtherLocalActions) {
     EXPECT_NE(browserHtml.find("node.kind === 'call' && node.name"),
               std::string::npos) << browserHtml;
     EXPECT_NE(browserHtml.find("emitComponentEvent(instance, node.name, callArgs)"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("hadPrevious[param] = Object.prototype.hasOwnProperty.call(scope, param);"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("if (hadPrevious[param]) scope[param] = previous[param];"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("else delete scope[param];"),
               std::string::npos) << browserHtml;
     const auto manifest = clientManifestFromHtml(browserHtml);
     bool foundCallNode = false;
@@ -2604,6 +2644,60 @@ TEST(FriendlySyntax, InterpreterRegistersComponentInstancesAndLocalState) {
         components[1]["id"].get<std::string>(), "missing", nlohmann::json::array(),
         bindings, error));
     EXPECT_NE(error.find("available actions"), std::string::npos) << error;
+}
+
+TEST(FriendlySyntax, DirectComponentActionFallbackDiagnosticsKeepBodySourceLines) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Worker\n"
+        "  let value = \"\"\n"
+        "  when run\n"
+        "    try\n"
+        "      value = \"done\"\n"
+        "  card\n"
+        "    button \"Run\" click run\n"
+        "page\n"
+        "  Worker\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler browserTranspiler;
+    browserTranspiler.setBrowserLocalRuntime(true);
+    const auto manifest = clientManifestFromHtml(browserTranspiler.transpile(program));
+    ASSERT_EQ(manifest["componentDefinitions"].size(), 1) << manifest.dump(2);
+    const auto& bodyPlan = manifest["componentDefinitions"][0]["bodyPlan"];
+    ASSERT_GE(bodyPlan.size(), 4) << manifest.dump(2);
+    EXPECT_TRUE(std::any_of(bodyPlan.begin(), bodyPlan.end(), [](const auto& node) {
+        return node["text"] == "try" &&
+               node["kind"] == "template" &&
+               node["sourceLine"].template get<int>() > 0;
+    })) << manifest.dump(2);
+
+    JtmlTranspiler liveTranspiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(liveTranspiler, config);
+    interpreter.interpret(program);
+    auto components = nlohmann::json::parse(interpreter.getComponentsJSON());
+    ASSERT_EQ(components.size(), 1) << components.dump(2);
+    std::string bindings;
+    std::string error;
+    EXPECT_FALSE(interpreter.dispatchComponentAction(
+        components[0]["id"].get<std::string>(),
+        "run",
+        nlohmann::json::array(),
+        bindings,
+        error));
+    EXPECT_NE(error.find("Unsupported component body-plan action 'Worker.run'"),
+              std::string::npos) << error;
+    EXPECT_NE(error.find("component definition line"), std::string::npos) << error;
+    EXPECT_NE(error.find("body line"), std::string::npos) << error;
+    EXPECT_NE(error.find("near `try`"), std::string::npos) << error;
 }
 
 TEST(FriendlySyntax, InterpreterLiveComponentsExposeSlotsAndRunBodyPlanActionArgs) {

@@ -23,6 +23,13 @@ The consolidated JTML/JTL language-family design lives in
 The near-term implementation order lives in
 [`docs/roadmaps/next-priorities.md`](docs/roadmaps/next-priorities.md).
 
+Performance positioning: live HTML/body-plan patches are useful for Studio,
+dev preview, internal live apps, and server-owned UI, but they are not the
+benchmark path. Framework-competitive public builds require a compiler-first
+browser production target: typed AST and semantic graph to optimized body plan,
+generated JS component functions, fine-grained dependency updates, keyed DOM
+diffing, small runtime helpers, and a clear dev/prod runtime split.
+
 ## Phase 1: Try It In Five Minutes
 
 - One-command demo: `jtml demo --port 8000` ✅
@@ -317,8 +324,24 @@ The current focus is the semantic-core transition:
   arguments, dispatch to local component actions when present, or emit declared
   component events when no local action exists.
   Browser-local direct action arguments now use top-level parsing for quoted
-  strings with spaces. Remaining parity work: broadening the supported
-  body-plan subset until compatibility DOM is only an explicit fallback path,
+  strings with spaces, and browser-local/live action parameters are restored
+  after direct execution so temporary call-frame values do not leak into
+  component state. Unsupported live body-plan action fallback reasons now keep
+  component/action context, component definition line, and nearby authored node
+  text when compatibility cannot take over; when compatibility fallback also
+  fails, the source-first body-plan context is preserved beside the fallback
+  error. Body-plan nodes now expose authored body source lines plus first
+  read/write dependency metadata for future fine-grained browser update code.
+  Browser-local direct component actions now use that metadata for a first
+  rerender gate: writes that do not affect rendered reads can skip a full
+  component rerender, while derived read dependencies are followed
+  conservatively and action telemetry is exposed for tooling. Simple affected
+  leaf nodes now carry direct body-plan DOM markers and can be replaced in
+  place from the body plan; unsafe cases fall back to a full body-plan
+  component rerender before any compatibility path is considered.
+  Remaining parity work: broadening the supported
+  body-plan subset until compatibility DOM is only an explicit fallback path or
+  absent from production browser builds,
   improving source spans beyond typed emitted-event diagnostics, stronger
   keyed list lifecycle, and broader
   behavior parity checks.

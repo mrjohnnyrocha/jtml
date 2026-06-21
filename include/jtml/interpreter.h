@@ -122,6 +122,7 @@ private:
 
     struct BodyPlanNode {
         jtml::SemanticModuleId definitionModule = jtml::InvalidSemanticModuleId;
+        int sourceLine = 0;
         int indent = 0;
         int parentIndex = -1;
         std::vector<int> childIndices;
@@ -132,6 +133,8 @@ private:
         std::string operatorToken;
         std::string expression;
         std::string keyExpression;
+        std::vector<std::string> reads;
+        std::vector<std::string> writes;
         bool renderRoot = false;
     };
 

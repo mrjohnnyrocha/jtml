@@ -51,6 +51,7 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
       const dynamicComponentInstances = {};
       const componentRenderPath = [];
       const dynamicComponentRenderStack = [];
+      const componentBodyPlanFallbacks = [];
 
       window.jtmlEventValue = function (event) {
         const target = event && event.target;
@@ -369,6 +370,27 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         return String(left) === String(right);
       }
 
+      function recordComponentBodyPlanFallback(instance, definition, node, reason) {
+        const diagnostic = {
+          componentId: instance && instance.id || '',
+          component: instance && instance.component || definition && definition.name || '',
+          moduleId: definition && definition.moduleId != null ? definition.moduleId : null,
+          componentSourceLine: definition && definition.sourceLine || 0,
+          bodySourceLine: node && node.sourceLine || 0,
+          nodeText: node && node.text || '',
+          nodeKind: node && node.kind || '',
+          reason: reason || 'unsupported component body-plan node'
+        };
+        componentBodyPlanFallbacks.push(diagnostic);
+        window.jtml = Object.assign(window.jtml || {}, {
+          directComponentFallbacks: componentBodyPlanFallbacks
+        });
+        if (window.console && console.warn) {
+          console.warn('[jtml] direct component fallback:', diagnostic);
+        }
+        return false;
+      }
+
       function componentDefinitionForInstance(instance) {
         if (!instance) return null;
         const name = instance.component || '';
@@ -463,6 +485,111 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
           if (!node || node.kind !== 'derived' || !node.name) return;
           const result = evaluateClientBodyExpression(node.expression || '', scope);
           if (result.found) scope[node.name] = result.value;
+        });
+      }
+
+      function addComponentNameSet(target, values) {
+        (values || []).forEach(function (value) {
+          if (value != null && String(value)) target[String(value)] = true;
+        });
+      }
+
+      function componentRenderedReadSet(definition) {
+        const reads = {};
+        const derivedDeps = {};
+        (definition && definition.bodyPlan || []).forEach(function (node) {
+          if (!node) return;
+          if (node.kind === 'derived' && node.name) {
+            derivedDeps[node.name] = (node.reads || []).slice();
+          }
+          if (node.kind === 'template' || node.kind === 'slot') {
+            addComponentNameSet(reads, node.reads || []);
+          }
+        });
+        let changed = true;
+        let guard = 0;
+        while (changed && guard++ < 1000) {
+          changed = false;
+          Object.keys(derivedDeps).forEach(function (name) {
+            if (!reads[name]) return;
+            (derivedDeps[name] || []).forEach(function (dep) {
+              dep = String(dep || '');
+              if (!dep || reads[dep]) return;
+              reads[dep] = true;
+              changed = true;
+            });
+          });
+        }
+        return reads;
+      }
+
+      function componentWritesAffectRender(definition, writes) {
+        const changed = {};
+        addComponentNameSet(changed, writes || []);
+        const names = Object.keys(changed);
+        if (!names.length) return true;
+        const renderedReads = componentRenderedReadSet(definition);
+        return names.some(function (name) { return !!renderedReads[name]; });
+      }
+
+      function componentNodeIndex(definition, node) {
+        return (definition && definition.bodyPlan || []).indexOf(node);
+      }
+
+      function componentNodeReadSet(definition, node) {
+        const reads = {};
+        addComponentNameSet(reads, node && node.reads || []);
+        const derivedDeps = {};
+        (definition && definition.bodyPlan || []).forEach(function (candidate) {
+          if (candidate && candidate.kind === 'derived' && candidate.name) {
+            derivedDeps[candidate.name] = (candidate.reads || []).slice();
+          }
+        });
+        let changed = true;
+        let guard = 0;
+        while (changed && guard++ < 1000) {
+          changed = false;
+          Object.keys(derivedDeps).forEach(function (name) {
+            if (!reads[name]) return;
+            (derivedDeps[name] || []).forEach(function (dep) {
+              dep = String(dep || '');
+              if (!dep || reads[dep]) return;
+              reads[dep] = true;
+              changed = true;
+            });
+          });
+        }
+        return reads;
+      }
+
+      function componentChangeAffectsNode(definition, node, writes) {
+        const changed = {};
+        addComponentNameSet(changed, writes || []);
+        const names = Object.keys(changed);
+        if (!names.length) return true;
+        const reads = componentNodeReadSet(definition, node);
+        return names.some(function (name) { return !!reads[name]; });
+      }
+
+      function componentSubtreeAffected(definition, node, writes) {
+        if (!node) return false;
+        if (componentChangeAffectsNode(definition, node, writes)) return true;
+        return componentNodeChildren(definition, node).some(function (child) {
+          return componentSubtreeAffected(definition, child, writes);
+        });
+      }
+
+      function noteComponentActionResult(instance, definition, actionName, writes, renderSkipped) {
+        const renderedReads = componentRenderedReadSet(definition);
+        window.jtml = Object.assign(window.jtml || {}, {
+          directComponentLastAction: {
+            componentId: instance && instance.id || '',
+            component: instance && instance.component || definition && definition.name || '',
+            action: actionName || '',
+            writes: Object.keys(writes || {}),
+            renderRelevantReads: Object.keys(renderedReads),
+            renderSkipped: !!renderSkipped
+          }
         });
       }
 
@@ -788,11 +915,16 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         const children = renderComponentChildren(definition, instance, node, scope);
         const nested = renderNestedComponentCall(definition, instance, node, scope, head);
         if (nested != null) return nested;
+        const directNodeIndex = componentNodeIndex(definition, node);
+        const directNodeAttr = directNodeIndex >= 0
+          ? ' data-jtml-direct-body-node="' + String(directNodeIndex) + '"'
+          : '';
         if (head === 'show' || head === 'text') {
           const expr = head === 'show'
             ? (node.expression || words.slice(1).join(' '))
             : (node.expression || words.slice(1).join(' '));
-          return '<p>' + escapeHtml(renderComponentExpression(expr, scope)) + '</p>' + children;
+          return '<p' + directNodeAttr + ' data-jtml-direct-text-node="true">' +
+            escapeHtml(renderComponentExpression(expr, scope)) + '</p>' + children;
         }
         if (head === 'button') {
           const clickIndex = words.indexOf('click');
@@ -812,7 +944,7 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
               ' data-jtml-direct-component-action="' + escapeHtml(invocation.name) + '"' +
               ' data-jtml-direct-component-args="' + escapeAttribute(JSON.stringify(invocation.args || [])) + '"'
             : '';
-          return '<button type="button"' + renderComponentAttributes(parts, semanticUiRenderExtras(head, parts)) + attrs + '>' +
+          return '<button type="button"' + directNodeAttr + renderComponentAttributes(parts, semanticUiRenderExtras(head, parts)) + attrs + '>' +
             escapeHtml(label) + '</button>' + children;
         }
         const tag = componentTagName(head);
@@ -823,8 +955,86 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         if (head === 'checkbox' && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'checkbox';
         if ((head === 'file' || head === 'dropzone') && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'file';
         extras['data-jtml-direct-node'] = head;
-        return '<' + tag + renderComponentAttributes(parts, extras) + '>' +
+        return '<' + tag + directNodeAttr + renderComponentAttributes(parts, extras) + '>' +
           inline + children + '</' + tag + '>';
+      }
+
+      function componentPatchableNode(definition, node) {
+        if (!node || node.kind !== 'template') return false;
+        const head = componentNodeHead(node) || 'box';
+        if (head === 'if' || head === 'else' || head === 'for' || head === 'while' || head === 'slot') return false;
+        const nestedDefinition = componentDefinitionForName(
+          head,
+          node.definitionModule != null ? node.definitionModule : definition && definition.moduleId,
+          definition && definition.moduleId);
+        if (nestedDefinition) return false;
+        return !(node.childIndices || []).length;
+      }
+
+      function replaceDirectComponentNode(instance, definition, node, scope) {
+        const index = componentNodeIndex(definition, node);
+        if (index < 0 || !instance || !instance.element) return false;
+        const el = instance.element.querySelector('[data-jtml-direct-body-node="' + String(index) + '"]');
+        if (!el) return false;
+        const html = renderComponentPlanNode(definition, instance, node, scope);
+        if (typeof html !== 'string' || !html.length) return false;
+        el.outerHTML = html;
+        return true;
+      }
+
+      function patchDirectComponentFromWrites(instance, definition, writes) {
+        if (!instance || !instance.element || !definition) return false;
+        const changed = Object.keys(writes || {});
+        if (!changed.length) return false;
+        const scope = componentScopeFor(instance, definition);
+        applyComponentDerived(scope, definition);
+        instance.scope = scope;
+        let patched = 0;
+        function visit(node) {
+          if (!node || isElseComponentNode(node)) return true;
+          if (!componentSubtreeAffected(definition, node, changed)) return true;
+          const head = componentNodeHead(node) || '';
+          if (head === 'if') {
+            if (componentChangeAffectsNode(definition, node, changed)) return false;
+            const condition = evaluateClientExpression(node.expression || splitComponentWords(node.text || '').slice(1).join(' '), scope);
+            const activeChildren = condition.found && condition.value
+              ? componentNodeChildren(definition, node)
+              : (componentElseSibling(definition, node)
+                  ? componentNodeChildren(definition, componentElseSibling(definition, node))
+                  : []);
+            return activeChildren.every(visit);
+          }
+          if (head === 'for' || head === 'while' || head === 'slot') return false;
+          const nested = componentDefinitionForName(
+            head,
+            node.definitionModule != null ? node.definitionModule : definition && definition.moduleId,
+            instance && instance.moduleId);
+          if (nested) return false;
+          if (componentChangeAffectsNode(definition, node, changed)) {
+            if (!componentPatchableNode(definition, node)) return false;
+            if (!replaceDirectComponentNode(instance, definition, node, scope)) return false;
+            patched += 1;
+            return true;
+          }
+          return componentNodeChildren(definition, node).every(visit);
+        }
+        const roots = (definition.bodyPlan || []).filter(function (node) {
+          return node && node.renderRoot && node.kind === 'template';
+        });
+        const ok = roots.every(visit);
+        if (!ok) return false;
+        if (patched) {
+          window.jtml = Object.assign(window.jtml || {}, {
+            directComponentPatchCount: (window.jtml && window.jtml.directComponentPatchCount || 0) + patched,
+            directComponentLastPatch: {
+              componentId: instance.id || '',
+              component: instance.component || definition.name || '',
+              writes: changed,
+              patchedNodes: patched
+            }
+          });
+        }
+        return patched > 0;
       }
 
       function applyComponentAssignment(scope, node) {
@@ -860,7 +1070,7 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         return args;
       }
 
-      function runComponentPlanStatements(definition, scope, nodes, instance) {
+      function runComponentPlanStatements(definition, scope, nodes, instance, changes) {
         const list = nodes || [];
         for (let i = 0; i < list.length; i += 1) {
           const node = list[i];
@@ -868,8 +1078,13 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
           const head = componentNodeHead(node);
           if (isElseComponentNode(node)) continue;
           if (node.kind === 'assignment') {
-            if (!applyComponentAssignment(scope, node)) return false;
-            if ((node.childIndices || []).length) return false;
+            if (!applyComponentAssignment(scope, node)) {
+              return recordComponentBodyPlanFallback(instance, definition, node, 'unsupported assignment');
+            }
+            if ((node.childIndices || []).length) {
+              return recordComponentBodyPlanFallback(instance, definition, node, 'assignment nodes cannot have child statements');
+            }
+            addComponentNameSet(changes && changes.writes || {}, node.writes && node.writes.length ? node.writes : [node.name]);
             continue;
           }
           if (node.kind === 'call' && node.name) {
@@ -879,7 +1094,7 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
             });
             if (!actionNode) {
               if (instance && emitComponentEvent(instance, node.name, callArgs)) continue;
-              return false;
+              return recordComponentBodyPlanFallback(instance, definition, node, 'call target is not a local action or declared emitted event');
             }
             const actionWords = splitComponentWords(actionNode.text || '');
             const previous = {};
@@ -894,7 +1109,8 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
                 definition,
                 scope,
                 componentNodeChildren(definition, actionNode),
-                instance);
+                instance,
+                changes);
             (actionWords.slice(2) || []).forEach(function (param) {
               if (!param) return;
               if (hadPrevious[param]) scope[param] = previous[param];
@@ -907,11 +1123,11 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
             const words = splitComponentWords(node.text || '');
             const condition = evaluateClientExpression(node.expression || words.slice(1).join(' '), scope);
             if (condition.found && condition.value) {
-              if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance)) return false;
+              if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance, changes)) return false;
             } else {
               const elseNode = componentElseSibling(definition, node);
               if (elseNode &&
-                  !runComponentPlanStatements(definition, scope, componentNodeChildren(definition, elseNode), instance)) {
+                  !runComponentPlanStatements(definition, scope, componentNodeChildren(definition, elseNode), instance, changes)) {
                 return false;
               }
             }
@@ -921,9 +1137,13 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
             const words = splitComponentWords(node.text || '');
             const raw = node.expression || words.slice(1).join(' ');
             const match = String(raw || '').match(/^([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(.+)$/);
-            if (!match) return false;
+            if (!match) {
+              return recordComponentBodyPlanFallback(instance, definition, node, 'for loop must use `item in collection`');
+            }
             const result = evaluateClientExpression(match[2], scope);
-            if (!result.found) return false;
+            if (!result.found) {
+              return recordComponentBodyPlanFallback(instance, definition, node, 'for loop collection could not be evaluated');
+            }
             let values = result.value;
             if (values == null) values = [];
             if (!Array.isArray(values)) {
@@ -937,7 +1157,7 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
             const hadPrevious = Object.prototype.hasOwnProperty.call(scope, match[1]);
             for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1) {
               scope[match[1]] = values[itemIndex];
-              if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance)) return false;
+              if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance, changes)) return false;
             }
             if (hadPrevious) scope[match[1]] = previous;
             else delete scope[match[1]];
@@ -949,14 +1169,18 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
             let guard = 0;
             while (true) {
               const condition = evaluateClientExpression(conditionExpr, scope);
-              if (!condition.found) return false;
+              if (!condition.found) {
+                return recordComponentBodyPlanFallback(instance, definition, node, 'while condition could not be evaluated');
+              }
               if (!condition.value) break;
-              if (guard++ > 10000) return false;
-              if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance)) return false;
+              if (guard++ > 10000) {
+                return recordComponentBodyPlanFallback(instance, definition, node, 'while loop exceeded direct-execution guard');
+              }
+              if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance, changes)) return false;
             }
             continue;
           }
-          return false;
+          return recordComponentBodyPlanFallback(instance, definition, node, 'unsupported statement kind `' + String(node.kind || '') + '`');
         }
         return true;
       }
@@ -1067,14 +1291,35 @@ std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime
         if (!actionNode) return emitComponentEvent(instance, actionName, args);
         const scope = componentScopeFor(instance, definition);
         const actionWords = splitComponentWords(actionNode.text || '');
+        const previous = {};
+        const hadPrevious = {};
         (actionWords.slice(2) || []).forEach(function (param, index) {
           if (!param) return;
+          hadPrevious[param] = Object.prototype.hasOwnProperty.call(scope, param);
+          previous[param] = scope[param];
           scope[param] = (args || [])[index];
         });
-        if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, actionNode), instance)) {
+        const changes = { writes: {} };
+        const handled = runComponentPlanStatements(
+          definition,
+          scope,
+          componentNodeChildren(definition, actionNode),
+          instance,
+          changes);
+        (actionWords.slice(2) || []).forEach(function (param) {
+          if (!param) return;
+          if (hadPrevious[param]) scope[param] = previous[param];
+          else delete scope[param];
+        });
+        if (!handled) {
           return false;
         }
-        renderDirectComponent(instance);
+        const shouldRender = componentWritesAffectRender(definition, Object.keys(changes.writes || {}));
+        noteComponentActionResult(instance, definition, actionName, changes.writes, !shouldRender);
+        if (shouldRender &&
+            !patchDirectComponentFromWrites(instance, definition, changes.writes)) {
+          renderDirectComponent(instance);
+        }
         return true;
       }
 

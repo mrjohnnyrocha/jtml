@@ -1150,11 +1150,14 @@ TEST(FriendlySyntax, PlainAndCompoundAssignmentsLower) {
         "when add\n"
         "  count += 1\n"
         "  count = count + 1\n"
+        "  count++\n"
+        "  count--\n"
         "page\n"
         "  show count\n");
 
     EXPECT_NE(classic.find("count += 1\\\\"), std::string::npos);
     EXPECT_NE(classic.find("count = count + 1\\\\"), std::string::npos);
+    EXPECT_NE(classic.find("count -= 1\\\\"), std::string::npos);
 }
 
 TEST(FriendlySyntax, TypeAnnotationsAreAcceptedAndPreservedForTooling) {
@@ -2419,7 +2422,17 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("const componentUpdatePlanCache = {}"),
               std::string::npos) << html;
+    EXPECT_NE(html.find("jtml:static-update-plans-ready"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("staticUpdatePlansLoaded: true"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("function compileComponentUpdatePlan(definition)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function staticComponentUpdatePlanForKey(key)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const staticPlan = staticComponentUpdatePlanForKey(key);"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("static-update-plan-interpreter"),
               std::string::npos) << html;
     EXPECT_NE(html.find("function compileComponentPatchOperation(definition, node, index)"),
               std::string::npos) << html;
@@ -2434,6 +2447,12 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
     EXPECT_NE(html.find("plan.generatedSource = generateComponentUpdateFunctionSource(plan)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("plan.update = compileGeneratedComponentUpdateFunction(plan) ||"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const dynamicGeneratedUpdateFunctions = false;"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("dynamic generated update functions disabled; using CSP-safe interpreted update plan"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("cspSafeUpdatePlans: !dynamicGeneratedUpdateFunctions"),
               std::string::npos) << html;
     EXPECT_NE(html.find("const factory = new Function('h', plan.generatedSource)"),
               std::string::npos) << html;
@@ -2699,6 +2718,38 @@ TEST(FriendlySyntax, DirectComponentActionsCanCallOtherLocalActions) {
             << component.dump(2);
     }
     EXPECT_TRUE(foundCounter) << state.dump(2);
+}
+
+TEST(FriendlySyntax, DynamicGeneratedUpdateFunctionsAreExplicitlyOptIn) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make Counter\n"
+        "  let count = 0\n"
+        "  when add\n"
+        "    count += 1\n"
+        "  text count\n"
+        "page\n"
+        "  Counter\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler secureTranspiler;
+    secureTranspiler.setBrowserLocalRuntime(true);
+    const std::string secureHtml = secureTranspiler.transpile(program);
+    EXPECT_NE(secureHtml.find("const dynamicGeneratedUpdateFunctions = false;"),
+              std::string::npos) << secureHtml;
+
+    JtmlTranspiler devTranspiler;
+    devTranspiler.setBrowserLocalRuntime(true);
+    devTranspiler.setDynamicGeneratedUpdateFunctions(true);
+    const std::string devHtml = devTranspiler.transpile(program);
+    EXPECT_NE(devHtml.find("const dynamicGeneratedUpdateFunctions = true;"),
+              std::string::npos) << devHtml;
 }
 
 TEST(FriendlySyntax, ComponentMetadataListsIsolatedLocals) {
@@ -3070,19 +3121,24 @@ TEST(FriendlySyntax, DirectComponentActionsMutateMemberAndSubscriptPaths) {
     std::string classic = normalizeOk(
         "jtml 2\n"
         "make ProfileCard\n"
-        "  let profile = { \"name\": \"Ada\", \"stats\": [1], \"nested\": { \"city\": \"Lisbon\" } }\n"
+        "  let profile = { \"name\": \"Ada\", \"stats\": [1, 5], \"nested\": { \"city\": \"Lisbon\" } }\n"
+        "  let clicks = 0\n"
         "  let activity = []\n"
         "  when mutate index\n"
+        "    clicks++\n"
         "    profile.name = \"Grace\"\n"
         "    profile.stats[index] += 1\n"
+        "    profile.stats[1]--\n"
         "    profile.nested.city = \"Porto\"\n"
         "    profile.created.city = \"Coimbra\"\n"
         "    activity[0].label = \"Opened\"\n"
         "  card\n"
         "    text profile.name\n"
         "    text profile.stats[0]\n"
+        "    text profile.stats[1]\n"
         "    text profile.nested.city\n"
         "    text profile.created.city\n"
+        "    text clicks\n"
         "    text activity[0].label\n"
         "page\n"
         "  ProfileCard\n");
@@ -3114,12 +3170,24 @@ TEST(FriendlySyntax, DirectComponentActionsMutateMemberAndSubscriptPaths) {
     ASSERT_EQ(manifest["componentDefinitions"].size(), 1) << manifest.dump(2);
     bool sawNameWrite = false;
     bool sawStatsWrite = false;
+    bool sawClicksIncrement = false;
+    bool sawStatsDecrement = false;
     for (const auto& node : manifest["componentDefinitions"][0]["bodyPlan"]) {
         if (node.value("kind", "") != "assignment") continue;
+        if (node.value("name", "") == "clicks") {
+            sawClicksIncrement = true;
+            EXPECT_EQ(node.value("operator", ""), "+=") << node.dump(2);
+            EXPECT_EQ(node.value("expression", ""), "1") << node.dump(2);
+        }
         if (node.value("name", "") == "profile.name") {
             sawNameWrite = true;
             EXPECT_NE(node["writes"].dump().find("\"profile\""), std::string::npos)
                 << node.dump(2);
+        }
+        if (node.value("name", "") == "profile.stats[1]") {
+            sawStatsDecrement = true;
+            EXPECT_EQ(node.value("operator", ""), "-=") << node.dump(2);
+            EXPECT_EQ(node.value("expression", ""), "1") << node.dump(2);
         }
         if (node.value("name", "") == "profile.stats[index]") {
             sawStatsWrite = true;
@@ -3131,6 +3199,8 @@ TEST(FriendlySyntax, DirectComponentActionsMutateMemberAndSubscriptPaths) {
     }
     EXPECT_TRUE(sawNameWrite) << manifest.dump(2);
     EXPECT_TRUE(sawStatsWrite) << manifest.dump(2);
+    EXPECT_TRUE(sawClicksIncrement) << manifest.dump(2);
+    EXPECT_TRUE(sawStatsDecrement) << manifest.dump(2);
 
     JtmlTranspiler liveTranspiler;
     InterpreterConfig config;
@@ -3154,6 +3224,10 @@ TEST(FriendlySyntax, DirectComponentActionsMutateMemberAndSubscriptPaths) {
         << component.dump(2);
     EXPECT_EQ(component["locals"]["profile"]["value"]["stats"][0], 2)
         << component.dump(2);
+    EXPECT_EQ(component["locals"]["profile"]["value"]["stats"][1], 4)
+        << component.dump(2);
+    EXPECT_EQ(component["locals"]["clicks"]["value"], 1)
+        << component.dump(2);
     EXPECT_EQ(component["locals"]["profile"]["value"]["nested"]["city"], "Porto")
         << component.dump(2);
     EXPECT_EQ(component["locals"]["profile"]["value"]["created"]["city"], "Coimbra")
@@ -3163,6 +3237,8 @@ TEST(FriendlySyntax, DirectComponentActionsMutateMemberAndSubscriptPaths) {
     EXPECT_NE(component.value("renderedHtml", "").find(">Grace</p>"),
               std::string::npos) << component.dump(2);
     EXPECT_NE(component.value("renderedHtml", "").find(">2</p>"),
+              std::string::npos) << component.dump(2);
+    EXPECT_NE(component.value("renderedHtml", "").find(">4</p>"),
               std::string::npos) << component.dump(2);
     EXPECT_NE(component.value("renderedHtml", "").find(">Porto</p>"),
               std::string::npos) << component.dump(2);

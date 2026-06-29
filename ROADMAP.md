@@ -28,7 +28,9 @@ dev preview, internal live apps, and server-owned UI, but they are not the
 benchmark path. Framework-competitive public builds require a compiler-first
 browser production target: typed AST and semantic graph to optimized body plan,
 generated JS component functions, fine-grained dependency updates, keyed DOM
-diffing, small runtime helpers, and a clear dev/prod runtime split.
+diffing, small runtime helpers, CSP-safe static JS assets, and a clear dev/prod
+runtime split. Runtime `new Function`/eval-style compilation is only an
+explicit development bridge, not the production security model.
 
 ## Phase 1: Try It In Five Minutes
 
@@ -147,13 +149,23 @@ slice means "implemented and valuable, but still being hardened."
 Experimental means "available for exploration and tool contracts, but not yet
 a production promise."
 
-## Modularization (done this sprint)
+## Modularization And Platform Boundaries
+
+Modularization is now incremental rather than a one-time folder shuffle. The
+destination folders exist for syntax, semantic, runtime, emit, tooling,
+interop, CLI command/service/studio ownership, and test fixtures. Files move
+only when the target boundary owns a stable contract and regression coverage.
 
 - **Directory layout**: `include/jtml/` for every public header, `src/` for every `.cpp`, `third_party/` for vendored single-header deps, `cli/` for the `jtml` binary split by command, `cmake/` for reusable helpers, `tests/` for the unit suite, `.github/workflows/` for CI.
 - **Header naming**: dropped the `jtml_` prefix and CamelCase. `include/jtml/{ast,lexer,parser,interpreter,transpiler,formatter,linter,value,environment,array,dict,function,renderer,websocket_server,instance_id_generator}.h`.
 - **Source naming**: every `.cpp` in `src/` is snake_case and mirrors its header.
 - **Third-party isolation**: `jtml_third_party` INTERFACE target in CMake owns the `third_party/` + Homebrew include paths; `jtml_core` inherits them transitively.
 - **CLI split**: `cli/main.cpp` does arg parsing + dispatch only; each command is its own translation unit (`cmd_basic`, `cmd_fmt_lint`, `cmd_serve`, `cmd_tutorial`). The tutorial's embedded HTML shell is isolated in `cli/tutorial_shell.cpp`.
+- **Runtime ownership slice**: the static browser update-plan asset emitter now
+  lives under `include/jtml/runtime/` and `src/jtml/runtime/`, while the old
+  top-level include remains as a compatibility shim. CMake groups core sources
+  by syntax, semantic, runtime, and tooling ownership so future movement is
+  explicit and reviewable.
 - **Namespace (deferred)**: the CLI already lives in `namespace jtml::cli`. The core library still uses global and `JTMLInterpreter::*` names; wrapping the entire core in `namespace jtml` is a single atomic refactor planned for the next sprint (it touches every AST reference in every file).
 
 ## Current Focus
@@ -366,8 +378,14 @@ The current focus is the semantic-core transition:
   Cached plans now own generated browser update-function source plus an indexed
   executable update function keyed by rendered reads, giving the runtime the
   same dependency-routed call boundary that the production compiler can later
-  emit directly. A conservative interpreted updater remains as the fallback
-  when generated functions are unavailable. Structured container elements
+  emit directly as static JS. Dynamic execution of generated source is disabled
+  by default for CSP-safe browser builds and must be explicitly opted into as a
+  development bridge; the conservative interpreted updater is the default
+  runtime fallback. Browser production builds also emit a CSP-safe
+  `jtml-update-plans.js` asset with precomputed component read indexes,
+  unsafe-entry lists, and first-slice text/region/nested patch operations; the
+  runtime prefers those static plans before compiling equivalent plan indexes
+  in the browser. Structured container elements
   with children can now patch their own compiled attributes in place without
   disturbing child DOM. `if` and `for` nodes now render stable body-plan region
   anchors and can be replaced directly from compiled patch operations when

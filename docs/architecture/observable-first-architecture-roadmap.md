@@ -210,9 +210,10 @@ precompiled element-part and click-invocation shapes, leaving runtime evaluation
 for only the dynamic values. Cached plans now own generated browser
 update-function source plus an indexed executable update function keyed by
 rendered reads, matching the dependency-routed call boundary that the
-compiler-first browser target can later emit as static JS. If generated
-functions are unavailable, a conservative interpreted updater remains as the
-fallback. If the operation plan cannot patch safely, the runtime records
+compiler-first browser target can later emit as static JS. Dynamic execution of
+that generated source is disabled by default for CSP-safe browser builds and is
+only an explicit development bridge; a conservative interpreted updater remains
+the default runtime fallback. If the operation plan cannot patch safely, the runtime records
 source-line fallback telemetry before using a full body-plan rerender.
 Structured container elements with children now have a conservative compiled
 attribute-only patch operation, so changing a parent `class`, semantic modifier,
@@ -254,7 +255,13 @@ right path for Studio, dev preview, internal live apps, debugging, and
 server-owned UI. They are not the benchmark path. Public/performance builds
 should move toward `jtml build --target browser --prod`: static assets,
 generated component functions, precompiled expressions, keyed DOM diffing,
-tiny runtime helpers, and no live patch endpoint requirement.
+tiny runtime helpers, and no live patch endpoint requirement. Browser builds
+now emit a first CSP-safe `jtml-update-plans.js` static seed with component
+body-plan read/write metadata, precomputed read indexes, unsafe-entry lists,
+and first-slice text/region/nested patch operations. The browser runtime
+prefers those static plans when available and compiles equivalent plan indexes
+at runtime only as a bridge/fallback. The asset is a bridge toward generated
+modules, not the final optimized compiler target.
 
 Remaining architectural work: broaden the supported body-plan subset until the
 expanded compatibility DOM is needed only for explicit fallback cases or can be

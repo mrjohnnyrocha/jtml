@@ -1104,6 +1104,22 @@ bool isFriendlyAssignmentOperator(const std::string& op) {
            op == "/=" || op == "%=";
 }
 
+bool parsePostfixIncrement(const std::string& token,
+                           std::string& target,
+                           std::string& op) {
+    if (token.size() <= 2) return false;
+    if (token.size() >= 2 && token.substr(token.size() - 2) == "++") {
+        target = token.substr(0, token.size() - 2);
+        op = "+=";
+    } else if (token.size() >= 2 && token.substr(token.size() - 2) == "--") {
+        target = token.substr(0, token.size() - 2);
+        op = "-=";
+    } else {
+        return false;
+    }
+    return !target.empty() && target.find_first_of("\"'") == std::string::npos;
+}
+
 struct FetchSpec {
     bool valid = false;
     std::string url;
@@ -3311,6 +3327,16 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
         } else if (tokens.size() >= 3 && isFriendlyAssignmentOperator(tokens[1])) {
             const std::string expr = friendlyExpression(joinTokens(tokens, 2));
             emitLine(out, level, tokens[0] + " " + tokens[1] + " " + expr + "\\\\");
+        } else if (tokens.size() == 1 &&
+                   [&] {
+                       std::string target;
+                       std::string op;
+                       return parsePostfixIncrement(tokens[0], target, op);
+                   }()) {
+            std::string target;
+            std::string op;
+            parsePostfixIncrement(tokens[0], target, op);
+            emitLine(out, level, target + " " + op + " 1\\\\");
         } else if (head == "get") {
             if (tokens.size() < 4) {
                 throw std::runtime_error("Expected 'get name = expression' at line " + std::to_string(line.number));

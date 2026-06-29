@@ -13,6 +13,7 @@
 #include "jtml/semantic.h"
 #include "jtml/semantic/module_graph.h"
 #include "jtml/semantic_project_json.h"
+#include "jtml/runtime/static_update_plan_emitter.h"
 #include "jtml/transpiler.h"
 #include "json.hpp"
 
@@ -217,6 +218,18 @@ nlohmann::json semanticFetchRecordsToJson(const jtml::SemanticProgram& semantic)
         });
     }
     return out;
+}
+
+std::string injectBrowserBuildAssetScript(std::string html,
+                                          const std::string& assetName) {
+    const std::string tag = "<script src=\"./" + assetName + "\" defer></script>\n";
+    const auto body = html.rfind("</body>");
+    if (body != std::string::npos) {
+        html.insert(body, tag);
+        return html;
+    }
+    html += "\n" + tag;
+    return html;
 }
 
 nlohmann::json semanticImportRecordsToJson(const jtml::SemanticProgram& semantic) {
@@ -860,6 +873,10 @@ int cmdDoctor(const Options& o) {
             {"bodyPlanReadWriteMetadata", true},
             {"typedExpressionDependencyAnalysis", true},
             {"memberSubscriptReadPaths", true},
+            {"cspSafeDefaultUpdatePlans", true},
+            {"staticUpdatePlanBuildArtifact", "jtml-update-plans.js"},
+            {"staticUpdatePlanPrecomputedIndexes", true},
+            {"dynamicGeneratedUpdateFunctions", "explicit opt-in bridge only"},
             {"keyedListDiffing", "first-slice direct list item key/index markers, lifecycle telemetry, conservative keyed for-region patching, retained/inserted/removed/moved key reporting, and removed nested dynamic child pruning; optimized DOM diff planned"},
             {"prodDevRuntimeSplit", "planned"},
         }},
@@ -1707,13 +1724,20 @@ int cmdBuild(const Options& o) {
 
     auto program = parseProgramFromFile(input.string(), o.syntax);
     JtmlTranspiler transpiler;
+    jtml::RuntimeProjectPlan runtimeProjectPlan;
+    bool hasRuntimeProjectPlan = false;
     if (o.target == "browser") {
         transpiler.setBrowserLocalRuntime(true);
         const auto semantic = jtml::analyzeSemanticProgram(program, readFile(input.string()));
-        transpiler.setRuntimeProjectPlan(
-            buildRuntimeProjectPlanForInput(input.string(), o.syntax, program, semantic));
+        runtimeProjectPlan =
+            buildRuntimeProjectPlanForInput(input.string(), o.syntax, program, semantic);
+        hasRuntimeProjectPlan = true;
+        transpiler.setRuntimeProjectPlan(runtimeProjectPlan);
     }
     std::string html = transpiler.transpile(program);
+    if (hasRuntimeProjectPlan) {
+        html = injectBrowserBuildAssetScript(html, "jtml-update-plans.js");
+    }
 
     std::ofstream ofs(outFile);
     if (!ofs.is_open()) {
@@ -1722,6 +1746,17 @@ int cmdBuild(const Options& o) {
     ofs << html;
 
     std::cout << "Built " << input.string() << " -> " << outFile.string() << "\n";
+    if (hasRuntimeProjectPlan) {
+        const auto updatePlanFile = outDir / "jtml-update-plans.js";
+        std::ofstream updatePlans(updatePlanFile);
+        if (!updatePlans.is_open()) {
+            throw std::runtime_error("Cannot write browser update plan output: " +
+                                     updatePlanFile.string());
+        }
+        updatePlans << emitStaticUpdatePlanAsset(runtimeProjectPlan);
+        std::cout << "Built browser update plans -> "
+                  << updatePlanFile.string() << "\n";
+    }
     if (inputWasDirectory) {
         copyBuildAssets(inputDir, outDir);
     }

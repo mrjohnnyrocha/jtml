@@ -968,6 +968,13 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["bodyPlanReadWriteMetadata"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["typedExpressionDependencyAnalysis"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["memberSubscriptReadPaths"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["cspSafeDefaultUpdatePlans"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["staticUpdatePlanBuildArtifact"],
+              "jtml-update-plans.js");
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["staticUpdatePlanPrecomputedIndexes"],
+              true);
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["dynamicGeneratedUpdateFunctions"],
+              "explicit opt-in bridge only");
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["optimizedJsCompiler"], "planned");
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["keyedListDiffing"].get<std::string>().find("key/index markers"),
               std::string::npos);
@@ -1238,11 +1245,29 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
 
     const auto htmlPath = outDir / "index.html";
     ASSERT_TRUE(std::filesystem::exists(htmlPath));
+    ASSERT_TRUE(std::filesystem::exists(outDir / "jtml-update-plans.js"));
     std::ifstream input(htmlPath);
     const std::string html((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
     EXPECT_NE(html.find("id=\"__jtml_client_manifest\""), std::string::npos) << html;
+    EXPECT_NE(html.find("<script src=\"./jtml-update-plans.js\" defer></script>"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("const browserLocalRuntime = true;"), std::string::npos) << html;
     EXPECT_NE(html.find("Browser-local runtime active"), std::string::npos) << html;
+
+    const std::string updatePlans = readTextFile(outDir / "jtml-update-plans.js");
+    EXPECT_NE(updatePlans.find("CSP-safe static update plan seed"), std::string::npos)
+        << updatePlans;
+    EXPECT_NE(updatePlans.find("window.__jtml_static_update_plans"), std::string::npos)
+        << updatePlans;
+    EXPECT_NE(updatePlans.find("window.jtml.staticUpdatePlans = plans"), std::string::npos)
+        << updatePlans;
+    EXPECT_NE(updatePlans.find("staticUpdatePlansAsset = true"), std::string::npos)
+        << updatePlans;
+    EXPECT_NE(updatePlans.find("\"componentCount\":0"), std::string::npos)
+        << updatePlans;
+    EXPECT_EQ(updatePlans.find("new Function"), std::string::npos) << updatePlans;
+    EXPECT_EQ(updatePlans.find("bodySource"), std::string::npos) << updatePlans;
+    EXPECT_EQ(updatePlans.find("bodyHex"), std::string::npos) << updatePlans;
 }
 
 TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
@@ -1278,10 +1303,12 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
 
     const auto htmlPath = outDir / "index.html";
     ASSERT_TRUE(std::filesystem::exists(htmlPath));
+    ASSERT_TRUE(std::filesystem::exists(outDir / "jtml-update-plans.js"));
     const std::string html = readTextFile(htmlPath);
     EXPECT_NE(html.find("mergeProjectManifest"), std::string::npos) << html;
     EXPECT_NE(html.find("runtimeManifestSource"), std::string::npos) << html;
     EXPECT_NE(html.find("projectManifest"), std::string::npos) << html;
+    EXPECT_NE(html.find("jtml-update-plans.js"), std::string::npos) << html;
     EXPECT_EQ(countOccurrences(html, "id=\"__jtml_client_manifest\""), 1u) << html;
     EXPECT_EQ(html.find(root.string()), std::string::npos) << html;
     const auto manifest = extractClientManifestJson(html);
@@ -1303,6 +1330,28 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
         }
     }
     EXPECT_TRUE(manifest["componentInstances"].is_array()) << manifest.dump(2);
+
+    const std::string updatePlans = readTextFile(outDir / "jtml-update-plans.js");
+    EXPECT_NE(updatePlans.find("\"mode\":\"csp-safe static update plans\""),
+              std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("\"componentCount\":"), std::string::npos)
+        << updatePlans;
+    EXPECT_NE(updatePlans.find("\"bodyPlan\""), std::string::npos)
+        << updatePlans;
+    EXPECT_NE(updatePlans.find("\"reads\""), std::string::npos)
+        << updatePlans;
+    EXPECT_NE(updatePlans.find("\"writes\""), std::string::npos)
+        << updatePlans;
+    EXPECT_NE(updatePlans.find("\"entriesByRead\""), std::string::npos)
+        << updatePlans;
+    EXPECT_NE(updatePlans.find("\"unsafeEntries\""), std::string::npos)
+        << updatePlans;
+    EXPECT_NE(updatePlans.find("\"staticPatchCoverage\":\"text-region-nested-first-slice\""),
+              std::string::npos) << updatePlans;
+    EXPECT_EQ(updatePlans.find("new Function"), std::string::npos)
+        << updatePlans;
+    EXPECT_EQ(updatePlans.find(root.string()), std::string::npos)
+        << updatePlans;
 }
 
 TEST(CliBuild, BrowserClientManifestEscapesScriptBreakingTextAndOmitsExplainFields) {

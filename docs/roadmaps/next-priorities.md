@@ -129,10 +129,21 @@ Output:
 
 ```text
 dist/index.html
+dist/jtml-update-plans.js
 dist/app.js
 dist/jtml-runtime.js
 dist/assets/...
 ```
+
+Current browser builds already emit `dist/index.html` plus a CSP-safe
+`dist/jtml-update-plans.js` static seed. That file carries component body-plan
+read/write metadata, precomputed read indexes, unsafe-entry lists, and
+first-slice text/region/nested patch operations without relying on runtime
+`eval`/`new Function`. The browser runtime prefers those static plans when
+available and falls back to runtime plan compilation only when no matching
+static plan exists. `app.js` and `jtml-runtime.js` remain the planned asset
+split once the compiler-first production target graduates from embedded runtime
+to owned static assets.
 
 Implementation slices:
 
@@ -251,8 +262,10 @@ Implementation slices:
 
 ## 6. Platform Modularization And Governance
 
-Status: planned next hardening lane. This is the enterprise-readiness lane, not
-a new feature family.
+Status: active incremental hardening lane. This is the enterprise-readiness
+lane, not a new feature family. The repo now has destination folders for the
+major ownership areas, but files should move only when the boundary is already
+clear and tests cover the contract.
 
 Why now:
 
@@ -332,6 +345,12 @@ Implementation slices:
    `jtml::runtimePlanToJson()` and `jtml::runtimePlanBodyPlanToJson()`; CLI
    explain and browser manifest body-plan emission now consume the shared
    serializer instead of duplicating JSON shapes.
+12a. ✅ First runtime-folder ownership slice: the CSP-safe static update-plan
+   asset emitter now lives under `include/jtml/runtime/` and
+   `src/jtml/runtime/`, with the old top-level include retained as a
+   compatibility shim. CMake now groups core sources by syntax, semantic,
+   runtime, and tooling ownership so future moves can happen boundary by
+   boundary instead of as a risky whole-repo shuffle.
 13. ✅ Per-file SemanticProject ownership slice: `SemanticProject` now accepts
    `SemanticModuleSource` records, and `jtml explain --json` builds project
    imports from collected source files so nested imports are attributed to the
@@ -605,12 +624,15 @@ Implementation slices:
    Live body-plan rendering also reports patch telemetry for patched/current,
    unsupported, and missing component records so parity checks can compare live
    behavior against browser-local body-plan execution.
-50. Add compiler-first browser production target slices: generate component
-   creation functions for simple body-plan templates, precompile expressions
-   where dependencies are known, broaden generated update functions beyond the
-   current body-plan patch helpers, expand text/attribute patches into keyed
-   region updates, add benchmark fixtures, and keep the current
-   manifest interpreter as dev and compatibility fallback.
+50. Add compiler-first browser production target slices: build on the current
+   CSP-safe `jtml-update-plans.js` asset and its precomputed read indexes,
+   generate component creation functions for simple body-plan templates,
+   precompile expressions where dependencies are known, broaden generated
+   update functions beyond the current body-plan patch helpers, expand
+   text/attribute patches into keyed region updates, emit full static JS
+   runtime assets for production, add benchmark fixtures, and keep the current
+   manifest interpreter plus opt-in dynamic generated-function bridge as dev
+   and compatibility fallback.
 51. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
    same catalog endpoint pattern.
 52. Add contract-first JTL backend API design docs and prototypes only after
@@ -619,7 +641,7 @@ Implementation slices:
    deployment controls. Planned phases are contracts/types/errors, OpenAPI,
    policies/validation, runtime adapters, JTML `fetch`/future `call`
    integration, and enterprise hardening.
-52. Add security, compatibility, deprecation, contribution, benchmark, and
+53. Add security, compatibility, deprecation, contribution, benchmark, and
    release-policy docs once the internal contracts stop moving every slice.
 
 ## Decision

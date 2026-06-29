@@ -882,10 +882,13 @@ Assignment updates an existing mutable variable:
 ```jtml
 count = count + 1\\
 count += 1\\
+count++\\
+count--\\
 ```
 
-Compound assignment supports `+=`, `-=`, `*=`, `/=`, and `%=`. The parser lowers
-these to ordinary assignments, so tooling and runtime behavior stay predictable.
+Compound assignment supports `+=`, `-=`, `*=`, `/=`, and `%=`. Friendly also
+accepts postfix `++` and `--`, lowering them to `+= 1` and `-= 1` before the
+runtime/body-plan layer. This keeps tooling and runtime behavior predictable.
 
 ## Derived Values
 

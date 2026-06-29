@@ -11,6 +11,7 @@ const char* browserRuntimePreludeChunk() {
     (function () {
       const wsPort = @JTML_WS_PORT@;
       const browserLocalRuntime = @JTML_BROWSER_LOCAL_RUNTIME@;
+      const dynamicGeneratedUpdateFunctions = @JTML_DYNAMIC_GENERATED_UPDATE_FUNCTIONS@;
 
       function reportStatus(state, message) {
         document.documentElement.dataset.jtmlStatus = state;
@@ -40,6 +41,20 @@ const char* browserRuntimePreludeChunk() {
       const dynamicComponentRenderStack = [];
       const componentBodyPlanFallbacks = [];
       const componentUpdatePlanCache = {};
+      if (window.addEventListener) {
+        window.addEventListener('jtml:static-update-plans-ready', function () {
+          Object.keys(componentUpdatePlanCache).forEach(function (key) {
+            delete componentUpdatePlanCache[key];
+          });
+          window.jtml = Object.assign(window.jtml || {}, {
+            runtimeSecurity: Object.assign(
+              {},
+              window.jtml && window.jtml.runtimeSecurity || {},
+              { staticUpdatePlansLoaded: true }
+            )
+          });
+        });
+      }
 
       window.jtmlEventValue = function (event) {
         const target = event && event.target;
@@ -1258,9 +1273,35 @@ const char* browserRuntimeComponentChunk() {
           ':' + signature;
       }
 
+      function staticComponentUpdatePlanForKey(key) {
+        const asset = window.__jtml_static_update_plans;
+        const components = asset && Array.isArray(asset.components) ? asset.components : [];
+        for (let i = 0; i < components.length; i += 1) {
+          const candidate = components[i] || {};
+          if (candidate.key !== key) continue;
+          return {
+            key: key,
+            component: candidate.name || '',
+            moduleId: candidate.moduleId == null ? null : candidate.moduleId,
+            entries: Array.isArray(candidate.entries) ? candidate.entries : [],
+            entriesByRead: candidate.entriesByRead || {},
+            unsafeEntries: Array.isArray(candidate.unsafeEntries) ? candidate.unsafeEntries : [],
+            staticSource: true,
+            staticPatchCoverage: candidate.staticPatchCoverage || 'unknown'
+          };
+        }
+        return null;
+      }
+
       function compileComponentUpdatePlan(definition) {
         const key = componentUpdatePlanKey(definition);
         if (componentUpdatePlanCache[key]) return componentUpdatePlanCache[key];
+        const staticPlan = staticComponentUpdatePlanForKey(key);
+        if (staticPlan) {
+          staticPlan.update = compileInterpretedComponentUpdateFunction(staticPlan);
+          componentUpdatePlanCache[key] = staticPlan;
+          return componentUpdatePlanCache[key];
+        }
         const entries = [];
         const entriesByRead = {};
         const unsafeEntries = [];
@@ -1468,7 +1509,20 @@ const char* browserRuntimeComponentChunk() {
       }
 
       function compileGeneratedComponentUpdateFunction(plan) {
-        if (!plan || !plan.generatedSource || typeof Function !== 'function') return null;
+        if (!plan || !plan.generatedSource) return null;
+        if (!dynamicGeneratedUpdateFunctions) {
+          window.jtml = Object.assign(window.jtml || {}, {
+            directComponentGeneratedUpdatePolicy: {
+              component: plan && plan.component || '',
+              planKey: plan && plan.key || '',
+              generatedSourceLength: String(plan && plan.generatedSource || '').length,
+              dynamicExecution: false,
+              reason: 'dynamic generated update functions disabled; using CSP-safe interpreted update plan'
+            }
+          });
+          return null;
+        }
+        if (typeof Function !== 'function') return null;
         try {
           const factory = new Function('h', plan.generatedSource);
           const update = factory(generatedUpdateHelpers());
@@ -1514,7 +1568,9 @@ const char* browserRuntimeComponentChunk() {
             plan,
             changed,
             patched,
-            'indexed-compiled-update-function');
+            plan && plan.staticSource
+              ? 'static-update-plan-interpreter'
+              : 'indexed-compiled-update-function');
           return { handled: true, patched: patched };
         };
       }
@@ -2211,8 +2267,16 @@ const char* browserRuntimeComponentChunk() {
         const cleanName = function (token) {
           return String(token || '').replace(/[\\(),:]+$/g, '').split(':')[0];
         };
+        const postfixAssignment = function (token) {
+          token = String(token || '');
+          if (token.length <= 2) return null;
+          if (token.slice(-2) === '++') return { name: cleanName(token.slice(0, -2)), operator: '+=', expression: '1' };
+          if (token.slice(-2) === '--') return { name: cleanName(token.slice(0, -2)), operator: '-=', expression: '1' };
+          return null;
+        };
         const kindFor = function (head, words) {
           if (words.length >= 2 && ['=', '+=', '-=', '*=', '/=', '%='].indexOf(words[1]) !== -1) return 'assignment';
+          if (words.length === 1 && postfixAssignment(words[0])) return 'assignment';
           if (words.length === 1 && /^[A-Za-z_][A-Za-z0-9_]*\(.*\)$/.test(words[0])) return 'call';
           if (head === 'let' || head === 'const') return 'state';
           if (head === 'get') return 'derived';
@@ -2235,6 +2299,7 @@ const char* browserRuntimeComponentChunk() {
           const parentIndex = ancestors.length ? ancestors[ancestors.length - 1] : -1;
           const head = words[0];
           const kind = kindFor(head, words);
+          const postfix = kind === 'assignment' && words.length === 1 ? postfixAssignment(words[0]) : null;
           const keyIndex = head === 'for' ? words.indexOf('key') : -1;
           const templateExpression = kind === 'template'
             ? (keyIndex === -1 ? words.slice(1).join(' ') : words.slice(1, keyIndex).join(' '))
@@ -2245,16 +2310,16 @@ const char* browserRuntimeComponentChunk() {
             childIndices: [],
             kind: kind,
             head: head,
-            name: kind === 'assignment' ? cleanName(words[0]) :
+            name: postfix ? postfix.name : (kind === 'assignment' ? cleanName(words[0]) :
               (kind === 'call' ? cleanName(words[0].slice(0, words[0].indexOf('('))) :
               (['state', 'derived', 'action', 'effect'].indexOf(kind) !== -1 ? cleanName(words[1]) :
-                (kind === 'template' ? cleanName(head) : ''))),
+                (kind === 'template' ? cleanName(head) : '')))),
             text: text,
-            operator: kind === 'assignment' ? words[1] : '',
-            expression: kind === 'assignment' ? words.slice(2).join(' ') :
+            operator: postfix ? postfix.operator : (kind === 'assignment' ? words[1] : ''),
+            expression: postfix ? postfix.expression : (kind === 'assignment' ? words.slice(2).join(' ') :
               (kind === 'call'
                 ? words[0].slice(words[0].indexOf('(') + 1, -1)
-                : templateExpression),
+                : templateExpression)),
             keyExpression: keyIndex === -1 ? '' : words.slice(keyIndex + 1).join(' '),
             renderRoot: indent === 0 && kind === 'template'
           };
@@ -2901,6 +2966,11 @@ const char* browserRuntimeComponentChunk() {
           componentInstanceManifest: componentInstanceManifest,
           projectManifest: manifest.project || null,
           runtimeManifestSource: manifest.project ? 'semantic-project' : 'linked-compatibility',
+          runtimeSecurity: {
+            cspSafeUpdatePlans: !dynamicGeneratedUpdateFunctions,
+            dynamicGeneratedUpdateFunctions: dynamicGeneratedUpdateFunctions,
+            generatedUpdateSourceAvailable: true
+          },
           runAction: function (name) {
             return executeClientAction(name, Array.prototype.slice.call(arguments, 1));
           }

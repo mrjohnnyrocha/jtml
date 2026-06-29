@@ -5,7 +5,9 @@
 
 namespace jtml {
 
-std::string emitBrowserRuntimeScript(int webSocketPort, bool browserLocalRuntime);
+std::string emitBrowserRuntimeScript(int webSocketPort,
+                                     bool browserLocalRuntime,
+                                     bool dynamicGeneratedUpdateFunctions = false);
 
 } // namespace jtml
 

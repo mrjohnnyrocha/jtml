@@ -172,6 +172,29 @@ bool isAssignmentBodyLine(const std::vector<std::string>& tokens) {
            tokens[1] == "*=" || tokens[1] == "/=" || tokens[1] == "%=";
 }
 
+bool parsePostfixAssignmentToken(const std::string& token,
+                                 std::string& target,
+                                 std::string& op) {
+    if (token.size() <= 2) return false;
+    if (token.substr(token.size() - 2) == "++") {
+        target = token.substr(0, token.size() - 2);
+        op = "+=";
+    } else if (token.substr(token.size() - 2) == "--") {
+        target = token.substr(0, token.size() - 2);
+        op = "-=";
+    } else {
+        return false;
+    }
+    return !target.empty() && target.find_first_of("\"'") == std::string::npos;
+}
+
+bool isPostfixAssignmentBodyLine(const std::vector<std::string>& tokens) {
+    if (tokens.size() != 1) return false;
+    std::string target;
+    std::string op;
+    return parsePostfixAssignmentToken(tokens[0], target, op);
+}
+
 std::string joinTokens(const std::vector<std::string>& tokens, size_t start) {
     std::ostringstream out;
     for (size_t i = start; i < tokens.size(); ++i) {
@@ -488,12 +511,19 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
         node.text = text;
         node.sourceLine = bodyLine;
         node.head = tokens[0];
-        node.kind = isAssignmentBodyLine(tokens) ? "assignment" :
+        const bool postfixAssignment = isPostfixAssignmentBodyLine(tokens);
+        node.kind = (isAssignmentBodyLine(tokens) || postfixAssignment) ? "assignment" :
             (isCallBodyLine(tokens) ? "call" : componentBodyNodeKind(node.head));
         if (node.kind == "assignment") {
-            node.name = cleanComponentNameToken(tokens[0]);
-            node.operatorToken = tokens[1];
-            node.expression = joinTokens(tokens, 2);
+            if (postfixAssignment) {
+                parsePostfixAssignmentToken(tokens[0], node.name, node.operatorToken);
+                node.name = cleanComponentNameToken(node.name);
+                node.expression = "1";
+            } else {
+                node.name = cleanComponentNameToken(tokens[0]);
+                node.operatorToken = tokens[1];
+                node.expression = joinTokens(tokens, 2);
+            }
             appendUnique(node.writes, node.name);
             appendUnique(node.writes, rootDependencyName(node.name));
             appendUnique(node.reads, expressionDependencies(node.expression));

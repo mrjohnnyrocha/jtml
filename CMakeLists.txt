@@ -37,38 +37,55 @@ if(EXISTS /opt/homebrew/include)
 endif()
 
 # ---------------------------------------------------------------------------
-# Core library (lexer, parser, AST, interpreter, transpiler, formatter, linter).
-# Public headers live in `include/`; every .cpp lives in `src/`.
+# Core library. Source lists are grouped by ownership so repo modularization can
+# proceed incrementally without breaking stable public headers.
 # ---------------------------------------------------------------------------
-set(JTML_CORE_SOURCES
+set(JTML_SYNTAX_SOURCES
     src/ast.cpp
-    src/attribute_classifier.cpp
     src/lexer.cpp
     src/parser.cpp
-    src/diagnostic.cpp
-    src/fix.cpp
     src/friendly.cpp
     src/friendly_formatter.cpp
-    src/language_catalog.cpp
-    src/module_resolver.cpp
+    src/expression_source.cpp
+    src/formatter.cpp
+)
+
+set(JTML_SEMANTIC_SOURCES
+    src/attribute_classifier.cpp
+    src/semantic.cpp
+    src/semantic_project_json.cpp
+    src/jtml/semantic/module_graph.cpp
+)
+
+set(JTML_RUNTIME_SOURCES
     src/interpreter.cpp
     src/transpiler.cpp
     src/browser_runtime_emitter.cpp
     src/browser_runtime_assets.cpp
     src/client_manifest_emitter.cpp
-    src/expression_source.cpp
-    src/formatter.cpp
-    src/linter.cpp
-    src/refactor.cpp
     src/runtime_plan.cpp
     src/runtime_plan_json.cpp
-    src/semantic.cpp
-    src/semantic_project_json.cpp
-    src/jtml/semantic/module_graph.cpp
+    src/jtml/runtime/static_update_plan_emitter.cpp
     src/environment.cpp
     src/array.cpp
     src/dict.cpp
     src/value.cpp
+)
+
+set(JTML_TOOLING_SOURCES
+    src/diagnostic.cpp
+    src/fix.cpp
+    src/language_catalog.cpp
+    src/module_resolver.cpp
+    src/linter.cpp
+    src/refactor.cpp
+)
+
+set(JTML_CORE_SOURCES
+    ${JTML_SYNTAX_SOURCES}
+    ${JTML_SEMANTIC_SOURCES}
+    ${JTML_RUNTIME_SOURCES}
+    ${JTML_TOOLING_SOURCES}
 )
 
 add_library(jtml_core STATIC ${JTML_CORE_SOURCES})

@@ -918,12 +918,44 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_NE(report["architectureSourceOfTruth"].get<std::string>().find("semantic IR"),
               std::string::npos);
     ASSERT_TRUE(report.contains("runtimeCapabilities")) << report.dump(2);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserRuntimeEmitterWrapper"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserRuntimeAssetChunks"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["moduleSystem"]["relativeImportsFromImporter"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["moduleSystem"]["recoverableModuleParseIssues"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["moduleSystem"]["sourceFirstImportIssueSpans"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["moduleSystem"]["moduleScopedComponentIdentity"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["browserLocalFirstSlice"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["slots"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["nestedComponentCalls"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["actionWhile"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["templateWhileActionOnly"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["commonAttributes"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["simpleActionArguments"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["actionLocalDeclarations"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["memberWriteDependencyRoots"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["memberAssignmentDirectMutation"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["memberAssignmentDeepDictCreation"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["memberAssignmentDeepArrayCreation"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["liveLoopValueParity"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["metadataDrivenLeafPatches"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["metadataDrivenTextAndAttributePatches"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["cachedCompiledUpdatePlans"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["compiledPatchOperations"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["precompiledPatchOperationShapes"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["compiledUpdateFunctions"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["indexedCompiledUpdateFunctions"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["generatedProductionUpdateFunctions"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["containerAttributePatchOperations"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["controlFlowRegionPatchOperations"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["slotRegionPatchOperations"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["nestedComponentPatchOperations"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["legacyHeuristicPatchFallback"], false);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["keyedListRegionMarkers"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["keyedListLifecycleTelemetry"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["keyedForRegionPatch"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["keyedListPrunesRemovedDynamicChildren"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["liveBodyPlanPatchTelemetry"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["browserSourceFirstFallbackContext"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["liveInterpreterParity"], false);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["fullParity"], false);
     EXPECT_EQ(report["runtimeCapabilities"]["contractFirstJtlApis"]["planned"], true);
@@ -934,8 +966,28 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["liveHtmlPatchPath"],
               "dev/internal runtime backend");
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["bodyPlanReadWriteMetadata"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["typedExpressionDependencyAnalysis"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["memberSubscriptReadPaths"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["optimizedJsCompiler"], "planned");
-    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("leaf patch"),
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["keyedListDiffing"].get<std::string>().find("key/index markers"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["keyedListDiffing"].get<std::string>().find("lifecycle telemetry"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["keyedListDiffing"].get<std::string>().find("keyed for-region patching"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["keyedListDiffing"].get<std::string>().find("removed nested dynamic child pruning"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("indexed compiled update functions"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("generated production update-function source"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("parsed expression dependency metadata"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("container patch operation"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("control-flow-region patch operation"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("legacy heuristic patch fallback removed"),
               std::string::npos);
 
     const std::string tiers = report["stabilityTiers"].dump();

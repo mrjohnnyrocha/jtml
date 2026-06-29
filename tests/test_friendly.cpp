@@ -1,3 +1,4 @@
+#include "jtml/browser_runtime_assets.h"
 #include "jtml/friendly.h"
 #include "jtml/environment.h"
 #include "jtml/interpreter.h"
@@ -877,6 +878,22 @@ TEST(FriendlySyntax, FetchCacheKeysDedupeAndTimedRevalidationReachBrowserRuntime
     EXPECT_NE(html.find("document.hidden"), std::string::npos) << html;
     EXPECT_NE(html.find("return __jtml_fetch_fns[name](true);"), std::string::npos) << html;
     EXPECT_NE(html.find("fetchTimers: __jtml_fetch_timers"), std::string::npos) << html;
+}
+
+TEST(FriendlySyntax, BrowserRuntimeAssetsExposeOwnedChunks) {
+    const auto chunks = jtml::browserRuntimeAssetChunks();
+    ASSERT_EQ(chunks.size(), 4u);
+    EXPECT_STREQ(chunks[0].name, "prelude");
+    EXPECT_STREQ(chunks[1].name, "components");
+    EXPECT_STREQ(chunks[2].name, "data-platform");
+    EXPECT_STREQ(chunks[3].name, "boot-transport");
+    EXPECT_NE(std::string(chunks[0].source).find("<script>"), std::string::npos);
+    EXPECT_NE(std::string(chunks[1].source).find("function renderDirectComponent"),
+              std::string::npos);
+    EXPECT_NE(std::string(chunks[2].source).find("function startFetchBindings"),
+              std::string::npos);
+    EXPECT_NE(std::string(chunks[3].source).find("window.addEventListener('hashchange'"),
+              std::string::npos);
 }
 
 TEST(FriendlySyntax, EffectLowersToSubscriptionFunction) {
@@ -2026,11 +2043,14 @@ TEST(FriendlySyntax, DirectComponentBodyPlanRendererCoversConditionalsAndLoops) 
         "make ListCard title\n"
         "  let visible = true\n"
         "  let items = [\"A\", \"B\"]\n"
+        "  let people = { \"ada\": \"Ada\", \"grace\": \"Grace\" }\n"
         "  card\n"
         "    h2 title\n"
         "    if visible\n"
         "      for item in items key item\n"
         "        text item\n"
+        "      for person in people\n"
+        "        text person\n"
         "page\n"
         "  ListCard \"Names\"\n");
 
@@ -2054,6 +2074,9 @@ TEST(FriendlySyntax, DirectComponentBodyPlanRendererCoversConditionalsAndLoops) 
     EXPECT_NE(html.find("\"text\":\"if visible\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"text\":\"for item in items key item\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"keyExpression\":\"item\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"text\":\"for person in people\""), std::string::npos) << html;
+    EXPECT_NE(html.find("else if (typeof values === 'object') values = Object.values(values);"),
+              std::string::npos) << html;
 }
 
 TEST(FriendlySyntax, DirectComponentBodyPlanRendererHandlesElseAsControlFlow) {
@@ -2083,7 +2106,9 @@ TEST(FriendlySyntax, DirectComponentBodyPlanRendererHandlesElseAsControlFlow) {
               std::string::npos) << html;
     EXPECT_NE(html.find("if (head === 'else') return '';"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("return elseNode ? renderComponentChildren(definition, instance, elseNode, scope) : '';"),
+    EXPECT_NE(html.find("html = elseNode ? renderComponentChildren(definition, instance, elseNode, scope) : '';"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-direct-region=\"if\""),
               std::string::npos) << html;
     EXPECT_NE(html.find("\"text\":\"else\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"text\":\"text \\\"Waiting\\\"\""), std::string::npos) << html;
@@ -2123,7 +2148,7 @@ TEST(FriendlySyntax, DirectComponentSlotsNestedCallsAttributesAndActionArgsUseBo
     EXPECT_EQ(manifest.dump().find("slotHex"), std::string::npos) << manifest.dump(2);
     EXPECT_EQ(manifest.dump().find("slotSource"), std::string::npos) << manifest.dump(2);
     EXPECT_NE(html.find("function renderComponentSlot(instance, scope, name)"), std::string::npos) << html;
-    EXPECT_NE(html.find("function renderNestedComponentCall(parentDefinition, parentInstance, node, scope, name)"),
+    EXPECT_NE(html.find("function renderNestedComponentCall(parentDefinition, parentInstance, node, scope, name, directNodeAttr)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("node && node.definitionModule"), std::string::npos) << html;
     EXPECT_NE(html.find("const dynamicComponentInstances = {}"), std::string::npos) << html;
@@ -2132,7 +2157,11 @@ TEST(FriendlySyntax, DirectComponentSlotsNestedCallsAttributesAndActionArgsUseBo
     EXPECT_NE(html.find("data-jtml-direct-instance"), std::string::npos) << html;
     EXPECT_NE(html.find("function parseComponentActionInvocation(raw, scope)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("splitTopLevelList(argSource).forEach"),
+    EXPECT_NE(html.find("function compileComponentActionInvocation(raw)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("argExpressions: argSource ? splitTopLevelList(argSource) : []"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function evaluateCompiledComponentActionInvocation(compiled, scope)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("function renderComponentAttributes(parts, extra)"),
               std::string::npos) << html;
@@ -2233,6 +2262,14 @@ TEST(FriendlySyntax, LiveRuntimeScriptUsesBodyPlanHashesAndFailsClosed) {
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("function applyLiveBodyPlanRender(payload)"),
               std::string::npos) << html;
+    EXPECT_NE(html.find("liveBodyPlanLastPatch"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("mode: 'live-body-plan-render'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("unsupportedIds: unsupportedIds"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("missingElementIds: missingElementIds"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("function jtmlStableHash(value)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("new TextEncoder().encode(value)"),
@@ -2280,6 +2317,11 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
         "    count += 2\n"
         "    remainder %= 4\n"
         "    label += \"B\"\n"
+        "  when localLet\n"
+        "    let next = count + 5\n"
+        "    get replacement = \"local\"\n"
+        "    count = next\n"
+        "    label = replacement\n"
         "  when loopUp\n"
         "    while count < 4\n"
         "      count += 1\n"
@@ -2289,6 +2331,7 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
         "  box\n"
         "    text label\n"
         "    button \"Add\" click add\n"
+        "    button \"Local let\" click localLet\n"
         "    button \"Loop\" click loopUp\n"
         "    button \"Guard\" click guarded\n"
         "page\n"
@@ -2305,6 +2348,12 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
     transpiler.setBrowserLocalRuntime(true);
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("function applyComponentAssignment(scope, node)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const targetParts = parseClientPathSegments(node.name, scope);"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function applyComponentStateDeclaration(scope, node)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("node.kind === 'state' || node.kind === 'derived'"),
               std::string::npos) << html;
     EXPECT_NE(html.find("typeof current === 'number' && typeof next === 'number'"),
               std::string::npos) << html;
@@ -2326,15 +2375,21 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("scope[match[1]] = values[itemIndex];"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("runComponentPlanStatements(definition, scope, componentNodeChildren(definition, elseNode), instance, changes)"),
+    EXPECT_NE(html.find("runComponentPlanStatements(definition, scope, componentNodeChildren(definition, elseNode), instance, changes, actionContext)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("return false;"),
               std::string::npos) << html;
     EXPECT_NE(html.find("runDirectComponentFallbackAction"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("function recordComponentBodyPlanFallback(instance, definition, node, reason)"),
+    EXPECT_NE(html.find("function recordComponentBodyPlanFallback(instance, definition, node, reason, actionContext)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("directComponentFallbacks: componentBodyPlanFallbacks"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("action: actionContext && actionContext.name || ''"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("actionSourceLine: actionContext && actionContext.sourceLine || 0"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("actionText: actionContext && actionContext.text || ''"),
               std::string::npos) << html;
     EXPECT_NE(html.find("bodySourceLine: node && node.sourceLine || 0"),
               std::string::npos) << html;
@@ -2346,7 +2401,147 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("function patchDirectComponentFromWrites(instance, definition, writes)"),
               std::string::npos) << html;
+    EXPECT_EQ(html.find("function patchDirectComponentNodeInPlace(instance, definition, node, scope)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function patchDirectComponentElementAttributes(el, parts, extra)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function componentAttributeMap(parts, extra)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function componentPatchOperationKind(definition, node)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function compileComponentElementParts(words, start, stopWords)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function evaluateCompiledComponentElementParts(plan, scope)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function compileComponentActionInvocation(raw)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function evaluateCompiledComponentActionInvocation(compiled, scope)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const componentUpdatePlanCache = {}"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function compileComponentUpdatePlan(definition)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function compileComponentPatchOperation(definition, node, index)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function executeComponentPatchOperation(instance, definition, operation, scope)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function generateComponentUpdateFunctionSource(plan)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function compileGeneratedComponentUpdateFunction(plan)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function compileInterpretedComponentUpdateFunction(plan)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("plan.generatedSource = generateComponentUpdateFunctionSource(plan)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("plan.update = compileGeneratedComponentUpdateFunction(plan) ||"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const factory = new Function('h', plan.generatedSource)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("generated-production-update-function"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const entriesByRead = {}"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const unsafeEntries = []"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function addComponentUpdateIndex(index, entry)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function componentPlanAffectedEntries(plan, changed)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function firstUnsafeAffectedRenderNodeFromPlan(plan, definition, changed)"),
+              std::string::npos) << html;
+    EXPECT_EQ(html.find("function firstUnsafeAffectedRenderNode(definition, changed)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function recordCompiledPatchFallback(instance, definition, node, reason, changed)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("directComponentPatchFallback"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("operation: operation"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("partsPlan = compileComponentElementParts(words, 1, { click: true })"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("base.clickInvocation = compileComponentActionInvocation(base.clickRaw)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("base.operation = 'container-attrs'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("base.operation = 'nested-component'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("if (operation.operation === 'container-attrs')"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("if (operation.operation === 'nested-component')"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("return '<span' + directNodeAttr +"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-direct-region=\"if\""),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-direct-region=\"for\""),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-direct-region=\"slot\""),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-direct-list-key"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-direct-list-index"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function recordDirectListLifecycle(instance, definition, node, nodeIndex, keys)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function renderComponentForItems(definition, instance, node, scope, words)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function patchComponentForRegion(instance, definition, node, scope, el)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function pruneDynamicComponentListItem(parentId, nodeIndex, key)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("directComponentKeyedListPatch"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("mode: 'keyed-for-region-patch'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("patchComponentForRegion(instance, definition, node, scope, el)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("keyed for-region patch requires unique next keys"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("directComponentListLifecycle"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("mode: 'keyed-list-markers'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("insertedKeys: inserted"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("removedKeys: removed"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("movedKeys: moved"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("previousKeys: previousKeys"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("retainedKeys: retainedKeys"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("prunedDynamicInstances: prunedDynamicInstances"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("reordered: movedKeys.length > 0"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function renderComponentForRegion(definition, instance, node, scope, words)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("if (head === 'if' || head === 'for' || head === 'slot') return 'region'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("base.operation = 'region'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("if (operation.operation === 'region')"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("operationCount: plan && plan.__lastOperationCount || 0"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("indexedReadCount: Object.keys(plan && plan.entriesByRead || {}).length"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("unsafeEntryCount: (plan && plan.unsafeEntries || []).length"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("generatedSourceLength: String(plan && plan.generatedSource || '').length"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("'indexed-compiled-update-function'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("node.keyExpression || ''"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function applyCompiledComponentUpdatePlan(instance, definition, changed, scope)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("directComponentCompiledUpdatePlan"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("data-jtml-direct-body-node"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("data-jtml-direct-managed-attrs"),
               std::string::npos) << html;
     EXPECT_NE(html.find("directComponentPatchCount"),
               std::string::npos) << html;
@@ -2354,9 +2549,17 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("directComponentLastAction"),
               std::string::npos) << html;
+    EXPECT_NE(html.find("const actionContext = {"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("name: actionNode.name || actionName || ''"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("const shouldRender = componentWritesAffectRender(definition, Object.keys(changes.writes || {}));"),
               std::string::npos) << html;
     EXPECT_NE(html.find("!patchDirectComponentFromWrites(instance, definition, changes.writes)"),
+              std::string::npos) << html;
+    EXPECT_EQ(html.find("patchDirectComponentNodeInPlace(instance, definition, node, scope)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("compiled body-plan update unavailable; full direct rerender required"),
               std::string::npos) << html;
     EXPECT_NE(html.find("renderDirectComponent(instance);"),
               std::string::npos) << html;
@@ -2761,9 +2964,15 @@ TEST(FriendlySyntax, InterpreterLiveBodyPlanActionsFailClosedAndPreservePlusEqua
         "  let label = \"A\"\n"
         "  let items = [1, 2, 3]\n"
         "  let letters = \"xy\"\n"
+        "  let weights = { \"a\": 4, \"b\": 5 }\n"
         "  when add\n"
         "    count += 2\n"
         "    label += \"B\"\n"
+        "  when localLet\n"
+        "    let next = count + 5\n"
+        "    get replacement = \"local\"\n"
+        "    count = next\n"
+        "    label = replacement\n"
         "  when sum\n"
         "    count = 0\n"
         "    for item in items\n"
@@ -2774,6 +2983,10 @@ TEST(FriendlySyntax, InterpreterLiveBodyPlanActionsFailClosedAndPreservePlusEqua
         "    label = \"\"\n"
         "    for letter in letters\n"
         "      label += letter\n"
+        "  when sumDict\n"
+        "    count = 0\n"
+        "    for value in weights\n"
+        "      count += value\n"
         "  when guarded\n"
         "    count += 1\n"
         "    if count\n"
@@ -2811,6 +3024,18 @@ TEST(FriendlySyntax, InterpreterLiveBodyPlanActionsFailClosedAndPreservePlusEqua
     EXPECT_EQ(state["components"][0]["locals"]["label"]["value"], "AB");
 
     ASSERT_TRUE(interpreter.dispatchComponentAction(
+        componentId, "localLet", nlohmann::json::array(), bindings, error)) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    EXPECT_EQ(state["components"][0]["locals"]["count"]["value"], 8);
+    EXPECT_EQ(state["components"][0]["locals"]["label"]["value"], "local");
+    EXPECT_EQ(state["components"][0]["locals"]["next"]["value"], 8);
+    EXPECT_EQ(state["components"][0]["locals"]["replacement"]["value"], "local");
+    EXPECT_NE(state["components"][0].value("renderedHtml", "").find(">local</p>"),
+              std::string::npos) << state.dump(2);
+
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
         componentId, "sum", nlohmann::json::array(), bindings, error)) << error;
 
     state = nlohmann::json::parse(interpreter.getStateJSON());
@@ -2826,12 +3051,125 @@ TEST(FriendlySyntax, InterpreterLiveBodyPlanActionsFailClosedAndPreservePlusEqua
     EXPECT_EQ(state["components"][0]["locals"]["label"]["value"], "xy");
 
     ASSERT_TRUE(interpreter.dispatchComponentAction(
+        componentId, "sumDict", nlohmann::json::array(), bindings, error)) << error;
+
+    state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    EXPECT_EQ(state["components"][0]["locals"]["count"]["value"], 9);
+
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
         componentId, "guarded", nlohmann::json::array(), bindings, error)) << error;
 
     state = nlohmann::json::parse(interpreter.getStateJSON());
     ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
-    EXPECT_EQ(state["components"][0]["locals"]["count"]["value"], 7);
+    EXPECT_EQ(state["components"][0]["locals"]["count"]["value"], 10);
     EXPECT_EQ(state["components"][0]["locals"]["label"]["value"], "guarded");
+}
+
+TEST(FriendlySyntax, DirectComponentActionsMutateMemberAndSubscriptPaths) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "make ProfileCard\n"
+        "  let profile = { \"name\": \"Ada\", \"stats\": [1], \"nested\": { \"city\": \"Lisbon\" } }\n"
+        "  let activity = []\n"
+        "  when mutate index\n"
+        "    profile.name = \"Grace\"\n"
+        "    profile.stats[index] += 1\n"
+        "    profile.nested.city = \"Porto\"\n"
+        "    profile.created.city = \"Coimbra\"\n"
+        "    activity[0].label = \"Opened\"\n"
+        "  card\n"
+        "    text profile.name\n"
+        "    text profile.stats[0]\n"
+        "    text profile.nested.city\n"
+        "    text profile.created.city\n"
+        "    text activity[0].label\n"
+        "page\n"
+        "  ProfileCard\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler browserTranspiler;
+    browserTranspiler.setBrowserLocalRuntime(true);
+    const std::string browserHtml = browserTranspiler.transpile(program);
+    EXPECT_NE(browserHtml.find("function parseClientPathSegments(path, scope)"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("function assignObjectPath(root, parts, value)"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("const targetParts = parseClientPathSegments(node.name, scope);"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("scope[targetParts[0]] = typeof targetParts[1] === 'number' ? [] : {};"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("target[key] = typeof parts[i + 1] === 'number' ? [] : {};"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("return assignObjectPath(scope[targetParts[0]], targetParts.slice(1), assigned);"),
+              std::string::npos) << browserHtml;
+
+    const auto manifest = clientManifestFromHtml(browserHtml);
+    ASSERT_EQ(manifest["componentDefinitions"].size(), 1) << manifest.dump(2);
+    bool sawNameWrite = false;
+    bool sawStatsWrite = false;
+    for (const auto& node : manifest["componentDefinitions"][0]["bodyPlan"]) {
+        if (node.value("kind", "") != "assignment") continue;
+        if (node.value("name", "") == "profile.name") {
+            sawNameWrite = true;
+            EXPECT_NE(node["writes"].dump().find("\"profile\""), std::string::npos)
+                << node.dump(2);
+        }
+        if (node.value("name", "") == "profile.stats[index]") {
+            sawStatsWrite = true;
+            EXPECT_NE(node["writes"].dump().find("\"profile\""), std::string::npos)
+                << node.dump(2);
+            EXPECT_NE(node["reads"].dump().find("\"index\""), std::string::npos)
+                << node.dump(2);
+        }
+    }
+    EXPECT_TRUE(sawNameWrite) << manifest.dump(2);
+    EXPECT_TRUE(sawStatsWrite) << manifest.dump(2);
+
+    JtmlTranspiler liveTranspiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(liveTranspiler, config);
+    interpreter.interpret(program);
+
+    auto components = nlohmann::json::parse(interpreter.getComponentsJSON());
+    ASSERT_EQ(components.size(), 1) << components.dump(2);
+    const auto componentId = components[0]["id"].get<std::string>();
+
+    std::string bindings;
+    std::string error;
+    ASSERT_TRUE(interpreter.dispatchComponentAction(
+        componentId, "mutate", nlohmann::json::array({0}), bindings, error)) << error;
+
+    auto state = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(state["components"].size(), 1) << state.dump(2);
+    const auto& component = state["components"][0];
+    EXPECT_EQ(component["locals"]["profile"]["value"]["name"], "Grace")
+        << component.dump(2);
+    EXPECT_EQ(component["locals"]["profile"]["value"]["stats"][0], 2)
+        << component.dump(2);
+    EXPECT_EQ(component["locals"]["profile"]["value"]["nested"]["city"], "Porto")
+        << component.dump(2);
+    EXPECT_EQ(component["locals"]["profile"]["value"]["created"]["city"], "Coimbra")
+        << component.dump(2);
+    EXPECT_EQ(component["locals"]["activity"]["value"][0]["label"], "Opened")
+        << component.dump(2);
+    EXPECT_NE(component.value("renderedHtml", "").find(">Grace</p>"),
+              std::string::npos) << component.dump(2);
+    EXPECT_NE(component.value("renderedHtml", "").find(">2</p>"),
+              std::string::npos) << component.dump(2);
+    EXPECT_NE(component.value("renderedHtml", "").find(">Porto</p>"),
+              std::string::npos) << component.dump(2);
+    EXPECT_NE(component.value("renderedHtml", "").find(">Coimbra</p>"),
+              std::string::npos) << component.dump(2);
+    EXPECT_NE(component.value("renderedHtml", "").find(">Opened</p>"),
+              std::string::npos) << component.dump(2);
 }
 
 TEST(FriendlySyntax, InterpreterLiveBodyPlanTemplateSupportReflectsRenderedHtml) {
@@ -2963,10 +3301,13 @@ TEST(FriendlySyntax, InterpreterLiveBodyPlanRendererSupportsNestedComponentsAndS
         "    slot\n"
         "make Picker\n"
         "  let selected = \"\"\n"
+        "  let people = { \"grace\": \"Grace\" }\n"
         "  when pick value\n"
         "    selected = value\n"
         "  Frame \"Chooser\"\n"
         "    text \"Choose one\"\n"
+        "    for person in people\n"
+        "      text person\n"
         "    button \"Ada\" click pick(\"Ada\")\n"
         "page\n"
         "  Picker\n");
@@ -2991,7 +3332,8 @@ TEST(FriendlySyntax, InterpreterLiveBodyPlanRendererSupportsNestedComponentsAndS
         if (!component.contains("renderedHtml")) continue;
         const std::string candidate = component["renderedHtml"].get<std::string>();
         if (candidate.find("class=\"frame jtml-card\"") != std::string::npos &&
-            candidate.find("Choose one") != std::string::npos) {
+            candidate.find("Choose one") != std::string::npos &&
+            candidate.find(">Grace</p>") != std::string::npos) {
             html = candidate;
             break;
         }
@@ -3001,6 +3343,7 @@ TEST(FriendlySyntax, InterpreterLiveBodyPlanRendererSupportsNestedComponentsAndS
     EXPECT_NE(html.find("data-jtml-ui=\"card\""), std::string::npos) << state.dump(2);
     EXPECT_NE(html.find(">Chooser</h2>"), std::string::npos) << state.dump(2);
     EXPECT_NE(html.find("Choose one"), std::string::npos) << state.dump(2);
+    EXPECT_NE(html.find(">Grace</p>"), std::string::npos) << state.dump(2);
     EXPECT_NE(html.find("<button"), std::string::npos) << state.dump(2);
     EXPECT_NE(html.find("data-jtml-direct-component-action=\"pick\""),
               std::string::npos) << state.dump(2);

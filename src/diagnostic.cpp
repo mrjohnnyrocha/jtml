@@ -120,6 +120,13 @@ void classify(Diagnostic& diagnostic) {
         diagnostic.example = "when submit\n  show \"done\"\n  return true";
         return;
     }
+    if (text.find("template while") != std::string::npos ||
+        text.find("render-time while") != std::string::npos) {
+        diagnostic.code = "JTML_TEMPLATE_WHILE";
+        diagnostic.hint = "Use `for item in items` for rendered repetition. Keep `while` inside actions where state changes are explicit.";
+        diagnostic.example = "for item in items\n  text item\n\nwhen advance\n  while count < 3\n    count += 1";
+        return;
+    }
     if (text.find("parser error") != std::string::npos ||
         text.find("expected") != std::string::npos ||
         text.find("unexpected") != std::string::npos) {

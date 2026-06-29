@@ -122,13 +122,15 @@ payload, and a semantic `runtimePlan`. Component instances expose their owning
 runtime environment and validate local action dispatch through that definition.
 The first browser-local direct body-plan execution slice can now render common
 component templates, initialize local state, recompute derived values, render
-simple `if`, `else`, `for`, and guarded action-body `while` nodes, run simple local assignment actions,
+simple `if`, `else`, `for`, and guarded action-body `while` nodes, run simple
+local assignment actions plus action-local `let` / `get` declaration nodes,
 carry authored slot plans, render slots and nested component calls, preserve
 common literal attributes and semantic UI modifiers, pass simple action
 arguments, and re-render the owning instance. Nested browser-local component
 calls also get addressable runtime identities for local action dispatch. The
 live interpreter now executes simple component body-plan assignment actions,
-including compound `+=`, `-=`, `*=`, `/=`, and `%=`,
+action-local `let` / `get` declarations, including compound `+=`, `-=`, `*=`,
+`/=`, and `%=`,
 exposes `renderedHtml` for supported body-plan templates through `/api/state`
 and `/api/rendered-components`, injects supported component wrappers from
 body-plan HTML into the initially served document, skips the first redundant
@@ -170,24 +172,82 @@ Action body lines such as `incBy(2)` and `picked("Ada Lovelace")` now become
 body-plan `call` nodes, so browser-local and live direct execution can compose
 component actions or emit declared component events without going through the
 expanded compatibility DOM.
-Body-plan nodes now expose first-slice `reads` and `writes` metadata. That is
-not yet a generated JS compiler, but it is the required update surface for the
-compiler-first production browser target: state changes should eventually
-touch only dependent text, attributes, derived values, and keyed list regions.
-The same nodes now carry authored body source lines, and unsupported direct
-component action fallback records preserve component/action context, component
-definition line, body line, node text, and fallback errors when compatibility
-also fails.
+Body-plan nodes now expose `reads` and `writes` metadata. Real expression
+fragments are parsed and walked as expression ASTs, so member/subscript access
+like `users.data[activeIndex].name` records the precise read path plus `users`
+and `activeIndex` instead of guessed token names. That is not yet a generated JS
+compiler, but it is the required update surface for the compiler-first
+production browser target:
+state changes should eventually touch only dependent text, attributes, derived
+values, and keyed list regions. Member/subscript writes also record the owning
+observable root for invalidation, and browser-local/live direct actions can now
+mutate existing dict/object properties, create missing dict/object and
+non-negative array path containers, and update array/dict subscript targets
+without compatibility dispatch. Richer assignment targets remain planned. Live
+body-plan `for` loops now share the browser value model for arrays, strings,
+dict/object values, and scalar singletons in both rendering and action
+execution. The same nodes now carry authored body source
+lines, and unsupported direct component action fallback records preserve
+component/action context, component definition line, body line, node text, and
+fallback errors when compatibility also fails. Browser-local fallback telemetry
+now carries the same authored action/source context on
+`window.jtml.directComponentFallbacks`.
 Browser-local direct component actions now consume this metadata for the first
 fine-grained-update-adjacent optimization: when action writes do not intersect
 the rendered-read dependency closure, the runtime skips a full component
 rerender and exposes the decision as `window.jtml.directComponentLastAction`.
-The next slice is also in place: simple affected leaf body-plan nodes are marked
-with `data-jtml-direct-body-node` and can be replaced directly from the body
-plan when their read set intersects an action write. Unsafe cases such as
-changed control flow, loops, slots, nested component calls, or complex child
-structure fall back to a full body-plan component rerender before any
-compatibility path is considered.
+The next slices are also in place: simple affected leaf body-plan nodes are
+marked with `data-jtml-direct-body-node`, and direct rendering records the
+managed attributes for those leaves. The browser runtime now tries an
+in-place text/attribute patch first, then replaces the leaf from the body plan,
+then falls back to a full body-plan component rerender. Those simple leaf
+updates are now compiled into a cached per-component update plan keyed by
+module/name/body shape, so repeated component actions do not have to rediscover
+the same patchable body-plan nodes. The cached entries now carry explicit
+text/button/element patch operations, which keeps the hot action path closer to
+the eventual generated JS update-function shape. These operations now carry
+precompiled element-part and click-invocation shapes, leaving runtime evaluation
+for only the dynamic values. Cached plans now own generated browser
+update-function source plus an indexed executable update function keyed by
+rendered reads, matching the dependency-routed call boundary that the
+compiler-first browser target can later emit as static JS. If generated
+functions are unavailable, a conservative interpreted updater remains as the
+fallback. If the operation plan cannot patch safely, the runtime records
+source-line fallback telemetry before using a full body-plan rerender.
+Structured container elements with children now have a conservative compiled
+attribute-only patch operation, so changing a parent `class`, semantic modifier,
+or platform attribute does not force child DOM replacement when the children
+themselves are unaffected.
+Control-flow regions are also anchored now: `if` and `for` body-plan nodes can
+compile to direct region-replacement operations instead of forcing a whole
+component rerender when the condition or collection changes. Unsafe cases such
+as render-time `while`, richer keyed list lifecycle beyond current key
+reporting/pruning, or complex unsupported child structure fall back to full body-plan
+rerender or explicit compatibility dispatch before any silent direct execution
+is allowed.
+The older recursive heuristic patch fallback has been removed from the
+browser-local direct component path, so unsupported updates have a simpler and
+more auditable sequence: compiled patch operation, body-plan node replacement,
+then full direct component rerender.
+Direct `for` regions now emit per-item key/index markers, so the next keyed
+DOM lifecycle slice has stable identity hooks for insert, reorder, and delete
+operations instead of opaque list HTML. The runtime also records first-slice
+list lifecycle telemetry for inserted, removed, and moved keys; optimized
+keyed DOM diffing is still a planned compiler/runtime slice. Compiled `for`
+region operations now use those keys for a conservative patch path that reuses
+and reorders item wrappers, updates item contents, reports retained/inserted/
+removed/moved key sets, prunes removed nested dynamic children for keyed list
+items, and fails closed to whole-region replacement when keys are duplicate or
+unsafe.
+Nested component call wrappers now carry stable body-node anchors and compile
+to explicit nested-component patch operations, allowing direct replacement of a
+composed child call when parent state changes affect it.
+Slot insertion sites now carry stable direct `slot` region anchors and compile
+as region patch operations, making slot updates visible to the same body-plan
+patch contract as `if` and `for`.
+Live body-plan rendering also exposes patch telemetry for patched/current,
+unsupported, and missing component records, which gives Studio and parity tests
+an explicit comparison surface while live compatibility DOM continues to shrink.
 
 Performance note: `/api/rendered-components` and live HTML patches are the
 right path for Studio, dev preview, internal live apps, debugging, and
@@ -198,9 +258,9 @@ tiny runtime helpers, and no live patch endpoint requirement.
 
 Remaining architectural work: broaden the supported body-plan subset until the
 expanded compatibility DOM is needed only for explicit fallback cases or can be
-removed from production browser builds entirely, add
-broader source-first diagnostics beyond the typed emitted-event payload
-messages now naming the authored payload and component definition line, harden
+removed from production browser builds entirely, keep extending
+source-first diagnostics beyond current emitted-event payload messages and
+module import issue spans, harden
 rich attribute/modifier parity for advanced platform APIs, broaden
 keyed/reordered collection lifecycle semantics beyond the first explicit `key`
 tail slice, and keep expanding browser/live behavior parity checks beyond the

@@ -205,6 +205,7 @@ std::vector<LintDiagnostic> JtmlLinter::lint(const std::vector<std::unique_ptr<A
     typeScopes.clear();
     functionArityScopes.clear();
     importedFiles_.clear();
+    elementDepth_ = 0;
 
     // Pre-pass: collect top-level declarations so that forward references
     // between top-level functions (a calls b, b calls a) don't trip the
@@ -460,6 +461,9 @@ void JtmlLinter::visitStmt(const ASTNode& node) {
     }
     case ASTNodeType::WhileStatement: {
         const auto& n = static_cast<const WhileStatementNode&>(node);
+        if (elementDepth_ > 0) {
+            reportWarning("template while is action-only in production runtimes; use `for` for rendered repetition");
+        }
         if (n.condition) visitExpr(*n.condition);
         pushScope(); visitBlock(n.body); popScope();
         return;
@@ -618,7 +622,9 @@ void JtmlLinter::visitElement(const JtmlElementNode& elem) {
         }
     }
     pushScope();
+    ++elementDepth_;
     visitBlock(elem.content);
+    --elementDepth_;
     popScope();
 }
 

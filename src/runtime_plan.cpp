@@ -1,6 +1,8 @@
 #include "jtml/runtime_plan.h"
 
 #include "jtml/expression_source.h"
+#include "jtml/lexer.h"
+#include "jtml/parser.h"
 
 #include <algorithm>
 #include <cctype>
@@ -121,6 +123,18 @@ std::string cleanComponentNameToken(std::string token) {
     return token;
 }
 
+std::string rootDependencyName(const std::string& name) {
+    const auto dot = name.find('.');
+    const auto subscript = name.find('[');
+    size_t end = std::string::npos;
+    if (dot != std::string::npos) end = dot;
+    if (subscript != std::string::npos) {
+        end = end == std::string::npos ? subscript : std::min(end, subscript);
+    }
+    const std::string root = end == std::string::npos ? name : name.substr(0, end);
+    return cleanComponentNameToken(root);
+}
+
 int parseBodyIndent(const std::string& encodedLine) {
     const auto colon = encodedLine.find(':');
     if (colon == std::string::npos) return 0;
@@ -176,24 +190,6 @@ std::string joinTokensUntil(const std::vector<std::string>& tokens, size_t start
     return out.str();
 }
 
-bool isDependencyStopWord(const std::string& word) {
-    static const std::set<std::string> stops = {
-        "true", "false", "null", "undefined",
-        "if", "else", "for", "in", "while", "key",
-        "let", "const", "get", "when", "effect", "slot",
-        "and", "or", "not",
-        "page", "box", "text", "show", "button", "input", "form",
-        "panel", "card", "metric", "grid", "stack", "cluster", "split",
-        "toolbar", "tabs", "tab", "alert", "badge", "modal", "drawer",
-        "toast", "loading", "error", "empty", "field", "spacer",
-        "class", "style", "id", "title", "href", "src", "alt", "to",
-        "click", "input", "change", "submit", "hover", "scroll",
-        "pad", "gap", "cols", "radius", "shadow", "tone", "align",
-        "justify", "width", "surface",
-    };
-    return stops.count(word) > 0;
-}
-
 bool isIdentifierToken(const std::string& token) {
     if (token.empty()) return false;
     if (!(std::isalpha(static_cast<unsigned char>(token.front())) || token.front() == '_')) {
@@ -246,46 +242,151 @@ bool isBodyPlanSemanticModifierName(const std::string& token) {
     return names.count(token) > 0;
 }
 
-std::vector<std::string> expressionDependencies(const std::string& expression) {
-    std::set<std::string> names;
-    std::string current;
-    char quote = '\0';
-    auto flush = [&] {
-        if (current.empty()) return;
-        const std::string token = current;
-        current.clear();
-        if (token.empty()) return;
-        if (std::isdigit(static_cast<unsigned char>(token.front()))) return;
-        if (isDependencyStopWord(token)) return;
-        names.insert(token);
+bool isBodyPlanEventName(const std::string& token) {
+    static const std::set<std::string> names = {
+        "click", "input", "change", "submit", "hover", "scroll",
+        "focus", "blur", "keydown", "keyup",
     };
-    for (size_t i = 0; i < expression.size(); ++i) {
-        const char ch = expression[i];
-        if (quote != '\0') {
-            if (ch == '\\' && i + 1 < expression.size()) {
-                ++i;
-            } else if (ch == quote) {
-                quote = '\0';
-            }
-            continue;
-        }
-        if (ch == '"' || ch == '\'') {
-            flush();
-            quote = ch;
-            continue;
-        }
-        if (std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == '.') {
-            current.push_back(ch);
-        } else {
-            flush();
-        }
-    }
-    flush();
-    return {names.begin(), names.end()};
+    return names.count(token) > 0;
 }
 
 void appendUnique(std::vector<std::string>& target, const std::string& value);
 void appendUnique(std::vector<std::string>& target, const std::vector<std::string>& values);
+
+std::string expressionDependencyPath(const ExpressionStatementNode* expr) {
+    if (!expr) return "";
+    switch (expr->getExprType()) {
+    case ExpressionStatementNodeType::Variable: {
+        const auto& node = static_cast<const VariableExpressionStatementNode&>(*expr);
+        return node.name;
+    }
+    case ExpressionStatementNodeType::ObjectPropertyAccess: {
+        const auto& node = static_cast<const ObjectPropertyAccessExpressionNode&>(*expr);
+        const std::string base = expressionDependencyPath(node.base.get());
+        if (base.empty() || node.propertyName.empty()) return "";
+        return base + "." + node.propertyName;
+    }
+    case ExpressionStatementNodeType::Subscript: {
+        const auto& node = static_cast<const SubscriptExpressionStatementNode&>(*expr);
+        const std::string base = expressionDependencyPath(node.base.get());
+        if (base.empty()) return "";
+        return base + "[" + expressionSource(node.index.get()) + "]";
+    }
+    default:
+        return "";
+    }
+}
+
+void collectExpressionDependencies(
+        const ExpressionStatementNode* expr,
+        std::vector<std::string>& out) {
+    if (!expr) return;
+    switch (expr->getExprType()) {
+    case ExpressionStatementNodeType::Variable: {
+        const auto& node = static_cast<const VariableExpressionStatementNode&>(*expr);
+        appendUnique(out, node.name);
+        return;
+    }
+    case ExpressionStatementNodeType::Binary: {
+        const auto& node = static_cast<const BinaryExpressionStatementNode&>(*expr);
+        collectExpressionDependencies(node.left.get(), out);
+        collectExpressionDependencies(node.right.get(), out);
+        return;
+    }
+    case ExpressionStatementNodeType::Unary: {
+        const auto& node = static_cast<const UnaryExpressionStatementNode&>(*expr);
+        collectExpressionDependencies(node.right.get(), out);
+        return;
+    }
+    case ExpressionStatementNodeType::EmbeddedVariable: {
+        const auto& node = static_cast<const EmbeddedVariableExpressionStatementNode&>(*expr);
+        collectExpressionDependencies(node.embeddedExpression.get(), out);
+        return;
+    }
+    case ExpressionStatementNodeType::CompositeString: {
+        const auto& node = static_cast<const CompositeStringExpressionStatementNode&>(*expr);
+        for (const auto& part : node.parts) collectExpressionDependencies(part.get(), out);
+        return;
+    }
+    case ExpressionStatementNodeType::ArrayLiteral: {
+        const auto& node = static_cast<const ArrayLiteralExpressionStatementNode&>(*expr);
+        for (const auto& item : node.elements) collectExpressionDependencies(item.get(), out);
+        return;
+    }
+    case ExpressionStatementNodeType::DictionaryLiteral: {
+        const auto& node = static_cast<const DictionaryLiteralExpressionStatementNode&>(*expr);
+        for (const auto& entry : node.entries) {
+            collectExpressionDependencies(entry.value.get(), out);
+        }
+        return;
+    }
+    case ExpressionStatementNodeType::Subscript: {
+        const auto& node = static_cast<const SubscriptExpressionStatementNode&>(*expr);
+        const std::string path = expressionDependencyPath(expr);
+        appendUnique(out, path);
+        appendUnique(out, rootDependencyName(path));
+        collectExpressionDependencies(node.base.get(), out);
+        collectExpressionDependencies(node.index.get(), out);
+        return;
+    }
+    case ExpressionStatementNodeType::FunctionCall: {
+        const auto& node = static_cast<const FunctionCallExpressionStatementNode&>(*expr);
+        for (const auto& arg : node.arguments) collectExpressionDependencies(arg.get(), out);
+        return;
+    }
+    case ExpressionStatementNodeType::Conditional: {
+        const auto& node = static_cast<const ConditionalExpressionStatementNode&>(*expr);
+        collectExpressionDependencies(node.condition.get(), out);
+        collectExpressionDependencies(node.whenTrue.get(), out);
+        collectExpressionDependencies(node.whenFalse.get(), out);
+        return;
+    }
+    case ExpressionStatementNodeType::ObjectPropertyAccess: {
+        const auto& node = static_cast<const ObjectPropertyAccessExpressionNode&>(*expr);
+        const std::string path = expressionDependencyPath(expr);
+        appendUnique(out, path);
+        appendUnique(out, rootDependencyName(path));
+        collectExpressionDependencies(node.base.get(), out);
+        return;
+    }
+    case ExpressionStatementNodeType::ObjectMethodCall: {
+        const auto& node = static_cast<const ObjectMethodCallExpressionNode&>(*expr);
+        collectExpressionDependencies(node.base.get(), out);
+        for (const auto& arg : node.arguments) collectExpressionDependencies(arg.get(), out);
+        return;
+    }
+    case ExpressionStatementNodeType::StringLiteral:
+    case ExpressionStatementNodeType::NumberLiteral:
+    case ExpressionStatementNodeType::BooleanLiteral:
+        return;
+    }
+}
+
+std::unique_ptr<ExpressionStatementNode> parseExpressionFragment(const std::string& expression) {
+    const std::string trimmed = trimCopy(expression);
+    if (trimmed.empty()) return nullptr;
+    Lexer lexer("show " + trimmed + "\\\\\n");
+    auto tokens = lexer.tokenize();
+    if (!lexer.getErrors().empty()) return nullptr;
+    Parser parser(std::move(tokens));
+    std::vector<std::unique_ptr<ASTNode>> program;
+    try {
+        program = parser.parseProgram();
+    } catch (...) {
+        return nullptr;
+    }
+    if (!parser.getErrors().empty() || program.size() != 1 || !program[0]) return nullptr;
+    if (program[0]->getType() != ASTNodeType::ShowStatement) return nullptr;
+    auto& show = static_cast<ShowStatementNode&>(*program[0]);
+    return show.expr ? show.expr->clone() : nullptr;
+}
+
+std::vector<std::string> expressionDependencies(const std::string& expression) {
+    std::vector<std::string> names;
+    auto parsed = parseExpressionFragment(expression);
+    collectExpressionDependencies(parsed.get(), names);
+    return names;
+}
 
 std::vector<std::string> templateBindingWrites(const std::vector<std::string>& tokens) {
     std::vector<std::string> writes;
@@ -299,7 +400,33 @@ std::vector<std::string> templateBindingWrites(const std::vector<std::string>& t
 std::vector<std::string> templateExpressionDependencies(
         const std::string& expression,
         const std::vector<std::string>& tokens) {
-    std::vector<std::string> reads = expressionDependencies(expression);
+    std::vector<std::string> reads;
+    std::vector<std::string> positional;
+    for (size_t i = 1; i < tokens.size(); ++i) {
+        const std::string& token = tokens[i];
+        if (token == "into") {
+            ++i;
+            continue;
+        }
+        if (token == "key") break;
+        if (isBodyPlanEventName(token)) {
+            ++i;
+            continue;
+        }
+        if (isBodyPlanBooleanAttributeName(token)) continue;
+        if (isBodyPlanSemanticModifierName(token)) {
+            ++i;
+            continue;
+        }
+        if (isBodyPlanAttributeName(token) && i + 1 < tokens.size()) {
+            ++i;
+            continue;
+        }
+        if (!isQuotedToken(token)) positional.push_back(token);
+    }
+    for (const auto& value : positional) {
+        appendUnique(reads, expressionDependencies(value));
+    }
     for (size_t i = 1; i + 1 < tokens.size(); ++i) {
         const std::string& token = tokens[i];
         if (!isBodyPlanAttributeName(token)) continue;
@@ -310,7 +437,7 @@ std::vector<std::string> templateExpressionDependencies(
             isBodyPlanSemanticModifierName(value)) {
             continue;
         }
-        if (isIdentifierToken(value)) appendUnique(reads, value);
+        appendUnique(reads, expressionDependencies(value));
     }
     return reads;
 }
@@ -368,8 +495,12 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
             node.operatorToken = tokens[1];
             node.expression = joinTokens(tokens, 2);
             appendUnique(node.writes, node.name);
+            appendUnique(node.writes, rootDependencyName(node.name));
             appendUnique(node.reads, expressionDependencies(node.expression));
-            if (node.operatorToken != "=") appendUnique(node.reads, node.name);
+            if (node.operatorToken != "=") {
+                appendUnique(node.reads, expressionDependencies(node.name));
+                appendUnique(node.reads, rootDependencyName(node.name));
+            }
         } else if (node.kind == "call") {
             const auto open = tokens[0].find('(');
             node.name = cleanComponentNameToken(tokens[0].substr(0, open));

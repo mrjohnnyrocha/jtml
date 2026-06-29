@@ -80,6 +80,39 @@ TEST(Linter, ForIteratorIsBoundInBody) {
     EXPECT_EQ(countErrors(d), 0);
 }
 
+TEST(Linter, ActionWhileLoopRemainsValidControlFlow) {
+    auto d = lintSource(
+        "define count = 0\\\\\n"
+        "function advance()\\\\\n"
+        "    while (count < 3)\\\\\n"
+        "        count = count + 1\\\\\n"
+        "    \\\\\n"
+        "\\\\\n");
+    EXPECT_EQ(countErrors(d), 0);
+    for (const auto& diag : d) {
+        EXPECT_NE(diag.code, "JTML_TEMPLATE_WHILE") << diag.message;
+    }
+}
+
+TEST(Linter, TemplateWhileLoopWarnsWithSourceFirstCode) {
+    auto d = lintSource(
+        "define keepGoing = true\\\\\n"
+        "@div\\\\\n"
+        "    while (keepGoing)\\\\\n"
+        "        show \"loop\"\\\\\n"
+        "    \\\\\n"
+        "#\\\\\n");
+    bool sawTemplateWhile = false;
+    for (const auto& diag : d) {
+        if (diag.code == "JTML_TEMPLATE_WHILE") {
+            sawTemplateWhile = true;
+            EXPECT_EQ(diag.severity, LintDiagnostic::Severity::Warning);
+            EXPECT_NE(diag.hint.find("for"), std::string::npos) << diag.hint;
+        }
+    }
+    EXPECT_TRUE(sawTemplateWhile);
+}
+
 TEST(Linter, TypedDefineReportsPrimitiveMismatch) {
     auto d = lintSource("define count: number = \"zero\"\\\\\n");
     bool sawType = false;

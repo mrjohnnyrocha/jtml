@@ -412,6 +412,9 @@ std::vector<SemanticProjectIssue> analyzeSemanticProject(const SemanticProject& 
                 issue.importIndex = i;
                 issue.specifier = import.specifier;
                 issue.resolvedPath = import.resolvedPath;
+                issue.path = module.path;
+                issue.line = import.span.line;
+                issue.column = import.span.column;
                 issue.requested = import.names;
                 issue.message = "Cannot resolve import '" + import.specifier + "' from " +
                                 module.path + " (attempted " + import.resolvedPath + ")";
@@ -440,6 +443,9 @@ std::vector<SemanticProjectIssue> analyzeSemanticProject(const SemanticProject& 
             issue.importIndex = i;
             issue.specifier = import.specifier;
             issue.resolvedPath = import.resolvedPath;
+            issue.path = module.path;
+            issue.line = import.span.line;
+            issue.column = import.span.column;
             issue.requested = missing;
             issue.available = available;
             issue.message = "Import '" + import.specifier + "' is missing exported " +
@@ -487,6 +493,9 @@ std::vector<SemanticProjectIssue> analyzeSemanticProject(const SemanticProject& 
                 issue.importIndex = i;
                 issue.specifier = import.specifier;
                 issue.resolvedPath = failedPath.empty() ? import.resolvedPath : failedPath;
+                issue.path = module.path;
+                issue.line = import.span.line;
+                issue.column = import.span.column;
                 issue.requested = {name};
                 if (status == ReExportResolution::Cycle) {
                     issue.code = "JTML_REEXPORT_CYCLE";

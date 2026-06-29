@@ -54,6 +54,7 @@ private:
     std::vector<std::map<std::string, int>> functionArityScopes;
     std::vector<LintDiagnostic> diagnostics;
     std::string sourcePath_;
+    int elementDepth_ = 0;
     // Canonical absolute paths already pulled into the module graph, so we
     // never reparse the same file or recurse forever on a cycle.
     std::vector<std::string> importedFiles_;

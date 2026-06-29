@@ -299,10 +299,11 @@ Implementation slices:
    through `/api/studio/sidebar`.
 5. Split semantic UI and language catalogs into reusable data/loader surfaces
    consumed by CLI, docs, Studio, LSP, and lint.
-6. ✅ First browser runtime emitter split: the generated browser/live runtime
-   script now lives behind `jtml::emitBrowserRuntimeScript()` in
-   `src/browser_runtime_emitter.cpp`, leaving `src/transpiler.cpp` focused on
-   HTML/manifest emission while keeping the public `JtmlTranspiler` API stable.
+6. ✅ Browser runtime emitter/asset split: the generated browser/live runtime
+   script now lives behind `jtml::emitBrowserRuntimeScript()`, and that emitter
+   is a small parameterizing wrapper around owned runtime asset chunks in
+   `src/browser_runtime_assets.cpp`. `src/transpiler.cpp` stays focused on
+   HTML/manifest emission while the public `JtmlTranspiler` API remains stable.
 7. ✅ First client manifest emitter split: the browser-local manifest now lives
    behind `jtml::emitClientManifestScript()` in
    `src/client_manifest_emitter.cpp`, and shared expression serialization moved
@@ -402,9 +403,10 @@ Implementation slices:
    component instances now render common templates from
    `RuntimePlan.componentDefinitions[].bodyPlan`, initialize per-instance local
    state, recompute derived values, render simple `if`, `else`, and `for`
-   nodes, execute simple local assignment actions, carry authored slot plans,
-   render slots and nested component calls, preserve common attributes, pass
-   simple action arguments, and re-render the owning instance. This is the first
+   nodes, execute simple local assignment actions plus action-local `let` /
+   `get` declaration nodes, carry authored slot plans, render slots and nested
+   component calls, preserve common attributes, pass simple action arguments,
+   and re-render the owning instance. This is the first
    real break from expanded compatibility DOM as the component render surface.
 30. ✅ Manifest safety/runtime identity slice: explain serializers and client
    serializers are now separate. Browser manifests omit absolute source paths,
@@ -413,8 +415,9 @@ Implementation slices:
    client plans; component lookup carries module identity before falling back
    to name-only compatibility.
 31. ✅ Live body-plan action parity slice: the live interpreter now exposes
-   slot plans, executes simple component body-plan assignment actions,
-   guarded `if`/`else`, array `for`, and guarded `while` action bodies with action arguments, preserves
+   slot plans, executes simple component body-plan assignment actions plus
+   action-local `let` / `get` declarations, guarded `if`/`else`, array `for`,
+   and guarded `while` action bodies with action arguments, preserves
    numeric/string `+=` semantics plus numeric `-=`, `*=`, `/=`, and `%=`, fails closed to compatibility dispatch for
    unsupported action bodies, and has a browser/live metadata parity
    regression.
@@ -437,7 +440,9 @@ Implementation slices:
    a standalone entry parse when imported modules fail, uses a recoverable
    source-file collector for tooling, preserves unavailable module IR with
    source coordinates, and reports `JTML_MODULE_PARSE` as a semantic project
-   issue instead of losing the module graph.
+   issue instead of losing the module graph. Import issue records for
+   unresolved imports, missing named exports, and bad re-export chains now also
+   carry the importing module path plus authored import line/column.
 36. ✅ Module-aware live component identity slice: interpreter runtime
    component definitions and instances now carry `moduleId` /
    `definitionModule`, `/api/state` and `/api/component-definitions` expose
@@ -537,7 +542,8 @@ Implementation slices:
    component definition line, authored body line, and nearby authored body-plan
    text; when compatibility fallback also fails, the source-first body-plan
    context is preserved beside the compatibility error. Browser-local fallback
-   records are also exposed on `window.jtml.directComponentFallbacks`. Typed
+   records now carry the same authored action/source context and are exposed on
+   `window.jtml.directComponentFallbacks`. Typed
    emitted-event diagnostics also name the authored payload and component
    definition line. Body-plan nodes now expose source-line plus first
    read/write dependency metadata, giving future optimized browser compilation
@@ -545,17 +551,65 @@ Implementation slices:
    metadata for a conservative rerender gate: if action writes do not affect
    rendered reads, the runtime can skip a full component rerender and expose
    `directComponentLastAction` telemetry for Studio/compiler diagnostics.
-   Simple affected leaf body-plan nodes now carry direct DOM markers and can be
-   replaced in place from the body plan; unsafe cases fall back to full
-   body-plan rerender before compatibility is considered. Next gaps: broader
-   keyed collection diff semantics, richer
-   action expressions, advanced
+   Simple affected leaf body-plan nodes now carry direct DOM markers and
+   managed-attribute metadata. Body-plan read dependencies now come from parsed
+   expression ASTs for real expressions, so member/subscript expressions track
+   precise read paths plus their owning state roots instead of relying on broad
+   token scans. Member and
+   subscript writes now also include their owning observable root for update
+   invalidation. Browser-local and live direct actions can now mutate existing
+   dict/object properties, create missing dict/object and non-negative array
+   path containers, and update array/dict subscript targets without
+   compatibility dispatch; richer assignment targets remain planned. Live
+   body-plan `for` loops now share the browser value model for arrays, strings,
+   dict/object values, and scalar singletons in both rendering and action
+   execution. The browser
+   runtime tries in-place text/attribute updates first, then leaf replacement
+   from the body plan, then full body-plan rerender before compatibility is
+   considered. It also caches a compiled per-component update plan for those
+   simple leaves, keyed by module/name/body shape, so repeated actions use a
+   compiler-shaped update surface instead of rediscovering patchable nodes.
+   Patchable leaves are now represented as explicit text/button/element patch
+   operations. Those operations carry precompiled element-part and
+   click-invocation shapes, and each cached plan now owns generated browser
+   update-function source plus an indexed executable update function keyed by
+   rendered reads; unsafe operation exits record source-line fallback telemetry,
+   and a conservative interpreted updater remains as the fallback when
+   generated functions are unavailable. Structured
+   container body-plan nodes can now patch their own compiled attributes in
+   place without touching children, keeping more common layout/state updates on
+   the direct body-plan path. `if` and `for` nodes now render stable region
+   anchors and compile to direct region-replacement operations when their
+   condition or collection changes. The old recursive heuristic patch fallback
+   is now removed from this browser-local path; unsupported shapes fall through
+   to body-plan node replacement or full direct component rerender instead of
+   another source-shaped patch scan. Direct `for` regions now emit per-item
+   key/index markers and first-slice lifecycle telemetry for inserted, removed,
+   and moved keys, preparing the optimized keyed DOM diff without claiming it is
+   complete. Compiled `for` region patch operations now try a conservative
+   keyed patch that reuses/reorders item wrappers by key and updates item
+   contents, reports retained/inserted/removed/moved key sets, and prunes
+   removed nested dynamic children for keyed list items, falling back to region
+   replacement for duplicate/unsafe keys. Next
+   nested component call wrappers now carry stable body-node anchors and compile
+   to explicit nested-component patch operations, reducing full-parent rerenders
+   when parent state affects composed children. Slot insertion sites now carry
+   stable `slot` region anchors and compile as region patch operations.
+   Action-body `while` remains part of the body-plan action contract, but
+   render/template `while` is linted as `JTML_TEMPLATE_WHILE`; rendered
+   repetition should use `for` so browser/live runtimes can diff visible
+   children predictably. Next gaps: broader
+   keyed collection diff semantics, richer path-assignment semantics, richer
+   action expressions beyond local declarations/calls/path mutation, advanced
    media/graphics attributes, and broader browser/live behavior parity checks.
+   Live body-plan rendering also reports patch telemetry for patched/current,
+   unsupported, and missing component records so parity checks can compare live
+   behavior against browser-local body-plan execution.
 50. Add compiler-first browser production target slices: generate component
-   creation/update functions for simple body-plan templates, precompile
-   expressions where dependencies are known, update only dependent text/attrs,
-   expand the first metadata-driven leaf patches into keyed region and
-   attribute-level updates, add benchmark fixtures, and keep the current
+   creation functions for simple body-plan templates, precompile expressions
+   where dependencies are known, broaden generated update functions beyond the
+   current body-plan patch helpers, expand text/attribute patches into keyed
+   region updates, add benchmark fixtures, and keep the current
    manifest interpreter as dev and compatibility fallback.
 51. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
    same catalog endpoint pattern.

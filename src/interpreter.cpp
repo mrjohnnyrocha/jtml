@@ -1,6 +1,8 @@
 // jtml_interpreter.cpp
 #include "jtml/interpreter.h"
+#include "jtml/array.h"
 #include "jtml/attribute_classifier.h"
+#include "jtml/dict.h"
 #include "jtml/friendly.h"
 #include "jtml/lexer.h"
 #include "jtml/parser.h"
@@ -35,6 +37,29 @@ void assignLoopIterator(const std::shared_ptr<JTML::Environment>& env,
     } else {
         env->defineVariable(key, value);
     }
+}
+
+std::vector<std::shared_ptr<JTML::VarValue>> componentLoopItems(
+        const std::shared_ptr<JTML::VarValue>& value) {
+    std::vector<std::shared_ptr<JTML::VarValue>> out;
+    if (!value) return out;
+    if (value->isArray()) {
+        return value->getArray()->getArrayData();
+    }
+    if (value->isString()) {
+        for (const char ch : value->getString()) {
+            out.push_back(std::make_shared<JTML::VarValue>(std::string(1, ch)));
+        }
+        return out;
+    }
+    if (value->isDict()) {
+        for (const auto& entry : value->getDict()->getDictData()) {
+            if (entry.second) out.push_back(entry.second);
+        }
+        return out;
+    }
+    out.push_back(value);
+    return out;
 }
 
 nlohmann::json varValueToJson(const std::shared_ptr<JTML::VarValue>& value) {
@@ -943,10 +968,10 @@ std::string Interpreter::getStateJSON() {
             const std::string itemName = trimString(raw.substr(0, inPos));
             const std::string listExpr = trimString(raw.substr(inPos + 4));
             auto value = evalComponentExpression(listExpr, env);
-            if (!value || !value->isArray()) return std::string{};
+            const auto items = componentLoopItems(value);
             std::string out;
             size_t itemIndex = 0;
-            for (const auto& item : value->getArray()->getArrayData()) {
+            for (const auto& item : items) {
                 assignLoopIterator(env, itemName, item);
                 std::string keySegment = std::to_string(itemIndex++);
                 if (!node.keyExpression.empty()) {
@@ -1526,6 +1551,22 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
         if (env->hasVariable(key)) env->setVariable(key, value);
         else env->defineVariable(key, value, JTML::VarKind::Normal);
     };
+    auto eraseTemporary = [](const std::shared_ptr<JTML::Environment>& env,
+                             const JTML::CompositeKey& key) {
+        if (!env || env->variables.find(key) == env->variables.end()) return;
+        JTML::VarID varID = JTML::Environment::INVALID_VAR_ID;
+        try {
+            varID = env->getVarID(key);
+            env->clearDirty(varID);
+        } catch (...) {
+            varID = JTML::Environment::INVALID_VAR_ID;
+        }
+        if (varID != JTML::Environment::INVALID_VAR_ID) {
+            env->eventSubscribers.erase(varID);
+            env->functionSubscriptions.erase(varID);
+        }
+        env->variables.erase(key);
+    };
     auto runtimeLocalName = [&](const std::string& publicName) {
         auto localIt = instance->locals.find(publicName);
         return localIt == instance->locals.end() ? publicName : localIt->second;
@@ -1635,6 +1676,215 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
             setOrDefine(instance->environment, actionWords[i], value);
         }
 
+        struct BodyPlanPathSegment {
+            bool bracket = false;
+            std::string value;
+        };
+        auto parsePathSegments = [](const std::string& source) {
+            std::vector<BodyPlanPathSegment> segments;
+            size_t i = 0;
+            auto isIdentStart = [](char ch) {
+                return std::isalpha(static_cast<unsigned char>(ch)) || ch == '_';
+            };
+            auto isIdent = [](char ch) {
+                return std::isalnum(static_cast<unsigned char>(ch)) || ch == '_';
+            };
+            while (i < source.size()) {
+                if (source[i] == '.') {
+                    ++i;
+                    continue;
+                }
+                if (source[i] == '[') {
+                    ++i;
+                    std::string current;
+                    char quote = '\0';
+                    int depth = 0;
+                    while (i < source.size()) {
+                        const char ch = source[i];
+                        if (quote != '\0') {
+                            current.push_back(ch);
+                            if (ch == '\\' && i + 1 < source.size()) {
+                                current.push_back(source[++i]);
+                            } else if (ch == quote) {
+                                quote = '\0';
+                            }
+                            ++i;
+                            continue;
+                        }
+                        if (ch == '"' || ch == '\'') {
+                            quote = ch;
+                            current.push_back(ch);
+                            ++i;
+                            continue;
+                        }
+                        if (ch == '[' || ch == '(' || ch == '{') ++depth;
+                        if ((ch == ')' || ch == '}') && depth > 0) --depth;
+                        if (ch == ']' && depth == 0) {
+                            ++i;
+                            break;
+                        }
+                        if (ch == ']' && depth > 0) --depth;
+                        current.push_back(ch);
+                        ++i;
+                    }
+                    auto start = current.find_first_not_of(" \t\r\n");
+                    auto end = current.find_last_not_of(" \t\r\n");
+                    segments.push_back({true, start == std::string::npos ? std::string{} : current.substr(start, end - start + 1)});
+                    continue;
+                }
+                if (!isIdentStart(source[i])) return std::vector<BodyPlanPathSegment>{};
+                const size_t start = i++;
+                while (i < source.size() && isIdent(source[i])) ++i;
+                segments.push_back({false, source.substr(start, i - start)});
+            }
+            return segments;
+        };
+        auto bracketSegmentValue = [&](const BodyPlanPathSegment& segment) {
+            return parseExpressionValue(segment.value);
+        };
+        auto bracketArrayIndex = [&](const BodyPlanPathSegment& segment) -> int {
+            if (!segment.bracket) return -1;
+            try {
+                const auto key = bracketSegmentValue(segment);
+                const double numeric = getNumericValue(key);
+                const int index = static_cast<int>(numeric);
+                return numeric == static_cast<double>(index) && index >= 0 ? index : -1;
+            } catch (...) {
+                return -1;
+            }
+        };
+        auto getPathChild = [&](const std::shared_ptr<JTML::VarValue>& parent,
+                                const BodyPlanPathSegment& segment)
+                -> std::shared_ptr<JTML::VarValue> {
+            if (!parent) return nullptr;
+            if (segment.bracket) {
+                if (parent->isArray()) {
+                    const int index = bracketArrayIndex(segment);
+                    if (index < 0 || static_cast<size_t>(index) >= parent->getArray()->size()) {
+                        return nullptr;
+                    }
+                    return parent->getArray()->get(index);
+                }
+                auto key = bracketSegmentValue(segment);
+                if (parent->isDict()) {
+                    try {
+                        return parent->getDict()->get(getStringValue(key));
+                    } catch (...) {
+                        return nullptr;
+                    }
+                }
+                return nullptr;
+            }
+            if (parent->isDict()) {
+                try {
+                    return parent->getDict()->get(segment.value);
+                } catch (...) {
+                    return nullptr;
+                }
+            }
+            if (parent->isObject()) {
+                auto env = parent->getObjectHandle().instanceEnv;
+                if (!env) return nullptr;
+                return env->getVariable({env->instanceID, segment.value});
+            }
+            return nullptr;
+        };
+        auto setPathChild = [&](const std::shared_ptr<JTML::VarValue>& parent,
+                                const BodyPlanPathSegment& segment,
+                                const std::shared_ptr<JTML::VarValue>& value) -> bool {
+            if (!parent) return false;
+            if (segment.bracket) {
+                if (parent->isArray()) {
+                    const int index = bracketArrayIndex(segment);
+                    if (index < 0) {
+                        return false;
+                    }
+                    while (parent->getArray()->size() <= static_cast<size_t>(index)) {
+                        parent->getArray()->push(std::make_shared<JTML::VarValue>(std::string{}));
+                    }
+                    parent->getArray()->set(index, value);
+                    return true;
+                }
+                auto key = bracketSegmentValue(segment);
+                if (parent->isDict()) {
+                    parent->getDict()->set(getStringValue(key), value);
+                    return true;
+                }
+                return false;
+            }
+            if (parent->isDict()) {
+                parent->getDict()->set(segment.value, value);
+                return true;
+            }
+            if (parent->isObject()) {
+                auto env = parent->getObjectHandle().instanceEnv;
+                if (!env) return false;
+                JTML::CompositeKey key{env->instanceID, segment.value};
+                if (env->hasVariable(key)) env->setVariable(key, value);
+                else env->defineVariable(key, value, JTML::VarKind::Normal);
+                return true;
+            }
+            return false;
+        };
+        auto getPathValue = [&](const std::string& publicPath)
+                -> std::shared_ptr<JTML::VarValue> {
+            auto segments = parsePathSegments(publicPath);
+            if (segments.empty()) return nullptr;
+            const std::string rootName = runtimeLocalName(segments.front().value);
+            auto current = instance->environment->getVariable(
+                {instance->environment->instanceID, rootName});
+            for (size_t i = 1; i < segments.size(); ++i) {
+                current = getPathChild(current, segments[i]);
+                if (!current) return nullptr;
+            }
+            return current;
+        };
+        auto setPathValue = [&](const std::string& publicPath,
+                                const std::shared_ptr<JTML::VarValue>& value) -> bool {
+            auto segments = parsePathSegments(publicPath);
+            if (segments.empty()) return false;
+            const std::string rootName = runtimeLocalName(segments.front().value);
+            if (segments.size() == 1) {
+                setOrDefine(instance->environment, rootName, value);
+                return true;
+            }
+            auto makeDictContainer = [&](const std::string& name) {
+                auto dict = std::make_shared<JTML::ReactiveDict>(
+                    instance->environment,
+                    JTML::CompositeKey{instance->environment->instanceID, name});
+                return std::make_shared<JTML::VarValue>(dict);
+            };
+            auto makeArrayContainer = [&](const std::string& name) {
+                auto array = std::make_shared<JTML::ReactiveArray>(
+                    instance->environment,
+                    JTML::CompositeKey{instance->environment->instanceID, name});
+                return std::make_shared<JTML::VarValue>(array);
+            };
+            auto makeContainerForNext = [&](const std::string& name,
+                                            const BodyPlanPathSegment& next) {
+                return next.bracket && bracketArrayIndex(next) >= 0
+                    ? makeArrayContainer(name)
+                    : makeDictContainer(name);
+            };
+            const JTML::CompositeKey rootKey{instance->environment->instanceID, rootName};
+            std::shared_ptr<JTML::VarValue> parent;
+            if (instance->environment->hasVariable(rootKey)) {
+                parent = instance->environment->getVariable(rootKey);
+            } else {
+                parent = makeContainerForNext(rootName, segments[1]);
+                setOrDefine(instance->environment, rootName, parent);
+            }
+            for (size_t i = 1; i + 1 < segments.size(); ++i) {
+                auto child = getPathChild(parent, segments[i]);
+                if (!child) {
+                    child = makeContainerForNext(segments[i].value, segments[i + 1]);
+                    if (!setPathChild(parent, segments[i], child)) return false;
+                }
+                parent = child;
+            }
+            return setPathChild(parent, segments.back(), value);
+        };
+
         auto applyAssignment = [&](const BodyPlanNode& node) -> bool {
             if (!node.childIndices.empty()) {
                 return failBodyPlan(&node, "assignment nodes cannot have child statements");
@@ -1645,28 +1895,45 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
                 return failBodyPlan(&node, "unsupported assignment operator `" + op + "`");
             }
             const auto next = parseExpressionValue(node.expression);
-            JTML::CompositeKey key{instance->environment->instanceID, targetName};
+            const bool pathAssignment = node.name.find('.') != std::string::npos ||
+                                        node.name.find('[') != std::string::npos;
             if (op == "=") {
-                setOrDefine(instance->environment, targetName, next);
+                if (pathAssignment) {
+                    if (!setPathValue(node.name, next)) {
+                        return failBodyPlan(&node, "member/subscript assignment target could not be resolved");
+                    }
+                } else {
+                    setOrDefine(instance->environment, targetName, next);
+                }
             } else if (op == "+=") {
                 std::shared_ptr<JTML::VarValue> current;
                 try {
-                    current = instance->environment->getVariable(key);
+                    current = pathAssignment
+                        ? getPathValue(node.name)
+                        : instance->environment->getVariable({instance->environment->instanceID, targetName});
                 } catch (...) {
                     current = std::make_shared<JTML::VarValue>(std::string{});
                 }
+                std::shared_ptr<JTML::VarValue> assigned;
                 if (current && current->isNumber() && next && next->isNumber()) {
-                    setOrDefine(instance->environment, targetName,
-                                std::make_shared<JTML::VarValue>(
-                                    current->getNumber() + next->getNumber()));
+                    assigned = std::make_shared<JTML::VarValue>(
+                        current->getNumber() + next->getNumber());
                 } else {
-                    setOrDefine(instance->environment, targetName,
-                                std::make_shared<JTML::VarValue>(
-                                    (current ? current->toString() : std::string{}) +
-                                    (next ? next->toString() : std::string{})));
+                    assigned = std::make_shared<JTML::VarValue>(
+                        (current ? current->toString() : std::string{}) +
+                        (next ? next->toString() : std::string{}));
+                }
+                if (pathAssignment) {
+                    if (!setPathValue(node.name, assigned)) {
+                        return failBodyPlan(&node, "member/subscript assignment target could not be resolved");
+                    }
+                } else {
+                    setOrDefine(instance->environment, targetName, assigned);
                 }
             } else if (op == "-=" || op == "*=" || op == "/=" || op == "%=") {
-                auto current = instance->environment->getVariable(key);
+                auto current = pathAssignment
+                    ? getPathValue(node.name)
+                    : instance->environment->getVariable({instance->environment->instanceID, targetName});
                 const double left = current && current->isNumber()
                     ? current->getNumber()
                     : std::stod(current ? current->toString() : "0");
@@ -1678,9 +1945,27 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
                 else if (op == "*=") result = left * right;
                 else if (op == "/=") result = left / right;
                 else if (op == "%=") result = std::fmod(left, right);
-                setOrDefine(instance->environment, targetName,
-                            std::make_shared<JTML::VarValue>(result));
+                auto assigned = std::make_shared<JTML::VarValue>(result);
+                if (pathAssignment) {
+                    if (!setPathValue(node.name, assigned)) {
+                        return failBodyPlan(&node, "member/subscript assignment target could not be resolved");
+                    }
+                } else {
+                    setOrDefine(instance->environment, targetName, assigned);
+                }
             }
+            return true;
+        };
+        auto applyLocalDeclaration = [&](const BodyPlanNode& node) -> bool {
+            if (!node.childIndices.empty()) {
+                return failBodyPlan(&node, "local declaration nodes cannot have child statements");
+            }
+            if (node.name.empty()) {
+                return failBodyPlan(&node, "local declaration is missing a target name");
+            }
+            setOrDefine(instance->environment,
+                        runtimeLocalName(node.name),
+                        parseExpressionValue(node.expression));
             return true;
         };
         std::function<bool(const std::vector<const BodyPlanNode*>&)> runStatements;
@@ -1688,6 +1973,10 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
             for (const auto* node : nodes) {
                 if (!node) continue;
                 if (node->name == "else") continue;
+                if (node->kind == "state" || node->kind == "derived") {
+                    if (!applyLocalDeclaration(*node)) return false;
+                    continue;
+                }
                 if (node->kind == "assignment") {
                     if (!applyAssignment(*node)) return false;
                     continue;
@@ -1730,11 +2019,11 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
                     for (size_t i = 2; i < nestedWords.size(); ++i) {
                         const auto& param = nestedWords[i];
                         JTML::CompositeKey key{instance->environment->instanceID, param};
-                        if (hadPreviousParams.count(param)) {
-                            setOrDefine(instance->environment, param, previousParams[param]);
-                        } else {
-                            instance->environment->variables.erase(key);
-                        }
+                    if (hadPreviousParams.count(param)) {
+                        setOrDefine(instance->environment, param, previousParams[param]);
+                    } else {
+                        eraseTemporary(instance->environment, key);
+                    }
                     }
                     if (!nestedOk) return false;
                     continue;
@@ -1781,31 +2070,21 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
                         return failBodyPlan(node, "for loop is missing an iterator or collection expression");
                     }
                     const auto value = parseExpressionValue(listExpr);
-                    if (!value || (!value->isArray() && !value->isString())) {
-                        return failBodyPlan(node, "for loop action bodies currently support arrays and strings");
-                    }
+                    const auto items = componentLoopItems(value);
                     JTML::CompositeKey iteratorKey{instance->environment->instanceID, itemName};
                     std::shared_ptr<JTML::VarValue> previous;
                     const bool hadPrevious = instance->environment->hasVariable(iteratorKey);
                     if (hadPrevious) {
                         previous = instance->environment->getVariable(iteratorKey);
                     }
-                    if (value->isArray()) {
-                        for (const auto& item : value->getArray()->getArrayData()) {
-                            setOrDefine(instance->environment, itemName, item);
-                            if (!runStatements(bodyPlanChildren(*definition, *node))) return false;
-                        }
-                    } else {
-                        for (const auto& c : value->getString()) {
-                            setOrDefine(instance->environment, itemName,
-                                        std::make_shared<JTML::VarValue>(std::string(1, c)));
-                            if (!runStatements(bodyPlanChildren(*definition, *node))) return false;
-                        }
+                    for (const auto& item : items) {
+                        setOrDefine(instance->environment, itemName, item);
+                        if (!runStatements(bodyPlanChildren(*definition, *node))) return false;
                     }
                     if (hadPrevious) {
                         setOrDefine(instance->environment, itemName, previous);
                     } else {
-                        instance->environment->variables.erase(iteratorKey);
+                        eraseTemporary(instance->environment, iteratorKey);
                     }
                     continue;
                 }
@@ -1840,7 +2119,7 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
             if (hadPreviousActionParams.count(param)) {
                 setOrDefine(instance->environment, param, previousActionParams[param]);
             } else {
-                instance->environment->variables.erase(key);
+                eraseTemporary(instance->environment, key);
             }
         }
         if (!ok) return false;

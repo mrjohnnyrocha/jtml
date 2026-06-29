@@ -948,8 +948,14 @@ TEST(SemanticProject, AnalysisReportsUnresolvedImportsAndMissingExports) {
     EXPECT_EQ(issues[0].code, "JTML_UNRESOLVED_IMPORT");
     EXPECT_EQ(issues[0].specifier, "./missing.jtml");
     EXPECT_EQ(issues[0].resolvedPath, "/app/missing.jtml");
+    EXPECT_EQ(issues[0].path, "/app/index.jtml");
+    EXPECT_EQ(issues[0].line, 2u);
+    EXPECT_EQ(issues[0].column, 1u);
     EXPECT_EQ(issues[1].code, "JTML_MISSING_EXPORT");
     EXPECT_EQ(issues[1].specifier, "./ui.jtml");
+    EXPECT_EQ(issues[1].path, "/app/index.jtml");
+    EXPECT_EQ(issues[1].line, 3u);
+    EXPECT_EQ(issues[1].column, 1u);
     ASSERT_EQ(issues[1].requested.size(), 1u);
     ASSERT_EQ(issues[1].available.size(), 1u);
     EXPECT_EQ(issues[1].requested[0], "Button");
@@ -1332,6 +1338,113 @@ TEST(RuntimePlan, ComponentInstancesCarryAuthoredSlotPlansAndSplitParams) {
     EXPECT_EQ(plan.componentInstances[0].slotPlan[0].kind, "template");
     EXPECT_EQ(plan.componentInstances[0].slotPlan[0].name, "text");
     EXPECT_EQ(plan.componentInstances[0].slotPlan[0].expression, "\"Ready\"");
+}
+
+TEST(RuntimePlan, BodyPlanReadsComeFromParsedExpressionAst) {
+    const std::string source =
+        "jtml 2\n"
+        "make Inspector users activeIndex fallback\n"
+        "  let meta = { \"label\": users.data[activeIndex].name, \"literal\": \"users.fake\" }\n"
+        "  get title = users.data[activeIndex].name ? users.data[activeIndex].name : fallback\n"
+        "  card title title\n"
+        "    text users.data[activeIndex].email\n"
+        "    metric \"Users\" users.total \"Active\" tone good gap md\n"
+        "    image src users.data[activeIndex].avatar alt \"Profile\"\n"
+        "let seedUsers = []\n"
+        "page\n"
+        "  Inspector seedUsers 0 \"n/a\"\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto plan = jtml::buildRuntimePlan(program, semantic);
+    ASSERT_EQ(plan.componentDefinitions.size(), 1u);
+    const auto& bodyPlan = plan.componentDefinitions[0].bodyPlan;
+
+    auto findNode = [&](const std::string& kind, const std::string& name) {
+        return std::find_if(bodyPlan.begin(), bodyPlan.end(), [&](const auto& node) {
+            return node.kind == kind && node.name == name;
+        });
+    };
+
+    auto stateIt = findNode("state", "meta");
+    ASSERT_NE(stateIt, bodyPlan.end());
+    EXPECT_TRUE(contains(stateIt->reads, "users"));
+    EXPECT_TRUE(contains(stateIt->reads, "users.data"));
+    EXPECT_TRUE(contains(stateIt->reads, "users.data[activeIndex]"));
+    EXPECT_TRUE(contains(stateIt->reads, "users.data[activeIndex].name"));
+    EXPECT_TRUE(contains(stateIt->reads, "activeIndex"));
+    EXPECT_FALSE(contains(stateIt->reads, "label"));
+    EXPECT_FALSE(contains(stateIt->reads, "literal"));
+    EXPECT_FALSE(contains(stateIt->reads, "users.fake"));
+
+    auto derivedIt = findNode("derived", "title");
+    ASSERT_NE(derivedIt, bodyPlan.end());
+    EXPECT_TRUE(contains(derivedIt->reads, "users"));
+    EXPECT_TRUE(contains(derivedIt->reads, "users.data"));
+    EXPECT_TRUE(contains(derivedIt->reads, "users.data[activeIndex]"));
+    EXPECT_TRUE(contains(derivedIt->reads, "users.data[activeIndex].name"));
+    EXPECT_TRUE(contains(derivedIt->reads, "activeIndex"));
+    EXPECT_TRUE(contains(derivedIt->reads, "fallback"));
+    EXPECT_FALSE(contains(derivedIt->reads, "data"));
+    EXPECT_FALSE(contains(derivedIt->reads, "name"));
+
+    auto metricIt = std::find_if(bodyPlan.begin(), bodyPlan.end(), [](const auto& node) {
+        return node.kind == "template" && node.name == "metric";
+    });
+    ASSERT_NE(metricIt, bodyPlan.end());
+    EXPECT_TRUE(contains(metricIt->reads, "users"));
+    EXPECT_TRUE(contains(metricIt->reads, "users.total"));
+    EXPECT_FALSE(contains(metricIt->reads, "total"));
+    EXPECT_FALSE(contains(metricIt->reads, "good"));
+    EXPECT_FALSE(contains(metricIt->reads, "md"));
+
+    auto imageIt = std::find_if(bodyPlan.begin(), bodyPlan.end(), [](const auto& node) {
+        return node.kind == "template" && node.name == "image";
+    });
+    ASSERT_NE(imageIt, bodyPlan.end());
+    EXPECT_TRUE(contains(imageIt->reads, "users"));
+    EXPECT_TRUE(contains(imageIt->reads, "users.data"));
+    EXPECT_TRUE(contains(imageIt->reads, "users.data[activeIndex]"));
+    EXPECT_TRUE(contains(imageIt->reads, "users.data[activeIndex].avatar"));
+    EXPECT_TRUE(contains(imageIt->reads, "activeIndex"));
+    EXPECT_TRUE(imageIt->writes.empty());
+    EXPECT_FALSE(contains(imageIt->reads, "Profile"));
+}
+
+TEST(RuntimePlan, BodyPlanWritesIncludeRootObservableForMemberAssignments) {
+    const std::string source =
+        "jtml 2\n"
+        "make ProfileCard\n"
+        "  let profile = { \"name\": \"Ada\", \"stats\": [1] }\n"
+        "  when rename\n"
+        "    profile.name = \"Grace\"\n"
+        "    profile.stats[0] += 1\n"
+        "  card\n"
+        "    text profile.name\n"
+        "page\n"
+        "  ProfileCard\n";
+
+    auto program = parseFriendly(source);
+    const auto plan = jtml::buildRuntimePlan(program);
+    ASSERT_EQ(plan.componentDefinitions.size(), 1u);
+    const auto& definition = plan.componentDefinitions.front();
+
+    const jtml::RuntimePlanComponentBodyNode* nameWrite = nullptr;
+    const jtml::RuntimePlanComponentBodyNode* statsWrite = nullptr;
+    for (const auto& node : definition.bodyPlan) {
+        if (node.kind == "assignment" && node.name == "profile.name") nameWrite = &node;
+        if (node.kind == "assignment" && node.name == "profile.stats[0]") statsWrite = &node;
+    }
+
+    ASSERT_NE(nameWrite, nullptr);
+    EXPECT_TRUE(contains(nameWrite->writes, "profile.name"));
+    EXPECT_TRUE(contains(nameWrite->writes, "profile"));
+
+    ASSERT_NE(statsWrite, nullptr);
+    EXPECT_TRUE(contains(statsWrite->writes, "profile.stats[0]"));
+    EXPECT_TRUE(contains(statsWrite->writes, "profile"));
+    EXPECT_TRUE(contains(statsWrite->reads, "profile"));
+    EXPECT_FALSE(contains(statsWrite->reads, "stats"));
 }
 
 TEST(RuntimePlan, ProjectPlanUsesRetainedPerFileAsts) {

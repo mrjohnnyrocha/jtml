@@ -129,21 +129,53 @@ Output:
 
 ```text
 dist/index.html
-dist/jtml-update-plans.js
-dist/app.js
 dist/jtml-runtime.js
+dist/components/index.js
+dist/app.js
+dist/jtml-update-plans.js
 dist/assets/...
 ```
 
-Current browser builds already emit `dist/index.html` plus a CSP-safe
-`dist/jtml-update-plans.js` static seed. That file carries component body-plan
-read/write metadata, precomputed read indexes, unsafe-entry lists, and
-first-slice text/region/nested patch operations without relying on runtime
-`eval`/`new Function`. The browser runtime prefers those static plans when
+Current browser builds emit `dist/index.html`, `dist/jtml-runtime.js`,
+`dist/components/index.js`, `dist/app.js`, and a legacy
+`dist/jtml-update-plans.js` alias. `jtml-runtime.js` is now primary for browser
+builds instead of duplicating the runtime inline. The component module carries
+component body-plan read/write metadata, precomputed read indexes,
+unsafe-entry lists, root create operations, precompiled element `partsPlan`
+records, first-slice text/region/nested/element patch operations, and
+first-slice static component create/update modules without relying on runtime
+`eval` / `new Function`. Supported root text, button, leaf element, and
+direct-safe container nodes now emit escaped HTML construction in
+`components/index.js`; region, nested-component, control-flow, slot, and
+unsupported shapes still use helper/fallback create paths. Static update
+functions also emit direct per-node patch cases for
+text, button, element, container-attribute, region, and nested-component nodes
+before falling back to operation records.
+Expression plans for literals, booleans, numbers, null, simple dot paths, unary
+`!`, binary/comparison/logical operators, and ternary conditionals now travel
+through text/element patch operations, element content, attributes, modifiers,
+component action arguments, body-plan conditions, `for` collection and key
+expressions, and nested component parameter evaluation before falling back to
+the generic browser expression evaluator. Static component modules now
+emit direct JS expression functions for simple and first-slice composite plans,
+simple generated text/button/leaf-element/container create functions that do not require
+runtime helper availability unless they hit a fallback shape, and generated
+text, element attribute/content, and button label/action-argument patches that
+update DOM directly without a global runtime-helper requirement before falling
+back to runtime patch helpers. Runtime-plan read
+analysis also recognizes value-taking attributes such as `title selected` as
+reads of `selected` instead of treating `selected` as a standalone boolean
+attribute.
+`rootCreateOperations` and per-entry operation payloads remain as fallback/debug
+metadata instead of the primary path. The browser runtime prefers those static
+modules/plans when
 available and falls back to runtime plan compilation only when no matching
-static plan exists. `app.js` and `jtml-runtime.js` remain the planned asset
-split once the compiler-first production target graduates from embedded runtime
-to owned static assets.
+static plan exists. `scripts/benchmark_runtime.sh` now
+provides a first-slice smoke benchmark over `tests/fixtures/performance/` with
+browser asset size budgets: 50 KB for `index.html`, 260 KB for
+`jtml-runtime.js`, 180 KB for `components/index.js`, 20 KB for `app.js`, and
+180 KB for the legacy `jtml-update-plans.js`, all meant to tighten as direct
+generated update modules keep replacing operation-record patch helpers.
 
 Implementation slices:
 
@@ -625,14 +657,18 @@ Implementation slices:
    unsupported, and missing component records so parity checks can compare live
    behavior against browser-local body-plan execution.
 50. Add compiler-first browser production target slices: build on the current
-   CSP-safe `jtml-update-plans.js` asset and its precomputed read indexes,
-   generate component creation functions for simple body-plan templates,
-   precompile expressions where dependencies are known, broaden generated
-   update functions beyond the current body-plan patch helpers, expand
-   text/attribute patches into keyed region updates, emit full static JS
-   runtime assets for production, add benchmark fixtures, and keep the current
-   manifest interpreter plus opt-in dynamic generated-function bridge as dev
-   and compatibility fallback.
+   CSP-safe `jtml-update-plans.js` asset, its precomputed read indexes, and
+   first-slice static create/update modules; ✅ first expression-plan payloads
+   now cover literals/simple paths in text, attributes, modifiers, element
+   content, component action arguments, conditions, `for` collection/key
+   expressions, and nested params; static modules now emit direct expression
+   functions and direct simple text DOM patches; next precompile richer action
+   bodies, broaden static update functions beyond the current body-plan patch
+   helpers, expand text/attribute/button patches into keyed region updates, emit full
+   static JS runtime assets for production, add benchmark fixtures/budgets
+   beyond the current smoke script, and keep the current manifest interpreter
+   plus opt-in dynamic generated-function bridge as dev and compatibility
+   fallback.
 51. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
    same catalog endpoint pattern.
 52. Add contract-first JTL backend API design docs and prototypes only after

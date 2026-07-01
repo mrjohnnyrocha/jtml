@@ -1,0 +1,16 @@
+jtml 2
+
+make TodoList
+  let items = ["Audit runtime", "Ship static module", "Measure patch"]
+
+  when rotate
+    items = ["Ship static module", "Measure patch", "Audit runtime"]
+
+  panel title "Keyed lifecycle"
+    for item in items key item
+      card title item tone neutral
+        text item
+    button "Rotate" click rotate
+
+page
+  TodoList

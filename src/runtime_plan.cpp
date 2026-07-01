@@ -257,6 +257,11 @@ bool isBodyPlanBooleanAttributeName(const std::string& token) {
     return names.count(token) > 0;
 }
 
+bool bodyPlanAttributeTakesValue(const std::string& token) {
+    return isBodyPlanAttributeName(token) &&
+           !isBodyPlanBooleanAttributeName(token);
+}
+
 bool isBodyPlanSemanticModifierName(const std::string& token) {
     static const std::set<std::string> names = {
         "cols", "gap", "pad", "radius", "shadow", "tone",
@@ -441,6 +446,10 @@ std::vector<std::string> templateExpressionDependencies(
             ++i;
             continue;
         }
+        if (bodyPlanAttributeTakesValue(token) && i + 1 < tokens.size()) {
+            ++i;
+            continue;
+        }
         if (isBodyPlanAttributeName(token) && i + 1 < tokens.size()) {
             ++i;
             continue;
@@ -454,10 +463,13 @@ std::vector<std::string> templateExpressionDependencies(
         const std::string& token = tokens[i];
         if (!isBodyPlanAttributeName(token)) continue;
         const std::string& value = tokens[i + 1];
-        if (isQuotedToken(value) ||
-            (isBodyPlanAttributeName(value) && value != token) ||
-            isBodyPlanBooleanAttributeName(value) ||
-            isBodyPlanSemanticModifierName(value)) {
+        if (isQuotedToken(value)) {
+            continue;
+        }
+        if (!bodyPlanAttributeTakesValue(token) &&
+            ((isBodyPlanAttributeName(value) && value != token) ||
+             isBodyPlanBooleanAttributeName(value) ||
+             isBodyPlanSemanticModifierName(value))) {
             continue;
         }
         appendUnique(reads, expressionDependencies(value));

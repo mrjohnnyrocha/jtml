@@ -1388,6 +1388,12 @@ TEST(RuntimePlan, BodyPlanReadsComeFromParsedExpressionAst) {
     EXPECT_FALSE(contains(derivedIt->reads, "data"));
     EXPECT_FALSE(contains(derivedIt->reads, "name"));
 
+    auto cardIt = std::find_if(bodyPlan.begin(), bodyPlan.end(), [](const auto& node) {
+        return node.kind == "template" && node.name == "card";
+    });
+    ASSERT_NE(cardIt, bodyPlan.end());
+    EXPECT_TRUE(contains(cardIt->reads, "title"));
+
     auto metricIt = std::find_if(bodyPlan.begin(), bodyPlan.end(), [](const auto& node) {
         return node.kind == "template" && node.name == "metric";
     });

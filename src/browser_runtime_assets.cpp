@@ -50,7 +50,11 @@ const char* browserRuntimePreludeChunk() {
             runtimeSecurity: Object.assign(
               {},
               window.jtml && window.jtml.runtimeSecurity || {},
-              { staticUpdatePlansLoaded: true }
+              {
+                staticUpdatePlansLoaded: true,
+                staticUpdateFunctionsLoaded: !!window.__jtml_static_update_functions,
+                staticComponentModulesLoaded: !!window.__jtml_static_component_modules
+              }
             )
           });
         });
@@ -338,7 +342,9 @@ const char* browserRuntimePreludeChunk() {
           stroke: true,
           'stroke-width': true,
           transform: true,
-          opacity: true
+          opacity: true,
+          to: true,
+          'active-class': true
         };
       }
 
@@ -366,6 +372,10 @@ const char* browserRuntimePreludeChunk() {
           loop: true,
           muted: true
         }[String(name || '')] === true;
+      }
+
+      function componentAttributeTakesValue(name) {
+        return isComponentAttributeName(name) && !isComponentBooleanAttribute(name);
       }
 
       function sameRuntimeModule(left, right) {
@@ -713,6 +723,282 @@ const char* browserRuntimePreludeChunk() {
         return result.found ? result.value : literal;
       }
 
+      function componentExpressionBalanced(expr, begin, end) {
+        let paren = 0;
+        let bracket = 0;
+        let brace = 0;
+        let quote = '';
+        for (let i = begin; i < end; i += 1) {
+          const ch = expr[i];
+          if (quote) {
+            if (ch === '\\' && i + 1 < end) i += 1;
+            else if (ch === quote) quote = '';
+            continue;
+          }
+          if (ch === '"' || ch === "'") {
+            quote = ch;
+            continue;
+          }
+          if (ch === '(') paren += 1;
+          else if (ch === ')') paren -= 1;
+          else if (ch === '[') bracket += 1;
+          else if (ch === ']') bracket -= 1;
+          else if (ch === '{') brace += 1;
+          else if (ch === '}') brace -= 1;
+          if (paren < 0 || bracket < 0 || brace < 0) return false;
+        }
+        return !quote && paren === 0 && bracket === 0 && brace === 0;
+      }
+
+      function stripOuterComponentExpressionParens(expr) {
+        expr = String(expr || '').trim();
+        while (expr.length >= 2 && expr[0] === '(' && expr[expr.length - 1] === ')' &&
+               componentExpressionBalanced(expr, 1, expr.length - 1)) {
+          expr = expr.slice(1, -1).trim();
+        }
+        return expr;
+      }
+
+      function findTopLevelComponentChar(expr, needle) {
+        let paren = 0;
+        let bracket = 0;
+        let brace = 0;
+        let quote = '';
+        for (let i = 0; i < expr.length; i += 1) {
+          const ch = expr[i];
+          if (quote) {
+            if (ch === '\\' && i + 1 < expr.length) i += 1;
+            else if (ch === quote) quote = '';
+            continue;
+          }
+          if (ch === '"' || ch === "'") {
+            quote = ch;
+            continue;
+          }
+          if (ch === '(') paren += 1;
+          else if (ch === ')') paren -= 1;
+          else if (ch === '[') bracket += 1;
+          else if (ch === ']') bracket -= 1;
+          else if (ch === '{') brace += 1;
+          else if (ch === '}') brace -= 1;
+          else if (ch === needle && paren === 0 && bracket === 0 && brace === 0) return i;
+        }
+        return -1;
+      }
+
+      function findMatchingTopLevelComponentColon(expr, question) {
+        let paren = 0;
+        let bracket = 0;
+        let brace = 0;
+        let nested = 0;
+        let quote = '';
+        for (let i = question + 1; i < expr.length; i += 1) {
+          const ch = expr[i];
+          if (quote) {
+            if (ch === '\\' && i + 1 < expr.length) i += 1;
+            else if (ch === quote) quote = '';
+            continue;
+          }
+          if (ch === '"' || ch === "'") {
+            quote = ch;
+            continue;
+          }
+          if (ch === '(') paren += 1;
+          else if (ch === ')') paren -= 1;
+          else if (ch === '[') bracket += 1;
+          else if (ch === ']') bracket -= 1;
+          else if (ch === '{') brace += 1;
+          else if (ch === '}') brace -= 1;
+          else if (paren === 0 && bracket === 0 && brace === 0) {
+            if (ch === '?') nested += 1;
+            else if (ch === ':') {
+              if (nested === 0) return i;
+              nested -= 1;
+            }
+          }
+        }
+        return -1;
+      }
+
+      function componentOperatorMayBeUnary(expr, pos) {
+        let cursor = pos;
+        while (cursor > 0 && /\s/.test(expr[cursor - 1])) cursor -= 1;
+        if (cursor === 0) return true;
+        return /[\(\[\{\?:,\+\-\*\/%<>=!&|]/.test(expr[cursor - 1]);
+      }
+
+      function findTopLevelComponentOperator(expr, operators) {
+        let paren = 0;
+        let bracket = 0;
+        let brace = 0;
+        let quote = '';
+        for (let i = expr.length - 1; i >= 0; i -= 1) {
+          const ch = expr[i];
+          if (quote) {
+            if (ch === quote) quote = '';
+            continue;
+          }
+          if (ch === '"' || ch === "'") {
+            quote = ch;
+            continue;
+          }
+          if (ch === ')') paren += 1;
+          else if (ch === '(') paren -= 1;
+          else if (ch === ']') bracket += 1;
+          else if (ch === '[') bracket -= 1;
+          else if (ch === '}') brace += 1;
+          else if (ch === '{') brace -= 1;
+          if (paren !== 0 || bracket !== 0 || brace !== 0) continue;
+          for (let j = 0; j < operators.length; j += 1) {
+            const op = operators[j];
+            if (expr.slice(i, i + op.length) !== op) continue;
+            if ((op === '+' || op === '-') && componentOperatorMayBeUnary(expr, i)) continue;
+            return { index: i, operator: op };
+          }
+        }
+        return null;
+      }
+
+      function compileComponentExpressionPlan(expr) {
+        expr = stripOuterComponentExpressionParens(expr);
+        if (!expr) return { kind: 'empty', source: '' };
+        const literal = unquoteComponentText(expr);
+        if (literal !== expr) return { kind: 'literal', source: expr, value: literal };
+        if (expr === 'true' || expr === 'false') {
+          return { kind: 'literal', source: expr, value: expr === 'true' };
+        }
+        if (expr === 'null') return { kind: 'literal', source: expr, value: null };
+        if (/^-?(?:\d+|\d*\.\d+)$/.test(expr)) {
+          return { kind: 'literal', source: expr, value: Number(expr) };
+        }
+        if (/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(expr)) {
+          const segments = expr.split('.');
+          return { kind: 'path', source: expr, root: segments[0], segments: segments };
+        }
+        const question = findTopLevelComponentChar(expr, '?');
+        if (question > 0) {
+          const colon = findMatchingTopLevelComponentColon(expr, question);
+          if (colon > question) {
+            const test = expr.slice(0, question).trim();
+            const whenTrue = expr.slice(question + 1, colon).trim();
+            const whenFalse = expr.slice(colon + 1).trim();
+            if (test && whenTrue && whenFalse) {
+              return {
+                kind: 'conditional',
+                source: expr,
+                test: compileComponentExpressionPlan(test),
+                whenTrue: compileComponentExpressionPlan(whenTrue),
+                whenFalse: compileComponentExpressionPlan(whenFalse)
+              };
+            }
+          }
+        }
+        const groups = [
+          ['||'],
+          ['&&'],
+          ['==', '!='],
+          ['<=', '>=', '<', '>'],
+          ['+', '-'],
+          ['*', '/', '%']
+        ];
+        for (let i = 0; i < groups.length; i += 1) {
+          const found = findTopLevelComponentOperator(expr, groups[i]);
+          if (!found || found.index <= 0) continue;
+          const left = expr.slice(0, found.index).trim();
+          const right = expr.slice(found.index + found.operator.length).trim();
+          if (!left || !right) continue;
+          return {
+            kind: 'binary',
+            source: expr,
+            operator: found.operator,
+            left: compileComponentExpressionPlan(left),
+            right: compileComponentExpressionPlan(right)
+          };
+        }
+        if (expr.length > 1 && expr[0] === '!') {
+          const argument = expr.slice(1).trim();
+          if (argument) {
+            return {
+              kind: 'unary',
+              source: expr,
+              operator: '!',
+              argument: compileComponentExpressionPlan(argument)
+            };
+          }
+        }
+        return { kind: 'source', source: expr };
+      }
+
+      function evaluateCompiledComponentExpression(plan, fallbackExpr, scope) {
+        if (typeof plan === 'function') return plan(scope || {});
+        const result = evaluateCompiledComponentExpressionResult(plan, fallbackExpr, scope);
+        if (result.found) return result.value;
+        return evaluateComponentValue(fallbackExpr || '', scope);
+      }
+
+      function evaluateCompiledComponentExpressionResult(plan, fallbackExpr, scope) {
+        if (typeof plan === 'function') return { found: true, value: plan(scope || {}) };
+        if (!plan || typeof plan !== 'object') return evaluateClientExpression(fallbackExpr || '', scope);
+        if (plan.kind === 'empty') return { found: true, value: '' };
+        if (plan.kind === 'literal') return { found: true, value: plan.value };
+        if (plan.kind === 'path') {
+          const segments = Array.isArray(plan.segments) && plan.segments.length
+            ? plan.segments
+            : String(plan.source || fallbackExpr || '').split('.').filter(Boolean);
+          if (!segments.length) return { found: true, value: '' };
+          if (!scope || !Object.prototype.hasOwnProperty.call(scope, segments[0])) {
+            return { found: false, value: undefined };
+          }
+          let current = scope[segments[0]];
+          for (let i = 1; i < segments.length; i += 1) {
+            if (current == null) return { found: true, value: '' };
+            current = current[segments[i]];
+          }
+          return { found: true, value: current == null ? '' : current };
+        }
+        if (plan.kind === 'unary' && plan.operator === '!') {
+          const argument = evaluateCompiledComponentExpressionResult(plan.argument, '', scope);
+          return argument.found
+            ? { found: true, value: !argument.value }
+            : evaluateClientExpression(plan.source || fallbackExpr || '', scope);
+        }
+        if (plan.kind === 'binary') {
+          const left = evaluateCompiledComponentExpressionResult(plan.left, '', scope);
+          const right = evaluateCompiledComponentExpressionResult(plan.right, '', scope);
+          if (!left.found || !right.found) {
+            return evaluateClientExpression(plan.source || fallbackExpr || '', scope);
+          }
+          switch (plan.operator) {
+            case '||': return { found: true, value: left.value || right.value };
+            case '&&': return { found: true, value: left.value && right.value };
+            case '==': return { found: true, value: left.value == right.value };
+            case '!=': return { found: true, value: left.value != right.value };
+            case '<=': return { found: true, value: left.value <= right.value };
+            case '>=': return { found: true, value: left.value >= right.value };
+            case '<': return { found: true, value: left.value < right.value };
+            case '>': return { found: true, value: left.value > right.value };
+            case '+': return { found: true, value: left.value + right.value };
+            case '-': return { found: true, value: left.value - right.value };
+            case '*': return { found: true, value: left.value * right.value };
+            case '/': return { found: true, value: left.value / right.value };
+            case '%': return { found: true, value: left.value % right.value };
+          }
+        }
+        if (plan.kind === 'conditional') {
+          const test = evaluateCompiledComponentExpressionResult(plan.test, '', scope);
+          if (!test.found) return evaluateClientExpression(plan.source || fallbackExpr || '', scope);
+          return evaluateCompiledComponentExpressionResult(
+            test.value ? plan.whenTrue : plan.whenFalse,
+            '',
+            scope);
+        }
+        return evaluateClientExpression(plan.source || fallbackExpr || '', scope);
+      }
+
+      function renderCompiledComponentExpression(plan, fallbackExpr, scope) {
+        return renderTemplateValue(evaluateCompiledComponentExpression(plan, fallbackExpr, scope));
+      }
+
       function parseComponentElementParts(words, start, scope, stopWords) {
         return evaluateCompiledComponentElementParts(
           compileComponentElementParts(words, start, stopWords),
@@ -731,7 +1017,7 @@ const char* browserRuntimePreludeChunk() {
             const raw = i + 1 < words.length ? words[i + 1] : '';
             if (raw && !stops[raw] && !isComponentAttributeName(raw) &&
                 !isComponentBooleanAttribute(raw) && !isSemanticUiModifierName(raw)) {
-              modifiers.push({ name: token, raw: raw });
+              modifiers.push({ name: token, raw: raw, exprPlan: compileComponentExpressionPlan(raw) });
               i += 1;
             } else {
               modifiers.push({ name: token, raw: '' });
@@ -740,8 +1026,10 @@ const char* browserRuntimePreludeChunk() {
           }
           if (isComponentAttributeName(token)) {
             const raw = i + 1 < words.length ? words[i + 1] : '';
-            if (raw && !isComponentAttributeName(raw) && !isComponentBooleanAttribute(raw) && !stops[raw]) {
-              attrs.push({ name: token, raw: raw });
+            if (raw && !stops[raw] &&
+                (componentAttributeTakesValue(token) ||
+                 (!isComponentAttributeName(raw) && !isComponentBooleanAttribute(raw)))) {
+              attrs.push({ name: token, raw: raw, exprPlan: compileComponentExpressionPlan(raw) });
               i += 1;
             } else {
               content.push(token);
@@ -754,25 +1042,32 @@ const char* browserRuntimePreludeChunk() {
           }
           content.push(token);
         }
-        return { content: content.join(' '), attrs: attrs, modifiers: modifiers };
+        const contentSource = content.join(' ');
+        return {
+          content: contentSource,
+          contentPlan: compileComponentExpressionPlan(contentSource),
+          attrs: attrs,
+          modifiers: modifiers
+        };
       }
 
       function evaluateCompiledComponentElementParts(plan, scope) {
         return {
           content: plan && plan.content || '',
+          contentPlan: plan && plan.contentPlan || compileComponentExpressionPlan(plan && plan.content || ''),
           attrs: (plan && plan.attrs || []).map(function (attr) {
             if (!attr || !attr.name) return attr;
             if (attr.boolean) return { name: attr.name, boolean: true };
             return {
               name: attr.name,
-              value: renderTemplateValue(evaluateComponentValue(attr.raw || '', scope))
+              value: renderCompiledComponentExpression(attr.exprPlan, attr.raw || '', scope)
             };
           }).filter(Boolean),
           modifiers: (plan && plan.modifiers || []).map(function (modifier) {
             if (!modifier || !modifier.name) return modifier;
             return {
               name: modifier.name,
-              value: modifier.raw ? renderTemplateValue(evaluateComponentValue(modifier.raw, scope)) : ''
+              value: modifier.raw ? renderCompiledComponentExpression(modifier.exprPlan, modifier.raw, scope) : ''
             };
           }).filter(Boolean)
         };
@@ -854,17 +1149,21 @@ const char* browserRuntimePreludeChunk() {
         const match = raw.match(/^([A-Za-z_][A-Za-z0-9_\.]*)(?:\((.*)\))?$/);
         if (!match) return { name: raw, argExpressions: [] };
         const argSource = String(match[2] || '').trim();
+        const argExpressions = argSource ? splitTopLevelList(argSource) : [];
         return {
           name: match[1],
-          argExpressions: argSource ? splitTopLevelList(argSource) : []
+          argExpressions: argExpressions,
+          argPlans: argExpressions.map(compileComponentExpressionPlan)
         };
       }
 
       function evaluateCompiledComponentActionInvocation(compiled, scope) {
+        const argExpressions = compiled && compiled.argExpressions || [];
+        const argPlans = compiled && compiled.argPlans || [];
         return {
           name: compiled && compiled.name || '',
-          args: (compiled && compiled.argExpressions || []).map(function (expr) {
-            return evaluateComponentValue(expr, scope);
+          args: argExpressions.map(function (expr, index) {
+            return evaluateCompiledComponentExpression(argPlans[index], expr, scope);
           })
         };
       }
@@ -903,7 +1202,8 @@ const char* browserRuntimeComponentChunk() {
         const params = {};
         (nestedDefinition.params || []).forEach(function (param, index) {
           const raw = words[index + 1] || '';
-          params[param] = evaluateComponentValue(raw, scope);
+          const plan = node && Array.isArray(node.wordPlans) ? node.wordPlans[index + 1] : null;
+          params[param] = evaluateCompiledComponentExpression(plan, raw, scope);
         });
         const index = (parentDefinition.bodyPlan || []).indexOf(node);
         const pathSuffix = componentRenderPath.length
@@ -956,7 +1256,11 @@ const char* browserRuntimeComponentChunk() {
             '</span>';
         }
         if (head === 'if') {
-          const condition = evaluateClientExpression(node.expression || words.slice(1).join(' '), scope);
+          const conditionExpr = node.expression || words.slice(1).join(' ');
+          const condition = evaluateCompiledComponentExpressionResult(
+            node.expressionPlan || compileComponentExpressionPlan(conditionExpr),
+            conditionExpr,
+            scope);
           let html = '';
           if (condition.found && condition.value) {
             html = renderComponentChildren(definition, instance, node, scope);
@@ -982,7 +1286,7 @@ const char* browserRuntimeComponentChunk() {
             ? (node.expression || words.slice(1).join(' '))
             : (node.expression || words.slice(1).join(' '));
           return '<p' + directNodeAttr + ' data-jtml-direct-text-node="true">' +
-            escapeHtml(renderComponentExpression(expr, scope)) + '</p>' + children;
+            escapeHtml(renderCompiledComponentExpression(node.expressionPlan, expr, scope)) + '</p>' + children;
         }
         if (head === 'button') {
           const clickIndex = words.indexOf('click');
@@ -996,7 +1300,7 @@ const char* browserRuntimeComponentChunk() {
           const invocation = clickIndex === -1
             ? { name: '', args: [] }
             : parseComponentActionInvocation(words[clickIndex + 1] || '', scope);
-          const label = renderComponentExpression(labelExpr || '"Button"', scope);
+          const label = renderCompiledComponentExpression(parts.contentPlan, labelExpr || '"Button"', scope);
           const attrs = invocation.name
             ? ' data-jtml-direct-component-id="' + escapeHtml(instance.id) + '"' +
               ' data-jtml-direct-component-action="' + escapeHtml(invocation.name) + '"' +
@@ -1011,7 +1315,9 @@ const char* browserRuntimeComponentChunk() {
         const tag = componentTagName(head);
         const parts = parseComponentElementParts(words, 1, scope);
         const contentExpr = parts.content || (node.expression || '').trim();
-        const inline = children ? '' : (contentExpr ? escapeHtml(renderComponentExpression(contentExpr, scope)) : '');
+        const inline = children ? '' : (contentExpr
+          ? escapeHtml(renderCompiledComponentExpression(parts.content ? parts.contentPlan : node.expressionPlan, contentExpr, scope))
+          : '');
         const extras = semanticUiRenderExtras(head, parts);
         if (head === 'checkbox' && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'checkbox';
         if ((head === 'file' || head === 'dropzone') && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'file';
@@ -1030,10 +1336,16 @@ const char* browserRuntimeComponentChunk() {
 
       function renderComponentForItems(definition, instance, node, scope, words) {
         words = words || splitComponentWords(node && node.text || '');
+        const loopPlan = node && node.loopPlan || {};
         const raw = node.expression || words.slice(1).join(' ');
         const match = String(raw || '').match(/^([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(.+)$/);
-        if (!match) return [];
-        const result = evaluateClientExpression(match[2], scope);
+        const loopItemName = loopPlan.item || (match ? match[1] : '');
+        const collectionExpr = loopPlan.collectionExpression || (match ? match[2] : raw);
+        if (!loopItemName) return [];
+        const result = evaluateCompiledComponentExpressionResult(
+          loopPlan.collectionPlan || compileComponentExpressionPlan(collectionExpr),
+          collectionExpr,
+          scope);
         if (!result.found) return [];
         let values = result.value;
         if (values == null) values = [];
@@ -1045,10 +1357,13 @@ const char* browserRuntimeComponentChunk() {
         const nodeIndex = (definition.bodyPlan || []).indexOf(node);
         const keySegments = values.map(function (item, itemIndex) {
           const childScope = Object.assign({}, scope);
-          childScope[match[1]] = item;
+          childScope[loopItemName] = item;
           let keySegment = String(itemIndex);
           if (node.keyExpression) {
-            const keyResult = evaluateClientExpression(node.keyExpression, childScope);
+            const keyResult = evaluateCompiledComponentExpressionResult(
+              node.keyExpressionPlan || compileComponentExpressionPlan(node.keyExpression),
+              node.keyExpression,
+              childScope);
             if (keyResult.found) keySegment = componentPathSegment(renderTemplateValue(keyResult.value));
           }
           return keySegment;
@@ -1056,7 +1371,7 @@ const char* browserRuntimeComponentChunk() {
         recordDirectListLifecycle(instance, definition, node, nodeIndex, keySegments);
         return values.map(function (item, itemIndex) {
           const childScope = Object.assign({}, scope);
-          childScope[match[1]] = item;
+          childScope[loopItemName] = item;
           const keySegment = keySegments[itemIndex];
           componentRenderPath.push('for' + String(nodeIndex < 0 ? 'x' : nodeIndex) + '_' + keySegment);
           try {
@@ -1140,6 +1455,122 @@ const char* browserRuntimeComponentChunk() {
         return false;
       }
 
+      function keyedListTemplateChildren(html) {
+        const template = document.createElement('template');
+        template.innerHTML = String(html || '');
+        return Array.prototype.slice.call(template.content.childNodes || []);
+      }
+
+      function elementBodyNodeMarker(el) {
+        return el && el.nodeType === 1 && el.getAttribute
+          ? String(el.getAttribute('data-jtml-direct-body-node') || '')
+          : '';
+      }
+
+      function samePatchableElementShape(current, next) {
+        if (!current || !next || current.nodeType !== 1 || next.nodeType !== 1) return false;
+        if (!current.tagName || !next.tagName ||
+            current.tagName.toLowerCase() !== next.tagName.toLowerCase()) {
+          return false;
+        }
+        const currentMarker = elementBodyNodeMarker(current);
+        const nextMarker = elementBodyNodeMarker(next);
+        return currentMarker && nextMarker && currentMarker === nextMarker;
+      }
+
+      function copyElementAttributesInPlace(current, next) {
+        const seen = {};
+        Array.prototype.slice.call(next.attributes || []).forEach(function (attr) {
+          seen[attr.name] = true;
+          if (current.getAttribute(attr.name) !== attr.value) {
+            current.setAttribute(attr.name, attr.value);
+          }
+        });
+        Array.prototype.slice.call(current.attributes || []).forEach(function (attr) {
+          if (!seen[attr.name]) current.removeAttribute(attr.name);
+        });
+      }
+
+      function hasNestedDirectComponentElement(el) {
+        return !!(el && el.querySelector &&
+          el.querySelector('[data-jtml-direct-instance]'));
+      }
+
+      function patchElementChildrenInPlace(current, next, stats) {
+        const currentChildren = Array.prototype.slice.call(current.childNodes || []);
+        const nextChildren = Array.prototype.slice.call(next.childNodes || []);
+        if (currentChildren.length !== nextChildren.length) return false;
+        for (let i = 0; i < nextChildren.length; i += 1) {
+          const currentChild = currentChildren[i];
+          const nextChild = nextChildren[i];
+          if (!currentChild || !nextChild) return false;
+          if (currentChild.nodeType === 3 && nextChild.nodeType === 3) {
+            if (currentChild.nodeValue !== nextChild.nodeValue) {
+              currentChild.nodeValue = nextChild.nodeValue;
+              stats.textNodesPatched += 1;
+            }
+            continue;
+          }
+          if (samePatchableElementShape(currentChild, nextChild)) {
+            if (!patchElementFromTemplateInPlace(currentChild, nextChild, stats)) {
+              return false;
+            }
+            continue;
+          }
+          return false;
+        }
+        return true;
+      }
+
+      function patchElementFromTemplateInPlace(current, next, stats) {
+        if (!samePatchableElementShape(current, next)) return false;
+        copyElementAttributesInPlace(current, next);
+        stats.elementsPatched += 1;
+        if (hasNestedDirectComponentElement(current) || hasNestedDirectComponentElement(next)) {
+          return current.innerHTML === next.innerHTML;
+        }
+        if (current.innerHTML === next.innerHTML) return true;
+        if (patchElementChildrenInPlace(current, next, stats)) return true;
+        return false;
+      }
+
+      function patchKeyedListItemWrapperInPlace(wrapper, item) {
+        const stats = {
+          changed: false,
+          elementsPatched: 0,
+          textNodesPatched: 0,
+          childReplacements: 0,
+          fullHtmlReplacements: 0
+        };
+        if (!wrapper) return stats;
+        wrapper.setAttribute('data-jtml-direct-list-index', String(item.index));
+        if (wrapper.innerHTML === item.innerHtml) return stats;
+        const nextChildren = keyedListTemplateChildren(item.innerHtml);
+        const currentChildren = Array.prototype.slice.call(wrapper.childNodes || []);
+        if (nextChildren.length === currentChildren.length) {
+          let patchedAll = true;
+          for (let i = 0; i < nextChildren.length; i += 1) {
+            const currentChild = currentChildren[i];
+            const nextChild = nextChildren[i];
+            if (currentChild && nextChild &&
+                samePatchableElementShape(currentChild, nextChild) &&
+                patchElementFromTemplateInPlace(currentChild, nextChild, stats)) {
+              continue;
+            }
+            patchedAll = false;
+            break;
+          }
+          if (patchedAll) {
+            stats.changed = stats.elementsPatched > 0 || stats.textNodesPatched > 0;
+            return stats;
+          }
+        }
+        wrapper.innerHTML = item.innerHtml;
+        stats.changed = true;
+        stats.fullHtmlReplacements += 1;
+        return stats;
+      }
+
       function patchComponentForRegion(instance, definition, node, scope, el) {
         if (!node || componentNodeHead(node) !== 'for' || !el || !el.children) return false;
         const items = renderComponentForItems(definition, instance, node, scope);
@@ -1196,12 +1627,17 @@ const char* browserRuntimeComponentChunk() {
         const fragment = document.createDocumentFragment();
         let reused = 0;
         let created = 0;
+        let itemElementPatches = 0;
+        let itemTextPatches = 0;
+        let itemHtmlReplacements = 0;
         items.forEach(function (item) {
           let wrapper = existingByKey[item.key] || null;
           if (wrapper) {
             reused += 1;
-            wrapper.setAttribute('data-jtml-direct-list-index', String(item.index));
-            if (wrapper.innerHTML !== item.innerHtml) wrapper.innerHTML = item.innerHtml;
+            const patchStats = patchKeyedListItemWrapperInPlace(wrapper, item);
+            itemElementPatches += patchStats.elementsPatched || 0;
+            itemTextPatches += patchStats.textNodesPatched || 0;
+            itemHtmlReplacements += patchStats.fullHtmlReplacements || 0;
           } else {
             created += 1;
             const template = document.createElement('template');
@@ -1226,8 +1662,12 @@ const char* browserRuntimeComponentChunk() {
             created: created,
             removed: existing.length - reused,
             prunedDynamicInstances: prunedDynamicInstances,
+            itemElementPatches: itemElementPatches,
+            itemTextPatches: itemTextPatches,
+            itemHtmlReplacements: itemHtmlReplacements,
             reordered: movedKeys.length > 0,
-            mode: 'keyed-for-region-patch'
+            mode: 'keyed-for-region-patch',
+            reconciliation: 'below-wrapper'
           }
         });
         return true;
@@ -1275,10 +1715,14 @@ const char* browserRuntimeComponentChunk() {
 
       function staticComponentUpdatePlanForKey(key) {
         const asset = window.__jtml_static_update_plans;
+        const staticFunctions = window.__jtml_static_update_functions || {};
+        const staticModules = window.__jtml_static_component_modules || {};
         const components = asset && Array.isArray(asset.components) ? asset.components : [];
         for (let i = 0; i < components.length; i += 1) {
           const candidate = components[i] || {};
           if (candidate.key !== key) continue;
+          const staticUpdate = staticFunctions[key];
+          const staticModule = staticModules[key] || {};
           return {
             key: key,
             component: candidate.name || '',
@@ -1287,6 +1731,8 @@ const char* browserRuntimeComponentChunk() {
             entriesByRead: candidate.entriesByRead || {},
             unsafeEntries: Array.isArray(candidate.unsafeEntries) ? candidate.unsafeEntries : [],
             staticSource: true,
+            staticCreateFunction: typeof staticModule.create === 'function' ? staticModule.create : null,
+            staticUpdateFunction: typeof staticUpdate === 'function' ? staticUpdate : null,
             staticPatchCoverage: candidate.staticPatchCoverage || 'unknown'
           };
         }
@@ -1298,7 +1744,8 @@ const char* browserRuntimeComponentChunk() {
         if (componentUpdatePlanCache[key]) return componentUpdatePlanCache[key];
         const staticPlan = staticComponentUpdatePlanForKey(key);
         if (staticPlan) {
-          staticPlan.update = compileInterpretedComponentUpdateFunction(staticPlan);
+          staticPlan.update = compileStaticComponentUpdateFunction(staticPlan) ||
+            compileInterpretedComponentUpdateFunction(staticPlan);
           componentUpdatePlanCache[key] = staticPlan;
           return componentUpdatePlanCache[key];
         }
@@ -1466,8 +1913,164 @@ const char* browserRuntimeComponentChunk() {
           executeComponentPatchOperation: executeComponentPatchOperation,
           replaceDirectComponentNode: replaceDirectComponentNode,
           recordCompiledPatchFallback: recordCompiledPatchFallback,
-          recordComponentUpdatePlanSuccess: recordComponentUpdatePlanSuccess
+          recordComponentUpdatePlanSuccess: recordComponentUpdatePlanSuccess,
+          patchStaticComponentButtonNode: patchStaticComponentButtonNode,
+          patchStaticComponentElementNode: patchStaticComponentElementNode,
+          renderStaticComponentButtonNode: renderStaticComponentButtonNode,
+          renderStaticComponentCreateOperations: renderStaticComponentCreateOperations,
+          renderStaticComponentElementNode: renderStaticComponentElementNode,
+          patchStaticComponentNodeHtml: patchStaticComponentNodeHtml,
+          patchStaticComponentRegionNode: patchStaticComponentRegionNode,
+          patchStaticComponentTextNode: patchStaticComponentTextNode,
+          renderStaticComponentRegionNode: renderStaticComponentRegionNode,
+          renderStaticComponentTextNode: renderStaticComponentTextNode
         };
+      }
+
+      function renderStaticComponentRoots(instance, definition, scope) {
+        const roots = (definition && definition.bodyPlan || []).filter(function (node) {
+          return node && node.renderRoot && node.kind === 'template';
+        });
+        return roots.map(function (node) {
+          return renderComponentPlanNode(definition, instance, node, scope);
+        }).join('');
+      }
+
+      function renderStaticComponentCreateOperation(instance, definition, scope, operation) {
+        if (!operation || operation.nodeIndex == null) return null;
+        const node = (definition && definition.bodyPlan || [])[operation.nodeIndex];
+        if (!node) return null;
+        const head = operation.head || componentNodeHead(node) || 'box';
+        if (operation.operation === 'region' ||
+            operation.operation === 'nested-component') {
+          return renderStaticComponentRegionNode(instance, definition, scope, operation.nodeIndex);
+        }
+        const words = Array.isArray(operation.words) && operation.words.length
+          ? operation.words
+          : splitComponentWords(node.text || '');
+        if (operation.operation === 'text') {
+          return renderStaticComponentTextNode(
+            instance,
+            definition,
+            scope,
+            operation.nodeIndex,
+            operation.expression || words.slice(1).join(' '),
+            operation.expressionPlan || null);
+        }
+        if (operation.operation === 'button') {
+          return renderStaticComponentButtonNode(
+            instance,
+            definition,
+            scope,
+            operation.nodeIndex,
+            head,
+            operation.partsPlan || compileComponentElementParts(words, 1, { click: true }),
+            operation.clickInvocation || null);
+        }
+        if (operation.operation === 'element' ||
+            operation.operation === 'container-attrs') {
+          return renderStaticComponentElementNode(
+            instance,
+            definition,
+            scope,
+            operation.nodeIndex,
+            head,
+            operation.tag || componentTagName(head),
+            operation.partsPlan || compileComponentElementParts(words, 1),
+            operation.expression || '',
+            operation.expressionPlan || null);
+        }
+        return null;
+      }
+
+      function renderStaticComponentRegionNode(instance, definition, scope, nodeIndex) {
+        const node = (definition && definition.bodyPlan || [])[nodeIndex];
+        if (!node) return null;
+        return renderComponentPlanNode(definition, instance, node, scope);
+      }
+
+      function renderStaticComponentTextNode(instance, definition, scope, nodeIndex, expression, expressionPlan) {
+        const node = (definition && definition.bodyPlan || [])[nodeIndex];
+        if (!node) return null;
+        const expr = expression || node.expression || splitComponentWords(node.text || '').slice(1).join(' ');
+        const directNodeAttr = ' data-jtml-direct-body-node="' + String(nodeIndex) + '"';
+        return '<p' + directNodeAttr + ' data-jtml-direct-text-node="true">' +
+          escapeHtml(renderCompiledComponentExpression(expressionPlan, expr, scope)) +
+          '</p>';
+      }
+
+      function renderStaticComponentButtonNode(instance, definition, scope, nodeIndex, head, partsPlan, clickInvocation) {
+        const node = (definition && definition.bodyPlan || [])[nodeIndex];
+        if (!node) return null;
+        const words = splitComponentWords(node.text || '');
+        const resolvedHead = head || componentNodeHead(node) || 'button';
+        const parts = evaluateCompiledComponentElementParts(
+          partsPlan || compileComponentElementParts(words, 1, { click: true }),
+          scope);
+        const clickIndex = words.indexOf('click');
+        const invocation = clickInvocation && clickInvocation.name
+          ? evaluateCompiledComponentActionInvocation(clickInvocation, scope)
+          : clickIndex === -1
+          ? { name: '', args: [] }
+          : parseComponentActionInvocation(words[clickIndex + 1] || '', scope);
+        const label = renderCompiledComponentExpression(parts.contentPlan, parts.content || '"Button"', scope);
+        const directNodeAttr = ' data-jtml-direct-body-node="' + String(nodeIndex) + '"';
+        const attrs = invocation.name
+          ? ' data-jtml-direct-component-id="' + escapeHtml(instance.id) + '"' +
+            ' data-jtml-direct-component-action="' + escapeHtml(invocation.name) + '"' +
+            ' data-jtml-direct-component-args="' + escapeAttribute(JSON.stringify(invocation.args || [])) + '"'
+          : '';
+        const extras = semanticUiRenderExtras(resolvedHead, parts);
+        return '<button type="button"' + directNodeAttr +
+          componentManagedAttributeMarker(parts, extras) +
+          renderComponentAttributes(parts, extras) + attrs + '>' +
+          escapeHtml(label) + '</button>';
+      }
+
+      function renderStaticComponentElementNode(instance, definition, scope, nodeIndex, head, tag, partsPlan, expression, expressionPlan) {
+        const node = (definition && definition.bodyPlan || [])[nodeIndex];
+        if (!node) return null;
+        const resolvedHead = head || componentNodeHead(node) || 'box';
+        const resolvedTag = tag || componentTagName(resolvedHead);
+        const words = splitComponentWords(node.text || '');
+        const parts = evaluateCompiledComponentElementParts(
+          partsPlan || compileComponentElementParts(words, 1),
+          scope);
+        const children = renderComponentChildren(definition, instance, node, scope);
+        const contentExpr = parts.content || String(expression || node.expression || '').trim();
+        const inline = children
+          ? ''
+          : (contentExpr
+              ? escapeHtml(renderCompiledComponentExpression(parts.content ? parts.contentPlan : expressionPlan, contentExpr, scope))
+              : '');
+        const extras = semanticUiRenderExtras(resolvedHead, parts);
+        if (resolvedHead === 'checkbox' && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'checkbox';
+        if ((resolvedHead === 'file' || resolvedHead === 'dropzone') && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'file';
+        extras['data-jtml-direct-node'] = resolvedHead;
+        const directNodeAttr = ' data-jtml-direct-body-node="' + String(nodeIndex) + '"';
+        return '<' + resolvedTag + directNodeAttr +
+          componentManagedAttributeMarker(parts, extras) +
+          renderComponentAttributes(parts, extras) + '>' +
+          inline + children + '</' + resolvedTag + '>';
+      }
+
+      function renderStaticComponentCreateOperations(instance, definition, scope, operations) {
+        const rendered = [];
+        const list = Array.isArray(operations) ? operations : [];
+        for (let i = 0; i < list.length; i += 1) {
+          const html = renderStaticComponentCreateOperation(instance, definition, scope, list[i]);
+          if (typeof html !== 'string') return null;
+          rendered.push(html);
+        }
+        window.jtml = Object.assign(window.jtml || {}, {
+          directComponentStaticCreateOperations: {
+            componentId: instance && instance.id || '',
+            component: instance && instance.component || definition && definition.name || '',
+            operationCount: list.length,
+            mode: 'static-create-operations'
+          }
+        });
+        return rendered.join('');
       }
 
       function generateComponentUpdateFunctionSource(plan) {
@@ -1541,6 +2144,31 @@ const char* browserRuntimeComponentChunk() {
         }
       }
 
+      function compileStaticComponentUpdateFunction(plan) {
+        if (!plan || typeof plan.staticUpdateFunction !== 'function') return null;
+        return function (instance, definition, changed, scope) {
+          try {
+            const result = plan.staticUpdateFunction(
+              instance,
+              definition,
+              changed,
+              scope,
+              generatedUpdateHelpers());
+            if (result && result.handled) return result;
+            return result || { handled: false, patched: 0 };
+          } catch (err) {
+            window.jtml = Object.assign(window.jtml || {}, {
+              directComponentStaticUpdateError: {
+                component: plan && plan.component || '',
+                planKey: plan && plan.key || '',
+                message: err && err.message ? err.message : 'static update function unavailable'
+              }
+            });
+            return { handled: false, patched: 0 };
+          }
+        };
+      }
+
       function compileInterpretedComponentUpdateFunction(plan) {
         return function (instance, definition, changed, scope) {
           const affected = componentPlanAffectedEntries(plan, changed);
@@ -1578,12 +2206,79 @@ const char* browserRuntimeComponentChunk() {
       function replaceDirectComponentNode(instance, definition, node, scope) {
         const index = componentNodeIndex(definition, node);
         if (index < 0 || !instance || !instance.element) return false;
-        const el = instance.element.querySelector('[data-jtml-direct-body-node="' + String(index) + '"]');
-        if (!el) return false;
         const html = renderComponentPlanNode(definition, instance, node, scope);
+        return patchStaticComponentNodeHtml(instance, index, html);
+      }
+
+      function patchStaticComponentNodeHtml(instance, nodeIndex, html) {
+        if (!instance || !instance.element) return false;
+        const el = instance.element.querySelector('[data-jtml-direct-body-node="' + String(nodeIndex) + '"]');
+        if (!el) return false;
         if (typeof html !== 'string' || !html.length) return false;
         el.outerHTML = html;
         return true;
+      }
+
+      function directComponentElementForNode(instance, nodeIndex) {
+        if (!instance || !instance.element) return null;
+        return instance.element.querySelector('[data-jtml-direct-body-node="' + String(nodeIndex) + '"]');
+      }
+
+      function patchStaticComponentTextNode(instance, nodeIndex, expression, scope, expressionPlan) {
+        const el = directComponentElementForNode(instance, nodeIndex);
+        if (!el) return false;
+        el.textContent = renderCompiledComponentExpression(expressionPlan, expression || '', scope);
+        return true;
+      }
+
+      function patchStaticComponentRegionNode(instance, definition, nodeIndex, scope) {
+        const node = (definition && definition.bodyPlan || [])[nodeIndex];
+        const el = directComponentElementForNode(instance, nodeIndex);
+        if (!node || !el) return false;
+        if (componentNodeHead(node) === 'for' &&
+            patchComponentForRegion(instance, definition, node, scope, el)) {
+          return true;
+        }
+        const html = renderComponentPlanNode(definition, instance, node, scope);
+        if (typeof html !== 'string') return false;
+        el.outerHTML = html;
+        return true;
+      }
+
+      function patchStaticComponentButtonNode(instance, nodeIndex, head, partsPlan, clickInvocation, scope) {
+        const el = directComponentElementForNode(instance, nodeIndex);
+        if (!el || !el.tagName || el.tagName.toLowerCase() !== 'button') return false;
+        const resolvedHead = head || 'button';
+        const parts = evaluateCompiledComponentElementParts(partsPlan, scope);
+        const invocation = clickInvocation && clickInvocation.name
+          ? evaluateCompiledComponentActionInvocation(clickInvocation, scope)
+          : { name: '', args: [] };
+        const label = renderCompiledComponentExpression(parts.contentPlan, parts.content || '"Button"', scope);
+        if (el.textContent !== label) el.textContent = label;
+        if (invocation.name) {
+          el.setAttribute('data-jtml-direct-component-id', instance.id || '');
+          el.setAttribute('data-jtml-direct-component-action', invocation.name);
+          el.setAttribute('data-jtml-direct-component-args', JSON.stringify(invocation.args || []));
+        }
+        return patchDirectComponentElementAttributes(el, parts, semanticUiRenderExtras(resolvedHead, parts));
+      }
+
+      function patchStaticComponentElementNode(instance, nodeIndex, head, tag, partsPlan, expression, scope, patchContent, expressionPlan) {
+        const el = directComponentElementForNode(instance, nodeIndex);
+        const resolvedHead = head || 'box';
+        const expectedTag = tag || componentTagName(resolvedHead);
+        if (!el || !el.tagName || el.tagName.toLowerCase() !== expectedTag.toLowerCase()) return false;
+        const parts = evaluateCompiledComponentElementParts(partsPlan, scope);
+        const contentExpr = parts.content || String(expression || '').trim();
+        if (patchContent && contentExpr) {
+          const label = renderCompiledComponentExpression(parts.content ? parts.contentPlan : expressionPlan, contentExpr, scope);
+          if (el.textContent !== label) el.textContent = label;
+        }
+        const extras = semanticUiRenderExtras(resolvedHead, parts);
+        if (resolvedHead === 'checkbox' && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'checkbox';
+        if ((resolvedHead === 'file' || resolvedHead === 'dropzone') && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'file';
+        extras['data-jtml-direct-node'] = resolvedHead;
+        return patchDirectComponentElementAttributes(el, parts, extras);
       }
 
       function executeComponentPatchOperation(instance, definition, operation, scope) {
@@ -1591,65 +2286,53 @@ const char* browserRuntimeComponentChunk() {
         const el = instance.element.querySelector('[data-jtml-direct-body-node="' + String(operation.nodeIndex) + '"]');
         if (!el) return false;
         if (operation.operation === 'text') {
-          el.textContent = renderComponentExpression(operation.expression || '', scope);
-          return true;
+          return patchStaticComponentTextNode(
+            instance,
+            operation.nodeIndex,
+            operation.expression || '',
+            scope,
+            operation.expressionPlan || null);
         }
         if (operation.operation === 'region') {
-          const node = (definition.bodyPlan || [])[operation.nodeIndex];
-          if (!node) return false;
-          if (componentNodeHead(node) === 'for' &&
-              patchComponentForRegion(instance, definition, node, scope, el)) {
-            return true;
-          }
-          const html = renderComponentPlanNode(definition, instance, node, scope);
-          if (typeof html !== 'string') return false;
-          el.outerHTML = html;
-          return true;
+          return patchStaticComponentRegionNode(instance, definition, operation.nodeIndex, scope);
         }
         const expectedTag = operation.tag || componentTagName(operation.head || 'box');
         if (el.tagName && el.tagName.toLowerCase() !== expectedTag.toLowerCase()) return false;
         if (operation.operation === 'button') {
-          const parts = evaluateCompiledComponentElementParts(operation.partsPlan, scope);
-          const invocation = operation.clickInvocation && operation.clickInvocation.name
-            ? evaluateCompiledComponentActionInvocation(operation.clickInvocation, scope)
-            : { name: '', args: [] };
-          const label = renderComponentExpression(parts.content || '"Button"', scope);
-          if (el.textContent !== label) el.textContent = label;
-          if (invocation.name) {
-            el.setAttribute('data-jtml-direct-component-id', instance.id || '');
-            el.setAttribute('data-jtml-direct-component-action', invocation.name);
-            el.setAttribute('data-jtml-direct-component-args', JSON.stringify(invocation.args || []));
-          }
-          return patchDirectComponentElementAttributes(el, parts, semanticUiRenderExtras(operation.head, parts));
+          return patchStaticComponentButtonNode(
+            instance,
+            operation.nodeIndex,
+            operation.head,
+            operation.partsPlan,
+            operation.clickInvocation,
+            scope);
         }
         if (operation.operation === 'container-attrs') {
-          const parts = evaluateCompiledComponentElementParts(operation.partsPlan, scope);
-          const extras = semanticUiRenderExtras(operation.head, parts);
-          if (operation.head === 'checkbox' && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'checkbox';
-          if ((operation.head === 'file' || operation.head === 'dropzone') && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'file';
-          extras['data-jtml-direct-node'] = operation.head;
-          return patchDirectComponentElementAttributes(el, parts, extras);
+          return patchStaticComponentElementNode(
+            instance,
+            operation.nodeIndex,
+            operation.head,
+            expectedTag,
+            operation.partsPlan,
+            '',
+            scope,
+            false,
+            operation.expressionPlan || null);
         }
         if (operation.operation === 'nested-component') {
-          const node = (definition.bodyPlan || [])[operation.nodeIndex];
-          if (!node) return false;
-          const html = renderComponentPlanNode(definition, instance, node, scope);
-          if (typeof html !== 'string' || !html.length) return false;
-          el.outerHTML = html;
-          return true;
+          return patchStaticComponentRegionNode(instance, definition, operation.nodeIndex, scope);
         }
         if (operation.operation !== 'element') return false;
-        const parts = evaluateCompiledComponentElementParts(operation.partsPlan, scope);
-        const contentExpr = parts.content || String(operation.expression || '').trim();
-        if (contentExpr) {
-          const label = renderComponentExpression(contentExpr, scope);
-          if (el.textContent !== label) el.textContent = label;
-        }
-        const extras = semanticUiRenderExtras(operation.head, parts);
-        if (operation.head === 'checkbox' && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'checkbox';
-        if ((operation.head === 'file' || operation.head === 'dropzone') && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'file';
-        extras['data-jtml-direct-node'] = operation.head;
-        return patchDirectComponentElementAttributes(el, parts, extras);
+        return patchStaticComponentElementNode(
+          instance,
+          operation.nodeIndex,
+          operation.head,
+          expectedTag,
+          operation.partsPlan,
+          operation.expression,
+          scope,
+          true,
+          operation.expressionPlan || null);
       }
 
       function patchDirectComponentElementAttributes(el, parts, extra) {
@@ -1819,7 +2502,11 @@ const char* browserRuntimeComponentChunk() {
           }
           if (node.kind === 'template' && head === 'if') {
             const words = splitComponentWords(node.text || '');
-            const condition = evaluateClientExpression(node.expression || words.slice(1).join(' '), scope);
+            const conditionExpr = node.expression || words.slice(1).join(' ');
+            const condition = evaluateCompiledComponentExpressionResult(
+              node.expressionPlan || compileComponentExpressionPlan(conditionExpr),
+              conditionExpr,
+              scope);
             if (condition.found && condition.value) {
               if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance, changes, actionContext)) return false;
             } else {
@@ -1835,10 +2522,16 @@ const char* browserRuntimeComponentChunk() {
             const words = splitComponentWords(node.text || '');
             const raw = node.expression || words.slice(1).join(' ');
             const match = String(raw || '').match(/^([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(.+)$/);
-            if (!match) {
+            const loopPlan = node && node.loopPlan || {};
+            const loopItemName = loopPlan.item || (match ? match[1] : '');
+            const collectionExpr = loopPlan.collectionExpression || (match ? match[2] : raw);
+            if (!loopItemName) {
               return recordComponentBodyPlanFallback(instance, definition, node, 'for loop must use `item in collection`', actionContext);
             }
-            const result = evaluateClientExpression(match[2], scope);
+            const result = evaluateCompiledComponentExpressionResult(
+              loopPlan.collectionPlan || compileComponentExpressionPlan(collectionExpr),
+              collectionExpr,
+              scope);
             if (!result.found) {
               return recordComponentBodyPlanFallback(instance, definition, node, 'for loop collection could not be evaluated', actionContext);
             }
@@ -1849,16 +2542,16 @@ const char* browserRuntimeComponentChunk() {
               else if (typeof values === 'object') values = Object.values(values);
               else values = [values];
             }
-            const previous = Object.prototype.hasOwnProperty.call(scope, match[1])
-              ? scope[match[1]]
+            const previous = Object.prototype.hasOwnProperty.call(scope, loopItemName)
+              ? scope[loopItemName]
               : undefined;
-            const hadPrevious = Object.prototype.hasOwnProperty.call(scope, match[1]);
+            const hadPrevious = Object.prototype.hasOwnProperty.call(scope, loopItemName);
             for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1) {
-              scope[match[1]] = values[itemIndex];
+              scope[loopItemName] = values[itemIndex];
               if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance, changes, actionContext)) return false;
             }
-            if (hadPrevious) scope[match[1]] = previous;
-            else delete scope[match[1]];
+            if (hadPrevious) scope[loopItemName] = previous;
+            else delete scope[loopItemName];
             continue;
           }
           if (node.kind === 'template' && head === 'while') {
@@ -1866,7 +2559,10 @@ const char* browserRuntimeComponentChunk() {
             const conditionExpr = node.expression || words.slice(1).join(' ');
             let guard = 0;
             while (true) {
-              const condition = evaluateClientExpression(conditionExpr, scope);
+              const condition = evaluateCompiledComponentExpressionResult(
+                node.expressionPlan || compileComponentExpressionPlan(conditionExpr),
+                conditionExpr,
+                scope);
               if (!condition.found) {
                 return recordComponentBodyPlanFallback(instance, definition, node, 'while condition could not be evaluated', actionContext);
               }
@@ -1900,9 +2596,27 @@ const char* browserRuntimeComponentChunk() {
         dynamicComponentRenderStack.push(renderedDynamicIds);
         let html = '';
         try {
-          html = roots.map(function (node) {
-            return renderComponentPlanNode(definition, instance, node, scope);
-          }).join('');
+          const plan = compileComponentUpdatePlan(definition);
+          if (plan && typeof plan.staticCreateFunction === 'function') {
+            html = plan.staticCreateFunction(
+              instance,
+              definition,
+              scope,
+              Object.assign(generatedUpdateHelpers(), {
+                renderStaticComponentRoots: renderStaticComponentRoots
+              }));
+            window.jtml = Object.assign(window.jtml || {}, {
+              directComponentStaticCreate: {
+                componentId: instance.id || '',
+                component: instance.component || definition.name || '',
+                planKey: plan.key || '',
+                mode: plan.__lastCreateMode || 'static-production-create-function',
+                directCreateCount: plan.__lastDirectCreateCount || 0
+              }
+            });
+          } else {
+            html = renderStaticComponentRoots(instance, definition, scope);
+          }
         } finally {
           dynamicComponentRenderStack.pop();
         }
@@ -2966,10 +3680,19 @@ const char* browserRuntimeComponentChunk() {
           componentInstanceManifest: componentInstanceManifest,
           projectManifest: manifest.project || null,
           runtimeManifestSource: manifest.project ? 'semantic-project' : 'linked-compatibility',
+          staticUpdatePlans: window.__jtml_static_update_plans || null,
+          staticUpdateFunctions: window.__jtml_static_update_functions || null,
+          staticComponentModules: window.__jtml_static_component_modules || null,
           runtimeSecurity: {
             cspSafeUpdatePlans: !dynamicGeneratedUpdateFunctions,
             dynamicGeneratedUpdateFunctions: dynamicGeneratedUpdateFunctions,
-            generatedUpdateSourceAvailable: true
+            generatedUpdateSourceAvailable: true,
+            staticUpdatePlansAsset: !!window.__jtml_static_update_plans,
+            staticUpdateFunctionsAsset: !!window.__jtml_static_update_functions,
+            staticComponentModulesAsset: !!window.__jtml_static_component_modules,
+            staticUpdatePlansLoaded: !!window.__jtml_static_update_plans,
+            staticUpdateFunctionsLoaded: !!window.__jtml_static_update_functions,
+            staticComponentModulesLoaded: !!window.__jtml_static_component_modules
           },
           runAction: function (name) {
             return executeClientAction(name, Array.prototype.slice.call(arguments, 1));

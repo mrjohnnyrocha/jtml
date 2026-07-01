@@ -381,11 +381,45 @@ The current focus is the semantic-core transition:
   emit directly as static JS. Dynamic execution of generated source is disabled
   by default for CSP-safe browser builds and must be explicitly opted into as a
   development bridge; the conservative interpreted updater is the default
-  runtime fallback. Browser production builds also emit a CSP-safe
-  `jtml-update-plans.js` asset with precomputed component read indexes,
-  unsafe-entry lists, and first-slice text/region/nested patch operations; the
-  runtime prefers those static plans before compiling equivalent plan indexes
-  in the browser. Structured container elements
+  runtime fallback. Browser production builds now emit first-slice split
+  assets: `jtml-runtime.js`, `components/index.js`, `app.js`, and the legacy
+  `jtml-update-plans.js` alias, with `jtml-runtime.js` now primary for browser
+  builds instead of duplicating the runtime inline. The component module
+  carries precomputed component read indexes, unsafe-entry lists, root create
+  operations, precompiled element `partsPlan` records, first-slice
+  text/region/nested/element patch operations, and first-slice static component
+  create/update modules. Supported root text, button, leaf element, and direct-safe
+  container nodes now emit escaped HTML construction in `components/index.js`;
+  region, nested-component, control-flow, slot, and unsupported shapes still use
+  helper/fallback create paths. Static update functions try direct per-node patch cases for
+  text, button, element, container-attribute, region, and nested-component nodes
+  before falling back to operation records.
+  First-slice expression plans for literals, booleans, numbers, null, simple
+  dot paths, unary `!`, binary/comparison/logical operators, and ternary
+  conditionals now flow through text/element patch operations, element content,
+  attributes, modifiers, component action arguments, body-plan conditions, `for`
+  collection/key expressions, and nested component parameter evaluation before
+  generic browser expression evaluation is used as fallback.
+  Static component modules now emit direct JS expression functions for the
+  simple and first-slice composite cases, simple generated
+  text/button/leaf-element/container create functions that do not require runtime helper
+  availability unless they hit a fallback shape, and generated text, element
+  attribute/content, and button label/action-argument patch cases that update
+  DOM directly without a global runtime-helper requirement before falling back
+  to runtime patch helpers. Runtime-plan read analysis now recognizes
+  value-taking attributes such as `title selected` as reads of `selected`, even
+  when the value token is also a valid boolean attribute name.
+  `rootCreateOperations` and per-entry operation payloads remain as
+  fallback/debug metadata rather than the primary path. The runtime prefers
+  those static modules/plans before
+  compiling equivalent plan indexes in the browser.
+  `scripts/benchmark_runtime.sh` now provides first-slice browser asset budgets
+  over performance fixtures so this path has an executable guardrail: 50 KB
+  for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
+  `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
+  `jtml-update-plans.js`, to tighten as direct generated update modules keep
+  replacing operation-record patch helpers.
+  Structured container elements
   with children can now patch their own compiled attributes in place without
   disturbing child DOM. `if` and `for` nodes now render stable body-plan region
   anchors and can be replaced directly from compiled patch operations when
@@ -397,8 +431,9 @@ The current focus is the semantic-core transition:
   first-slice list lifecycle telemetry for inserted, removed, and moved keys.
   Compiled `for` region patch operations now try a conservative keyed patch
   that reuses and reorders existing list item wrappers by key, updates item
-  contents, reports retained/inserted/removed/moved key sets, prunes removed
-  nested dynamic children for keyed list items, and fails closed to whole-region
+  contents with below-wrapper element/text reconciliation where the body-plan
+  shape matches, reports retained/inserted/removed/moved key sets, prunes
+  removed nested dynamic children for keyed list items, and fails closed to whole-region
   replacement when keys are unsafe.
   Nested component call wrappers now carry stable body-node anchors and compile
   to explicit nested-component patch operations, so parent state changes that

@@ -1,0 +1,15 @@
+jtml 2
+
+make Counter
+  let count = 0
+  get label = "Count {count}"
+
+  when inc
+    count += 1
+
+  card title "Static counter" tone primary
+    text label
+    button "Increment" click inc
+
+page
+  Counter

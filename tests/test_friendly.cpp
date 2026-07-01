@@ -2075,9 +2075,19 @@ TEST(FriendlySyntax, DirectComponentBodyPlanRendererCoversConditionalsAndLoops) 
     EXPECT_NE(html.find("pruneDynamicComponentSubtree(instance.id, renderedDynamicIds)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("\"text\":\"if visible\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"expressionPlan\":{\"kind\":\"path\",\"root\":\"visible\""),
+              std::string::npos) << html;
     EXPECT_NE(html.find("\"text\":\"for item in items key item\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"loopPlan\":{\"collectionExpression\":\"items\""),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("\"collectionPlan\":{\"kind\":\"path\",\"root\":\"items\""),
+              std::string::npos) << html;
     EXPECT_NE(html.find("\"keyExpression\":\"item\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"keyExpressionPlan\":{\"kind\":\"path\",\"root\":\"item\""),
+              std::string::npos) << html;
     EXPECT_NE(html.find("\"text\":\"for person in people\""), std::string::npos) << html;
+    EXPECT_NE(html.find("evaluateCompiledComponentExpressionResult("),
+              std::string::npos) << html;
     EXPECT_NE(html.find("else if (typeof values === 'object') values = Object.values(values);"),
               std::string::npos) << html;
 }
@@ -2162,9 +2172,25 @@ TEST(FriendlySyntax, DirectComponentSlotsNestedCallsAttributesAndActionArgsUseBo
               std::string::npos) << html;
     EXPECT_NE(html.find("function compileComponentActionInvocation(raw)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("argExpressions: argSource ? splitTopLevelList(argSource) : []"),
+    EXPECT_NE(html.find("const argExpressions = argSource ? splitTopLevelList(argSource) : []"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("argPlans: argExpressions.map(compileComponentExpressionPlan)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("function evaluateCompiledComponentActionInvocation(compiled, scope)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function compileComponentExpressionPlan(expr)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function stripOuterComponentExpressionParens(expr)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function findTopLevelComponentOperator(expr, operators)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("kind: 'conditional'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("kind: 'binary'"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("if (plan.kind === 'binary')"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("if (plan.kind === 'conditional')"),
               std::string::npos) << html;
     EXPECT_NE(html.find("function renderComponentAttributes(parts, extra)"),
               std::string::npos) << html;
@@ -2376,7 +2402,11 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("node.kind === 'template' && head === 'while'"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("scope[match[1]] = values[itemIndex];"),
+    EXPECT_NE(html.find("const loopPlan = node && node.loopPlan || {}"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("loopPlan.collectionPlan || compileComponentExpressionPlan(collectionExpr)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("scope[loopItemName] = values[itemIndex];"),
               std::string::npos) << html;
     EXPECT_NE(html.find("runComponentPlanStatements(definition, scope, componentNodeChildren(definition, elseNode), instance, changes, actionContext)"),
               std::string::npos) << html;
@@ -2442,7 +2472,17 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("function compileGeneratedComponentUpdateFunction(plan)"),
               std::string::npos) << html;
+    EXPECT_NE(html.find("function compileStaticComponentUpdateFunction(plan)"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("function compileInterpretedComponentUpdateFunction(plan)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("staticUpdateFunctionsLoaded: !!window.__jtml_static_update_functions"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("staticComponentModulesLoaded: !!window.__jtml_static_component_modules"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function renderStaticComponentRoots(instance, definition, scope)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("static-production-create-function"),
               std::string::npos) << html;
     EXPECT_NE(html.find("plan.generatedSource = generateComponentUpdateFunctionSource(plan)"),
               std::string::npos) << html;
@@ -2506,6 +2546,10 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("function patchComponentForRegion(instance, definition, node, scope, el)"),
               std::string::npos) << html;
+    EXPECT_NE(html.find("function patchKeyedListItemWrapperInPlace(wrapper, item)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function patchElementFromTemplateInPlace(current, next, stats)"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("function pruneDynamicComponentListItem(parentId, nodeIndex, key)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("directComponentKeyedListPatch"),
@@ -2531,6 +2575,12 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
     EXPECT_NE(html.find("retainedKeys: retainedKeys"),
               std::string::npos) << html;
     EXPECT_NE(html.find("prunedDynamicInstances: prunedDynamicInstances"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("itemElementPatches: itemElementPatches"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("itemTextPatches: itemTextPatches"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("reconciliation: 'below-wrapper'"),
               std::string::npos) << html;
     EXPECT_NE(html.find("reordered: movedKeys.length > 0"),
               std::string::npos) << html;

@@ -33,6 +33,7 @@ public:
     std::string transpile(const std::vector<std::unique_ptr<ASTNode>>& program);
     void setWebSocketPort(int port);
     void setBrowserLocalRuntime(bool enabled);
+    void setExternalRuntimeScript(bool enabled);
     void setDynamicGeneratedUpdateFunctions(bool enabled);
     void setRuntimeProjectPlan(const jtml::RuntimeProjectPlan& plan);
     const std::string* getNodeBinding(const ASTNode& node, const std::string& role) const;
@@ -44,6 +45,7 @@ private:
     int nodeID = 0;
     int webSocketPort = 8080;
     bool browserLocalRuntime = false;
+    bool externalRuntimeScript = false;
     bool dynamicGeneratedUpdateFunctions = false;
     std::optional<jtml::RuntimeProjectPlan> runtimeProjectPlan;
 

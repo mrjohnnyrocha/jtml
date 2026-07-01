@@ -29,16 +29,23 @@ done
 test -f "$repo_root/dist/opspulse/index.html"
 test -f "$repo_root/dist/opspulse/assets/ops-workspace.svg"
 
-tmp_browser_loop="$(mktemp "${TMPDIR:-/tmp}/jtml-browser-loop.XXXXXX.jtml")"
+tmp_browser_loop="$(mktemp "${TMPDIR:-/tmp}/jtml-browser-loop.XXXXXX")"
 printf 'jtml 2\n\nlet users = [{ name: "Ada", avatar: "/ada.png", active: true }]\n\npage\n  for user in users\n    box class "person"\n      image src user.avatar alt user.name\n      if user.active\n        text user.name\n' > "$tmp_browser_loop"
 "$build_dir/jtml" build "$tmp_browser_loop" --target browser --out "$repo_root/dist/browser-loop"
-grep -q 'function applyScopedTemplates(root, scope)' "$repo_root/dist/browser-loop/index.html" \
+test -f "$repo_root/dist/browser-loop/jtml-runtime.js"
+test -f "$repo_root/dist/browser-loop/components/index.js"
+test -f "$repo_root/dist/browser-loop/app.js"
+grep -q 'function applyScopedTemplates(root, scope)' "$repo_root/dist/browser-loop/jtml-runtime.js" \
   || { echo "browser-loop: scoped template runtime helper missing" >&2; exit 1; }
+grep -q '<script src="./jtml-runtime.js" defer></script>' "$repo_root/dist/browser-loop/index.html" \
+  || { echo "browser-loop: external runtime script missing" >&2; exit 1; }
 grep -q 'data-jtml-attr-src-expr=&quot;user.avatar&quot;' "$repo_root/dist/browser-loop/index.html" \
   || { echo "browser-loop: loop-scoped image src binding missing" >&2; exit 1; }
 grep -q 'data-jtml-cond-expr=&quot;user.active&quot;' "$repo_root/dist/browser-loop/index.html" \
   || { echo "browser-loop: loop-scoped nested condition missing" >&2; exit 1; }
 rm -f "$tmp_browser_loop"
+
+JTML_BIN="$build_dir/jtml" "$repo_root/scripts/benchmark_runtime.sh"
 
 tmp_pkg_root="$(mktemp -d "${TMPDIR:-/tmp}/jtml-package.XXXXXX")"
 mkdir -p "$tmp_pkg_root/shared" "$tmp_pkg_root/app"
@@ -78,7 +85,7 @@ PY
 fi
 rm -rf "$tmp_pkg_root"
 
-tmp_bad_jtml="$(mktemp "${TMPDIR:-/tmp}/jtml-source-map.XXXXXX.jtml")"
+tmp_bad_jtml="$(mktemp "${TMPDIR:-/tmp}/jtml-source-map.XXXXXX")"
 printf 'jtml 2\n\n// source map check\n\npage\n  show @\n' > "$tmp_bad_jtml"
 if "$build_dir/jtml" check "$tmp_bad_jtml" --json > "$repo_root/dist/source-map-check.json"; then
   echo "Expected source-map check fixture to fail" >&2
@@ -103,7 +110,7 @@ rm -f "$tmp_bad_jtml"
 # `jtml refactor rename`: round-trip a Friendly file through the new CLI and
 # confirm string-/comment-aware behaviour matches the LSP rename path.
 # ---------------------------------------------------------------------------
-tmp_refactor="$(mktemp "${TMPDIR:-/tmp}/jtml-refactor.XXXXXX.jtml")"
+tmp_refactor="$(mktemp "${TMPDIR:-/tmp}/jtml-refactor.XXXXXX")"
 printf 'jtml 2\nlet count = 0\n// count comment\nshow "count string"\nshow count\n' > "$tmp_refactor"
 "$build_dir/jtml" refactor rename "$tmp_refactor" --from count --to total --json \
   > "$repo_root/dist/refactor-rename.json"

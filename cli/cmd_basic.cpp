@@ -6,6 +6,7 @@
 #include "package_manager.h"
 
 #include "jtml/interpreter.h"
+#include "jtml/browser_runtime_emitter.h"
 #include "jtml/language_catalog.h"
 #include "jtml/linter.h"
 #include "jtml/runtime_plan.h"
@@ -230,6 +231,17 @@ std::string injectBrowserBuildAssetScript(std::string html,
     }
     html += "\n" + tag;
     return html;
+}
+
+void writeBuildAsset(const std::filesystem::path& path,
+                     const std::string& content,
+                     const std::string& label) {
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream out(path);
+    if (!out.is_open()) {
+        throw std::runtime_error("Cannot write " + label + ": " + path.string());
+    }
+    out << content;
 }
 
 nlohmann::json semanticImportRecordsToJson(const jtml::SemanticProgram& semantic) {
@@ -764,6 +776,7 @@ int cmdDoctor(const Options& o) {
         {"predeploy website", "site"},
         {"build script", "scripts/build_site.sh", true},
         {"package script", "scripts/package_cli.sh", true},
+        {"runtime benchmark script", "scripts/benchmark_runtime.sh", true},
         {"verification script", "scripts/verify_all.sh", true},
     };
     const std::vector<Gate> gates = {
@@ -775,7 +788,7 @@ int cmdDoctor(const Options& o) {
         {"release", "Release archive build", "scripts/verify_all.sh", "required"},
         {"asan-ubsan", "Sanitizer build", "cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=Debug -DJTML_ENABLE_SANITIZERS=ON", "planned"},
         {"coverage", "Coverage report", "planned", "planned"},
-        {"benchmarks", "Runtime and compiler benchmark smoke", "planned", "planned"},
+        {"benchmarks", "Runtime and compiler benchmark smoke", "scripts/benchmark_runtime.sh", "required"},
     };
     const std::vector<Tier> tiers = {
         {"stable", {
@@ -843,9 +856,14 @@ int cmdDoctor(const Options& o) {
             {"cachedCompiledUpdatePlans", true},
             {"compiledPatchOperations", true},
             {"precompiledPatchOperationShapes", true},
+            {"precompiledCompositeExpressions", true},
             {"compiledUpdateFunctions", true},
             {"indexedCompiledUpdateFunctions", true},
             {"generatedProductionUpdateFunctions", true},
+            {"staticComponentCreateUpdateModules", true},
+            {"directStaticComponentCreateHtml", true},
+            {"directStaticContainerCreateHtml", true},
+            {"helperIndependentStaticUpdateFunctions", true},
             {"containerAttributePatchOperations", true},
             {"controlFlowRegionPatchOperations", true},
             {"slotRegionPatchOperations", true},
@@ -854,6 +872,7 @@ int cmdDoctor(const Options& o) {
             {"keyedListRegionMarkers", true},
             {"keyedListLifecycleTelemetry", true},
             {"keyedForRegionPatch", true},
+            {"keyedListBelowWrapperReconciliation", true},
             {"keyedListPrunesRemovedDynamicChildren", true},
             {"liveBodyPlanPatchTelemetry", true},
             {"browserSourceFirstFallbackContext", true},
@@ -869,16 +888,22 @@ int cmdDoctor(const Options& o) {
             {"benchmarkPath", "compiler-first browser production target"},
             {"liveHtmlPatchPath", "dev/internal runtime backend"},
             {"optimizedJsCompiler", "planned"},
-            {"fineGrainedUpdates", "cached browser-local indexed compiled update functions with generated production update-function source, parsed expression dependency metadata, precompiled text, attribute, container patch operation, and control-flow-region patch operation shapes; legacy heuristic patch fallback removed; optimized compiler planned"},
+            {"fineGrainedUpdates", "cached browser-local indexed compiled update functions with generated production update-function source, parsed expression dependency metadata, precompiled literal/path/unary/binary/conditional expression plans, precompiled text, attribute, container patch operation, and control-flow-region patch operation shapes; legacy heuristic patch fallback removed; optimized compiler planned"},
             {"bodyPlanReadWriteMetadata", true},
             {"typedExpressionDependencyAnalysis", true},
             {"memberSubscriptReadPaths", true},
             {"cspSafeDefaultUpdatePlans", true},
             {"staticUpdatePlanBuildArtifact", "jtml-update-plans.js"},
+            {"browserRuntimeBuildArtifact", "jtml-runtime.js"},
+            {"componentModuleBuildArtifact", "components/index.js"},
+            {"appBootstrapBuildArtifact", "app.js"},
             {"staticUpdatePlanPrecomputedIndexes", true},
+            {"staticComponentModules", true},
+            {"benchmarkSmoke", "scripts/benchmark_runtime.sh"},
+            {"browserAssetBudgets", "first-slice index/runtime/component/app/update-plan byte budgets"},
             {"dynamicGeneratedUpdateFunctions", "explicit opt-in bridge only"},
-            {"keyedListDiffing", "first-slice direct list item key/index markers, lifecycle telemetry, conservative keyed for-region patching, retained/inserted/removed/moved key reporting, and removed nested dynamic child pruning; optimized DOM diff planned"},
-            {"prodDevRuntimeSplit", "planned"},
+            {"keyedListDiffing", "first-slice direct list item key/index markers, lifecycle telemetry, conservative keyed for-region patching, below-wrapper element/text reconciliation for retained keyed items, retained/inserted/removed/moved key reporting, and removed nested dynamic child pruning; optimized DOM diff planned"},
+            {"prodDevRuntimeSplit", "external jtml-runtime.js is primary for browser build; embedded runtime retained for transpile/live compatibility"},
         }},
     };
     auto findProjectRoot = [] {
@@ -1728,6 +1753,7 @@ int cmdBuild(const Options& o) {
     bool hasRuntimeProjectPlan = false;
     if (o.target == "browser") {
         transpiler.setBrowserLocalRuntime(true);
+        transpiler.setExternalRuntimeScript(true);
         const auto semantic = jtml::analyzeSemanticProgram(program, readFile(input.string()));
         runtimeProjectPlan =
             buildRuntimeProjectPlanForInput(input.string(), o.syntax, program, semantic);
@@ -1736,7 +1762,9 @@ int cmdBuild(const Options& o) {
     }
     std::string html = transpiler.transpile(program);
     if (hasRuntimeProjectPlan) {
-        html = injectBrowserBuildAssetScript(html, "jtml-update-plans.js");
+        html = injectBrowserBuildAssetScript(html, "jtml-runtime.js");
+        html = injectBrowserBuildAssetScript(html, "components/index.js");
+        html = injectBrowserBuildAssetScript(html, "app.js");
     }
 
     std::ofstream ofs(outFile);
@@ -1747,15 +1775,41 @@ int cmdBuild(const Options& o) {
 
     std::cout << "Built " << input.string() << " -> " << outFile.string() << "\n";
     if (hasRuntimeProjectPlan) {
-        const auto updatePlanFile = outDir / "jtml-update-plans.js";
-        std::ofstream updatePlans(updatePlanFile);
-        if (!updatePlans.is_open()) {
-            throw std::runtime_error("Cannot write browser update plan output: " +
-                                     updatePlanFile.string());
-        }
-        updatePlans << emitStaticUpdatePlanAsset(runtimeProjectPlan);
-        std::cout << "Built browser update plans -> "
-                  << updatePlanFile.string() << "\n";
+        const auto runtimeFile = outDir / "jtml-runtime.js";
+        const auto componentModuleFile = outDir / "components" / "index.js";
+        const auto appFile = outDir / "app.js";
+        const auto legacyUpdatePlanFile = outDir / "jtml-update-plans.js";
+        const auto componentModuleAsset =
+            emitStaticComponentModuleAsset(runtimeProjectPlan);
+        writeBuildAsset(runtimeFile,
+                        jtml::emitBrowserRuntimeScript(8080, true, false),
+                        "browser runtime output");
+        writeBuildAsset(componentModuleFile,
+                        componentModuleAsset,
+                        "browser component module output");
+        writeBuildAsset(appFile,
+                        "/* Generated by jtml build --target browser. */\n"
+                        "(function(){\n"
+                        "  window.jtml = window.jtml || {};\n"
+                        "  window.jtml.productionAssets = Object.assign({}, window.jtml.productionAssets || {}, {\n"
+                        "    runtime: './jtml-runtime.js',\n"
+                        "    components: './components/index.js',\n"
+                        "    app: './app.js',\n"
+                        "    compatibilityUpdatePlans: './jtml-update-plans.js'\n"
+                        "  });\n"
+                        "}());\n",
+                        "browser app bootstrap output");
+        writeBuildAsset(legacyUpdatePlanFile,
+                        emitStaticUpdatePlanAsset(runtimeProjectPlan),
+                        "legacy browser update plan output");
+        std::cout << "Built browser runtime asset -> "
+                  << runtimeFile.string() << "\n";
+        std::cout << "Built browser component modules -> "
+                  << componentModuleFile.string() << "\n";
+        std::cout << "Built browser app bootstrap -> "
+                  << appFile.string() << "\n";
+        std::cout << "Built legacy browser update plans -> "
+                  << legacyUpdatePlanFile.string() << "\n";
     }
     if (inputWasDirectory) {
         copyBuildAssets(inputDir, outDir);

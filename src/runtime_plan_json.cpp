@@ -1,5 +1,9 @@
 #include "jtml/runtime_plan_json.h"
 
+#include <cctype>
+#include <cstdlib>
+#include <sstream>
+
 namespace jtml {
 namespace {
 
@@ -231,13 +235,174 @@ nlohmann::json runtimePlanSemanticToJson(const SemanticProgram& semantic) {
     };
 }
 
+std::vector<std::string> splitRuntimePlanWords(const std::string& source) {
+    std::vector<std::string> words;
+    std::string current;
+    char quote = '\0';
+    for (size_t i = 0; i < source.size(); ++i) {
+        const char ch = source[i];
+        if (quote != '\0') {
+            current += ch;
+            if (ch == '\\' && i + 1 < source.size()) {
+                current += source[++i];
+            } else if (ch == quote) {
+                quote = '\0';
+            }
+            continue;
+        }
+        if (ch == '"' || ch == '\'') {
+            quote = ch;
+            current += ch;
+            continue;
+        }
+        if (std::isspace(static_cast<unsigned char>(ch))) {
+            if (!current.empty()) {
+                words.push_back(current);
+                current.clear();
+            }
+            continue;
+        }
+        current += ch;
+    }
+    if (!current.empty()) words.push_back(current);
+    return words;
+}
+
+std::string trimRuntimePlanString(const std::string& value) {
+    size_t begin = 0;
+    while (begin < value.size() &&
+           std::isspace(static_cast<unsigned char>(value[begin]))) {
+        ++begin;
+    }
+    size_t end = value.size();
+    while (end > begin &&
+           std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+        --end;
+    }
+    return value.substr(begin, end - begin);
+}
+
+bool isQuotedRuntimePlanString(const std::string& value) {
+    return value.size() >= 2 &&
+           ((value.front() == '"' && value.back() == '"') ||
+            (value.front() == '\'' && value.back() == '\''));
+}
+
+std::string unquoteRuntimePlanString(const std::string& value) {
+    if (!isQuotedRuntimePlanString(value)) return value;
+    std::string out;
+    for (size_t i = 1; i + 1 < value.size(); ++i) {
+        if (value[i] == '\\' && i + 2 < value.size()) {
+            out += value[++i];
+        } else {
+            out += value[i];
+        }
+    }
+    return out;
+}
+
+bool isSimpleRuntimePlanPath(const std::string& value) {
+    if (value.empty()) return false;
+    bool expectSegmentStart = true;
+    for (char ch : value) {
+        const unsigned char uch = static_cast<unsigned char>(ch);
+        if (expectSegmentStart) {
+            if (!(std::isalpha(uch) || ch == '_')) return false;
+            expectSegmentStart = false;
+            continue;
+        }
+        if (ch == '.') {
+            expectSegmentStart = true;
+            continue;
+        }
+        if (!(std::isalnum(uch) || ch == '_')) return false;
+    }
+    return !expectSegmentStart;
+}
+
+nlohmann::json compileRuntimeExpressionPlan(const std::string& expression) {
+    const auto expr = trimRuntimePlanString(expression);
+    if (expr.empty()) return {{"kind", "empty"}, {"source", ""}};
+    if (isQuotedRuntimePlanString(expr)) {
+        return {
+            {"kind", "literal"},
+            {"source", expr},
+            {"value", unquoteRuntimePlanString(expr)}
+        };
+    }
+    if (expr == "true" || expr == "false") {
+        return {
+            {"kind", "literal"},
+            {"source", expr},
+            {"value", expr == "true"}
+        };
+    }
+    if (expr == "null") {
+        return {{"kind", "literal"}, {"source", expr}, {"value", nullptr}};
+    }
+    char* end = nullptr;
+    const double number = std::strtod(expr.c_str(), &end);
+    if (end && *end == '\0' && end != expr.c_str()) {
+        return {{"kind", "literal"}, {"source", expr}, {"value", number}};
+    }
+    if (isSimpleRuntimePlanPath(expr)) {
+        nlohmann::json segments = nlohmann::json::array();
+        std::string current;
+        for (char ch : expr) {
+            if (ch == '.') {
+                segments.push_back(current);
+                current.clear();
+            } else {
+                current += ch;
+            }
+        }
+        if (!current.empty()) segments.push_back(current);
+        return {
+            {"kind", "path"},
+            {"source", expr},
+            {"root", segments.empty() ? std::string() : segments.front().get<std::string>()},
+            {"segments", segments}
+        };
+    }
+    return {{"kind", "source"}, {"source", expr}};
+}
+
+nlohmann::json compileRuntimeWordPlans(const std::string& text) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& word : splitRuntimePlanWords(text)) {
+        out.push_back(compileRuntimeExpressionPlan(word));
+    }
+    return out;
+}
+
+nlohmann::json compileRuntimeLoopPlan(const RuntimePlanComponentBodyNode& node) {
+    const auto raw = node.expression.empty()
+        ? std::string()
+        : trimRuntimePlanString(node.expression);
+    const auto inPos = raw.find(" in ");
+    if (inPos == std::string::npos) {
+        return {
+            {"item", ""},
+            {"collectionExpression", raw},
+            {"collectionPlan", compileRuntimeExpressionPlan(raw)}
+        };
+    }
+    const auto item = trimRuntimePlanString(raw.substr(0, inPos));
+    const auto collection = trimRuntimePlanString(raw.substr(inPos + 4));
+    return {
+        {"item", item},
+        {"collectionExpression", collection},
+        {"collectionPlan", compileRuntimeExpressionPlan(collection)}
+    };
+}
+
 } // namespace
 
 nlohmann::json runtimePlanBodyPlanToJson(
         const std::vector<RuntimePlanComponentBodyNode>& bodyPlan) {
     nlohmann::json out = nlohmann::json::array();
     for (const auto& node : bodyPlan) {
-        out.push_back({
+        auto item = nlohmann::json({
             {"definitionModule", moduleIdToJson(node.definitionModule)},
             {"sourceLine", node.sourceLine},
             {"indent", node.indent},
@@ -249,11 +414,18 @@ nlohmann::json runtimePlanBodyPlanToJson(
             {"text", node.text},
             {"operator", node.operatorToken},
             {"expression", node.expression},
+            {"expressionPlan", compileRuntimeExpressionPlan(node.expression)},
             {"keyExpression", node.keyExpression},
+            {"keyExpressionPlan", compileRuntimeExpressionPlan(node.keyExpression)},
+            {"wordPlans", compileRuntimeWordPlans(node.text)},
             {"reads", node.reads},
             {"writes", node.writes},
             {"renderRoot", node.renderRoot},
         });
+        if (node.head == "for" || node.name == "for") {
+            item["loopPlan"] = compileRuntimeLoopPlan(node);
+        }
+        out.push_back(std::move(item));
     }
     return out;
 }

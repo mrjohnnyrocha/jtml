@@ -35,6 +35,10 @@ void JtmlTranspiler::setBrowserLocalRuntime(bool enabled) {
     browserLocalRuntime = enabled;
 }
 
+void JtmlTranspiler::setExternalRuntimeScript(bool enabled) {
+    externalRuntimeScript = enabled;
+}
+
 void JtmlTranspiler::setDynamicGeneratedUpdateFunctions(bool enabled) {
     dynamicGeneratedUpdateFunctions = enabled;
 }
@@ -65,7 +69,9 @@ std::string JtmlTranspiler::transpile(const std::vector<std::unique_ptr<ASTNode>
     if (browserLocalRuntime) {
         out << generateClientManifest(program);
     }
-    out << generateScriptBlock();
+    if (!externalRuntimeScript) {
+        out << generateScriptBlock();
+    }
     out << "\n</body>\n</html>\n";
     return out.str();
 }

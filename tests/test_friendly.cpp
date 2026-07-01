@@ -2378,9 +2378,21 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("function applyComponentAssignment(scope, node)"),
               std::string::npos) << html;
+    EXPECT_NE(html.find("function evaluateComponentBodyNodeExpression(node, fallbackExpression, scope)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("node && node.expressionPlan || compileComponentExpressionPlan(expr)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const next = evaluateComponentBodyNodeExpression(node, node.expression || '', scope);"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("const targetParts = parseClientPathSegments(node.name, scope);"),
               std::string::npos) << html;
     EXPECT_NE(html.find("function applyComponentStateDeclaration(scope, node)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("scope[node.name] = evaluateComponentBodyNodeExpression(node, node.expression || '', scope);"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const plan = compileComponentExpressionPlan(expr);"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("args.push(compiled && compiled.found ? compiled.value : evaluateComponentValue(expr, scope));"),
               std::string::npos) << html;
     EXPECT_NE(html.find("node.kind === 'state' || node.kind === 'derived'"),
               std::string::npos) << html;
@@ -2454,11 +2466,17 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("jtml:static-update-plans-ready"),
               std::string::npos) << html;
+    EXPECT_NE(html.find("jtml:static-component-modules-ready"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("staticUpdatePlansLoaded: true"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("staticComponentPlanIndexLoaded: true"),
               std::string::npos) << html;
     EXPECT_NE(html.find("function compileComponentUpdatePlan(definition)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("function staticComponentUpdatePlanForKey(key)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("const asset = window.__jtml_static_component_plan_index || window.__jtml_static_update_plans"),
               std::string::npos) << html;
     EXPECT_NE(html.find("const staticPlan = staticComponentUpdatePlanForKey(key);"),
               std::string::npos) << html;
@@ -2479,6 +2497,12 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
     EXPECT_NE(html.find("staticUpdateFunctionsLoaded: !!window.__jtml_static_update_functions"),
               std::string::npos) << html;
     EXPECT_NE(html.find("staticComponentModulesLoaded: !!window.__jtml_static_component_modules"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("staticComponentPlanIndex: window.__jtml_static_component_plan_index || null"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("staticComponentPlanIndexAsset: !!window.__jtml_static_component_plan_index"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("staticComponentPlanIndexLoaded: !!window.__jtml_static_component_plan_index"),
               std::string::npos) << html;
     EXPECT_NE(html.find("function renderStaticComponentRoots(instance, definition, scope)"),
               std::string::npos) << html;

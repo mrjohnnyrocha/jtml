@@ -83,37 +83,47 @@ dist/app.js
 dist/jtml-update-plans.js
 ```
 
-`components/index.js` is the current compiler-first component bridge.
-`jtml-update-plans.js` remains a legacy alias for older tooling while the
-runtime split is completed. The component module exposes:
+`components/index.js` is the current compiler-first component bridge and now
+owns the production component plan index. `jtml-update-plans.js` remains a
+legacy compatibility/debug asset for older tooling while the runtime split is
+completed. The component module exposes:
 
-- `window.__jtml_static_update_plans`
+- `window.__jtml_static_component_plan_index`
 - `window.__jtml_static_update_functions`
 - `window.__jtml_static_component_modules`
+
+The legacy update-plan asset still exposes `window.__jtml_static_update_plans`
+and keeps source-rich `bodyPlan` metadata. The production component module must
+not publish the legacy update-plan global or carry source-rich body-plan debug
+payloads.
 
 The runtime should prefer static component create/update modules first, then
 interpreted static plans, then runtime plan compilation. Compatibility DOM is
 only for unsupported shapes and migration paths.
 
 Current static component modules emit direct escaped HTML create functions for
-supported root text, button, leaf element, and direct-safe container nodes;
-region, nested-component, control-flow, slot, and unsupported shapes still use
-helper/fallback create paths.
+supported root text, button, leaf element, direct-safe container nodes, and
+safe `if`/keyed-`for` control-flow regions. Nested-component, slot, and
+unsupported shapes still use helper/fallback create paths.
 Static update functions now try generated per-node patch cases that patch
-direct text, button, element, and region shapes before falling back to operation
-records. The older `rootCreateOperations` and per-entry operation payloads
-remain as fallback/debug metadata while the compiler path expands. The next
-compiler step has started: expression plans for literals, booleans, numbers,
-null, simple dot paths, unary `!`, binary/comparison/logical operators, and
-ternary conditionals now flow through text/element operations, element content,
-attributes, modifiers, component action arguments, body-plan conditions, `for`
-collection/key expressions, and nested component parameters.
+direct text, button, element, container-attribute, and safe control-flow region
+shapes before falling back to operation records. The older
+`rootCreateOperations` and per-entry operation payloads remain as fallback/debug
+metadata while the compiler path expands. The
+runtime-plan layer now owns the canonical expression-plan producer for
+literals, booleans, numbers, null, simple dot paths, unary `!`,
+binary/comparison/logical operators, and ternary conditionals. Static component
+emission consumes that same API, so expression plans flow consistently through
+text/element operations, element content, attributes, modifiers, component
+action arguments, body-plan conditions, `for` collection/key expressions,
+nested component parameters, and browser-local body-plan action
+assignments/local declarations.
 Static modules also emit direct JS expression functions for simple and
-first-slice composite plans, and simple generated text/button/leaf-element/container
-create functions that do not require runtime helper availability unless they
-hit a fallback shape, plus generated text, element attribute/content, and button
-label/action-arg patches update DOM directly without a global runtime-helper
-requirement. Runtime-plan read analysis also treats
+first-slice composite plans, generated text/button/leaf-element/container and
+safe control-flow create functions that do not require runtime helper
+availability unless they hit a fallback shape, plus generated text, element
+attribute/content, button label/action-arg, and safe region patches update DOM
+directly without a global runtime-helper requirement. Runtime-plan read analysis also treats
 value-taking attributes such as `title selected` as reads of `selected`, even
 when the value token is also a valid boolean attribute name. Continue with
 richer action-body expression precompilation, stronger keyed reconciliation,
@@ -156,7 +166,9 @@ is still being split: 50 KB for `index.html`, 260 KB for
 `jtml-runtime.js`, 180 KB for `components/index.js`, 20 KB for `app.js`, and
 180 KB for the legacy `jtml-update-plans.js`. Treat these budgets as
 guardrails, not final benchmarks; tighten runtime/component budgets as direct
-generated modules replace body-plan helpers.
+generated modules replace body-plan helpers. The `control_flow` fixture also
+asserts that safe `if`/keyed-`for` regions, keyed list markers, and direct
+safe-region patching are present in `components/index.js`.
 
 ## VS Code extension
 

@@ -72,8 +72,50 @@ for fixture in "${FIXTURES}"/*.jtml; do
     echo "error: ${name} component module missing static component module registry" >&2
     exit 1
   fi
+  if ! grep -q "__jtml_static_component_plan_index" "${component_module}"; then
+    echo "error: ${name} component module missing production component plan index" >&2
+    exit 1
+  fi
+  if grep -q "__jtml_static_update_plans = plans" "${component_module}"; then
+    echo "error: ${name} component module still publishes the legacy update-plan global" >&2
+    exit 1
+  fi
+  if grep -q '"bodyPlan"' "${component_module}"; then
+    echo "error: ${name} component module contains source-rich bodyPlan debug payload" >&2
+    exit 1
+  fi
+  if ! grep -q '"assetRole":"component-module"' "${component_module}"; then
+    echo "error: ${name} component module missing component-module asset role" >&2
+    exit 1
+  fi
   if grep -q "new Function" "${component_module}"; then
     echo "error: ${name} component module contains dynamic Function constructor" >&2
+    exit 1
+  fi
+  if [[ "${name}" == "control_flow" ]]; then
+    if ! grep -q 'data-jtml-direct-region="if"' "${component_module}"; then
+      echo "error: ${name} component module missing direct if-region create path" >&2
+      exit 1
+    fi
+    if ! grep -q 'data-jtml-direct-region="for"' "${component_module}"; then
+      echo "error: ${name} component module missing direct for-region create path" >&2
+      exit 1
+    fi
+    if ! grep -q 'data-jtml-direct-list-key' "${component_module}"; then
+      echo "error: ${name} component module missing keyed list markers" >&2
+      exit 1
+    fi
+    if grep -q 'patchStaticComponentRegionNode' "${component_module}"; then
+      echo "error: ${name} component module still delegates safe control-flow patches to runtime region helper" >&2
+      exit 1
+    fi
+  fi
+  if ! grep -q "__jtml_static_update_plans = plans" "${plans}"; then
+    echo "error: ${name} legacy update-plan asset no longer publishes compatibility plan global" >&2
+    exit 1
+  fi
+  if ! grep -q '"assetRole":"legacy-update-plan"' "${plans}"; then
+    echo "error: ${name} legacy update-plan asset missing compatibility asset role" >&2
     exit 1
   fi
 

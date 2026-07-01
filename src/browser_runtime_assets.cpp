@@ -58,6 +58,22 @@ const char* browserRuntimePreludeChunk() {
             )
           });
         });
+        window.addEventListener('jtml:static-component-modules-ready', function () {
+          Object.keys(componentUpdatePlanCache).forEach(function (key) {
+            delete componentUpdatePlanCache[key];
+          });
+          window.jtml = Object.assign(window.jtml || {}, {
+            runtimeSecurity: Object.assign(
+              {},
+              window.jtml && window.jtml.runtimeSecurity || {},
+              {
+                staticComponentPlanIndexLoaded: true,
+                staticUpdateFunctionsLoaded: !!window.__jtml_static_update_functions,
+                staticComponentModulesLoaded: !!window.__jtml_static_component_modules
+              }
+            )
+          });
+        });
       }
 
       window.jtmlEventValue = function (event) {
@@ -1714,7 +1730,7 @@ const char* browserRuntimeComponentChunk() {
       }
 
       function staticComponentUpdatePlanForKey(key) {
-        const asset = window.__jtml_static_update_plans;
+        const asset = window.__jtml_static_component_plan_index || window.__jtml_static_update_plans;
         const staticFunctions = window.__jtml_static_update_functions || {};
         const staticModules = window.__jtml_static_component_modules || {};
         const components = asset && Array.isArray(asset.components) ? asset.components : [];
@@ -2385,10 +2401,22 @@ const char* browserRuntimeComponentChunk() {
         return false;
       }
 
+      function evaluateComponentBodyNodeExpression(node, fallbackExpression, scope) {
+        const expr = fallbackExpression != null
+          ? String(fallbackExpression || '')
+          : String(node && node.expression || '');
+        const compiled = evaluateCompiledComponentExpressionResult(
+          node && node.expressionPlan || compileComponentExpressionPlan(expr),
+          expr,
+          scope);
+        if (compiled && compiled.found) return compiled.value;
+        const result = evaluateClientBodyExpression(expr, scope);
+        return result && result.found ? result.value : unquoteComponentText(expr);
+      }
+
       function applyComponentAssignment(scope, node) {
         if (!node || node.kind !== 'assignment' || !node.name) return false;
-        const result = evaluateClientBodyExpression(node.expression || '', scope);
-        const next = result.found ? result.value : unquoteComponentText(node.expression || '');
+        const next = evaluateComponentBodyNodeExpression(node, node.expression || '', scope);
         const targetParts = parseClientPathSegments(node.name, scope);
         if (!targetParts.length) return false;
         const isPathAssignment = targetParts.length > 1;
@@ -2426,7 +2454,9 @@ const char* browserRuntimeComponentChunk() {
         const source = String(expression || '').trim();
         if (!source) return args;
         splitTopLevelList(source).forEach(function (expr) {
-          args.push(evaluateComponentValue(expr, scope));
+          const plan = compileComponentExpressionPlan(expr);
+          const compiled = evaluateCompiledComponentExpressionResult(plan, expr, scope);
+          args.push(compiled && compiled.found ? compiled.value : evaluateComponentValue(expr, scope));
         });
         return args;
       }
@@ -2434,7 +2464,7 @@ const char* browserRuntimeComponentChunk() {
       function applyComponentStateDeclaration(scope, node) {
         if (!node || !node.name) return false;
         if ((node.childIndices || []).length) return false;
-        scope[node.name] = evaluateComponentValue(node.expression || '', scope);
+        scope[node.name] = evaluateComponentBodyNodeExpression(node, node.expression || '', scope);
         return true;
       }
 
@@ -3680,6 +3710,7 @@ const char* browserRuntimeComponentChunk() {
           componentInstanceManifest: componentInstanceManifest,
           projectManifest: manifest.project || null,
           runtimeManifestSource: manifest.project ? 'semantic-project' : 'linked-compatibility',
+          staticComponentPlanIndex: window.__jtml_static_component_plan_index || null,
           staticUpdatePlans: window.__jtml_static_update_plans || null,
           staticUpdateFunctions: window.__jtml_static_update_functions || null,
           staticComponentModules: window.__jtml_static_component_modules || null,
@@ -3687,9 +3718,11 @@ const char* browserRuntimeComponentChunk() {
             cspSafeUpdatePlans: !dynamicGeneratedUpdateFunctions,
             dynamicGeneratedUpdateFunctions: dynamicGeneratedUpdateFunctions,
             generatedUpdateSourceAvailable: true,
+            staticComponentPlanIndexAsset: !!window.__jtml_static_component_plan_index,
             staticUpdatePlansAsset: !!window.__jtml_static_update_plans,
             staticUpdateFunctionsAsset: !!window.__jtml_static_update_functions,
             staticComponentModulesAsset: !!window.__jtml_static_component_modules,
+            staticComponentPlanIndexLoaded: !!window.__jtml_static_component_plan_index,
             staticUpdatePlansLoaded: !!window.__jtml_static_update_plans,
             staticUpdateFunctionsLoaded: !!window.__jtml_static_update_functions,
             staticComponentModulesLoaded: !!window.__jtml_static_component_modules

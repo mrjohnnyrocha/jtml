@@ -384,37 +384,50 @@ The current focus is the semantic-core transition:
   runtime fallback. Browser production builds now emit first-slice split
   assets: `jtml-runtime.js`, `components/index.js`, `app.js`, and the legacy
   `jtml-update-plans.js` alias, with `jtml-runtime.js` now primary for browser
-  builds instead of duplicating the runtime inline. The component module
-  carries precomputed component read indexes, unsafe-entry lists, root create
-  operations, precompiled element `partsPlan` records, first-slice
-  text/region/nested/element patch operations, and first-slice static component
-  create/update modules. Supported root text, button, leaf element, and direct-safe
-  container nodes now emit escaped HTML construction in `components/index.js`;
-  region, nested-component, control-flow, slot, and unsupported shapes still use
-  helper/fallback create paths. Static update functions try direct per-node patch cases for
-  text, button, element, container-attribute, region, and nested-component nodes
-  before falling back to operation records.
-  First-slice expression plans for literals, booleans, numbers, null, simple
-  dot paths, unary `!`, binary/comparison/logical operators, and ternary
-  conditionals now flow through text/element patch operations, element content,
-  attributes, modifiers, component action arguments, body-plan conditions, `for`
-  collection/key expressions, and nested component parameter evaluation before
-  generic browser expression evaluation is used as fallback.
+  builds instead of duplicating the runtime inline. The component module now
+  owns a production `window.__jtml_static_component_plan_index`, while the
+  legacy `jtml-update-plans.js` asset keeps `window.__jtml_static_update_plans`
+  plus source-rich `bodyPlan` metadata for compatibility/debug tooling. The
+  component module no longer publishes the legacy update-plan global or carries
+  source-rich body-plan payloads. The component module carries precomputed
+  component read indexes, unsafe-entry lists, root create operations,
+  precompiled element `partsPlan` records, first-slice text/region/nested/element
+  patch operations, and first-slice static component create/update modules.
+  Supported root text, button, leaf element, direct-safe container nodes, and
+  safe `if`/keyed-`for` control-flow regions now emit escaped HTML construction
+  in `components/index.js`; nested-component, slot, and unsupported shapes still
+  use helper/fallback create paths. Static update functions try direct per-node
+  patch cases for text, button, element, container-attribute, safe control-flow
+  region, and nested-component nodes before falling back to operation records.
+  The runtime-plan layer now owns the canonical expression-plan producer for
+  literals, booleans, numbers, null, simple dot paths, unary `!`,
+  binary/comparison/logical operators, and ternary conditionals; static
+  component emission consumes that same API instead of maintaining a private
+  expression parser. Those plans flow through text/element patch operations,
+  element content, attributes, modifiers, component action arguments,
+  body-plan conditions, `for` collection/key expressions, nested component
+  parameter evaluation, and browser-local body-plan action assignments/local
+  declarations before generic browser expression evaluation is used as
+  fallback.
   Static component modules now emit direct JS expression functions for the
-  simple and first-slice composite cases, simple generated
-  text/button/leaf-element/container create functions that do not require runtime helper
-  availability unless they hit a fallback shape, and generated text, element
-  attribute/content, and button label/action-argument patch cases that update
-  DOM directly without a global runtime-helper requirement before falling back
-  to runtime patch helpers. Runtime-plan read analysis now recognizes
+  simple and first-slice composite cases, generated
+  text/button/leaf-element/container/control-flow create functions that do not
+  require runtime helper availability unless they hit a fallback shape, and
+  generated text, element attribute/content, button label/action-argument, and
+  safe region patch cases that update DOM directly without a global
+  runtime-helper requirement before falling back to runtime patch helpers.
+  Runtime-plan read analysis now recognizes
   value-taking attributes such as `title selected` as reads of `selected`, even
   when the value token is also a valid boolean attribute name.
   `rootCreateOperations` and per-entry operation payloads remain as
   fallback/debug metadata rather than the primary path. The runtime prefers
   those static modules/plans before
   compiling equivalent plan indexes in the browser.
-  `scripts/benchmark_runtime.sh` now provides first-slice browser asset budgets
-  over performance fixtures so this path has an executable guardrail: 50 KB
+  `scripts/benchmark_runtime.sh` now provides first-slice browser asset budgets,
+  production/legacy asset-shape checks, and a `control_flow` fixture that
+  asserts safe `if`/keyed-`for` regions, keyed list markers, and direct
+  safe-region patching are generated in `components/index.js`. This path has an
+  executable guardrail: 50 KB
   for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
   `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
   `jtml-update-plans.js`, to tighten as direct generated update modules keep

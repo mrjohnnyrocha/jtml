@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cstdlib>
 #include <iterator>
 #include <map>
 #include <set>
@@ -142,318 +141,6 @@ std::string trimCopy(const std::string& value) {
     return value.substr(begin, end - begin);
 }
 
-bool isQuotedString(const std::string& value) {
-    return value.size() >= 2 &&
-           ((value.front() == '"' && value.back() == '"') ||
-            (value.front() == '\'' && value.back() == '\''));
-}
-
-std::string unquoteStaticString(const std::string& value) {
-    if (!isQuotedString(value)) return value;
-    std::string out;
-    for (size_t i = 1; i + 1 < value.size(); ++i) {
-        if (value[i] == '\\' && i + 2 < value.size()) {
-            out += value[++i];
-        } else {
-            out += value[i];
-        }
-    }
-    return out;
-}
-
-bool isSimplePathExpression(const std::string& value) {
-    if (value.empty()) return false;
-    bool expectSegmentStart = true;
-    for (char ch : value) {
-        const unsigned char uch = static_cast<unsigned char>(ch);
-        if (expectSegmentStart) {
-            if (!(std::isalpha(uch) || ch == '_')) return false;
-            expectSegmentStart = false;
-            continue;
-        }
-        if (ch == '.') {
-            expectSegmentStart = true;
-            continue;
-        }
-        if (!(std::isalnum(uch) || ch == '_')) return false;
-    }
-    return !expectSegmentStart;
-}
-
-nlohmann::json compileStaticExpressionPlan(const std::string& expression);
-
-bool isBalancedStaticExpression(const std::string& value,
-                                size_t begin,
-                                size_t end) {
-    int paren = 0;
-    int bracket = 0;
-    int brace = 0;
-    char quote = '\0';
-    for (size_t i = begin; i < end; ++i) {
-        const char ch = value[i];
-        if (quote != '\0') {
-            if (ch == '\\' && i + 1 < end) {
-                ++i;
-            } else if (ch == quote) {
-                quote = '\0';
-            }
-            continue;
-        }
-        if (ch == '"' || ch == '\'') {
-            quote = ch;
-            continue;
-        }
-        if (ch == '(') ++paren;
-        else if (ch == ')') --paren;
-        else if (ch == '[') ++bracket;
-        else if (ch == ']') --bracket;
-        else if (ch == '{') ++brace;
-        else if (ch == '}') --brace;
-        if (paren < 0 || bracket < 0 || brace < 0) return false;
-    }
-    return quote == '\0' && paren == 0 && bracket == 0 && brace == 0;
-}
-
-std::string stripOuterStaticParens(std::string expr) {
-    expr = trimCopy(expr);
-    while (expr.size() >= 2 && expr.front() == '(' && expr.back() == ')' &&
-           isBalancedStaticExpression(expr, 1, expr.size() - 1)) {
-        expr = trimCopy(expr.substr(1, expr.size() - 2));
-    }
-    return expr;
-}
-
-bool staticExpressionOperatorMayBeUnary(const std::string& expr, size_t pos) {
-    if (pos == 0) return true;
-    size_t cursor = pos;
-    while (cursor > 0 &&
-           std::isspace(static_cast<unsigned char>(expr[cursor - 1]))) {
-        --cursor;
-    }
-    if (cursor == 0) return true;
-    const char prev = expr[cursor - 1];
-    return prev == '(' || prev == '[' || prev == '{' || prev == '?' ||
-           prev == ':' || prev == ',' || prev == '+' || prev == '-' ||
-           prev == '*' || prev == '/' || prev == '%' || prev == '<' ||
-           prev == '>' || prev == '=' || prev == '!' || prev == '&' ||
-           prev == '|';
-}
-
-int findTopLevelStaticChar(const std::string& expr, char needle) {
-    int paren = 0;
-    int bracket = 0;
-    int brace = 0;
-    char quote = '\0';
-    for (size_t i = 0; i < expr.size(); ++i) {
-        const char ch = expr[i];
-        if (quote != '\0') {
-            if (ch == '\\' && i + 1 < expr.size()) {
-                ++i;
-            } else if (ch == quote) {
-                quote = '\0';
-            }
-            continue;
-        }
-        if (ch == '"' || ch == '\'') {
-            quote = ch;
-            continue;
-        }
-        if (ch == '(') ++paren;
-        else if (ch == ')') --paren;
-        else if (ch == '[') ++bracket;
-        else if (ch == ']') --bracket;
-        else if (ch == '{') ++brace;
-        else if (ch == '}') --brace;
-        else if (ch == needle && paren == 0 && bracket == 0 && brace == 0) {
-            return static_cast<int>(i);
-        }
-    }
-    return -1;
-}
-
-int findMatchingTopLevelStaticColon(const std::string& expr, size_t question) {
-    int paren = 0;
-    int bracket = 0;
-    int brace = 0;
-    int nestedConditional = 0;
-    char quote = '\0';
-    for (size_t i = question + 1; i < expr.size(); ++i) {
-        const char ch = expr[i];
-        if (quote != '\0') {
-            if (ch == '\\' && i + 1 < expr.size()) {
-                ++i;
-            } else if (ch == quote) {
-                quote = '\0';
-            }
-            continue;
-        }
-        if (ch == '"' || ch == '\'') {
-            quote = ch;
-            continue;
-        }
-        if (ch == '(') ++paren;
-        else if (ch == ')') --paren;
-        else if (ch == '[') ++bracket;
-        else if (ch == ']') --bracket;
-        else if (ch == '{') ++brace;
-        else if (ch == '}') --brace;
-        else if (paren == 0 && bracket == 0 && brace == 0) {
-            if (ch == '?') ++nestedConditional;
-            else if (ch == ':') {
-                if (nestedConditional == 0) return static_cast<int>(i);
-                --nestedConditional;
-            }
-        }
-    }
-    return -1;
-}
-
-int findTopLevelStaticOperator(const std::string& expr,
-                               const std::vector<std::string>& operators) {
-    int paren = 0;
-    int bracket = 0;
-    int brace = 0;
-    char quote = '\0';
-    for (int i = static_cast<int>(expr.size()) - 1; i >= 0; --i) {
-        const char ch = expr[static_cast<size_t>(i)];
-        if (quote != '\0') {
-            if (ch == quote) quote = '\0';
-            continue;
-        }
-        if (ch == '"' || ch == '\'') {
-            quote = ch;
-            continue;
-        }
-        if (ch == ')') ++paren;
-        else if (ch == '(') --paren;
-        else if (ch == ']') ++bracket;
-        else if (ch == '[') --bracket;
-        else if (ch == '}') ++brace;
-        else if (ch == '{') --brace;
-        if (paren != 0 || bracket != 0 || brace != 0) continue;
-        for (const auto& op : operators) {
-            if (op.empty() || i + static_cast<int>(op.size()) > static_cast<int>(expr.size())) {
-                continue;
-            }
-            if (expr.compare(static_cast<size_t>(i), op.size(), op) != 0) continue;
-            if ((op == "+" || op == "-") &&
-                staticExpressionOperatorMayBeUnary(expr, static_cast<size_t>(i))) {
-                continue;
-            }
-            return i;
-        }
-    }
-    return -1;
-}
-
-nlohmann::json compileStaticExpressionPlan(const std::string& expression) {
-    const auto expr = stripOuterStaticParens(expression);
-    if (expr.empty()) return {{"kind", "empty"}, {"source", ""}};
-    if (isQuotedString(expr)) {
-        return {
-            {"kind", "literal"},
-            {"source", expr},
-            {"value", unquoteStaticString(expr)}
-        };
-    }
-    if (expr == "true" || expr == "false") {
-        return {
-            {"kind", "literal"},
-            {"source", expr},
-            {"value", expr == "true"}
-        };
-    }
-    if (expr == "null") {
-        return {{"kind", "literal"}, {"source", expr}, {"value", nullptr}};
-    }
-    char* end = nullptr;
-    const double number = std::strtod(expr.c_str(), &end);
-    if (end && *end == '\0' && end != expr.c_str()) {
-        return {{"kind", "literal"}, {"source", expr}, {"value", number}};
-    }
-    if (isSimplePathExpression(expr)) {
-        nlohmann::json segments = nlohmann::json::array();
-        std::string current;
-        for (char ch : expr) {
-            if (ch == '.') {
-                segments.push_back(current);
-                current.clear();
-            } else {
-                current += ch;
-            }
-        }
-        if (!current.empty()) segments.push_back(current);
-        return {
-            {"kind", "path"},
-            {"source", expr},
-            {"root", segments.empty() ? std::string() : segments.front().get<std::string>()},
-            {"segments", segments}
-        };
-    }
-    const int question = findTopLevelStaticChar(expr, '?');
-    if (question > 0) {
-        const int colon = findMatchingTopLevelStaticColon(expr, static_cast<size_t>(question));
-        if (colon > question) {
-            const auto test = trimCopy(expr.substr(0, static_cast<size_t>(question)));
-            const auto truthy = trimCopy(expr.substr(
-                static_cast<size_t>(question + 1),
-                static_cast<size_t>(colon - question - 1)));
-            const auto falsey = trimCopy(expr.substr(static_cast<size_t>(colon + 1)));
-            if (!test.empty() && !truthy.empty() && !falsey.empty()) {
-                return {
-                    {"kind", "conditional"},
-                    {"source", expr},
-                    {"test", compileStaticExpressionPlan(test)},
-                    {"whenTrue", compileStaticExpressionPlan(truthy)},
-                    {"whenFalse", compileStaticExpressionPlan(falsey)}
-                };
-            }
-        }
-    }
-    const std::vector<std::vector<std::string>> operatorGroups = {
-        {"||"},
-        {"&&"},
-        {"==", "!="},
-        {"<=", ">=", "<", ">"},
-        {"+", "-"},
-        {"*", "/", "%"}
-    };
-    for (const auto& group : operatorGroups) {
-        const int pos = findTopLevelStaticOperator(expr, group);
-        if (pos <= 0) continue;
-        std::string op;
-        for (const auto& candidate : group) {
-            if (expr.compare(static_cast<size_t>(pos), candidate.size(), candidate) == 0) {
-                op = candidate;
-                break;
-            }
-        }
-        if (op.empty()) continue;
-        const auto left = trimCopy(expr.substr(0, static_cast<size_t>(pos)));
-        const auto right = trimCopy(expr.substr(static_cast<size_t>(pos) + op.size()));
-        if (left.empty() || right.empty()) continue;
-        return {
-            {"kind", "binary"},
-            {"source", expr},
-            {"operator", op},
-            {"left", compileStaticExpressionPlan(left)},
-            {"right", compileStaticExpressionPlan(right)}
-        };
-    }
-    if (expr.size() > 1 && expr.front() == '!') {
-        const auto arg = trimCopy(expr.substr(1));
-        if (!arg.empty()) {
-            return {
-                {"kind", "unary"},
-                {"source", expr},
-                {"operator", "!"},
-                {"argument", compileStaticExpressionPlan(arg)}
-            };
-        }
-    }
-    return {{"kind", "source"}, {"source", expr}};
-}
-
 bool isSemanticUiModifierName(const std::string& name) {
     static const std::set<std::string> names = {
         "cols", "gap", "pad", "radius", "shadow",
@@ -520,7 +207,7 @@ nlohmann::json compileStaticElementParts(
                 modifiers.push_back({
                     {"name", token},
                     {"raw", raw},
-                    {"exprPlan", compileStaticExpressionPlan(raw)}
+                    {"exprPlan", compileRuntimeExpressionPlan(raw)}
                 });
                 ++i;
             } else {
@@ -537,7 +224,7 @@ nlohmann::json compileStaticElementParts(
                 attrs.push_back({
                     {"name", token},
                     {"raw", raw},
-                    {"exprPlan", compileStaticExpressionPlan(raw)}
+                    {"exprPlan", compileRuntimeExpressionPlan(raw)}
                 });
                 ++i;
             } else {
@@ -554,7 +241,7 @@ nlohmann::json compileStaticElementParts(
     const auto contentSource = joinStrings(content, " ");
     return {
         {"content", contentSource},
-        {"contentPlan", compileStaticExpressionPlan(contentSource)},
+        {"contentPlan", compileRuntimeExpressionPlan(contentSource)},
         {"attrs", attrs},
         {"modifiers", modifiers},
     };
@@ -595,7 +282,7 @@ nlohmann::json compileStaticActionInvocation(const std::string& raw) {
             if (!current.empty()) {
                 const auto expr = trimCopy(current);
                 argExpressions.push_back(expr);
-                argPlans.push_back(compileStaticExpressionPlan(expr));
+                argPlans.push_back(compileRuntimeExpressionPlan(expr));
             }
             current.clear();
             continue;
@@ -605,7 +292,7 @@ nlohmann::json compileStaticActionInvocation(const std::string& raw) {
     if (!current.empty()) {
         const auto expr = trimCopy(current);
         argExpressions.push_back(expr);
-        argPlans.push_back(compileStaticExpressionPlan(expr));
+        argPlans.push_back(compileRuntimeExpressionPlan(expr));
     }
     return {
         {"name", name},
@@ -702,9 +389,9 @@ nlohmann::json staticPatchOperation(
         {"words", words},
         {"sourceLine", node.sourceLine},
         {"expression", node.expression},
-        {"expressionPlan", compileStaticExpressionPlan(node.expression)},
+        {"expressionPlan", compileRuntimeExpressionPlan(node.expression)},
         {"keyExpression", node.keyExpression},
-        {"keyExpressionPlan", compileStaticExpressionPlan(node.keyExpression)},
+        {"keyExpressionPlan", compileRuntimeExpressionPlan(node.keyExpression)},
     };
     if (kind == "button") {
         out["partsPlan"] = compileStaticElementParts(words, 1, {"click"});
@@ -789,7 +476,7 @@ nlohmann::json compileStaticComponentUpdatePlan(
         {"rootCreateOperations", rootCreateOperations},
         {"unsafeRootCreateEntries", unsafeRootCreateEntries},
         {"staticPatchCoverage", "text-region-nested-element-first-slice"},
-        {"staticCreateCoverage", "direct-text-button-element-container-create-first-slice"},
+        {"staticCreateCoverage", "direct-text-button-element-container-control-flow-create-first-slice"},
     };
 }
 
@@ -802,6 +489,45 @@ void appendComponentPlans(
         components.push_back(
             compileStaticComponentUpdatePlan(definition, definitionKeys, origin));
     }
+}
+
+nlohmann::json collectComponentPlans(const RuntimeProjectPlan& plan) {
+    nlohmann::json components = nlohmann::json::array();
+    auto linkedKeys = componentDefinitionKeys(plan.linkedPlan.componentDefinitions);
+    appendComponentPlans(components,
+                         plan.linkedPlan.componentDefinitions,
+                         linkedKeys,
+                         "linked");
+
+    for (const auto& module : plan.modules) {
+        if (!module.clientExecutable) continue;
+        auto moduleKeys = componentDefinitionKeys(module.plan.componentDefinitions);
+        appendComponentPlans(components,
+                             module.plan.componentDefinitions,
+                             moduleKeys,
+                             "module:" + std::to_string(module.id));
+    }
+    return components;
+}
+
+nlohmann::json componentModulePlanPayload(nlohmann::json component) {
+    // The executable component module keeps only the metadata its generated
+    // create/update functions and runtime lookup need. The source-rich body
+    // plan stays in the legacy update-plan/debug asset.
+    component.erase("bodyPlan");
+    component.erase("localActions");
+    component.erase("localDerived");
+    component.erase("localState");
+    component.erase("params");
+    return component;
+}
+
+nlohmann::json componentModulePlansPayload(const nlohmann::json& components) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& component : components) {
+        out.push_back(componentModulePlanPayload(component));
+    }
+    return out;
 }
 
 std::string escapeJsScriptText(std::string value) {
@@ -1130,6 +856,23 @@ std::string directStaticElementPatchExpression(size_t nodeIndex,
     return out.str();
 }
 
+void appendStaticEscapingHelpers(std::ostringstream& out) {
+    out << "function jtml_static_escape_html(value) { "
+        << "return String(value == null ? '' : value)"
+        << ".replace(/&/g, '&amp;')"
+        << ".replace(/</g, '&lt;')"
+        << ".replace(/>/g, '&gt;')"
+        << ".replace(/\\\"/g, '&quot;')"
+        << ".replace(/'/g, '&#39;'); "
+        << "} "
+        << "function jtml_static_attrs_to_string(attrs) { "
+        << "return Object.keys(attrs || {}).map(function(name) { "
+        << "if (attrs[name] === true) return ' ' + name; "
+        << "return ' ' + name + '=\\\"' + jtml_static_escape_html(attrs[name]) + '\\\"'; "
+        << "}).join(''); "
+        << "} ";
+}
+
 std::string directStaticTextCreateExpression(size_t nodeIndex,
                                              const nlohmann::json& plan) {
     if (!isDirectJsExpressionPlan(plan)) return "";
@@ -1214,6 +957,152 @@ std::string directStaticNodeCreateExpression(const nlohmann::json& componentPlan
                                              size_t nodeIndex,
                                              std::set<size_t>& visiting);
 
+std::vector<std::string> directStaticChildCreateExpressions(
+        const nlohmann::json& componentPlan,
+        const nlohmann::json& node,
+        std::set<size_t>& visiting) {
+    const auto children = node.value("childIndices", nlohmann::json::array());
+    if (!children.is_array()) return {};
+
+    std::vector<std::string> childExpressions;
+    for (const auto& childIndexValue : children) {
+        if (!childIndexValue.is_number_integer()) return {};
+        const auto childIndex = static_cast<size_t>(childIndexValue.get<int>());
+        auto child = directStaticNodeCreateExpression(componentPlan, childIndex, visiting);
+        if (child.empty()) return {};
+        childExpressions.push_back(std::move(child));
+    }
+    return childExpressions;
+}
+
+void appendDirectRenderedChildrenStatements(
+        std::ostringstream& out,
+        const std::vector<std::string>& childExpressions,
+        const std::string& outputArray) {
+    for (size_t i = 0; i < childExpressions.size(); ++i) {
+        out << " const child_" << i << " = " << childExpressions[i] << "; "
+            << "if (typeof child_" << i << " !== 'string') return null; "
+            << outputArray << ".push(child_" << i << ");";
+    }
+}
+
+bool findStaticElseSibling(const nlohmann::json& componentPlan,
+                           size_t nodeIndex,
+                           const nlohmann::json& node,
+                           nlohmann::json& elseNode) {
+    const auto bodyPlan = componentPlan.value("bodyPlan", nlohmann::json::array());
+    if (!bodyPlan.is_array()) return false;
+    const int parentIndex = node.value("parentIndex", -1);
+    for (size_t i = nodeIndex + 1; i < bodyPlan.size(); ++i) {
+        if (!bodyPlan[i].is_object()) continue;
+        if (bodyPlan[i].value("parentIndex", -2) != parentIndex) continue;
+        const auto head = bodyPlan[i].value("head", bodyPlan[i].value("name", ""));
+        if (head != "else") return false;
+        elseNode = bodyPlan[i];
+        return true;
+    }
+    return false;
+}
+
+std::string directStaticIfCreateExpression(const nlohmann::json& componentPlan,
+                                           size_t nodeIndex,
+                                           const nlohmann::json& node,
+                                           std::set<size_t>& visiting) {
+    const auto conditionPlan = node.value("expressionPlan", nlohmann::json::object());
+    if (!isDirectJsExpressionPlan(conditionPlan)) return "";
+
+    auto thenChildren = directStaticChildCreateExpressions(componentPlan, node, visiting);
+    const auto thenChildCount = node.value("childIndices", nlohmann::json::array()).size();
+    if (thenChildren.size() != thenChildCount) return "";
+
+    std::vector<std::string> elseChildren;
+    nlohmann::json elseNode;
+    if (findStaticElseSibling(componentPlan, nodeIndex, node, elseNode)) {
+        auto elseVisiting = visiting;
+        elseVisiting.insert(nodeIndex);
+        elseChildren = directStaticChildCreateExpressions(componentPlan, elseNode, elseVisiting);
+        const auto elseChildCount = elseNode.value("childIndices", nlohmann::json::array()).size();
+        if (elseChildren.size() != elseChildCount) return "";
+    }
+
+    std::ostringstream out;
+    out << "(function(){ "
+        << "const rendered = []; "
+        << "if (" << jsDirectExpressionCall(conditionPlan) << ") {";
+    appendDirectRenderedChildrenStatements(out, thenChildren, "rendered");
+    out << "} else {";
+    appendDirectRenderedChildrenStatements(out, elseChildren, "rendered");
+    out << "} "
+        << "return '<span data-jtml-direct-body-node=\""
+        << nodeIndex
+        << "\" data-jtml-direct-region=\"if\" style=\"display:contents\">' + "
+        << "rendered.join('') + '</span>'; "
+        << "})()";
+    return out.str();
+}
+
+std::string directStaticForCreateExpression(const nlohmann::json& componentPlan,
+                                            size_t nodeIndex,
+                                            const nlohmann::json& node,
+                                            std::set<size_t>& visiting) {
+    const auto loopPlan = node.value("loopPlan", nlohmann::json::object());
+    if (!loopPlan.is_object()) return "";
+    const auto itemName = loopPlan.value("item", "");
+    if (itemName.empty()) return "";
+
+    const auto collectionPlan = loopPlan.value("collectionPlan", nlohmann::json::object());
+    if (!isDirectJsExpressionPlan(collectionPlan)) return "";
+    const auto keyExpression = node.value("keyExpression", "");
+    const auto keyPlan = node.value("keyExpressionPlan", nlohmann::json::object());
+    if (!keyExpression.empty() && !isDirectJsExpressionPlan(keyPlan)) return "";
+
+    auto childExpressions = directStaticChildCreateExpressions(componentPlan, node, visiting);
+    const auto childCount = node.value("childIndices", nlohmann::json::array()).size();
+    if (childExpressions.size() != childCount) return "";
+
+    std::ostringstream out;
+    out << "(function(){ "
+        << "let values = " << jsDirectExpressionCall(collectionPlan) << "; "
+        << "if (values == null) values = []; "
+        << "else if (!Array.isArray(values)) { "
+        << "if (typeof values === 'string') values = values.split(''); "
+        << "else if (typeof values === 'object') values = Object.values(values); "
+        << "else values = [values]; "
+        << "} "
+        << "const rendered = []; "
+        << "function jtml_static_key_segment(value, fallback) { "
+        << "const raw = value == null || value === '' ? fallback : value; "
+        << "return String(raw).replace(/[^A-Za-z0-9_.:-]/g, '_'); "
+        << "} "
+        << "for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1) { "
+        << "const childScope = Object.assign({}, scope); "
+        << "childScope[" << jsStringLiteral(itemName) << "] = values[itemIndex]; "
+        << "const keySegment = jtml_static_key_segment(";
+    if (keyExpression.empty()) {
+        out << "itemIndex";
+    } else {
+        out << "(function(scope){ return " << jsDirectExpressionCall(keyPlan)
+            << "; })(childScope)";
+    }
+    out << ", itemIndex); "
+        << "const innerHtml = (function(scope){ const children = [];";
+    appendDirectRenderedChildrenStatements(out, childExpressions, "children");
+    out << " return children.join(''); })(childScope); "
+        << "if (typeof innerHtml !== 'string') return null; "
+        << "rendered.push('<span data-jtml-direct-list-item=\""
+        << nodeIndex
+        << "\" data-jtml-direct-list-key=\"' + jtml_static_escape_html(keySegment) + "
+        << "'\" data-jtml-direct-list-index=\"' + String(itemIndex) + "
+        << "'\" style=\"display:contents\">' + innerHtml + '</span>'); "
+        << "} "
+        << "return '<span data-jtml-direct-body-node=\""
+        << nodeIndex
+        << "\" data-jtml-direct-region=\"for\" style=\"display:contents\">' + "
+        << "rendered.join('') + '</span>'; "
+        << "})()";
+    return out.str();
+}
+
 std::string directStaticContainerCreateExpression(const nlohmann::json& componentPlan,
                                                   size_t nodeIndex,
                                                   const nlohmann::json& node,
@@ -1221,19 +1110,12 @@ std::string directStaticContainerCreateExpression(const nlohmann::json& componen
                                                   const std::string& tag,
                                                   const nlohmann::json& partsPlan) {
     if (!staticElementPartsAreDirect(partsPlan, false)) return "";
-    const auto children = node.value("childIndices", nlohmann::json::array());
-    if (!children.is_array()) return "";
-
-    std::vector<std::string> childExpressions;
     std::set<size_t> visiting;
     visiting.insert(nodeIndex);
-    for (const auto& childIndexValue : children) {
-        if (!childIndexValue.is_number_integer()) return "";
-        const auto childIndex = static_cast<size_t>(childIndexValue.get<int>());
-        auto child = directStaticNodeCreateExpression(componentPlan, childIndex, visiting);
-        if (child.empty()) return "";
-        childExpressions.push_back(std::move(child));
-    }
+    auto childExpressions =
+        directStaticChildCreateExpressions(componentPlan, node, visiting);
+    const auto children = node.value("childIndices", nlohmann::json::array());
+    if (!children.is_array() || childExpressions.size() != children.size()) return "";
 
     const auto resolvedHead = head.empty() ? std::string("box") : head;
     const auto resolvedTag = tag.empty() ? componentTagName(resolvedHead) : tag;
@@ -1244,11 +1126,7 @@ std::string directStaticContainerCreateExpression(const nlohmann::json& componen
         << jsStringLiteral(std::to_string(nodeIndex)) << "; "
         << "next['data-jtml-direct-managed-attrs'] = Object.keys(next).join(','); "
         << "const children = [];";
-    for (size_t i = 0; i < childExpressions.size(); ++i) {
-        out << " const child_" << i << " = " << childExpressions[i] << "; "
-            << "if (typeof child_" << i << " !== 'string') return null; "
-            << "children.push(child_" << i << ");";
-    }
+    appendDirectRenderedChildrenStatements(out, childExpressions, "children");
     out << " return '<" << resolvedTag << "' + jtml_static_attrs_to_string(next) + '>' + "
         << "children.join('') + '</" << resolvedTag << ">'; "
         << "})()";
@@ -1275,14 +1153,20 @@ std::string directStaticNodeCreateExpression(const nlohmann::json& componentPlan
             : splitStaticComponentWords(node.value("text", "")).front()
         : head;
     if (resolvedHead.empty() || resolvedHead == "else" || resolvedHead == "while" ||
-        resolvedHead == "if" || resolvedHead == "for" || resolvedHead == "slot" ||
+        resolvedHead == "slot" ||
         looksLikeComponentCallHead(resolvedHead)) {
         return "";
     }
 
     const auto words = splitStaticComponentWords(node.value("text", ""));
     const auto expressionPlan =
-        compileStaticExpressionPlan(node.value("expression", ""));
+        compileRuntimeExpressionPlan(node.value("expression", ""));
+    if (resolvedHead == "if") {
+        return directStaticIfCreateExpression(componentPlan, nodeIndex, node, visiting);
+    }
+    if (resolvedHead == "for") {
+        return directStaticForCreateExpression(componentPlan, nodeIndex, node, visiting);
+    }
     if (resolvedHead == "show" || resolvedHead == "text") {
         return directStaticTextCreateExpression(nodeIndex, expressionPlan);
     }
@@ -1387,7 +1271,17 @@ std::string directStaticCreateCall(
                 << jsExpressionPlanArgument(operation.value("expressionPlan", nlohmann::json::object()))
                 << ") : null);\n";
         }
-    } else if (kind == "region" || kind == "nested-component") {
+    } else if (kind == "region") {
+        std::set<size_t> visiting;
+        const auto directCreate = directStaticNodeCreateExpression(
+            componentPlan, static_cast<size_t>(nodeIndex), visiting);
+        if (!directCreate.empty()) {
+            out << directCreate << ";\n";
+        } else {
+            out << "(h && h.renderStaticComponentRegionNode ? h.renderStaticComponentRegionNode(instance, definition, scope, "
+                << nodeIndex << ") : null);\n";
+        }
+    } else if (kind == "nested-component") {
         out << "(h && h.renderStaticComponentRegionNode ? h.renderStaticComponentRegionNode(instance, definition, scope, "
             << nodeIndex << ") : null);\n";
     } else {
@@ -1400,7 +1294,31 @@ std::string directStaticCreateCall(
     return out.str();
 }
 
-std::string directStaticPatchExpression(const nlohmann::json& operation) {
+std::string directStaticRegionPatchExpression(
+        const nlohmann::json& componentPlan,
+        size_t nodeIndex) {
+    std::set<size_t> visiting;
+    const auto directCreate =
+        directStaticNodeCreateExpression(componentPlan, nodeIndex, visiting);
+    if (directCreate.empty()) return "";
+
+    std::ostringstream out;
+    out << "(function(){ ";
+    appendStaticEscapingHelpers(out);
+    out << "const el = instance && instance.element ? "
+        << "instance.element.querySelector('[data-jtml-direct-body-node=\""
+        << nodeIndex << "\"]') : null; "
+        << "if (!el) return false; "
+        << "const html = " << directCreate << "; "
+        << "if (typeof html !== 'string') return false; "
+        << "el.outerHTML = html; "
+        << "return true; "
+        << "})()";
+    return out.str();
+}
+
+std::string directStaticPatchExpression(const nlohmann::json& componentPlan,
+                                        const nlohmann::json& operation) {
     if (!operation.is_object() || !operation.contains("operation") ||
         !operation.contains("nodeIndex")) {
         return "";
@@ -1460,7 +1378,17 @@ std::string directStaticPatchExpression(const nlohmann::json& operation) {
                 << jsExpressionPlanArgument(operation.value("expressionPlan", nlohmann::json::object()))
                 << ") : false)";
         }
-    } else if (kind == "region" || kind == "nested-component") {
+    } else if (kind == "region") {
+        const auto directPatch = directStaticRegionPatchExpression(
+            componentPlan, static_cast<size_t>(nodeIndex));
+        if (!directPatch.empty()) {
+            out << directPatch;
+        } else {
+            out << "(h && h.patchStaticComponentRegionNode ? "
+                << "h.patchStaticComponentRegionNode(instance, definition, "
+                << nodeIndex << ", scope) : false)";
+        }
+    } else if (kind == "nested-component") {
         out << "(h && h.patchStaticComponentRegionNode ? "
             << "h.patchStaticComponentRegionNode(instance, definition, "
             << nodeIndex << ", scope) : false)";
@@ -1470,13 +1398,14 @@ std::string directStaticPatchExpression(const nlohmann::json& operation) {
     return out.str();
 }
 
-std::string directStaticPatchCase(const nlohmann::json& entry) {
+std::string directStaticPatchCase(const nlohmann::json& componentPlan,
+                                  const nlohmann::json& entry) {
     if (!entry.is_object() || !entry.contains("index") ||
         !entry.contains("operation")) {
         return "";
     }
     const auto operation = entry["operation"];
-    const auto patchExpression = directStaticPatchExpression(operation);
+    const auto patchExpression = directStaticPatchExpression(componentPlan, operation);
     if (patchExpression.empty()) return "";
     const auto index = entry.value("index", 0);
     std::ostringstream out;
@@ -1551,7 +1480,7 @@ std::string staticUpdateFunctionBody(size_t componentIndex,
     size_t emittedPatchCases = 0;
     const auto entries = componentPlan.value("entries", nlohmann::json::array());
     for (const auto& entry : entries) {
-        const auto patchCase = directStaticPatchCase(entry);
+        const auto patchCase = directStaticPatchCase(componentPlan, entry);
         if (patchCase.empty()) continue;
         out << patchCase;
         emittedPatchCases += 1;
@@ -1620,41 +1549,37 @@ std::string staticUpdateFunctionBody(size_t componentIndex,
 
 } // namespace
 
-std::string emitStaticUpdatePlanAsset(const RuntimeProjectPlan& plan) {
-    nlohmann::json components = nlohmann::json::array();
-    auto linkedKeys = componentDefinitionKeys(plan.linkedPlan.componentDefinitions);
-    appendComponentPlans(components,
-                         plan.linkedPlan.componentDefinitions,
-                         linkedKeys,
-                         "linked");
-
-    for (const auto& module : plan.modules) {
-        if (!module.clientExecutable) continue;
-        auto moduleKeys = componentDefinitionKeys(module.plan.componentDefinitions);
-        appendComponentPlans(components,
-                             module.plan.componentDefinitions,
-                             moduleKeys,
-                             "module:" + std::to_string(module.id));
-    }
-
+std::string emitStaticComponentAsset(const RuntimeProjectPlan& plan,
+                                     bool componentModule) {
+    const auto fullComponents = collectComponentPlans(plan);
+    const auto components = componentModule
+        ? componentModulePlansPayload(fullComponents)
+        : fullComponents;
     nlohmann::json asset = {
         {"version", 1},
         {"sourceOfTruth", "runtime client manifest"},
-        {"mode", "csp-safe static update plans"},
+        {"mode", componentModule
+            ? "csp-safe static component modules"
+            : "csp-safe static update plans"},
         {"dynamicGeneratedUpdateFunctions", false},
         {"staticUpdateFunctions", true},
+        {"assetRole", componentModule ? "component-module" : "legacy-update-plan"},
         {"componentCount", components.size()},
         {"components", components},
     };
 
     std::ostringstream out;
-    out << "/* Generated by jtml build --target browser. CSP-safe static update plan/function seed. */\n"
+    out << "/* Generated by jtml build --target browser. "
+        << (componentModule
+            ? "CSP-safe static component module seed."
+            : "CSP-safe static update plan/function seed.")
+        << " */\n"
         << "(function () {\n"
         << "  const plans = JSON.parse('" << escapeJsScriptText(asset.dump()) << "');\n"
         << "  const functions = {};\n";
     out << "  const modules = {};\n";
     for (size_t i = 0; i < components.size(); ++i) {
-        out << staticUpdateFunctionBody(i, components[i])
+        out << staticUpdateFunctionBody(i, fullComponents[i])
             << "  if (plans.components[" << i << "] && plans.components[" << i << "].key) {\n"
             << "    functions[plans.components[" << i << "].key] = jtml_static_component_update_" << i << ";\n"
             << "    modules[plans.components[" << i << "].key] = {\n"
@@ -1669,34 +1594,41 @@ std::string emitStaticUpdatePlanAsset(const RuntimeProjectPlan& plan) {
     out
         << "  plans.staticUpdateFunctionCount = Object.keys(functions).length;\n"
         << "  plans.staticComponentModuleCount = Object.keys(modules).length;\n"
-        << "  window.__jtml_static_update_plans = plans;\n"
+        << (componentModule
+            ? "  window.__jtml_static_component_plan_index = plans;\n"
+            : "  window.__jtml_static_update_plans = plans;\n")
         << "  window.__jtml_static_update_functions = functions;\n"
         << "  window.__jtml_static_component_modules = modules;\n"
         << "  if (window.jtml) {\n"
-        << "    window.jtml.staticUpdatePlans = plans;\n"
+        << (componentModule
+            ? "    window.jtml.staticComponentPlanIndex = plans;\n"
+            : "    window.jtml.staticUpdatePlans = plans;\n")
         << "    window.jtml.staticUpdateFunctions = functions;\n"
         << "    window.jtml.staticComponentModules = modules;\n"
         << "    window.jtml.runtimeSecurity = window.jtml.runtimeSecurity || {};\n"
-        << "    window.jtml.runtimeSecurity.staticUpdatePlansAsset = true;\n"
+        << (componentModule
+            ? "    window.jtml.runtimeSecurity.staticComponentPlanIndexAsset = true;\n"
+            : "    window.jtml.runtimeSecurity.staticUpdatePlansAsset = true;\n")
         << "    window.jtml.runtimeSecurity.staticUpdateFunctionsAsset = true;\n"
         << "    window.jtml.runtimeSecurity.staticComponentModulesAsset = true;\n"
         << "  }\n"
         << "  if (window.dispatchEvent && window.CustomEvent) {\n"
-        << "    window.dispatchEvent(new CustomEvent('jtml:static-update-plans-ready', { detail: plans }));\n"
+        << "    window.dispatchEvent(new CustomEvent('"
+        << (componentModule
+            ? "jtml:static-component-modules-ready"
+            : "jtml:static-update-plans-ready")
+        << "', { detail: plans }));\n"
         << "  }\n"
         << "}());\n";
     return out.str();
 }
 
+std::string emitStaticUpdatePlanAsset(const RuntimeProjectPlan& plan) {
+    return emitStaticComponentAsset(plan, false);
+}
+
 std::string emitStaticComponentModuleAsset(const RuntimeProjectPlan& plan) {
-    std::string asset = emitStaticUpdatePlanAsset(plan);
-    const std::string legacy = "CSP-safe static update plan/function seed";
-    const std::string current = "CSP-safe static component module seed";
-    const auto pos = asset.find(legacy);
-    if (pos != std::string::npos) {
-        asset.replace(pos, legacy.size(), current);
-    }
-    return asset;
+    return emitStaticComponentAsset(plan, true);
 }
 
 } // namespace jtml

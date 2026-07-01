@@ -5,6 +5,8 @@
 
 namespace jtml {
 
+nlohmann::json compileRuntimeExpressionPlan(const std::string& expression);
+
 nlohmann::json runtimePlanBodyPlanToJson(
     const std::vector<RuntimePlanComponentBodyNode>& bodyPlan);
 

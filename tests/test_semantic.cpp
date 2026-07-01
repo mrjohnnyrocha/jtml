@@ -3,6 +3,7 @@
 #include "jtml/lexer.h"
 #include "jtml/parser.h"
 #include "jtml/runtime_plan.h"
+#include "jtml/runtime_plan_json.h"
 #include "jtml/semantic.h"
 #include "jtml/semantic/module_graph.h"
 #include "jtml/transpiler.h"
@@ -1415,6 +1416,30 @@ TEST(RuntimePlan, BodyPlanReadsComeFromParsedExpressionAst) {
     EXPECT_TRUE(contains(imageIt->reads, "activeIndex"));
     EXPECT_TRUE(imageIt->writes.empty());
     EXPECT_FALSE(contains(imageIt->reads, "Profile"));
+}
+
+TEST(RuntimePlan, CanonicalExpressionPlanCoversCompositeOperators) {
+    const auto plan = jtml::compileRuntimeExpressionPlan(
+        "(visible && title != \"Hidden\") ? items : empty");
+
+    ASSERT_EQ(plan["kind"], "conditional") << plan.dump(2);
+    ASSERT_TRUE(plan.contains("test")) << plan.dump(2);
+    EXPECT_EQ(plan["test"]["kind"], "binary") << plan.dump(2);
+    EXPECT_EQ(plan["test"]["operator"], "&&") << plan.dump(2);
+    ASSERT_TRUE(plan["test"].contains("right")) << plan.dump(2);
+    EXPECT_EQ(plan["test"]["right"]["kind"], "binary") << plan.dump(2);
+    EXPECT_EQ(plan["test"]["right"]["operator"], "!=") << plan.dump(2);
+    EXPECT_EQ(plan["whenTrue"]["kind"], "path") << plan.dump(2);
+    EXPECT_EQ(plan["whenTrue"]["root"], "items") << plan.dump(2);
+    EXPECT_EQ(plan["whenFalse"]["kind"], "path") << plan.dump(2);
+    EXPECT_EQ(plan["whenFalse"]["root"], "empty") << plan.dump(2);
+
+    const auto nested = jtml::compileRuntimeExpressionPlan(
+        "title == \"Open\" ? item : \"none\"");
+    ASSERT_EQ(nested["kind"], "conditional") << nested.dump(2);
+    EXPECT_EQ(nested["test"]["operator"], "==") << nested.dump(2);
+    EXPECT_EQ(nested["whenTrue"]["kind"], "path") << nested.dump(2);
+    EXPECT_EQ(nested["whenFalse"]["kind"], "literal") << nested.dump(2);
 }
 
 TEST(RuntimePlan, BodyPlanWritesIncludeRootObservableForMemberAssignments) {

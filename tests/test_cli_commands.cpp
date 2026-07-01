@@ -932,6 +932,8 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["commonAttributes"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["simpleActionArguments"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["actionLocalDeclarations"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["bodyPlanActionExpressionPlans"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["canonicalRuntimeExpressionPlans"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["memberWriteDependencyRoots"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["memberAssignmentDirectMutation"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["memberAssignmentDeepDictCreation"], true);
@@ -947,11 +949,15 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["indexedCompiledUpdateFunctions"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["generatedProductionUpdateFunctions"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["staticComponentCreateUpdateModules"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["componentModulePlanIndexAsset"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["legacyUpdatePlanCompatibilityAsset"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["directStaticComponentCreateHtml"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["directStaticContainerCreateHtml"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["directStaticControlFlowCreateHtml"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["helperIndependentStaticUpdateFunctions"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["containerAttributePatchOperations"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["controlFlowRegionPatchOperations"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["directStaticControlFlowRegionPatches"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["slotRegionPatchOperations"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["nestedComponentPatchOperations"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["legacyHeuristicPatchFallback"], false);
@@ -986,6 +992,8 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["staticUpdatePlanPrecomputedIndexes"],
               true);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["staticComponentModules"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["componentModulePlanIndex"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["legacyUpdatePlanCompatibilityAsset"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["benchmarkSmoke"],
               "scripts/benchmark_runtime.sh");
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["browserAssetBudgets"].get<std::string>().find("byte budgets"),
@@ -1011,11 +1019,13 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
               std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("parsed expression dependency metadata"),
               std::string::npos);
-    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("literal/path/unary/binary/conditional expression plans"),
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("canonical runtime expression plans"),
               std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("container patch operation"),
               std::string::npos);
-    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("control-flow-region patch operation"),
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("safe control-flow create/patch operation shapes"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("direct region replacement for safe if/keyed-for regions"),
               std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("legacy heuristic patch fallback removed"),
               std::string::npos);
@@ -1290,6 +1300,16 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
     const std::string componentModule = readTextFile(outDir / "components" / "index.js");
     EXPECT_NE(componentModule.find("CSP-safe static component module seed"), std::string::npos)
         << componentModule;
+    EXPECT_NE(componentModule.find("\"assetRole\":\"component-module\""), std::string::npos)
+        << componentModule;
+    EXPECT_NE(componentModule.find("\"mode\":\"csp-safe static component modules\""), std::string::npos)
+        << componentModule;
+    EXPECT_NE(componentModule.find("window.__jtml_static_component_plan_index = plans"),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("window.__jtml_static_update_plans = plans"),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"bodyPlan\""), std::string::npos)
+        << componentModule;
     EXPECT_NE(componentModule.find("window.__jtml_static_component_modules"), std::string::npos)
         << componentModule;
     EXPECT_EQ(componentModule.find("new Function"), std::string::npos) << componentModule;
@@ -1305,6 +1325,12 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
     const std::string updatePlans = readTextFile(outDir / "jtml-update-plans.js");
     EXPECT_NE(updatePlans.find("CSP-safe static update plan/function seed"), std::string::npos)
         << updatePlans;
+    EXPECT_NE(updatePlans.find("\"assetRole\":\"legacy-update-plan\""), std::string::npos)
+        << updatePlans;
+    EXPECT_NE(updatePlans.find("\"mode\":\"csp-safe static update plans\""), std::string::npos)
+        << updatePlans;
+    EXPECT_EQ(updatePlans.find("window.__jtml_static_component_plan_index = plans"),
+              std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("window.__jtml_static_update_plans"), std::string::npos)
         << updatePlans;
     EXPECT_NE(updatePlans.find("window.__jtml_static_update_functions"), std::string::npos)
@@ -1350,6 +1376,14 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
         "  when choose value\n"
         "    last = value\n"
         "  button label+\"!\" click choose(label==\"Open\"?\"yes\":\"no\")\n"
+        "export make ActivityFeed\n"
+        "  let visible = true\n"
+        "  let items = [\"Build\", \"Ship\"]\n"
+        "  if visible\n"
+        "    for item in items key item\n"
+        "      text item\n"
+        "  else\n"
+        "    text \"Hidden\"\n"
         "export make Dashboard pageTitle\n"
         "  let currentTitle = pageTitle\n"
         "  when rename nextTitle\n"
@@ -1359,12 +1393,13 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
         "    button currentTitle click rename(currentTitle)\n");
     writeTempFile(root / "index.jtml",
         "jtml 2\n"
-        "use { Dashboard, Summary, StatusBadge, ActionButton } from \"./pages/dashboard.jtml\"\n"
+        "use { Dashboard, Summary, StatusBadge, ActionButton, ActivityFeed } from \"./pages/dashboard.jtml\"\n"
         "page\n"
         "  Dashboard \"Home\"\n"
         "  Summary \"Ready\"\n"
         "  StatusBadge \"Stable\"\n"
-        "  ActionButton \"Open\"\n");
+        "  ActionButton \"Open\"\n"
+        "  ActivityFeed\n");
 
     const auto outDir = std::filesystem::temp_directory_path() /
                         ("jtml-browser-project-plan-" +
@@ -1424,9 +1459,17 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
     EXPECT_TRUE(manifest["componentInstances"].is_array()) << manifest.dump(2);
 
     const std::string componentModule = readTextFile(outDir / "components" / "index.js");
-    EXPECT_NE(componentModule.find("\"mode\":\"csp-safe static update plans\""),
+    EXPECT_NE(componentModule.find("\"mode\":\"csp-safe static component modules\""),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("\"staticCreateCoverage\":\"direct-text-button-element-container-create-first-slice\""),
+    EXPECT_NE(componentModule.find("\"assetRole\":\"component-module\""),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("window.__jtml_static_component_plan_index = plans"),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("window.__jtml_static_update_plans = plans"),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"bodyPlan\""),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("\"staticCreateCoverage\":\"direct-text-button-element-container-control-flow-create-first-slice\""),
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("\"rootCreateOperations\""),
               std::string::npos) << componentModule;
@@ -1484,6 +1527,16 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("children.join('') + '</section>'"),
               std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("data-jtml-direct-region=\"if\""),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("data-jtml-direct-region=\"for\""),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1)"),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("childScope['item'] = values[itemIndex]"),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("data-jtml-direct-list-key"),
+              std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("next['data-jtml-direct-component-args'] = JSON.stringify(actionArgs);"),
               std::string::npos) << componentModule;
     EXPECT_EQ(componentModule.find("renderStaticComponentElementNode"),
@@ -1511,6 +1564,8 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
     const std::string updatePlans = readTextFile(outDir / "jtml-update-plans.js");
     EXPECT_NE(updatePlans.find("\"mode\":\"csp-safe static update plans\""),
               std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("\"assetRole\":\"legacy-update-plan\""),
+              std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("\"componentCount\":"), std::string::npos)
         << updatePlans;
     EXPECT_NE(updatePlans.find("\"bodyPlan\""), std::string::npos)
@@ -1525,7 +1580,7 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
         << updatePlans;
     EXPECT_NE(updatePlans.find("\"staticPatchCoverage\":\"text-region-nested-element-first-slice\""),
               std::string::npos) << updatePlans;
-    EXPECT_NE(updatePlans.find("\"staticCreateCoverage\":\"direct-text-button-element-container-create-first-slice\""),
+    EXPECT_NE(updatePlans.find("\"staticCreateCoverage\":\"direct-text-button-element-container-control-flow-create-first-slice\""),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("\"partsPlan\""),
               std::string::npos) << updatePlans;
@@ -1576,6 +1631,16 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
     EXPECT_NE(updatePlans.find("return '<section' + jtml_static_attrs_to_string(next)"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("children.join('') + '</section>'"),
+              std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("data-jtml-direct-region=\"if\""),
+              std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("data-jtml-direct-region=\"for\""),
+              std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1)"),
+              std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("childScope['item'] = values[itemIndex]"),
+              std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("data-jtml-direct-list-key"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("function jtml_static_component_update_"),
               std::string::npos) << updatePlans;

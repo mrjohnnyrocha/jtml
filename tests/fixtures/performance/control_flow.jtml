@@ -1,0 +1,20 @@
+jtml 2
+
+make ActivityPanel
+  let visible = true
+  let items = ["Plan", "Build", "Verify"]
+
+  when toggle
+    visible = !visible
+
+  panel title "Control flow" tone neutral
+    button "Toggle" click toggle
+    if visible
+      for item in items key item
+        card title item tone primary
+          text item
+    else
+      empty "No visible activity"
+
+page
+  ActivityPanel

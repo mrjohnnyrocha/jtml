@@ -320,8 +320,174 @@ bool isSimpleRuntimePlanPath(const std::string& value) {
     return !expectSegmentStart;
 }
 
+bool isBalancedRuntimeExpression(const std::string& value,
+                                 size_t begin,
+                                 size_t end) {
+    int paren = 0;
+    int bracket = 0;
+    int brace = 0;
+    char quote = '\0';
+    for (size_t i = begin; i < end; ++i) {
+        const char ch = value[i];
+        if (quote != '\0') {
+            if (ch == '\\' && i + 1 < end) {
+                ++i;
+            } else if (ch == quote) {
+                quote = '\0';
+            }
+            continue;
+        }
+        if (ch == '"' || ch == '\'') {
+            quote = ch;
+            continue;
+        }
+        if (ch == '(') ++paren;
+        else if (ch == ')') --paren;
+        else if (ch == '[') ++bracket;
+        else if (ch == ']') --bracket;
+        else if (ch == '{') ++brace;
+        else if (ch == '}') --brace;
+        if (paren < 0 || bracket < 0 || brace < 0) return false;
+    }
+    return quote == '\0' && paren == 0 && bracket == 0 && brace == 0;
+}
+
+std::string stripOuterRuntimeParens(std::string expr) {
+    expr = trimRuntimePlanString(expr);
+    while (expr.size() >= 2 && expr.front() == '(' && expr.back() == ')' &&
+           isBalancedRuntimeExpression(expr, 1, expr.size() - 1)) {
+        expr = trimRuntimePlanString(expr.substr(1, expr.size() - 2));
+    }
+    return expr;
+}
+
+bool runtimeExpressionOperatorMayBeUnary(const std::string& expr, size_t pos) {
+    if (pos == 0) return true;
+    size_t cursor = pos;
+    while (cursor > 0 &&
+           std::isspace(static_cast<unsigned char>(expr[cursor - 1]))) {
+        --cursor;
+    }
+    if (cursor == 0) return true;
+    const char prev = expr[cursor - 1];
+    return prev == '(' || prev == '[' || prev == '{' || prev == '?' ||
+           prev == ':' || prev == ',' || prev == '+' || prev == '-' ||
+           prev == '*' || prev == '/' || prev == '%' || prev == '<' ||
+           prev == '>' || prev == '=' || prev == '!' || prev == '&' ||
+           prev == '|';
+}
+
+int findTopLevelRuntimeChar(const std::string& expr, char needle) {
+    int paren = 0;
+    int bracket = 0;
+    int brace = 0;
+    char quote = '\0';
+    for (size_t i = 0; i < expr.size(); ++i) {
+        const char ch = expr[i];
+        if (quote != '\0') {
+            if (ch == '\\' && i + 1 < expr.size()) {
+                ++i;
+            } else if (ch == quote) {
+                quote = '\0';
+            }
+            continue;
+        }
+        if (ch == '"' || ch == '\'') {
+            quote = ch;
+            continue;
+        }
+        if (ch == '(') ++paren;
+        else if (ch == ')') --paren;
+        else if (ch == '[') ++bracket;
+        else if (ch == ']') --bracket;
+        else if (ch == '{') ++brace;
+        else if (ch == '}') --brace;
+        else if (ch == needle && paren == 0 && bracket == 0 && brace == 0) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
+int findMatchingTopLevelRuntimeColon(const std::string& expr, size_t question) {
+    int paren = 0;
+    int bracket = 0;
+    int brace = 0;
+    int nestedConditional = 0;
+    char quote = '\0';
+    for (size_t i = question + 1; i < expr.size(); ++i) {
+        const char ch = expr[i];
+        if (quote != '\0') {
+            if (ch == '\\' && i + 1 < expr.size()) {
+                ++i;
+            } else if (ch == quote) {
+                quote = '\0';
+            }
+            continue;
+        }
+        if (ch == '"' || ch == '\'') {
+            quote = ch;
+            continue;
+        }
+        if (ch == '(') ++paren;
+        else if (ch == ')') --paren;
+        else if (ch == '[') ++bracket;
+        else if (ch == ']') --bracket;
+        else if (ch == '{') ++brace;
+        else if (ch == '}') --brace;
+        else if (paren == 0 && bracket == 0 && brace == 0) {
+            if (ch == '?') ++nestedConditional;
+            else if (ch == ':') {
+                if (nestedConditional == 0) return static_cast<int>(i);
+                --nestedConditional;
+            }
+        }
+    }
+    return -1;
+}
+
+int findTopLevelRuntimeOperator(const std::string& expr,
+                                const std::vector<std::string>& operators) {
+    int paren = 0;
+    int bracket = 0;
+    int brace = 0;
+    char quote = '\0';
+    for (int i = static_cast<int>(expr.size()) - 1; i >= 0; --i) {
+        const char ch = expr[static_cast<size_t>(i)];
+        if (quote != '\0') {
+            if (ch == quote) quote = '\0';
+            continue;
+        }
+        if (ch == '"' || ch == '\'') {
+            quote = ch;
+            continue;
+        }
+        if (ch == ')') ++paren;
+        else if (ch == '(') --paren;
+        else if (ch == ']') ++bracket;
+        else if (ch == '[') --bracket;
+        else if (ch == '}') ++brace;
+        else if (ch == '{') --brace;
+        if (paren != 0 || bracket != 0 || brace != 0) continue;
+        for (const auto& op : operators) {
+            if (op.empty() || i + static_cast<int>(op.size()) > static_cast<int>(expr.size())) {
+                continue;
+            }
+            if (expr.compare(static_cast<size_t>(i), op.size(), op) != 0) continue;
+            if ((op == "+" || op == "-") &&
+                runtimeExpressionOperatorMayBeUnary(expr, static_cast<size_t>(i))) {
+                continue;
+            }
+            return i;
+        }
+    }
+    return -1;
+}
+
+} // namespace
+
 nlohmann::json compileRuntimeExpressionPlan(const std::string& expression) {
-    const auto expr = trimRuntimePlanString(expression);
+    const auto expr = stripOuterRuntimeParens(expression);
     if (expr.empty()) return {{"kind", "empty"}, {"source", ""}};
     if (isQuotedRuntimePlanString(expr)) {
         return {
@@ -364,8 +530,71 @@ nlohmann::json compileRuntimeExpressionPlan(const std::string& expression) {
             {"segments", segments}
         };
     }
+    const int question = findTopLevelRuntimeChar(expr, '?');
+    if (question > 0) {
+        const int colon = findMatchingTopLevelRuntimeColon(expr, static_cast<size_t>(question));
+        if (colon > question) {
+            const auto test = trimRuntimePlanString(expr.substr(0, static_cast<size_t>(question)));
+            const auto truthy = trimRuntimePlanString(expr.substr(
+                static_cast<size_t>(question + 1),
+                static_cast<size_t>(colon - question - 1)));
+            const auto falsey = trimRuntimePlanString(expr.substr(static_cast<size_t>(colon + 1)));
+            if (!test.empty() && !truthy.empty() && !falsey.empty()) {
+                return {
+                    {"kind", "conditional"},
+                    {"source", expr},
+                    {"test", compileRuntimeExpressionPlan(test)},
+                    {"whenTrue", compileRuntimeExpressionPlan(truthy)},
+                    {"whenFalse", compileRuntimeExpressionPlan(falsey)}
+                };
+            }
+        }
+    }
+    const std::vector<std::vector<std::string>> operatorGroups = {
+        {"||"},
+        {"&&"},
+        {"==", "!="},
+        {"<=", ">=", "<", ">"},
+        {"+", "-"},
+        {"*", "/", "%"}
+    };
+    for (const auto& group : operatorGroups) {
+        const int pos = findTopLevelRuntimeOperator(expr, group);
+        if (pos <= 0) continue;
+        std::string op;
+        for (const auto& candidate : group) {
+            if (expr.compare(static_cast<size_t>(pos), candidate.size(), candidate) == 0) {
+                op = candidate;
+                break;
+            }
+        }
+        if (op.empty()) continue;
+        const auto left = trimRuntimePlanString(expr.substr(0, static_cast<size_t>(pos)));
+        const auto right = trimRuntimePlanString(expr.substr(static_cast<size_t>(pos) + op.size()));
+        if (left.empty() || right.empty()) continue;
+        return {
+            {"kind", "binary"},
+            {"source", expr},
+            {"operator", op},
+            {"left", compileRuntimeExpressionPlan(left)},
+            {"right", compileRuntimeExpressionPlan(right)}
+        };
+    }
+    if (expr.size() > 1 && expr.front() == '!') {
+        const auto arg = trimRuntimePlanString(expr.substr(1));
+        if (!arg.empty()) {
+            return {
+                {"kind", "unary"},
+                {"source", expr},
+                {"operator", "!"},
+                {"argument", compileRuntimeExpressionPlan(arg)}
+            };
+        }
+    }
     return {{"kind", "source"}, {"source", expr}};
 }
+
+namespace {
 
 nlohmann::json compileRuntimeWordPlans(const std::string& text) {
     nlohmann::json out = nlohmann::json::array();

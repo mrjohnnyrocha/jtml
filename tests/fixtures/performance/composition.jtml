@@ -1,0 +1,22 @@
+jtml 2
+
+make Shell title
+  panel title title tone neutral
+    slot
+
+make NestedHost label
+  Shell label
+    text label
+
+make CompositionDemo
+  let selected = "Alpha"
+
+  when pickBeta
+    selected = "Beta"
+
+  card title "Composition" tone primary
+    NestedHost selected
+    button "Pick beta" click pickBeta
+
+page
+  CompositionDemo

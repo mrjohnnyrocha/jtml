@@ -7,6 +7,7 @@
 #include "jtml/lexer.h"
 #include "jtml/parser.h"
 #include "jtml/runtime_plan.h"
+#include "jtml/runtime_plan_json.h"
 #include "jtml/semantic.h"
 
 #include <algorithm>
@@ -269,6 +270,150 @@ jtml::SemanticModuleId parseSemanticModuleId(const std::string& value) {
         return jtml::InvalidSemanticModuleId;
     }
 }
+
+std::vector<std::string> splitBodyPlanWordsForJson(const std::string& source) {
+    std::vector<std::string> out;
+    std::string current;
+    char quote = '\0';
+    int depth = 0;
+    for (size_t i = 0; i < source.size(); ++i) {
+        const char ch = source[i];
+        if (quote != '\0') {
+            current.push_back(ch);
+            if (ch == '\\' && i + 1 < source.size()) {
+                current.push_back(source[++i]);
+            } else if (ch == quote) {
+                quote = '\0';
+            }
+            continue;
+        }
+        if (ch == '"' || ch == '\'') {
+            quote = ch;
+            current.push_back(ch);
+            continue;
+        }
+        if (ch == '(' || ch == '[' || ch == '{') ++depth;
+        else if ((ch == ')' || ch == ']' || ch == '}') && depth > 0) --depth;
+        if (std::isspace(static_cast<unsigned char>(ch)) && depth == 0) {
+            if (!current.empty()) {
+                out.push_back(current);
+                current.clear();
+            }
+            continue;
+        }
+        current.push_back(ch);
+    }
+    if (!current.empty()) out.push_back(current);
+    return out;
+}
+
+std::string trimBodyPlanExpression(std::string value) {
+    value.erase(value.begin(), std::find_if(value.begin(), value.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+    value.erase(std::find_if(value.rbegin(), value.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), value.end());
+    return value;
+}
+
+nlohmann::json compileBodyPlanWordPlans(const std::string& source) {
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& word : splitBodyPlanWordsForJson(source)) {
+        out.push_back(jtml::compileRuntimeExpressionPlan(word));
+    }
+    return out;
+}
+
+nlohmann::json compileBodyPlanArgPlans(const std::string& source) {
+    nlohmann::json out = nlohmann::json::array();
+    std::string current;
+    char quote = '\0';
+    int depth = 0;
+    for (size_t i = 0; i < source.size(); ++i) {
+        const char ch = source[i];
+        if (quote != '\0') {
+            current.push_back(ch);
+            if (ch == '\\' && i + 1 < source.size()) {
+                current.push_back(source[++i]);
+            } else if (ch == quote) {
+                quote = '\0';
+            }
+            continue;
+        }
+        if (ch == '"' || ch == '\'') {
+            quote = ch;
+            current.push_back(ch);
+            continue;
+        }
+        if (ch == '(' || ch == '[' || ch == '{') ++depth;
+        else if ((ch == ')' || ch == ']' || ch == '}') && depth > 0) --depth;
+        if (ch == ',' && depth == 0) {
+            const auto expr = trimBodyPlanExpression(current);
+            if (!expr.empty()) out.push_back(jtml::compileRuntimeExpressionPlan(expr));
+            current.clear();
+            continue;
+        }
+        current.push_back(ch);
+    }
+    const auto expr = trimBodyPlanExpression(current);
+    if (!expr.empty()) out.push_back(jtml::compileRuntimeExpressionPlan(expr));
+    return out;
+}
+
+template <typename BodyPlanNodeT>
+nlohmann::json compileBodyPlanLoopPlan(const BodyPlanNodeT& node) {
+    const auto raw = trimBodyPlanExpression(node.expression);
+    const auto inPos = raw.find(" in ");
+    if (inPos == std::string::npos) {
+        return {
+            {"item", ""},
+            {"collectionExpression", raw},
+            {"collectionPlan", jtml::compileRuntimeExpressionPlan(raw)}
+        };
+    }
+    const auto item = trimBodyPlanExpression(raw.substr(0, inPos));
+    const auto collection = trimBodyPlanExpression(raw.substr(inPos + 4));
+    return {
+        {"item", item},
+        {"collectionExpression", collection},
+        {"collectionPlan", jtml::compileRuntimeExpressionPlan(collection)}
+    };
+}
+
+template <typename BodyPlanNodeT>
+nlohmann::json bodyPlanNodeToLiveJson(
+        const BodyPlanNodeT& node,
+        const std::function<nlohmann::json(jtml::SemanticModuleId)>& moduleIdToJson) {
+    nlohmann::json item = {
+        {"definitionModule", moduleIdToJson(node.definitionModule)},
+        {"sourceLine", node.sourceLine},
+        {"sourceColumn", node.sourceColumn},
+        {"indent", node.indent},
+        {"parentIndex", node.parentIndex},
+        {"childIndices", node.childIndices},
+        {"kind", node.kind},
+        {"head", node.head},
+        {"name", node.name},
+        {"text", node.text},
+        {"operator", node.operatorToken},
+        {"expression", node.expression},
+        {"expressionPlan", jtml::compileRuntimeExpressionPlan(node.expression)},
+        {"keyExpression", node.keyExpression},
+        {"keyExpressionPlan", jtml::compileRuntimeExpressionPlan(node.keyExpression)},
+        {"wordPlans", compileBodyPlanWordPlans(node.text)},
+        {"reads", node.reads},
+        {"writes", node.writes},
+        {"renderRoot", node.renderRoot},
+    };
+    if (node.head == "for" || node.name == "for") {
+        item["loopPlan"] = compileBodyPlanLoopPlan(node);
+    }
+    if (node.kind == "call") {
+        item["argPlans"] = compileBodyPlanArgPlans(node.expression);
+    }
+    return item;
+}
 }
 
 Interpreter::~Interpreter() {
@@ -407,28 +552,13 @@ std::string Interpreter::getBindingsJSON() {
 }
 
 std::string Interpreter::getStateJSON() {
-    auto moduleIdToJson = [](jtml::SemanticModuleId id) {
+    std::function<nlohmann::json(jtml::SemanticModuleId)> moduleIdToJson = [](jtml::SemanticModuleId id) {
         return id == jtml::InvalidSemanticModuleId ? nlohmann::json(nullptr) : nlohmann::json(id);
     };
     auto bodyPlanToJson = [&](const auto& bodyPlan) {
         nlohmann::json out = nlohmann::json::array();
         for (const auto& node : bodyPlan) {
-            out.push_back({
-                {"definitionModule", moduleIdToJson(node.definitionModule)},
-                {"indent", node.indent},
-                {"parentIndex", node.parentIndex},
-                {"childIndices", node.childIndices},
-                {"kind", node.kind},
-                {"head", node.head},
-                {"name", node.name},
-                {"text", node.text},
-                {"operator", node.operatorToken},
-                {"expression", node.expression},
-                {"keyExpression", node.keyExpression},
-                {"reads", node.reads},
-                {"writes", node.writes},
-                {"renderRoot", node.renderRoot},
-            });
+            out.push_back(bodyPlanNodeToLiveJson(node, moduleIdToJson));
         }
         return out;
     };
@@ -1265,31 +1395,13 @@ std::string Interpreter::getComponentsJSON() {
 }
 
 std::string Interpreter::getComponentDefinitionsJSON() {
-    auto moduleIdToJson = [](jtml::SemanticModuleId id) {
+    std::function<nlohmann::json(jtml::SemanticModuleId)> moduleIdToJson = [](jtml::SemanticModuleId id) {
         return id == jtml::InvalidSemanticModuleId ? nlohmann::json(nullptr) : nlohmann::json(id);
     };
-    auto componentBodyPlanToJson = [](const auto& bodyPlan) {
+    auto componentBodyPlanToJson = [&](const auto& bodyPlan) {
         nlohmann::json out = nlohmann::json::array();
         for (const auto& node : bodyPlan) {
-            out.push_back({
-                {"definitionModule", node.definitionModule == jtml::InvalidSemanticModuleId
-                    ? nlohmann::json(nullptr)
-                    : nlohmann::json(node.definitionModule)},
-                {"sourceLine", node.sourceLine},
-                {"indent", node.indent},
-                {"parentIndex", node.parentIndex},
-                {"childIndices", node.childIndices},
-                {"kind", node.kind},
-                {"head", node.head},
-                {"name", node.name},
-                {"text", node.text},
-                {"operator", node.operatorToken},
-                {"expression", node.expression},
-                {"keyExpression", node.keyExpression},
-                {"reads", node.reads},
-                {"writes", node.writes},
-                {"renderRoot", node.renderRoot},
-            });
+            out.push_back(bodyPlanNodeToLiveJson(node, moduleIdToJson));
         }
         return out;
     };
@@ -1645,6 +1757,10 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
             if (!bodyPlanError.empty()) return false;
             bodyPlanError = "Unsupported component body-plan action '" +
                             instance->component + "." + actionName + "'";
+            bodyPlanError += " on component instance '" + componentId + "'";
+            if (definition->moduleId != jtml::InvalidSemanticModuleId) {
+                bodyPlanError += " in module " + std::to_string(definition->moduleId);
+            }
             if (definition->sourceLine > 0) {
                 bodyPlanError += " from component definition line " +
                                  std::to_string(definition->sourceLine);
@@ -1652,10 +1768,23 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
             if (node && node->sourceLine > 0) {
                 bodyPlanError += ", body line " +
                                  std::to_string(node->sourceLine);
+                if (node->sourceColumn > 0) {
+                    bodyPlanError += ":" + std::to_string(node->sourceColumn);
+                }
+            }
+            if (node && node->definitionModule != jtml::InvalidSemanticModuleId &&
+                node->definitionModule != definition->moduleId) {
+                bodyPlanError += ", body module " +
+                                 std::to_string(node->definitionModule);
             }
             bodyPlanError += ": " + reason;
             if (node && !node->text.empty()) {
                 bodyPlanError += " near `" + node->text + "`";
+            }
+            if (node && !node->kind.empty()) {
+                bodyPlanError += " [kind=" + node->kind;
+                if (!node->name.empty()) bodyPlanError += ", name=" + node->name;
+                bodyPlanError += "]";
             }
             return false;
         };
@@ -2130,7 +2259,18 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
     try {
         bodyPlanRan = runBodyPlanAction();
     } catch (const std::exception& e) {
-        bodyPlanError = e.what();
+        bodyPlanError = "Component body-plan action '" + instance->component +
+                        "." + actionName + "' on component instance '" +
+                        componentId + "' failed before compatibility fallback";
+        if (definition && definition->moduleId != jtml::InvalidSemanticModuleId) {
+            bodyPlanError += " in module " + std::to_string(definition->moduleId);
+        }
+        if (definition && definition->sourceLine > 0) {
+            bodyPlanError += " from component definition line " +
+                             std::to_string(definition->sourceLine);
+        }
+        bodyPlanError += ": ";
+        bodyPlanError += e.what();
     }
     if (bodyPlanRan) {
         try {
@@ -2777,6 +2917,7 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
                 def.bodyPlan.push_back({
                     plannedNode.definitionModule,
                     plannedNode.sourceLine,
+                    plannedNode.sourceColumn,
                     plannedNode.indent,
                     plannedNode.parentIndex,
                     plannedNode.childIndices,
@@ -2839,6 +2980,7 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
                 instance.slotPlan.push_back({
                     plannedNode.definitionModule,
                     plannedNode.sourceLine,
+                    plannedNode.sourceColumn,
                     plannedNode.indent,
                     plannedNode.parentIndex,
                     plannedNode.childIndices,

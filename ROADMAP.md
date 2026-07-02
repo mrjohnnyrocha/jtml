@@ -374,7 +374,8 @@ The current focus is the semantic-core transition:
   module/name/body shape, and each patchable node becomes an explicit
   text/button/element patch operation with precompiled element-part and
   click-invocation shape. When an operation cannot safely patch, the runtime
-  records fallback telemetry with the affected body-plan node and source line.
+  records fallback telemetry with the affected body-plan node and source
+  line/column.
   Cached plans now own generated browser update-function source plus an indexed
   executable update function keyed by rendered reads, giving the runtime the
   same dependency-routed call boundary that the production compiler can later
@@ -393,12 +394,13 @@ The current focus is the semantic-core transition:
   component read indexes, unsafe-entry lists, root create operations,
   precompiled element `partsPlan` records, first-slice text/region/nested/element
   patch operations, and first-slice static component create/update modules.
-  Supported root text, button, leaf element, direct-safe container nodes, and
-  safe `if`/keyed-`for` control-flow regions now emit escaped HTML construction
-  in `components/index.js`; nested-component, slot, and unsupported shapes still
-  use helper/fallback create paths. Static update functions try direct per-node
-  patch cases for text, button, element, container-attribute, safe control-flow
-  region, and nested-component nodes before falling back to operation records.
+  Supported root text, button, leaf element, direct-safe container nodes,
+  safe `if`/keyed-`for` control-flow regions, and first-slice slot/nested
+  component anchors now emit escaped HTML construction in `components/index.js`;
+  unsupported shapes still use helper/fallback create paths. Static update
+  functions try direct per-node patch cases for text, button, element,
+  container-attribute, safe control-flow region, slot, and nested-component
+  nodes before falling back to operation records.
   The runtime-plan layer now owns the canonical expression-plan producer for
   literals, booleans, numbers, null, simple dot paths, unary `!`,
   binary/comparison/logical operators, and ternary conditionals; static
@@ -411,14 +413,17 @@ The current focus is the semantic-core transition:
   fallback.
   Static component modules now emit direct JS expression functions for the
   simple and first-slice composite cases, generated
-  text/button/leaf-element/container/control-flow create functions that do not
-  require runtime helper availability unless they hit a fallback shape, and
-  generated text, element attribute/content, button label/action-argument, and
-  safe region patch cases that update DOM directly without a global
-  runtime-helper requirement before falling back to runtime patch helpers.
+  text/button/leaf-element/container/control-flow/slot/nested create functions
+  that do not require generic runtime region helpers unless they hit a fallback
+  shape, and generated text, element attribute/content, button
+  label/action-argument, safe region, slot, and nested patch cases that update
+  DOM directly before falling back to runtime patch helpers.
   Runtime-plan read analysis now recognizes
   value-taking attributes such as `title selected` as reads of `selected`, even
   when the value token is also a valid boolean attribute name.
+  Body-plan nodes now carry `sourceLine` and `sourceColumn` through the
+  semantic runtime plan, live `/api/state`, static component/update-plan
+  metadata, browser fallback telemetry, and HTTP runtime diagnostic context.
   `rootCreateOperations` and per-entry operation payloads remain as
   fallback/debug metadata rather than the primary path. The runtime prefers
   those static modules/plans before
@@ -445,14 +450,18 @@ The current focus is the semantic-core transition:
   Compiled `for` region patch operations now try a conservative keyed patch
   that reuses and reorders existing list item wrappers by key, updates item
   contents with below-wrapper element/text reconciliation where the body-plan
-  shape matches, reports retained/inserted/removed/moved key sets, prunes
-  removed nested dynamic children for keyed list items, and fails closed to whole-region
-  replacement when keys are unsafe.
-  Nested component call wrappers now carry stable body-node anchors and compile
+  shape matches, reconciles child elements by stable body-node markers below
+  retained wrappers, reports retained/inserted/removed/moved key sets, prunes
+  removed nested dynamic children for keyed list items, and fails closed to
+  whole-region replacement when keys are unsafe.
+  Static create fallback paths now record source-first component/plan context in
+  `window.jtml.directComponentCreateFallback`, so unsupported shapes are
+  debuggable instead of disappearing into generic runtime helpers. Nested
+  component call wrappers now carry stable body-node anchors and compile
   to explicit nested-component patch operations, so parent state changes that
   affect a nested call can replace that nested body-plan node without rerendering
   the entire parent component. Slot insertion sites now carry stable
-  `data-jtml-direct-region="slot"` anchors and compile as region patch
+  `data-jtml-direct-region="slot"` anchors and compile as slot-specific patch
   operations. Action-body `while` remains supported for explicit state-changing
   control flow, while render/template `while` is now linted as
   `JTML_TEMPLATE_WHILE`; authors should use `for` for visible repetition.

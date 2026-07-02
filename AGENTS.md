@@ -102,12 +102,12 @@ interpreted static plans, then runtime plan compilation. Compatibility DOM is
 only for unsupported shapes and migration paths.
 
 Current static component modules emit direct escaped HTML create functions for
-supported root text, button, leaf element, direct-safe container nodes, and
-safe `if`/keyed-`for` control-flow regions. Nested-component, slot, and
-unsupported shapes still use helper/fallback create paths.
+supported root text, button, leaf element, direct-safe container nodes,
+safe `if`/keyed-`for` control-flow regions, and first-slice slot/nested
+component anchors. Unsupported shapes still use helper/fallback create paths.
 Static update functions now try generated per-node patch cases that patch
-direct text, button, element, container-attribute, and safe control-flow region
-shapes before falling back to operation records. The older
+direct text, button, element, container-attribute, safe control-flow region,
+slot, and nested-component shapes before falling back to operation records. The older
 `rootCreateOperations` and per-entry operation payloads remain as fallback/debug
 metadata while the compiler path expands. The
 runtime-plan layer now owns the canonical expression-plan producer for
@@ -119,15 +119,26 @@ action arguments, body-plan conditions, `for` collection/key expressions,
 nested component parameters, and browser-local body-plan action
 assignments/local declarations.
 Static modules also emit direct JS expression functions for simple and
-first-slice composite plans, generated text/button/leaf-element/container and
-safe control-flow create functions that do not require runtime helper
+first-slice composite plans, generated text/button/leaf-element/container,
+safe control-flow, slot, and nested create functions that do not require runtime helper
 availability unless they hit a fallback shape, plus generated text, element
-attribute/content, button label/action-arg, and safe region patches update DOM
-directly without a global runtime-helper requirement. Runtime-plan read analysis also treats
+attribute/content, button label/action-arg, safe region, slot, and nested
+patches update DOM directly without a generic region-helper requirement.
+Static create fallbacks record source-first component/plan context in
+`window.jtml.directComponentCreateFallback`. Runtime-plan read analysis also treats
 value-taking attributes such as `title selected` as reads of `selected`, even
 when the value token is also a valid boolean attribute name. Continue with
 richer action-body expression precompilation, stronger keyed reconciliation,
 and broader direct DOM generation.
+Live body-plan JSON mirrors the first-slice browser manifest expression surface
+for node expressions, key expressions, rendered word plans, loop collection
+plans, and component-action call arguments. Live `/api/event` and
+`/api/component-action` failures include structured diagnostics plus
+`diagnosticContext` so body-plan fallback/errors stay source-first instead of
+leaking only generated DOM or binding names. Body-plan nodes also carry
+`sourceLine` and `sourceColumn` through runtime plans, live state, static
+component/update-plan metadata, browser fallback telemetry, and HTTP diagnostic
+context.
 
 For `jtml build --target browser`, `jtml-runtime.js` is now the primary runtime
 asset. Inline browser runtime remains for `transpile --target browser`, live
@@ -141,7 +152,7 @@ Remaining high-value runtime work:
 - Precompile richer action bodies. Literal/simple-path and first-slice
   composite expression plans already cover component module `expressionPlan`,
   `contentPlan`, `exprPlan`, `argPlans`, body-plan conditions, loop
-  collection/key plans, and nested params.
+  collection/key plans, nested params, and matching live body-plan JSON.
 - Strengthen keyed list lifecycle and diagnostics.
 - Add browser/live parity checks for slots, events, routes, fetch, media, and
   keyed lists.
@@ -168,7 +179,9 @@ is still being split: 50 KB for `index.html`, 260 KB for
 guardrails, not final benchmarks; tighten runtime/component budgets as direct
 generated modules replace body-plan helpers. The `control_flow` fixture also
 asserts that safe `if`/keyed-`for` regions, keyed list markers, and direct
-safe-region patching are present in `components/index.js`.
+safe-region patching are present in `components/index.js`; the `composition`
+fixture asserts first-slice direct slot/nested component create/patch contracts
+and source-first static create fallback telemetry.
 
 ## VS Code extension
 

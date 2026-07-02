@@ -522,6 +522,7 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
             : static_cast<int>(openAncestors.back());
         node.text = text;
         node.sourceLine = bodyLine;
+        node.sourceColumn = node.indent + 1;
         node.head = tokens[0];
         const bool postfixAssignment = isPostfixAssignmentBodyLine(tokens);
         node.kind = (isAssignmentBodyLine(tokens) || postfixAssignment) ? "assignment" :

@@ -1274,8 +1274,10 @@ TEST(RuntimePlan, OwnsBrowserLocalRuntimeShapeBeforeManifestEmission) {
         plan.componentDefinitions[0].bodyPlan.end(),
         [](const auto& node) {
             return node.kind == "template" && node.name == "card" && node.renderRoot;
-        });
+    });
     ASSERT_NE(cardIt, plan.componentDefinitions[0].bodyPlan.end());
+    EXPECT_GT(cardIt->sourceLine, 0);
+    EXPECT_GT(cardIt->sourceColumn, 0);
     const int cardIndex = static_cast<int>(
         std::distance(plan.componentDefinitions[0].bodyPlan.begin(), cardIt));
     EXPECT_FALSE(cardIt->childIndices.empty());
@@ -1304,6 +1306,7 @@ TEST(RuntimePlan, OwnsBrowserLocalRuntimeShapeBeforeManifestEmission) {
         [](const auto& node) {
             return node.kind == "template" && node.name == "input" &&
                    node.sourceLine > 0 &&
+                   node.sourceColumn > 0 &&
                    contains(node.writes, "draft");
         }));
     EXPECT_TRUE(std::any_of(

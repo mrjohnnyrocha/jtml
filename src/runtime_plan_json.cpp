@@ -604,6 +604,48 @@ nlohmann::json compileRuntimeWordPlans(const std::string& text) {
     return out;
 }
 
+nlohmann::json compileRuntimeArgumentPlans(const std::string& source) {
+    nlohmann::json out = nlohmann::json::array();
+    std::string current;
+    int paren = 0;
+    int bracket = 0;
+    int brace = 0;
+    char quote = '\0';
+    for (size_t i = 0; i < source.size(); ++i) {
+        const char ch = source[i];
+        if (quote != '\0') {
+            current += ch;
+            if (ch == '\\' && i + 1 < source.size()) {
+                current += source[++i];
+            } else if (ch == quote) {
+                quote = '\0';
+            }
+            continue;
+        }
+        if (ch == '"' || ch == '\'') {
+            quote = ch;
+            current += ch;
+            continue;
+        }
+        if (ch == '(') ++paren;
+        else if (ch == ')') --paren;
+        else if (ch == '[') ++bracket;
+        else if (ch == ']') --bracket;
+        else if (ch == '{') ++brace;
+        else if (ch == '}') --brace;
+        if (ch == ',' && paren == 0 && bracket == 0 && brace == 0) {
+            const auto expr = trimRuntimePlanString(current);
+            if (!expr.empty()) out.push_back(compileRuntimeExpressionPlan(expr));
+            current.clear();
+            continue;
+        }
+        current += ch;
+    }
+    const auto expr = trimRuntimePlanString(current);
+    if (!expr.empty()) out.push_back(compileRuntimeExpressionPlan(expr));
+    return out;
+}
+
 nlohmann::json compileRuntimeLoopPlan(const RuntimePlanComponentBodyNode& node) {
     const auto raw = node.expression.empty()
         ? std::string()
@@ -634,6 +676,7 @@ nlohmann::json runtimePlanBodyPlanToJson(
         auto item = nlohmann::json({
             {"definitionModule", moduleIdToJson(node.definitionModule)},
             {"sourceLine", node.sourceLine},
+            {"sourceColumn", node.sourceColumn},
             {"indent", node.indent},
             {"parentIndex", node.parentIndex},
             {"childIndices", node.childIndices},
@@ -653,6 +696,9 @@ nlohmann::json runtimePlanBodyPlanToJson(
         });
         if (node.head == "for" || node.name == "for") {
             item["loopPlan"] = compileRuntimeLoopPlan(node);
+        }
+        if (node.kind == "call") {
+            item["argPlans"] = compileRuntimeArgumentPlans(node.expression);
         }
         out.push_back(std::move(item));
     }

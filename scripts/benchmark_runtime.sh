@@ -110,6 +110,28 @@ for fixture in "${FIXTURES}"/*.jtml; do
       exit 1
     fi
   fi
+  if [[ "${name}" == "composition" ]]; then
+    if ! grep -q 'renderStaticComponentSlotNode(instance, definition, scope' "${component_module}"; then
+      echo "error: ${name} component module missing direct slot create contract" >&2
+      exit 1
+    fi
+    if ! grep -q 'renderStaticComponentNestedNode(instance, definition, scope' "${component_module}"; then
+      echo "error: ${name} component module missing direct nested component create contract" >&2
+      exit 1
+    fi
+    if ! grep -q 'patchStaticComponentNestedNode(instance, definition' "${component_module}"; then
+      echo "error: ${name} component module missing direct nested component patch contract" >&2
+      exit 1
+    fi
+    if ! grep -q 'recordStaticCreateFallback(instance, definition, plan' "${component_module}"; then
+      echo "error: ${name} component module missing source-first static create fallback telemetry" >&2
+      exit 1
+    fi
+    if grep -q 'patchStaticComponentRegionNode(instance, definition' "${component_module}"; then
+      echo "error: ${name} component module still uses generic region patch helper for composition paths" >&2
+      exit 1
+    fi
+  fi
   if ! grep -q "__jtml_static_update_plans = plans" "${plans}"; then
     echo "error: ${name} legacy update-plan asset no longer publishes compatibility plan global" >&2
     exit 1

@@ -407,8 +407,10 @@ const char* browserRuntimePreludeChunk() {
           componentSourceLine: definition && definition.sourceLine || 0,
           action: actionContext && actionContext.name || '',
           actionSourceLine: actionContext && actionContext.sourceLine || 0,
+          actionSourceColumn: actionContext && actionContext.sourceColumn || 0,
           actionText: actionContext && actionContext.text || '',
           bodySourceLine: node && node.sourceLine || 0,
+          bodySourceColumn: node && node.sourceColumn || 0,
           nodeText: node && node.text || '',
           nodeKind: node && node.kind || '',
           reason: reason || 'unsupported component body-plan node'
@@ -1448,6 +1450,7 @@ const char* browserRuntimeComponentChunk() {
             moduleId: instance.moduleId == null ? null : instance.moduleId,
             bodyNodeIndex: nodeIndex,
             bodySourceLine: node && node.sourceLine || 0,
+            bodySourceColumn: node && node.sourceColumn || 0,
             previousKeys: previous.slice(),
             currentKeys: next.slice(),
             insertedKeys: inserted,
@@ -1512,30 +1515,79 @@ const char* browserRuntimeComponentChunk() {
           el.querySelector('[data-jtml-direct-instance]'));
       }
 
-      function patchElementChildrenInPlace(current, next, stats) {
+      function keyedPatchableChildMarkers(children) {
+        const markers = [];
+        const seen = {};
+        for (let i = 0; i < children.length; i += 1) {
+          const child = children[i];
+          if (!child || child.nodeType !== 1) return null;
+          const marker = elementBodyNodeMarker(child);
+          if (!marker || Object.prototype.hasOwnProperty.call(seen, marker)) return null;
+          seen[marker] = true;
+          markers.push(marker);
+        }
+        return markers;
+      }
+
+      function patchElementChildrenByMarkerInPlace(current, next, stats) {
         const currentChildren = Array.prototype.slice.call(current.childNodes || []);
         const nextChildren = Array.prototype.slice.call(next.childNodes || []);
-        if (currentChildren.length !== nextChildren.length) return false;
+        const nextMarkers = keyedPatchableChildMarkers(nextChildren);
+        if (!nextMarkers) return false;
+        const currentMarkers = keyedPatchableChildMarkers(currentChildren);
+        if (!currentMarkers) return false;
+        const currentByMarker = {};
+        currentChildren.forEach(function (child, index) {
+          currentByMarker[currentMarkers[index]] = child;
+        });
+        const fragment = document.createDocumentFragment();
+        let changedOrder = currentMarkers.length !== nextMarkers.length;
         for (let i = 0; i < nextChildren.length; i += 1) {
-          const currentChild = currentChildren[i];
+          const marker = nextMarkers[i];
+          const currentChild = currentByMarker[marker] || null;
           const nextChild = nextChildren[i];
-          if (!currentChild || !nextChild) return false;
-          if (currentChild.nodeType === 3 && nextChild.nodeType === 3) {
-            if (currentChild.nodeValue !== nextChild.nodeValue) {
-              currentChild.nodeValue = nextChild.nodeValue;
-              stats.textNodesPatched += 1;
-            }
-            continue;
-          }
-          if (samePatchableElementShape(currentChild, nextChild)) {
+          if (currentChild && samePatchableElementShape(currentChild, nextChild)) {
             if (!patchElementFromTemplateInPlace(currentChild, nextChild, stats)) {
               return false;
             }
-            continue;
+            if (currentMarkers[i] !== marker) changedOrder = true;
+            fragment.appendChild(currentChild);
+          } else {
+            fragment.appendChild(document.importNode(nextChild, true));
+            stats.childReplacements += 1;
+            changedOrder = true;
           }
-          return false;
         }
+        if (changedOrder) current.replaceChildren(fragment);
         return true;
+      }
+
+      function patchElementChildrenInPlace(current, next, stats) {
+        const currentChildren = Array.prototype.slice.call(current.childNodes || []);
+        const nextChildren = Array.prototype.slice.call(next.childNodes || []);
+        if (currentChildren.length === nextChildren.length) {
+          for (let i = 0; i < nextChildren.length; i += 1) {
+            const currentChild = currentChildren[i];
+            const nextChild = nextChildren[i];
+            if (!currentChild || !nextChild) return false;
+            if (currentChild.nodeType === 3 && nextChild.nodeType === 3) {
+              if (currentChild.nodeValue !== nextChild.nodeValue) {
+                currentChild.nodeValue = nextChild.nodeValue;
+                stats.textNodesPatched += 1;
+              }
+              continue;
+            }
+            if (samePatchableElementShape(currentChild, nextChild)) {
+              if (!patchElementFromTemplateInPlace(currentChild, nextChild, stats)) {
+                return false;
+              }
+              continue;
+            }
+            return patchElementChildrenByMarkerInPlace(current, next, stats);
+          }
+          return true;
+        }
+        return patchElementChildrenByMarkerInPlace(current, next, stats);
       }
 
       function patchElementFromTemplateInPlace(current, next, stats) {
@@ -1777,7 +1829,8 @@ const char* browserRuntimeComponentChunk() {
               index: index,
               reads: readNames,
               kind: componentNodeHead(node) || '',
-              sourceLine: node && node.sourceLine || 0
+              sourceLine: node && node.sourceLine || 0,
+              sourceColumn: node && node.sourceColumn || 0
             });
             return;
           }
@@ -1788,6 +1841,7 @@ const char* browserRuntimeComponentChunk() {
             reads: readNames,
             kind: componentNodeHead(node) || '',
             sourceLine: node && node.sourceLine || 0,
+            sourceColumn: node && node.sourceColumn || 0,
             operation: operation
           };
           entries.push(entry);
@@ -1827,6 +1881,7 @@ const char* browserRuntimeComponentChunk() {
           head: head,
           words: words,
           sourceLine: node && node.sourceLine || 0,
+          sourceColumn: node && node.sourceColumn || 0,
           expression: node.expression || ''
         };
         if (patchKind === 'region') {
@@ -1899,8 +1954,26 @@ const char* browserRuntimeComponentChunk() {
             reason: reason || 'compiled patch plan could not handle update',
             writes: changed || [],
             bodySourceLine: node && node.sourceLine || 0,
+            bodySourceColumn: node && node.sourceColumn || 0,
             bodyNodeHead: node ? componentNodeHead(node) : '',
             bodyNodeKind: node && node.kind || ''
+          }
+        });
+      }
+
+      function recordStaticCreateFallback(instance, definition, plan, reason) {
+        const unsafeRoots = plan && Array.isArray(plan.unsafeRootCreateEntries)
+          ? plan.unsafeRootCreateEntries
+          : [];
+        window.jtml = Object.assign(window.jtml || {}, {
+          directComponentCreateFallback: {
+            componentId: instance && instance.id || '',
+            component: instance && instance.component || definition && definition.name || plan && plan.name || '',
+            moduleId: instance && instance.moduleId == null ? null : instance && instance.moduleId,
+            planKey: plan && plan.key || '',
+            reason: reason || 'static component create function fell back to runtime renderer',
+            unsafeRootCount: unsafeRoots.length,
+            firstUnsafeRoot: unsafeRoots.length ? unsafeRoots[0] : null
           }
         });
       }
@@ -1929,6 +2002,7 @@ const char* browserRuntimeComponentChunk() {
           executeComponentPatchOperation: executeComponentPatchOperation,
           replaceDirectComponentNode: replaceDirectComponentNode,
           recordCompiledPatchFallback: recordCompiledPatchFallback,
+          recordStaticCreateFallback: recordStaticCreateFallback,
           recordComponentUpdatePlanSuccess: recordComponentUpdatePlanSuccess,
           patchStaticComponentButtonNode: patchStaticComponentButtonNode,
           patchStaticComponentElementNode: patchStaticComponentElementNode,
@@ -1937,7 +2011,11 @@ const char* browserRuntimeComponentChunk() {
           renderStaticComponentElementNode: renderStaticComponentElementNode,
           patchStaticComponentNodeHtml: patchStaticComponentNodeHtml,
           patchStaticComponentRegionNode: patchStaticComponentRegionNode,
+          patchStaticComponentSlotNode: patchStaticComponentSlotNode,
+          patchStaticComponentNestedNode: patchStaticComponentNestedNode,
           patchStaticComponentTextNode: patchStaticComponentTextNode,
+          renderStaticComponentSlotNode: renderStaticComponentSlotNode,
+          renderStaticComponentNestedNode: renderStaticComponentNestedNode,
           renderStaticComponentRegionNode: renderStaticComponentRegionNode,
           renderStaticComponentTextNode: renderStaticComponentTextNode
         };
@@ -1957,8 +2035,26 @@ const char* browserRuntimeComponentChunk() {
         const node = (definition && definition.bodyPlan || [])[operation.nodeIndex];
         if (!node) return null;
         const head = operation.head || componentNodeHead(node) || 'box';
-        if (operation.operation === 'region' ||
-            operation.operation === 'nested-component') {
+        if (operation.operation === 'nested-component') {
+          return renderStaticComponentNestedNode(
+            instance,
+            definition,
+            scope,
+            operation.nodeIndex,
+            head);
+        }
+        if (operation.operation === 'region') {
+          if (head === 'slot') {
+            const words = Array.isArray(operation.words) && operation.words.length
+              ? operation.words
+              : splitComponentWords(node.text || '');
+            return renderStaticComponentSlotNode(
+              instance,
+              definition,
+              scope,
+              operation.nodeIndex,
+              words.length > 1 ? words[1] : '');
+          }
           return renderStaticComponentRegionNode(instance, definition, scope, operation.nodeIndex);
         }
         const words = Array.isArray(operation.words) && operation.words.length
@@ -2261,6 +2357,35 @@ const char* browserRuntimeComponentChunk() {
         return true;
       }
 
+      function renderStaticComponentSlotNode(instance, definition, scope, nodeIndex, name) {
+        const node = (definition && definition.bodyPlan || [])[nodeIndex];
+        if (!node) return null;
+        const slotName = name || splitComponentWords(node.text || '')[1] || '';
+        return '<span data-jtml-direct-body-node="' + String(nodeIndex) + '"' +
+          ' data-jtml-direct-region="slot" style="display:contents">' +
+          renderComponentSlot(instance, scope, slotName) +
+          '</span>';
+      }
+
+      function renderStaticComponentNestedNode(instance, definition, scope, nodeIndex, name) {
+        const node = (definition && definition.bodyPlan || [])[nodeIndex];
+        if (!node) return null;
+        const nestedName = name || componentNodeHead(node) || '';
+        if (!nestedName) return null;
+        const directNodeAttr = ' data-jtml-direct-body-node="' + String(nodeIndex) + '"';
+        return renderNestedComponentCall(definition, instance, node, scope, nestedName, directNodeAttr);
+      }
+
+      function patchStaticComponentSlotNode(instance, definition, nodeIndex, scope, name) {
+        const html = renderStaticComponentSlotNode(instance, definition, scope, nodeIndex, name);
+        return patchStaticComponentNodeHtml(instance, nodeIndex, html);
+      }
+
+      function patchStaticComponentNestedNode(instance, definition, nodeIndex, scope, name) {
+        const html = renderStaticComponentNestedNode(instance, definition, scope, nodeIndex, name);
+        return patchStaticComponentNodeHtml(instance, nodeIndex, html);
+      }
+
       function patchStaticComponentButtonNode(instance, nodeIndex, head, partsPlan, clickInvocation, scope) {
         const el = directComponentElementForNode(instance, nodeIndex);
         if (!el || !el.tagName || el.tagName.toLowerCase() !== 'button') return false;
@@ -2336,7 +2461,7 @@ const char* browserRuntimeComponentChunk() {
             operation.expressionPlan || null);
         }
         if (operation.operation === 'nested-component') {
-          return patchStaticComponentRegionNode(instance, definition, operation.nodeIndex, scope);
+          return patchStaticComponentNestedNode(instance, definition, operation.nodeIndex, scope, operation.head || '');
         }
         if (operation.operation !== 'element') return false;
         return patchStaticComponentElementNode(
@@ -2449,15 +2574,20 @@ const char* browserRuntimeComponentChunk() {
         return true;
       }
 
-      function componentActionArgsFromExpression(expression, scope) {
+      function componentActionArgsFromExpression(expression, scope, argPlans) {
         const args = [];
         const source = String(expression || '').trim();
-        if (!source) return args;
-        splitTopLevelList(source).forEach(function (expr) {
-          const plan = compileComponentExpressionPlan(expr);
+        const expressions = source ? splitTopLevelList(source) : [];
+        const plans = Array.isArray(argPlans) ? argPlans : [];
+        const count = Math.max(expressions.length, plans.length);
+        for (let i = 0; i < count; i += 1) {
+          const expr = expressions[i] != null
+            ? expressions[i]
+            : (plans[i] && plans[i].source || '');
+          const plan = plans[i] || compileComponentExpressionPlan(expr);
           const compiled = evaluateCompiledComponentExpressionResult(plan, expr, scope);
           args.push(compiled && compiled.found ? compiled.value : evaluateComponentValue(expr, scope));
-        });
+        }
         return args;
       }
 
@@ -2493,7 +2623,10 @@ const char* browserRuntimeComponentChunk() {
             continue;
           }
           if (node.kind === 'call' && node.name) {
-            const callArgs = componentActionArgsFromExpression(node.expression || '', scope);
+            const callArgs = componentActionArgsFromExpression(
+              node.expression || '',
+              scope,
+              node.argPlans || []);
             const actionNode = (definition.bodyPlan || []).find(function (candidate) {
               return candidate && candidate.kind === 'action' && candidate.name === node.name;
             });
@@ -2504,6 +2637,7 @@ const char* browserRuntimeComponentChunk() {
             const nestedActionContext = {
               name: actionNode.name || node.name || '',
               sourceLine: actionNode.sourceLine || 0,
+              sourceColumn: actionNode.sourceColumn || 0,
               text: actionNode.text || ''
             };
             const actionWords = splitComponentWords(actionNode.text || '');
@@ -2745,6 +2879,7 @@ const char* browserRuntimeComponentChunk() {
         const actionContext = {
           name: actionNode.name || actionName || '',
           sourceLine: actionNode.sourceLine || 0,
+          sourceColumn: actionNode.sourceColumn || 0,
           text: actionNode.text || ''
         };
         const handled = runComponentPlanStatements(

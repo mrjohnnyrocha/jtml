@@ -261,13 +261,20 @@ body-plan read/write metadata, precomputed read indexes, unsafe-entry lists,
 and first-slice text/region/nested patch operations. The browser runtime
 prefers those static plans when available and compiles equivalent plan indexes
 at runtime only as a bridge/fallback. The asset is a bridge toward generated
-modules, not the final optimized compiler target.
+modules, not the final optimized compiler target. Live body-plan JSON now
+exposes the same first-slice expression-plan surface for conditions, keys,
+rendered text words, loops, and component action calls, so browser/live parity
+checks can compare semantic execution data rather than only HTML output.
 
 Remaining architectural work: broaden the supported body-plan subset until the
 expanded compatibility DOM is needed only for explicit fallback cases or can be
 removed from production browser builds entirely, keep extending
-source-first diagnostics beyond current emitted-event payload messages and
-module import issue spans, harden
+source-first diagnostics beyond current emitted-event payload messages, module
+import issue spans, and live runtime action fallback context. Body-plan nodes
+now carry source line and column through runtime plans, live state, static
+component/update-plan metadata, browser fallback telemetry, and HTTP diagnostic
+context, so the next diagnostic work can report precise authored body-plan
+locations instead of generated binding names. Continue to harden
 rich attribute/modifier parity for advanced platform APIs, broaden
 keyed/reordered collection lifecycle semantics beyond the first explicit `key`
 tail slice, and keep expanding browser/live behavior parity checks beyond the

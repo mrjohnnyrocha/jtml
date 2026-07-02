@@ -177,8 +177,10 @@ node is a platform element, unresolved, or compatibility-only.
 
 Returns the first-slice live body-plan render surface. Components whose
 body-plan templates are supported include `renderedHtml`; unsupported or empty
-renders explicitly keep `renderedHtmlSupported: false` and
-`fallback: "compatibility-dom"`. Supported component wrappers may already be
+renders explicitly keep `renderedHtmlSupported: false`,
+`compatibilityFallback: true`, and `fallback: "compatibility-dom"`. Supported
+requests report `primary: "body-plan"` and leave `fallback` empty instead of
+foregrounding the compatibility DOM path. Supported component wrappers may already be
 rendered from this body-plan HTML in the initially served document and marked
 with `data-jtml-live-body-plan-transport="body-plan"` plus a
 `data-jtml-live-body-plan-rendered-hash` value. The browser runtime compares
@@ -195,13 +197,17 @@ events.
 {
   "ok": true,
   "mode": "live-body-plan",
+  "primary": "body-plan",
   "supported": true,
-  "fallback": "compatibility-dom",
+  "compatibilityFallback": false,
+  "fallback": "",
   "components": [
     {
       "id": "Card_1",
       "component": "Card",
       "supported": true,
+      "primary": "body-plan",
+      "compatibilityFallback": false,
       "fallback": "",
       "renderedHtmlSupported": true,
       "renderedHtml": "<section class=\"jtml-card\">...</section>"
@@ -239,7 +245,23 @@ On failure:
 ```json
 {
   "ok": false,
-  "error": "No onClick binding for element attr_1"
+  "error": "No onClick binding for element attr_1",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "JTML_EVENT_ACTION",
+      "message": "No onClick binding for element attr_1",
+      "line": 0,
+      "column": 0,
+      "hint": "Add a named action after the event, then define it with `when`.",
+      "example": "button \"Save\" click save\n\nwhen save\n  show \"Saved\""
+    }
+  ],
+  "diagnosticContext": {
+    "kind": "runtime",
+    "endpoint": "/api/event",
+    "sourceFirst": true
+  }
 }
 ```
 
@@ -249,7 +271,11 @@ Dispatches an action through the owning component instance environment. This
 lets tests, devtools, and framework hosts address a component by
 `data-jtml-instance` instead of finding a DOM event binding first. Any local
 state mutations recalculate bindings in that same instance before the response
-is returned.
+is returned. Unsupported direct body-plan action shapes fail closed and may
+fall back to the compatibility dispatcher. When dispatch fails, the response
+keeps the same `diagnostics` array and includes `diagnosticContext` fields such
+as the component action, component instance id, nearby authored body-plan text,
+body-plan node kind, and body-plan source line/column where available.
 
 ```json
 {

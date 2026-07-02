@@ -32,6 +32,7 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #ifndef _WIN32
@@ -201,16 +202,96 @@ nlohmann::json runtimeContractJson(uint16_t wsPort) {
     };
 }
 
+std::string extractBetween(const std::string& value, const std::string& before, const std::string& after) {
+    const auto start = value.find(before);
+    if (start == std::string::npos) return "";
+    const auto contentStart = start + before.size();
+    const auto end = value.find(after, contentStart);
+    if (end == std::string::npos) return "";
+    return value.substr(contentStart, end - contentStart);
+}
+
+int parsePositiveIntPrefix(const std::string& value) {
+    std::string digits;
+    for (char ch : value) {
+        if (!std::isdigit(static_cast<unsigned char>(ch))) break;
+        digits.push_back(ch);
+    }
+    if (digits.empty()) return 0;
+    try {
+        return std::stoi(digits);
+    } catch (...) {
+        return 0;
+    }
+}
+
+std::pair<int, int> extractBodyLineColumn(const std::string& message) {
+    const std::string marker = ", body line ";
+    const auto pos = message.find(marker);
+    if (pos == std::string::npos) return {0, 0};
+    const auto start = pos + marker.size();
+    const int line = parsePositiveIntPrefix(message.substr(start));
+    int column = 0;
+    const auto colon = message.find(':', start);
+    if (colon != std::string::npos) {
+        column = parsePositiveIntPrefix(message.substr(colon + 1));
+    }
+    return {line, column};
+}
+
+nlohmann::json runtimeErrorPayload(const std::string& endpoint, const std::string& message) {
+    auto diagnostics = diagnosticsToJson(
+        diagnosticsFromMessageBlock(message, DiagnosticSeverity::Error));
+    nlohmann::json context = {
+        {"kind", "runtime"},
+        {"endpoint", endpoint},
+        {"sourceFirst", true},
+    };
+    const auto componentAction = extractBetween(message, "Component body-plan action '", "'");
+    if (!componentAction.empty()) {
+        context["componentAction"] = componentAction;
+    }
+    const auto componentInstance = extractBetween(message, "component instance '", "'");
+    if (!componentInstance.empty()) {
+        context["componentId"] = componentInstance;
+    }
+    const auto kind = extractBetween(message, "[kind=", "]");
+    if (!kind.empty()) {
+        context["bodyPlanNode"] = kind;
+    }
+    const auto near = extractBetween(message, " near `", "`");
+    if (!near.empty()) {
+        context["near"] = near;
+    }
+    const auto [bodyLine, bodyColumn] = extractBodyLineColumn(message);
+    if (bodyLine > 0) {
+        context["bodySourceLine"] = bodyLine;
+    }
+    if (bodyColumn > 0) {
+        context["bodySourceColumn"] = bodyColumn;
+    }
+    return {
+        {"diagnostics", diagnostics},
+        {"diagnosticContext", context},
+    };
+}
+
 nlohmann::json renderedComponentsFromState(const nlohmann::json& state) {
     nlohmann::json out = {
         {"mode", "live-body-plan"},
+        {"primary", "body-plan"},
         {"supported", true},
-        {"fallback", "compatibility-dom"},
+        {"compatibilityFallback", false},
+        {"fallback", ""},
         {"components", nlohmann::json::array()},
     };
     if (!state.contains("components") || !state["components"].is_array()) {
+        out["supported"] = false;
+        out["compatibilityFallback"] = true;
+        out["fallback"] = "compatibility-dom";
         return out;
     }
+    bool anyUnsupported = false;
     for (const auto& component : state["components"]) {
         const auto runtime = component.value("runtime", nlohmann::json::object());
         const bool supported = component.value(
@@ -218,18 +299,24 @@ nlohmann::json renderedComponentsFromState(const nlohmann::json& state) {
             runtime.value("renderedHtmlSupported",
                 runtime.value("bodyPlanTemplateRendering", false)));
         const std::string html = component.value("renderedHtml", std::string{});
+        const bool bodyPlanSupported = supported && !html.empty();
+        anyUnsupported = anyUnsupported || !bodyPlanSupported;
         out["components"].push_back({
             {"moduleId", component.value("moduleId", nlohmann::json())},
             {"definitionModule", component.value("definitionModule", nlohmann::json())},
             {"id", component.value("id", std::string{})},
             {"component", component.value("component", std::string{})},
             {"role", component.value("role", std::string{})},
-            {"supported", supported && !html.empty()},
-            {"fallback", supported && !html.empty() ? "" : "compatibility-dom"},
-            {"renderedHtmlSupported", supported && !html.empty()},
+            {"supported", bodyPlanSupported},
+            {"primary", bodyPlanSupported ? "body-plan" : ""},
+            {"fallback", bodyPlanSupported ? "" : "compatibility-dom"},
+            {"compatibilityFallback", !bodyPlanSupported},
+            {"renderedHtmlSupported", bodyPlanSupported},
             {"renderedHtml", html},
         });
     }
+    out["compatibilityFallback"] = anyUnsupported;
+    out["fallback"] = anyUnsupported ? "compatibility-dom" : "";
     return out;
 }
 
@@ -448,6 +535,9 @@ void installRuntimeApi(httplib::Server& svr,
                 j["contract"] = runtimeContractJson(wsPort);
             } else {
                 j["error"] = err;
+                auto payload = runtimeErrorPayload("/api/event", err);
+                j["diagnostics"] = payload["diagnostics"];
+                j["diagnosticContext"] = payload["diagnosticContext"];
             }
             setJson(res, j);
         } catch (const std::exception& e) {
@@ -471,6 +561,9 @@ void installRuntimeApi(httplib::Server& svr,
                 j["contract"] = runtimeContractJson(wsPort);
             } else {
                 j["error"] = err;
+                auto payload = runtimeErrorPayload("/api/component-action", err);
+                j["diagnostics"] = payload["diagnostics"];
+                j["diagnosticContext"] = payload["diagnosticContext"];
             }
             setJson(res, j);
         } catch (const std::exception& e) {

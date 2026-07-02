@@ -2390,7 +2390,7 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("scope[node.name] = evaluateComponentBodyNodeExpression(node, node.expression || '', scope);"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("const plan = compileComponentExpressionPlan(expr);"),
+    EXPECT_NE(html.find("const plan = plans[i] || compileComponentExpressionPlan(expr);"),
               std::string::npos) << html;
     EXPECT_NE(html.find("args.push(compiled && compiled.found ? compiled.value : evaluateComponentValue(expr, scope));"),
               std::string::npos) << html;
@@ -2574,6 +2574,12 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("function patchElementFromTemplateInPlace(current, next, stats)"),
               std::string::npos) << html;
+    EXPECT_NE(html.find("function patchElementChildrenByMarkerInPlace(current, next, stats)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("keyedPatchableChildMarkers(nextChildren)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("document.importNode(nextChild, true)"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("function pruneDynamicComponentListItem(parentId, nodeIndex, key)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("directComponentKeyedListPatch"),
@@ -2732,7 +2738,9 @@ TEST(FriendlySyntax, DirectComponentActionsCanCallOtherLocalActions) {
     JtmlTranspiler browserTranspiler;
     browserTranspiler.setBrowserLocalRuntime(true);
     const std::string browserHtml = browserTranspiler.transpile(program);
-    EXPECT_NE(browserHtml.find("function componentActionArgsFromExpression(expression, scope)"),
+    EXPECT_NE(browserHtml.find("function componentActionArgsFromExpression(expression, scope, argPlans)"),
+              std::string::npos) << browserHtml;
+    EXPECT_NE(browserHtml.find("node.argPlans || []"),
               std::string::npos) << browserHtml;
     EXPECT_NE(browserHtml.find("node.kind === 'call' && node.name"),
               std::string::npos) << browserHtml;
@@ -2751,6 +2759,10 @@ TEST(FriendlySyntax, DirectComponentActionsCanCallOtherLocalActions) {
         for (const auto& node : definition["bodyPlan"]) {
             if (node.value("kind", "") == "call" && node.value("name", "") == "incBy") {
                 foundCallNode = true;
+                ASSERT_TRUE(node.contains("argPlans")) << node.dump(2);
+                ASSERT_EQ(node["argPlans"].size(), 1u) << node.dump(2);
+                EXPECT_EQ(node["argPlans"][0].value("kind", ""), "literal")
+                    << node.dump(2);
             }
         }
     }
@@ -2761,6 +2773,22 @@ TEST(FriendlySyntax, DirectComponentActionsCanCallOtherLocalActions) {
     config.startWebSocket = false;
     Interpreter interpreter(liveTranspiler, config);
     interpreter.interpret(program);
+
+    auto liveStateBeforeAction = nlohmann::json::parse(interpreter.getStateJSON());
+    bool foundLiveCallNode = false;
+    for (const auto& definition : liveStateBeforeAction["componentDefinitions"]) {
+        if (definition.value("name", "") != "Counter") continue;
+        for (const auto& node : definition["bodyPlan"]) {
+            if (node.value("kind", "") == "call" && node.value("name", "") == "incBy") {
+                foundLiveCallNode = true;
+                ASSERT_TRUE(node.contains("argPlans")) << node.dump(2);
+                ASSERT_EQ(node["argPlans"].size(), 1u) << node.dump(2);
+                EXPECT_EQ(node["argPlans"][0].value("kind", ""), "literal")
+                    << node.dump(2);
+            }
+        }
+    }
+    EXPECT_TRUE(foundLiveCallNode) << liveStateBeforeAction.dump(2);
 
     auto state = nlohmann::json::parse(interpreter.getStateJSON());
     std::string componentId;
@@ -3420,8 +3448,21 @@ TEST(FriendlySyntax, BrowserAndLiveComponentBodyPlanMetadataStayInParity) {
               liveState["componentDefinitions"][0]["bodyPlan"][1]["text"]);
     EXPECT_EQ(clientManifest["componentDefinitions"][0]["bodyPlan"][2]["operator"],
               liveState["componentDefinitions"][0]["bodyPlan"][2]["operator"]);
+    EXPECT_EQ(clientManifest["componentDefinitions"][0]["bodyPlan"][2]["expressionPlan"]["kind"],
+              liveState["componentDefinitions"][0]["bodyPlan"][2]["expressionPlan"]["kind"]);
+    EXPECT_EQ(clientManifest["componentDefinitions"][0]["bodyPlan"][2]["sourceColumn"],
+              liveState["componentDefinitions"][0]["bodyPlan"][2]["sourceColumn"]);
+    EXPECT_GT(liveState["componentDefinitions"][0]["bodyPlan"][2]["sourceColumn"].get<int>(), 0);
+    EXPECT_EQ(clientManifest["componentDefinitions"][0]["bodyPlan"][3]["wordPlans"].size(),
+              liveState["componentDefinitions"][0]["bodyPlan"][3]["wordPlans"].size());
+    EXPECT_EQ(clientManifest["componentDefinitions"][0]["bodyPlan"][6]["keyExpressionPlan"]["kind"],
+              liveState["componentDefinitions"][0]["bodyPlan"][6]["keyExpressionPlan"]["kind"]);
     EXPECT_EQ(clientManifest["componentInstances"][0]["slotPlan"][0]["text"],
               liveState["components"][0]["slotPlan"][0]["text"]);
+    ASSERT_TRUE(liveState["components"][0]["slotPlan"][0].contains("expressionPlan"))
+        << liveState.dump(2);
+    ASSERT_TRUE(liveState["components"][0]["slotPlan"][0].contains("sourceColumn"))
+        << liveState.dump(2);
     EXPECT_EQ(liveState["components"][0]["runtime"]["bodyPlanActionExecution"], true);
     EXPECT_EQ(liveState["components"][0]["runtime"]["bodyPlanTemplateRendering"], true);
     EXPECT_EQ(liveState["componentDefinitions"][0]["runtimePlan"]["bodyPlanActionExecution"], true);

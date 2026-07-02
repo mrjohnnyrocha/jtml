@@ -50,6 +50,7 @@ std::string componentUpdatePlanKey(
                   << node.expression << '#'
                   << node.keyExpression << '#'
                   << node.sourceLine << '#'
+                  << node.sourceColumn << '#'
                   << joinStrings(node.reads, "|") << '#'
                   << joinStrings(node.writes, "|") << '#'
                   << joinInts(node.childIndices, ",");
@@ -364,8 +365,9 @@ std::string staticPatchOperationKind(
         const std::set<DefinitionKey>& definitionKeys,
         const RuntimePlanComponentDefinition& definition,
         const RuntimePlanComponentBodyNode& node) {
-    if (node.kind != "template") return "";
+    if (node.kind != "template" && node.kind != "slot") return "";
     const auto head = componentNodeHead(node);
+    if (node.kind == "slot" || head == "slot") return "region";
     if (head == "if" || head == "for" || head == "slot") return "region";
     if (head == "else" || head == "while") return "";
     if (isKnownNestedComponent(definitionKeys, definition, node)) {
@@ -388,6 +390,7 @@ nlohmann::json staticPatchOperation(
         {"tag", componentTagName(componentNodeHead(node))},
         {"words", words},
         {"sourceLine", node.sourceLine},
+        {"sourceColumn", node.sourceColumn},
         {"expression", node.expression},
         {"expressionPlan", compileRuntimeExpressionPlan(node.expression)},
         {"keyExpression", node.keyExpression},
@@ -426,6 +429,7 @@ nlohmann::json compileStaticComponentUpdatePlan(
                     {"index", i},
                     {"kind", componentNodeHead(node)},
                     {"sourceLine", node.sourceLine},
+                    {"sourceColumn", node.sourceColumn},
                 });
             } else {
                 rootCreateOperations.push_back(
@@ -443,6 +447,7 @@ nlohmann::json compileStaticComponentUpdatePlan(
                 {"reads", reads},
                 {"kind", componentNodeHead(node)},
                 {"sourceLine", node.sourceLine},
+                {"sourceColumn", node.sourceColumn},
             });
             continue;
         }
@@ -452,6 +457,7 @@ nlohmann::json compileStaticComponentUpdatePlan(
             {"reads", reads},
             {"kind", componentNodeHead(node)},
             {"sourceLine", node.sourceLine},
+            {"sourceColumn", node.sourceColumn},
             {"operation", staticPatchOperation(operationKind, node, i)},
         };
         entries.push_back(entry);
@@ -475,8 +481,8 @@ nlohmann::json compileStaticComponentUpdatePlan(
         {"unsafeEntries", unsafeEntries},
         {"rootCreateOperations", rootCreateOperations},
         {"unsafeRootCreateEntries", unsafeRootCreateEntries},
-        {"staticPatchCoverage", "text-region-nested-element-first-slice"},
-        {"staticCreateCoverage", "direct-text-button-element-container-control-flow-create-first-slice"},
+        {"staticPatchCoverage", "text-region-slot-nested-element-first-slice"},
+        {"staticCreateCoverage", "direct-text-button-element-container-control-flow-slot-nested-create-first-slice"},
     };
 }
 
@@ -1103,6 +1109,27 @@ std::string directStaticForCreateExpression(const nlohmann::json& componentPlan,
     return out.str();
 }
 
+std::string directStaticSlotCreateExpression(size_t nodeIndex,
+                                             const nlohmann::json& node) {
+    const auto words = splitStaticComponentWords(node.value("text", ""));
+    const auto slotName = words.size() > 1 ? words[1] : std::string();
+    std::ostringstream out;
+    out << "(h && h.renderStaticComponentSlotNode ? "
+        << "h.renderStaticComponentSlotNode(instance, definition, scope, "
+        << nodeIndex << ", " << jsStringLiteral(slotName) << ") : null)";
+    return out.str();
+}
+
+std::string directStaticNestedCreateExpression(size_t nodeIndex,
+                                               const std::string& name) {
+    if (name.empty()) return "";
+    std::ostringstream out;
+    out << "(h && h.renderStaticComponentNestedNode ? "
+        << "h.renderStaticComponentNestedNode(instance, definition, scope, "
+        << nodeIndex << ", " << jsStringLiteral(name) << ") : null)";
+    return out.str();
+}
+
 std::string directStaticContainerCreateExpression(const nlohmann::json& componentPlan,
                                                   size_t nodeIndex,
                                                   const nlohmann::json& node,
@@ -1145,22 +1172,27 @@ std::string directStaticNodeCreateExpression(const nlohmann::json& componentPlan
     visiting.insert(nodeIndex);
 
     const auto& node = bodyPlan[nodeIndex];
-    if (node.value("kind", "") != "template") return "";
+    const auto nodeKind = node.value("kind", "");
+    if (nodeKind != "template" && nodeKind != "slot") return "";
     const auto head = node.value("head", node.value("name", ""));
     const auto resolvedHead = head.empty()
         ? splitStaticComponentWords(node.value("text", "")).empty()
             ? std::string("")
             : splitStaticComponentWords(node.value("text", "")).front()
         : head;
-    if (resolvedHead.empty() || resolvedHead == "else" || resolvedHead == "while" ||
-        resolvedHead == "slot" ||
-        looksLikeComponentCallHead(resolvedHead)) {
+    if (resolvedHead.empty() || resolvedHead == "else" || resolvedHead == "while") {
         return "";
     }
 
     const auto words = splitStaticComponentWords(node.value("text", ""));
     const auto expressionPlan =
         compileRuntimeExpressionPlan(node.value("expression", ""));
+    if (resolvedHead == "slot") {
+        return directStaticSlotCreateExpression(nodeIndex, node);
+    }
+    if (looksLikeComponentCallHead(resolvedHead)) {
+        return directStaticNestedCreateExpression(nodeIndex, resolvedHead);
+    }
     if (resolvedHead == "if") {
         return directStaticIfCreateExpression(componentPlan, nodeIndex, node, visiting);
     }
@@ -1282,8 +1314,17 @@ std::string directStaticCreateCall(
                 << nodeIndex << ") : null);\n";
         }
     } else if (kind == "nested-component") {
-        out << "(h && h.renderStaticComponentRegionNode ? h.renderStaticComponentRegionNode(instance, definition, scope, "
-            << nodeIndex << ") : null);\n";
+        std::set<size_t> visiting;
+        const auto directCreate = directStaticNodeCreateExpression(
+            componentPlan, static_cast<size_t>(nodeIndex), visiting);
+        if (!directCreate.empty()) {
+            out << directCreate << ";\n";
+        } else {
+            out << "(h && h.renderStaticComponentNestedNode ? h.renderStaticComponentNestedNode(instance, definition, scope, "
+                << nodeIndex << ", "
+                << jsStringLiteral(operation.value("head", ""))
+                << ") : null);\n";
+        }
     } else {
         return "";
     }
@@ -1314,6 +1355,31 @@ std::string directStaticRegionPatchExpression(
         << "el.outerHTML = html; "
         << "return true; "
         << "})()";
+    return out.str();
+}
+
+std::string directStaticSlotPatchExpression(size_t nodeIndex,
+                                            const nlohmann::json& operation) {
+    const auto words = operation.value("words", nlohmann::json::array());
+    std::string slotName;
+    if (words.is_array() && words.size() > 1 && words[1].is_string()) {
+        slotName = words[1].get<std::string>();
+    }
+    std::ostringstream out;
+    out << "(h && h.patchStaticComponentSlotNode ? "
+        << "h.patchStaticComponentSlotNode(instance, definition, "
+        << nodeIndex << ", scope, " << jsStringLiteral(slotName) << ") : false)";
+    return out.str();
+}
+
+std::string directStaticNestedPatchExpression(size_t nodeIndex,
+                                              const nlohmann::json& operation) {
+    const auto name = operation.value("head", "");
+    if (name.empty()) return "";
+    std::ostringstream out;
+    out << "(h && h.patchStaticComponentNestedNode ? "
+        << "h.patchStaticComponentNestedNode(instance, definition, "
+        << nodeIndex << ", scope, " << jsStringLiteral(name) << ") : false)";
     return out.str();
 }
 
@@ -1379,8 +1445,14 @@ std::string directStaticPatchExpression(const nlohmann::json& componentPlan,
                 << ") : false)";
         }
     } else if (kind == "region") {
-        const auto directPatch = directStaticRegionPatchExpression(
-            componentPlan, static_cast<size_t>(nodeIndex));
+        std::string directPatch;
+        if (operation.value("head", "") == "slot") {
+            directPatch = directStaticSlotPatchExpression(
+                static_cast<size_t>(nodeIndex), operation);
+        } else {
+            directPatch = directStaticRegionPatchExpression(
+                componentPlan, static_cast<size_t>(nodeIndex));
+        }
         if (!directPatch.empty()) {
             out << directPatch;
         } else {
@@ -1389,9 +1461,15 @@ std::string directStaticPatchExpression(const nlohmann::json& componentPlan,
                 << nodeIndex << ", scope) : false)";
         }
     } else if (kind == "nested-component") {
-        out << "(h && h.patchStaticComponentRegionNode ? "
-            << "h.patchStaticComponentRegionNode(instance, definition, "
-            << nodeIndex << ", scope) : false)";
+        const auto directPatch = directStaticNestedPatchExpression(
+            static_cast<size_t>(nodeIndex), operation);
+        if (!directPatch.empty()) {
+            out << directPatch;
+        } else {
+            out << "(h && h.patchStaticComponentRegionNode ? "
+                << "h.patchStaticComponentRegionNode(instance, definition, "
+                << nodeIndex << ", scope) : false)";
+        }
     } else {
         return "";
     }
@@ -1419,6 +1497,7 @@ std::string staticCreateFallbackFunctionBody(size_t componentIndex) {
     std::ostringstream out;
     out << "    function jtml_static_component_create_fallback_"
         << componentIndex << "() {\n"
+        << "      if (h && h.recordStaticCreateFallback) h.recordStaticCreateFallback(instance, definition, plan, \"static component create function fell back to runtime renderer\");\n"
         << "      if (h && h.renderStaticComponentCreateOperations && plan && plan.rootCreateOperations) {\n"
         << "        const html = h.renderStaticComponentCreateOperations(instance, definition, scope, plan.rootCreateOperations);\n"
         << "        if (typeof html === 'string') return html;\n"

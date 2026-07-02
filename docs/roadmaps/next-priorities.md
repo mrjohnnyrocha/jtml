@@ -148,12 +148,13 @@ body-plan payloads. It carries component read indexes, unsafe-entry lists, root
 create operations, precompiled element `partsPlan` records, first-slice
 text/region/nested/element patch operations, and first-slice static component
 create/update modules without relying on runtime `eval` / `new Function`.
-Supported root text, button, leaf element, direct-safe container nodes, and
-safe `if`/keyed-`for` control-flow regions now emit escaped HTML construction in
-`components/index.js`; nested-component, slot, and unsupported shapes still use
-helper/fallback create paths. Static update functions also emit direct per-node
-patch cases for text, button, element, container-attribute, safe control-flow
-region, and nested-component nodes before falling back to operation records.
+Supported root text, button, leaf element, direct-safe container nodes,
+safe `if`/keyed-`for` control-flow regions, and first-slice slot/nested
+component anchors now emit escaped HTML construction in `components/index.js`;
+unsupported shapes still use helper/fallback create paths. Static update
+functions also emit direct per-node patch cases for text, button, element,
+container-attribute, safe control-flow region, slot, and nested-component nodes
+before falling back to operation records.
 The runtime-plan layer now owns the canonical expression-plan producer for
 literals, booleans, numbers, null, simple dot paths, unary `!`,
 binary/comparison/logical operators, and ternary conditionals; static component
@@ -165,11 +166,13 @@ evaluation, and browser-local body-plan action assignments/local declarations
 before falling back to the generic browser expression evaluator. Static
 component modules now emit direct JS expression functions for simple and
 first-slice composite plans, generated
-text/button/leaf-element/container/control-flow create functions that do not
-require runtime helper availability unless they hit a fallback shape, and generated
-text, element attribute/content, button label/action-argument, and safe region
-patches that update DOM directly without a global runtime-helper requirement
-before falling back to runtime patch helpers. Runtime-plan read
+text/button/leaf-element/container/control-flow/slot/nested create functions
+that do not require generic runtime region helpers unless they hit a fallback
+shape, and generated text, element attribute/content, button
+label/action-argument, safe region, slot, and nested patches that update DOM
+directly before falling back to runtime patch helpers. Static create fallbacks
+record source-first component/plan context in
+`window.jtml.directComponentCreateFallback`. Runtime-plan read
 analysis also recognizes value-taking attributes such as `title selected` as
 reads of `selected` instead of treating `selected` as a standalone boolean
 attribute.
@@ -649,13 +652,13 @@ Implementation slices:
    and moved keys, preparing the optimized keyed DOM diff without claiming it is
    complete. Compiled `for` region patch operations now try a conservative
    keyed patch that reuses/reorders item wrappers by key and updates item
-   contents, reports retained/inserted/removed/moved key sets, and prunes
-   removed nested dynamic children for keyed list items, falling back to region
-   replacement for duplicate/unsafe keys. Next
-   nested component call wrappers now carry stable body-node anchors and compile
+   contents, reconciles child elements by stable body-node markers below
+   retained wrappers, reports retained/inserted/removed/moved key sets, and
+   prunes removed nested dynamic children for keyed list items, falling back to
+   region replacement for duplicate/unsafe keys. Nested component call wrappers now carry stable body-node anchors and compile
    to explicit nested-component patch operations, reducing full-parent rerenders
    when parent state affects composed children. Slot insertion sites now carry
-   stable `slot` region anchors and compile as region patch operations.
+   stable `slot` region anchors and compile as slot-specific patch operations.
    Action-body `while` remains part of the body-plan action contract, but
    render/template `while` is linted as `JTML_TEMPLATE_WHILE`; rendered
    repetition should use `for` so browser/live runtimes can diff visible
@@ -664,17 +667,24 @@ Implementation slices:
    action expressions beyond local declarations/calls/path mutation, advanced
    media/graphics attributes, and broader browser/live behavior parity checks.
    Live body-plan rendering also reports patch telemetry for patched/current,
-   unsupported, and missing component records so parity checks can compare live
-   behavior against browser-local body-plan execution.
+   unsupported, and missing component records, and live body-plan JSON now
+   carries expression/key/word/loop/call-argument plans matching the browser
+   manifest so parity checks can compare semantic execution data against
+   browser-local body-plan execution. Live event/action failures now include
+   structured diagnostics plus source-first body-plan context for unsupported
+   direct execution and compatibility fallback errors. Body-plan source columns
+   now flow through runtime plans, live state, static compiler metadata, browser
+   fallback telemetry, and HTTP diagnostic context.
 50. Add compiler-first browser production target slices: build on the current
    CSP-safe `jtml-update-plans.js` asset, its precomputed read indexes, and
    first-slice static create/update modules; ✅ first expression-plan payloads
    now cover literals/simple paths in text, attributes, modifiers, element
    content, component action arguments, conditions, `for` collection/key
    expressions, and nested params; static modules now emit direct expression
-   functions and direct simple text DOM patches; next precompile richer action
-   bodies, broaden static update functions beyond the current body-plan patch
-   helpers, expand text/attribute/button patches into keyed region updates, emit full
+   functions, direct simple text DOM patches, and first-slice slot/nested
+   create/patch contracts; next precompile richer action bodies, broaden static
+   update functions beyond the current body-plan patch helpers, expand
+   text/attribute/button patches into keyed region updates, emit full
    static JS runtime assets for production, add benchmark fixtures/budgets
    beyond the current smoke script, and keep the current manifest interpreter
    plus opt-in dynamic generated-function bridge as dev and compatibility

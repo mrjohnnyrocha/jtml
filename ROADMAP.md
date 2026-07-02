@@ -401,9 +401,11 @@ The current focus is the semantic-core transition:
   functions try direct per-node patch cases for text, button, element,
   container-attribute, safe control-flow region, slot, and nested-component
   nodes before falling back to operation records.
-  The runtime-plan layer now owns the canonical expression-plan producer for
-  literals, booleans, numbers, null, simple dot paths, unary `!`,
-  binary/comparison/logical operators, and ternary conditionals; static
+  The runtime-plan layer now owns the canonical expression-plan producer and
+  prefers parsed JTML expression AST nodes before falling back to the legacy
+  string planner. Literal, boolean, number, null, dot-path, unary `!`,
+  binary/comparison/logical, ternary, composite string, array/object literal,
+  member/subscript, and call-shaped plans carry `producer: "ast"` when the parser owns them; static
   component emission consumes that same API instead of maintaining a private
   expression parser. Those plans flow through text/element patch operations,
   element content, attributes, modifiers, component action arguments,
@@ -417,7 +419,11 @@ The current focus is the semantic-core transition:
   that do not require generic runtime region helpers unless they hit a fallback
   shape, and generated text, element attribute/content, button
   label/action-argument, safe region, slot, and nested patch cases that update
-  DOM directly before falling back to runtime patch helpers.
+  DOM directly before falling back to runtime patch helpers. Slot create
+  functions now have a raw default/named slot HTML fast path, slot patch
+  functions perform their own marked-region DOM replacement, and nested
+  component patches first try true parameter/body updates inside the retained
+  nested wrapper before wrapper replacement fallback.
   Runtime-plan read analysis now recognizes
   value-taking attributes such as `title selected` as reads of `selected`, even
   when the value token is also a valid boolean attribute name.
@@ -429,10 +435,13 @@ The current focus is the semantic-core transition:
   those static modules/plans before
   compiling equivalent plan indexes in the browser.
   `scripts/benchmark_runtime.sh` now provides first-slice browser asset budgets,
-  production/legacy asset-shape checks, and a `control_flow` fixture that
+  production/legacy asset-shape checks, real headless-browser click benchmarks
+  through `scripts/benchmark_browser_runtime.sh` when Chrome/Chromium is
+  available, and a `control_flow` fixture that
   asserts safe `if`/keyed-`for` regions, keyed list markers, and direct
-  safe-region patching are generated in `components/index.js`. This path has an
-  executable guardrail: 50 KB
+  safe-region patching are generated in `components/index.js`. The `composition`
+  fixture also asserts in-place nested parameter/body patch telemetry in the
+  browser runtime benchmark. This path has an executable guardrail: 50 KB
   for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
   `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
   `jtml-update-plans.js`, to tighten as direct generated update modules keep
@@ -573,6 +582,15 @@ hardened, or planned.
   into `src/runtime_plan_json.cpp`; `jtml explain --json` and browser manifest
   body-plan emission now consume the shared core serializer instead of owning
   duplicate command/backend serializers.
+- AST-owned expression planning slice. ✅ — runtime expression planning now
+  accepts expression AST nodes directly, and the string entry point parses JTML
+  expression syntax into AST before using the older source-string fallback. The
+  same plan API is therefore available to semantic/runtime JSON, static
+  component emission, browser-local body-plan execution, and live body-plan
+  parity work. Array/object literals, member access, subscripts, and call-shaped
+  expressions now preserve structured AST-owned plan metadata instead of
+  collapsing to opaque source strings. The next milestone is a dedicated typed
+  expression IR that can replace the remaining fallback parser helpers entirely.
 - Per-file SemanticProject ownership slice. ✅ — `SemanticProject` now has a
   `SemanticModuleSource` API so module imports can be attached to the file that
   authored them instead of always being attributed to the entrypoint.

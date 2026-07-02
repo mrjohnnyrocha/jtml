@@ -155,11 +155,13 @@ unsupported shapes still use helper/fallback create paths. Static update
 functions also emit direct per-node patch cases for text, button, element,
 container-attribute, safe control-flow region, slot, and nested-component nodes
 before falling back to operation records.
-The runtime-plan layer now owns the canonical expression-plan producer for
-literals, booleans, numbers, null, simple dot paths, unary `!`,
-binary/comparison/logical operators, and ternary conditionals; static component
-emission consumes that same API instead of maintaining a private expression
-parser. Those plans travel through text/element patch operations, element
+The runtime-plan layer now owns the canonical expression-plan producer and now
+prefers parsed JTML expression AST nodes before falling back to the legacy
+string planner. Literal, boolean, number, null, dot-path, unary `!`,
+binary/comparison/logical, ternary, composite string, array/object literal,
+member/subscript, and call-shaped plans carry `producer: "ast"` when the parser owns them; static
+component emission consumes that same API instead of maintaining a private
+expression parser. Those plans travel through text/element patch operations, element
 content, attributes, modifiers, component action arguments, body-plan
 conditions, `for` collection and key expressions, nested component parameter
 evaluation, and browser-local body-plan action assignments/local declarations
@@ -170,7 +172,11 @@ text/button/leaf-element/container/control-flow/slot/nested create functions
 that do not require generic runtime region helpers unless they hit a fallback
 shape, and generated text, element attribute/content, button
 label/action-argument, safe region, slot, and nested patches that update DOM
-directly before falling back to runtime patch helpers. Static create fallbacks
+directly before falling back to runtime patch helpers. Slot create functions
+now have a raw default/named slot HTML fast path, slot patch functions perform
+their own marked-region DOM replacement, and nested patches first try true
+parameter/body updates inside the retained nested wrapper before wrapper
+replacement fallback. Static create fallbacks
 record source-first component/plan context in
 `window.jtml.directComponentCreateFallback`. Runtime-plan read
 analysis also recognizes value-taking attributes such as `title selected` as
@@ -182,13 +188,16 @@ modules/plans when
 available and falls back to runtime plan compilation only when no matching
 static plan exists. `scripts/benchmark_runtime.sh` now provides a first-slice
 smoke benchmark over `tests/fixtures/performance/` with browser asset size
-budgets, production/legacy asset-shape checks, and a `control_flow` fixture that
-asserts safe `if`/keyed-`for` regions, keyed list markers, and direct safe-region
-patching are generated in `components/index.js`: 50 KB for `index.html`, 260
-KB for `jtml-runtime.js`, 180 KB for `components/index.js`, 20 KB for
-`app.js`, and 180 KB for the legacy `jtml-update-plans.js`, all meant to
-tighten as direct generated update modules keep replacing operation-record
-patch helpers.
+budgets, production/legacy asset-shape checks, and real headless-browser click
+benchmarks through `scripts/benchmark_browser_runtime.sh` when Chrome/Chromium
+is available. The `control_flow` fixture asserts safe `if`/keyed-`for` regions,
+keyed list markers, and direct safe-region patching are generated in
+`components/index.js`; the `composition` fixture asserts in-place nested
+parameter/body patch telemetry during actual browser clicks. Current guardrails:
+50 KB for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
+`components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
+`jtml-update-plans.js`, all meant to tighten as direct generated update modules
+keep replacing operation-record patch helpers.
 
 Implementation slices:
 

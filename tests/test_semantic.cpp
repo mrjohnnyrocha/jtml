@@ -1426,8 +1426,10 @@ TEST(RuntimePlan, CanonicalExpressionPlanCoversCompositeOperators) {
         "(visible && title != \"Hidden\") ? items : empty");
 
     ASSERT_EQ(plan["kind"], "conditional") << plan.dump(2);
+    EXPECT_EQ(plan["producer"], "ast") << plan.dump(2);
     ASSERT_TRUE(plan.contains("test")) << plan.dump(2);
     EXPECT_EQ(plan["test"]["kind"], "binary") << plan.dump(2);
+    EXPECT_EQ(plan["test"]["producer"], "ast") << plan.dump(2);
     EXPECT_EQ(plan["test"]["operator"], "&&") << plan.dump(2);
     ASSERT_TRUE(plan["test"].contains("right")) << plan.dump(2);
     EXPECT_EQ(plan["test"]["right"]["kind"], "binary") << plan.dump(2);
@@ -1440,9 +1442,40 @@ TEST(RuntimePlan, CanonicalExpressionPlanCoversCompositeOperators) {
     const auto nested = jtml::compileRuntimeExpressionPlan(
         "title == \"Open\" ? item : \"none\"");
     ASSERT_EQ(nested["kind"], "conditional") << nested.dump(2);
+    EXPECT_EQ(nested["producer"], "ast") << nested.dump(2);
     EXPECT_EQ(nested["test"]["operator"], "==") << nested.dump(2);
     EXPECT_EQ(nested["whenTrue"]["kind"], "path") << nested.dump(2);
     EXPECT_EQ(nested["whenFalse"]["kind"], "literal") << nested.dump(2);
+
+    const auto member = jtml::compileRuntimeExpressionPlan("users.data.active.name");
+    ASSERT_EQ(member["kind"], "path") << member.dump(2);
+    EXPECT_EQ(member["producer"], "ast") << member.dump(2);
+    ASSERT_EQ(member["segments"].size(), 4u) << member.dump(2);
+    EXPECT_EQ(member["segments"][0], "users") << member.dump(2);
+    EXPECT_EQ(member["segments"][3], "name") << member.dump(2);
+
+    const auto subscript = jtml::compileRuntimeExpressionPlan("users.data[index].name");
+    ASSERT_EQ(subscript["kind"], "member") << subscript.dump(2);
+    EXPECT_EQ(subscript["producer"], "ast") << subscript.dump(2);
+    ASSERT_TRUE(subscript.contains("base")) << subscript.dump(2);
+    EXPECT_EQ(subscript["property"], "name") << subscript.dump(2);
+    ASSERT_EQ(subscript["base"]["kind"], "subscript") << subscript.dump(2);
+    EXPECT_EQ(subscript["base"]["base"]["kind"], "path") << subscript.dump(2);
+    EXPECT_EQ(subscript["base"]["index"]["kind"], "path") << subscript.dump(2);
+
+    const auto array = jtml::compileRuntimeExpressionPlan("[title, \"Ready\", count + 1]");
+    ASSERT_EQ(array["kind"], "array") << array.dump(2);
+    EXPECT_EQ(array["producer"], "ast") << array.dump(2);
+    ASSERT_EQ(array["elements"].size(), 3u) << array.dump(2);
+    EXPECT_EQ(array["elements"][0]["kind"], "path") << array.dump(2);
+    EXPECT_EQ(array["elements"][2]["kind"], "binary") << array.dump(2);
+
+    const auto object = jtml::compileRuntimeExpressionPlan("{ \"name\": title, \"count\": count }");
+    ASSERT_EQ(object["kind"], "object") << object.dump(2);
+    EXPECT_EQ(object["producer"], "ast") << object.dump(2);
+    ASSERT_EQ(object["entries"].size(), 2u) << object.dump(2);
+    EXPECT_EQ(object["entries"][0]["key"], "name") << object.dump(2);
+    EXPECT_EQ(object["entries"][0]["value"]["kind"], "path") << object.dump(2);
 }
 
 TEST(RuntimePlan, BodyPlanWritesIncludeRootObservableForMemberAssignments) {

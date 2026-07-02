@@ -4,6 +4,8 @@
 #include "jtml/interpreter.h"
 #include "jtml/lexer.h"
 #include "jtml/parser.h"
+#include "jtml/runtime_plan.h"
+#include "jtml/runtime_plan_json.h"
 #include "jtml/transpiler.h"
 #include "json.hpp"
 
@@ -2075,16 +2077,19 @@ TEST(FriendlySyntax, DirectComponentBodyPlanRendererCoversConditionalsAndLoops) 
     EXPECT_NE(html.find("pruneDynamicComponentSubtree(instance.id, renderedDynamicIds)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("\"text\":\"if visible\""), std::string::npos) << html;
-    EXPECT_NE(html.find("\"expressionPlan\":{\"kind\":\"path\",\"root\":\"visible\""),
+    EXPECT_NE(html.find("\"expressionPlan\":{\"kind\":\"path\",\"producer\":\"ast\""),
               std::string::npos) << html;
+    EXPECT_NE(html.find("\"root\":\"visible\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"text\":\"for item in items key item\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"loopPlan\":{\"collectionExpression\":\"items\""),
               std::string::npos) << html;
-    EXPECT_NE(html.find("\"collectionPlan\":{\"kind\":\"path\",\"root\":\"items\""),
+    EXPECT_NE(html.find("\"collectionPlan\":{\"kind\":\"path\",\"producer\":\"ast\""),
               std::string::npos) << html;
+    EXPECT_NE(html.find("\"root\":\"items\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"keyExpression\":\"item\""), std::string::npos) << html;
-    EXPECT_NE(html.find("\"keyExpressionPlan\":{\"kind\":\"path\",\"root\":\"item\""),
+    EXPECT_NE(html.find("\"keyExpressionPlan\":{\"kind\":\"path\",\"producer\":\"ast\""),
               std::string::npos) << html;
+    EXPECT_NE(html.find("\"root\":\"item\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"text\":\"for person in people\""), std::string::npos) << html;
     EXPECT_NE(html.find("evaluateCompiledComponentExpressionResult("),
               std::string::npos) << html;
@@ -2197,6 +2202,10 @@ TEST(FriendlySyntax, DirectComponentSlotsNestedCallsAttributesAndActionArgsUseBo
     EXPECT_NE(html.find("data-jtml-direct-component-args"), std::string::npos) << html;
     EXPECT_NE(html.find("\"params\":[\"title\"]"), std::string::npos) << html;
     EXPECT_NE(html.find("\"params\":[]"), std::string::npos) << html;
+    EXPECT_NE(html.find("function patchStaticComponentNestedParams(instance, definition, nodeIndex, scope, name)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("mode: 'in-place-param-body-patch'"),
+              std::string::npos) << html;
 }
 
 TEST(FriendlySyntax, DirectNestedComponentActionsUseNestedRuntimeIdentity) {
@@ -2227,7 +2236,7 @@ TEST(FriendlySyntax, DirectNestedComponentActionsUseNestedRuntimeIdentity) {
     std::string html = transpiler.transpile(program);
     EXPECT_NE(html.find("function findRuntimeComponentInstance(id)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("registerDynamicComponentInstance(nestedInstance);"),
+    EXPECT_NE(html.find("registerDynamicComponentInstance(nestedInstance) || nestedInstance"),
               std::string::npos) << html;
     EXPECT_NE(html.find("const instance = findRuntimeComponentInstance(componentId);"),
               std::string::npos) << html;
@@ -3481,6 +3490,168 @@ TEST(FriendlySyntax, BrowserAndLiveComponentBodyPlanMetadataStayInParity) {
               std::string::npos) << liveState.dump(2);
     EXPECT_NE(liveState["components"][0]["renderedHtml"].get<std::string>().find("data-jtml-direct-component-args=\"[&quot;Ada&quot;]\""),
               std::string::npos) << liveState.dump(2);
+}
+
+TEST(FriendlySyntax, BrowserRuntimeAndLiveParityCoversSlotsEventsRoutesFetchMediaAndKeyedLists) {
+    std::string classic = normalizeOk(
+        "jtml 2\n"
+        "let activeId = \"ada\"\n"
+        "let currentUser = fetch \"/api/users/{activeId}\" method \"POST\" body { id: activeId } timeout 1000 retry 1 stale keep group people key activeId lazy refresh reloadUser\n"
+        "when reloadUser\n"
+        "  invalidate currentUser\n"
+        "route \"/\" as Dashboard load currentUser\n"
+        "route \"/media/:id\" as MediaPage\n"
+        "make Picker emits picked(name: string)\n"
+        "  button \"Pick Ada\" click picked(\"Ada\")\n"
+        "make Frame\n"
+        "  card class \"frame\"\n"
+        "    header\n"
+        "      slot header\n"
+        "    main\n"
+        "      slot\n"
+        "make Dashboard\n"
+        "  let selected = \"\"\n"
+        "  let items = [\"Alpha\", \"Beta\"]\n"
+        "  when choose value\n"
+        "    selected = value\n"
+        "  Frame\n"
+        "    slot header\n"
+        "      h1 \"Dashboard\"\n"
+        "    Picker on picked choose\n"
+        "    for item in items key item\n"
+        "      card title item\n"
+        "        text item\n"
+        "    video src \"/intro.mp4\" controls into player\n"
+        "    text selected\n"
+        "make MediaPage id\n"
+        "  page\n"
+        "    h1 id\n"
+        "page\n"
+        "  Dashboard\n");
+
+    Lexer lex(classic);
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << classic;
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty()) << classic;
+
+    JtmlTranspiler browserTranspiler;
+    browserTranspiler.setBrowserLocalRuntime(true);
+    const auto clientManifest = clientManifestFromHtml(browserTranspiler.transpile(program));
+    const auto runtimeClient = jtml::runtimePlanToClientJson(jtml::buildRuntimePlan(program));
+
+    ASSERT_EQ(clientManifest["routes"].size(), 2u) << clientManifest.dump(2);
+    ASSERT_EQ(runtimeClient["routes"].size(), 2u) << runtimeClient.dump(2);
+    EXPECT_EQ(clientManifest["routes"], runtimeClient["routes"]);
+    EXPECT_EQ(clientManifest["routes"][0]["path"], "/");
+    ASSERT_EQ(clientManifest["routes"][0]["load"].size(), 1u) << clientManifest.dump(2);
+    EXPECT_EQ(clientManifest["routes"][0]["load"][0], "currentUser");
+    EXPECT_EQ(clientManifest["routes"][1]["path"], "/media/:id");
+    ASSERT_EQ(clientManifest["routes"][1]["params"].size(), 1u) << clientManifest.dump(2);
+    EXPECT_EQ(clientManifest["routes"][1]["params"][0], "id");
+
+    ASSERT_EQ(clientManifest["fetches"].size(), 1u) << clientManifest.dump(2);
+    ASSERT_EQ(runtimeClient["fetches"].size(), 1u) << runtimeClient.dump(2);
+    EXPECT_EQ(clientManifest["fetches"], runtimeClient["fetches"]);
+    EXPECT_EQ(clientManifest["fetches"][0]["name"], "currentUser");
+    EXPECT_EQ(clientManifest["fetches"][0]["method"], "POST");
+    EXPECT_EQ(clientManifest["fetches"][0]["bodyExpr"], "{ id: activeId }");
+    EXPECT_EQ(clientManifest["fetches"][0]["group"], "people");
+    EXPECT_EQ(clientManifest["fetches"][0]["cacheKeyExpr"], "activeId");
+    EXPECT_TRUE(clientManifest["fetches"][0]["lazy"].get<bool>());
+
+    auto findDefinition = [](const nlohmann::json& definitions, const std::string& name)
+            -> const nlohmann::json* {
+        for (const auto& definition : definitions) {
+            if (definition.value("name", "") == name) return &definition;
+        }
+        return nullptr;
+    };
+    const auto* browserPicker = findDefinition(clientManifest["componentDefinitions"], "Picker");
+    const auto* runtimePicker = findDefinition(runtimeClient["componentDefinitions"], "Picker");
+    const auto* browserFrame = findDefinition(clientManifest["componentDefinitions"], "Frame");
+    const auto* runtimeFrame = findDefinition(runtimeClient["componentDefinitions"], "Frame");
+    const auto* browserDashboard = findDefinition(clientManifest["componentDefinitions"], "Dashboard");
+    const auto* runtimeDashboard = findDefinition(runtimeClient["componentDefinitions"], "Dashboard");
+    ASSERT_NE(browserPicker, nullptr) << clientManifest.dump(2);
+    ASSERT_NE(runtimePicker, nullptr) << runtimeClient.dump(2);
+    ASSERT_NE(browserFrame, nullptr) << clientManifest.dump(2);
+    ASSERT_NE(runtimeFrame, nullptr) << runtimeClient.dump(2);
+    ASSERT_NE(browserDashboard, nullptr) << clientManifest.dump(2);
+    ASSERT_NE(runtimeDashboard, nullptr) << runtimeClient.dump(2);
+    EXPECT_EQ((*browserPicker)["emits"], (*runtimePicker)["emits"]);
+    EXPECT_EQ((*browserPicker)["emitArity"], (*runtimePicker)["emitArity"]);
+    EXPECT_EQ((*browserPicker)["emitPayloads"], (*runtimePicker)["emitPayloads"]);
+    EXPECT_EQ((*browserPicker)["emitPayloadTypes"], (*runtimePicker)["emitPayloadTypes"]);
+
+    auto containsBodyText = [](const nlohmann::json& bodyPlan,
+                               const std::string& needle) {
+        return std::any_of(bodyPlan.begin(), bodyPlan.end(), [&](const auto& node) {
+            return node.value("text", "").find(needle) != std::string::npos;
+        });
+    };
+    EXPECT_TRUE(containsBodyText((*browserFrame)["bodyPlan"], "slot header"))
+        << browserFrame->dump(2);
+    EXPECT_TRUE(containsBodyText((*runtimeFrame)["bodyPlan"], "slot header"))
+        << runtimeFrame->dump(2);
+    EXPECT_TRUE(containsBodyText((*browserDashboard)["bodyPlan"], "Picker on picked choose"))
+        << browserDashboard->dump(2);
+    EXPECT_TRUE(containsBodyText((*runtimeDashboard)["bodyPlan"], "Picker on picked choose"))
+        << runtimeDashboard->dump(2);
+    EXPECT_TRUE(containsBodyText((*browserDashboard)["bodyPlan"], "for item in items"))
+        << browserDashboard->dump(2);
+    EXPECT_TRUE(containsBodyText((*runtimeDashboard)["bodyPlan"], "for item in items"))
+        << runtimeDashboard->dump(2);
+    EXPECT_TRUE(containsBodyText((*browserDashboard)["bodyPlan"], "video src \"/intro.mp4\""))
+        << browserDashboard->dump(2);
+    EXPECT_TRUE(containsBodyText((*runtimeDashboard)["bodyPlan"], "video src \"/intro.mp4\""))
+        << runtimeDashboard->dump(2);
+
+    JtmlTranspiler liveTranspiler;
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(liveTranspiler, config);
+    interpreter.interpret(program);
+    const auto liveState = nlohmann::json::parse(interpreter.getStateJSON());
+    ASSERT_EQ(liveState["componentDefinitions"].size(),
+              clientManifest["componentDefinitions"].size()) << liveState.dump(2);
+    const auto* livePicker = findDefinition(liveState["componentDefinitions"], "Picker");
+    const auto* liveFrame = findDefinition(liveState["componentDefinitions"], "Frame");
+    const auto* liveDashboard = findDefinition(liveState["componentDefinitions"], "Dashboard");
+    ASSERT_NE(livePicker, nullptr) << liveState.dump(2);
+    ASSERT_NE(liveFrame, nullptr) << liveState.dump(2);
+    ASSERT_NE(liveDashboard, nullptr) << liveState.dump(2);
+    EXPECT_EQ((*browserPicker)["emits"], (*livePicker)["emits"]);
+    EXPECT_EQ((*browserPicker)["emitArity"], (*livePicker)["emitArity"]);
+    EXPECT_EQ((*browserPicker)["emitPayloadTypes"], (*livePicker)["emitPayloadTypes"]);
+    EXPECT_TRUE(containsBodyText((*liveFrame)["bodyPlan"], "slot header"))
+        << liveFrame->dump(2);
+    EXPECT_TRUE(containsBodyText((*liveDashboard)["bodyPlan"], "for item in items"))
+        << liveDashboard->dump(2);
+    EXPECT_TRUE(containsBodyText((*liveDashboard)["bodyPlan"], "video src \"/intro.mp4\""))
+        << liveDashboard->dump(2);
+
+    std::string dashboardHtml;
+    for (const auto& component : liveState["components"]) {
+        if (component.value("component", "") == "Dashboard" &&
+            component.contains("renderedHtml")) {
+            dashboardHtml = component["renderedHtml"].get<std::string>();
+            break;
+        }
+    }
+    ASSERT_FALSE(dashboardHtml.empty()) << liveState.dump(2);
+    EXPECT_NE(dashboardHtml.find(">Dashboard</h1>"), std::string::npos)
+        << dashboardHtml;
+    EXPECT_NE(dashboardHtml.find("data-jtml-component=\"Picker\""), std::string::npos)
+        << dashboardHtml;
+    EXPECT_NE(dashboardHtml.find("data-jtml-direct-component-action=\"picked\""),
+              std::string::npos) << dashboardHtml;
+    EXPECT_NE(dashboardHtml.find("data-jtml-direct-list-key=\"Alpha\""),
+              std::string::npos) << dashboardHtml;
+    EXPECT_NE(dashboardHtml.find("<video"), std::string::npos) << dashboardHtml;
+    EXPECT_NE(dashboardHtml.find("data-jtml-media-controller=\"player\""),
+              std::string::npos) << dashboardHtml;
 }
 
 TEST(FriendlySyntax, InterpreterLiveBodyPlanRendererSupportsNestedComponentsAndSlots) {

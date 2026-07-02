@@ -516,7 +516,10 @@ const char* browserRuntimePreludeChunk() {
 
       function componentScopeFor(instance, definition) {
         if (!instance || !instance.id) return {};
-        if (componentScopes[instance.id]) return componentScopes[instance.id];
+        if (componentScopes[instance.id]) {
+          Object.assign(componentScopes[instance.id], instance.params || {});
+          return componentScopes[instance.id];
+        }
         const scope = {};
         Object.assign(scope, instance.params || {});
         (definition.bodyPlan || []).forEach(function (node) {
@@ -974,6 +977,42 @@ const char* browserRuntimePreludeChunk() {
           }
           return { found: true, value: current == null ? '' : current };
         }
+        if (plan.kind === 'member') {
+          const base = evaluateCompiledComponentExpressionResult(plan.base, '', scope);
+          if (!base.found) return evaluateClientExpression(plan.source || fallbackExpr || '', scope);
+          if (base.value == null) return { found: true, value: '' };
+          const value = base.value[plan.property || ''];
+          return { found: true, value: value == null ? '' : value };
+        }
+        if (plan.kind === 'subscript') {
+          const base = evaluateCompiledComponentExpressionResult(plan.base, '', scope);
+          const index = evaluateCompiledComponentExpressionResult(plan.index, '', scope);
+          if (!base.found || !index.found) return evaluateClientExpression(plan.source || fallbackExpr || '', scope);
+          if (base.value == null) return { found: true, value: '' };
+          const value = base.value[index.value];
+          return { found: true, value: value == null ? '' : value };
+        }
+        if (plan.kind === 'array') {
+          const values = [];
+          const elements = Array.isArray(plan.elements) ? plan.elements : [];
+          for (let i = 0; i < elements.length; i += 1) {
+            const item = evaluateCompiledComponentExpressionResult(elements[i], '', scope);
+            if (!item.found) return evaluateClientExpression(plan.source || fallbackExpr || '', scope);
+            values.push(item.value);
+          }
+          return { found: true, value: values };
+        }
+        if (plan.kind === 'object') {
+          const value = {};
+          const entries = Array.isArray(plan.entries) ? plan.entries : [];
+          for (let i = 0; i < entries.length; i += 1) {
+            const entry = entries[i] || {};
+            const item = evaluateCompiledComponentExpressionResult(entry.value, '', scope);
+            if (!item.found) return evaluateClientExpression(plan.source || fallbackExpr || '', scope);
+            value[String(entry.key || '')] = item.value;
+          }
+          return { found: true, value: value };
+        }
         if (plan.kind === 'unary' && plan.operator === '!') {
           const argument = evaluateCompiledComponentExpressionResult(plan.argument, '', scope);
           return argument.found
@@ -1207,7 +1246,37 @@ const char* browserRuntimePreludeChunk() {
 }
 
 const char* browserRuntimeComponentChunk() {
-    return R"JTR1(      function renderNestedComponentCall(parentDefinition, parentInstance, node, scope, name, directNodeAttr) {
+    return R"JTR1(      function nestedComponentDefinitionForNode(parentDefinition, parentInstance, node, name) {
+        return componentDefinitionForName(
+          name,
+          node && node.definitionModule != null
+            ? node.definitionModule
+            : parentDefinition && parentDefinition.moduleId,
+          parentInstance && parentInstance.moduleId
+        );
+      }
+
+      function nestedComponentInstanceId(parentDefinition, parentInstance, node, name) {
+        const index = (parentDefinition.bodyPlan || []).indexOf(node);
+        const pathSuffix = componentRenderPath.length
+          ? '_' + componentRenderPath.join('_')
+          : '';
+        return String(parentInstance && parentInstance.id || 'component') + '__' +
+          name + '_' + String(index < 0 ? 'x' : index) + pathSuffix;
+      }
+
+      function nestedComponentParamsForNode(nestedDefinition, node, scope) {
+        const words = splitComponentWords(node && node.text || '');
+        const params = {};
+        (nestedDefinition.params || []).forEach(function (param, index) {
+          const raw = words[index + 1] || '';
+          const plan = node && Array.isArray(node.wordPlans) ? node.wordPlans[index + 1] : null;
+          params[param] = evaluateCompiledComponentExpression(plan, raw, scope);
+        });
+        return params;
+      }
+
+      function nestedComponentInstanceForNode(parentDefinition, parentInstance, node, scope, name) {
         const nestedDefinition = componentDefinitionForName(
           name,
           node && node.definitionModule != null
@@ -1217,30 +1286,29 @@ const char* browserRuntimeComponentChunk() {
         );
         if (!nestedDefinition) return null;
         const words = splitComponentWords(node.text || '');
-        const params = {};
-        (nestedDefinition.params || []).forEach(function (param, index) {
-          const raw = words[index + 1] || '';
-          const plan = node && Array.isArray(node.wordPlans) ? node.wordPlans[index + 1] : null;
-          params[param] = evaluateCompiledComponentExpression(plan, raw, scope);
-        });
-        const index = (parentDefinition.bodyPlan || []).indexOf(node);
-        const pathSuffix = componentRenderPath.length
-          ? '_' + componentRenderPath.join('_')
-          : '';
         const nestedInstance = {
           moduleId: parentDefinition && parentDefinition.moduleId,
           definitionModule: nestedDefinition.moduleId,
-          id: String(parentInstance && parentInstance.id || 'component') + '__' +
-            name + '_' + String(index < 0 ? 'x' : index) + pathSuffix,
+          id: nestedComponentInstanceId(parentDefinition, parentInstance, node, name),
           parentId: parentInstance && parentInstance.id || '',
           component: name,
-          params: params,
+          params: nestedComponentParamsForNode(nestedDefinition, node, scope),
           locals: {},
           eventHandlers: parseComponentEventHandlers(words, (nestedDefinition.params || []).length, scope),
           slotPlan: slotPlanForComponentNode(parentDefinition, node),
           slotHtml: renderComponentChildren(parentDefinition, parentInstance, node, scope)
         };
-        registerDynamicComponentInstance(nestedInstance);
+        return {
+          definition: nestedDefinition,
+          instance: registerDynamicComponentInstance(nestedInstance) || nestedInstance
+        };
+      }
+
+      function renderNestedComponentCall(parentDefinition, parentInstance, node, scope, name, directNodeAttr) {
+        const nested = nestedComponentInstanceForNode(parentDefinition, parentInstance, node, scope, name);
+        if (!nested || !nested.definition || !nested.instance) return null;
+        const nestedDefinition = nested.definition;
+        const nestedInstance = nested.instance;
         const nestedScope = componentScopeFor(nestedInstance, nestedDefinition);
         applyComponentDerived(nestedScope, nestedDefinition);
         const html = (nestedDefinition.bodyPlan || [])
@@ -2012,6 +2080,7 @@ const char* browserRuntimeComponentChunk() {
           patchStaticComponentNodeHtml: patchStaticComponentNodeHtml,
           patchStaticComponentRegionNode: patchStaticComponentRegionNode,
           patchStaticComponentSlotNode: patchStaticComponentSlotNode,
+          patchStaticComponentNestedParams: patchStaticComponentNestedParams,
           patchStaticComponentNestedNode: patchStaticComponentNestedNode,
           patchStaticComponentTextNode: patchStaticComponentTextNode,
           renderStaticComponentSlotNode: renderStaticComponentSlotNode,
@@ -2374,6 +2443,73 @@ const char* browserRuntimeComponentChunk() {
         if (!nestedName) return null;
         const directNodeAttr = ' data-jtml-direct-body-node="' + String(nodeIndex) + '"';
         return renderNestedComponentCall(definition, instance, node, scope, nestedName, directNodeAttr);
+      }
+
+      function patchStaticComponentNestedParams(instance, definition, nodeIndex, scope, name) {
+        const node = (definition && definition.bodyPlan || [])[nodeIndex];
+        const el = directComponentElementForNode(instance, nodeIndex);
+        if (!node || !el) return false;
+        const nestedName = name || componentNodeHead(node) || '';
+        if (!nestedName) return false;
+        const nestedDefinition = nestedComponentDefinitionForNode(
+          definition,
+          instance,
+          node,
+          nestedName);
+        if (!nestedDefinition) return false;
+        const nestedId = nestedComponentInstanceId(definition, instance, node, nestedName);
+        const existing = findRuntimeComponentInstance(nestedId);
+        if (!existing || existing.component !== nestedName) return false;
+        if (existing.definitionModule != null && nestedDefinition.moduleId != null &&
+            !sameRuntimeModule(existing.definitionModule, nestedDefinition.moduleId)) {
+          return false;
+        }
+        if (el.getAttribute('data-jtml-direct-instance') !== nestedId) return false;
+        const nested = nestedComponentInstanceForNode(
+          definition,
+          instance,
+          node,
+          scope,
+          nestedName);
+        if (!nested || !nested.definition || !nested.instance) return false;
+        const nestedInstance = nested.instance;
+        nestedInstance.element = el;
+        const nestedScope = componentScopeFor(nestedInstance, nested.definition);
+        applyComponentDerived(nestedScope, nested.definition);
+        const renderedDynamicIds = new Set();
+        dynamicComponentRenderStack.push(renderedDynamicIds);
+        let html = '';
+        try {
+          html = (nested.definition.bodyPlan || [])
+            .filter(function (candidate) {
+              return candidate && candidate.renderRoot && candidate.kind === 'template';
+            })
+            .map(function (candidate) {
+              return renderComponentPlanNode(nested.definition, nestedInstance, candidate, nestedScope);
+            })
+            .join('');
+        } finally {
+          dynamicComponentRenderStack.pop();
+        }
+        pruneDynamicComponentSubtree(nestedInstance.id, renderedDynamicIds);
+        el.innerHTML = html;
+        el.setAttribute('data-jtml-direct-instance', nestedInstance.id || '');
+        el.setAttribute('data-jtml-component', nestedName);
+        el.setAttribute('data-jtml-component-parent', nestedInstance.parentId || '');
+        el.setAttribute('data-jtml-nested-component', 'true');
+        window.jtml = Object.assign(window.jtml || {}, {
+          directNestedComponentParamPatch: {
+            componentId: nestedInstance.id || '',
+            component: nestedName,
+            parentId: nestedInstance.parentId || '',
+            moduleId: nested.definition.moduleId == null ? null : nested.definition.moduleId,
+            bodyNodeIndex: nodeIndex,
+            bodySourceLine: node.sourceLine || 0,
+            bodySourceColumn: node.sourceColumn || 0,
+            mode: 'in-place-param-body-patch'
+          }
+        });
+        return true;
       }
 
       function patchStaticComponentSlotNode(instance, definition, nodeIndex, scope, name) {

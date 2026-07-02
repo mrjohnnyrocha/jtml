@@ -517,6 +517,23 @@ nlohmann::json collectComponentPlans(const RuntimeProjectPlan& plan) {
 }
 
 nlohmann::json componentModulePlanPayload(nlohmann::json component) {
+    std::function<void(nlohmann::json&)> stripDebugFields =
+        [&](nlohmann::json& value) {
+            if (value.is_object()) {
+                value.erase("sourceLine");
+                value.erase("sourceColumn");
+                value.erase("rootCreateOperations");
+                value.erase("unsafeRootCreateEntries");
+                for (auto it = value.begin(); it != value.end(); ++it) {
+                    stripDebugFields(it.value());
+                }
+                return;
+            }
+            if (value.is_array()) {
+                for (auto& item : value) stripDebugFields(item);
+            }
+        };
+
     // The executable component module keeps only the metadata its generated
     // create/update functions and runtime lookup need. The source-rich body
     // plan stays in the legacy update-plan/debug asset.
@@ -525,6 +542,32 @@ nlohmann::json componentModulePlanPayload(nlohmann::json component) {
     component.erase("localDerived");
     component.erase("localState");
     component.erase("params");
+    component.erase("rootCreateOperations");
+    component.erase("unsafeRootCreateEntries");
+    if (component.contains("entries") && component["entries"].is_array()) {
+        nlohmann::json entries = nlohmann::json::array();
+        nlohmann::json entriesByRead = nlohmann::json::object();
+        for (auto entry : component["entries"]) {
+            if (!entry.is_object()) continue;
+            stripDebugFields(entry);
+            entries.push_back(entry);
+            if (entry.contains("reads") && entry["reads"].is_array()) {
+                for (const auto& read : entry["reads"]) {
+                    if (!read.is_string()) continue;
+                    entriesByRead[read.get<std::string>()].push_back(entry);
+                }
+            }
+        }
+        component["entries"] = entries;
+        component["entriesByRead"] = entriesByRead;
+    }
+    if (component.contains("unsafeEntries") && component["unsafeEntries"].is_array()) {
+        for (auto& entry : component["unsafeEntries"]) {
+            if (!entry.is_object()) continue;
+            stripDebugFields(entry);
+        }
+    }
+    stripDebugFields(component);
     return component;
 }
 
@@ -597,6 +640,58 @@ std::string jsExpressionPlanArgument(const nlohmann::json& plan) {
         out << " return value == null ? '' : value; })";
         return out.str();
     }
+    if (kind == "member") {
+        const auto base = plan.value("base", nlohmann::json::object());
+        if (!isDirectJsExpressionPlan(base)) return plan.dump();
+        return "(function(scope){ const base = " + jsExpressionPlanArgument(base) +
+               "(scope); if (base == null) return ''; const value = base[" +
+               jsStringLiteral(plan.value("property", "")) +
+               "]; return value == null ? '' : value; })";
+    }
+    if (kind == "subscript") {
+        const auto base = plan.value("base", nlohmann::json::object());
+        const auto index = plan.value("index", nlohmann::json::object());
+        if (!isDirectJsExpressionPlan(base) || !isDirectJsExpressionPlan(index)) {
+            return plan.dump();
+        }
+        return "(function(scope){ const base = " + jsExpressionPlanArgument(base) +
+               "(scope); const index = " + jsExpressionPlanArgument(index) +
+               "(scope); if (base == null) return ''; const value = base[index]; "
+               "return value == null ? '' : value; })";
+    }
+    if (kind == "array") {
+        const auto elements = plan.value("elements", nlohmann::json::array());
+        for (const auto& element : elements) {
+            if (!isDirectJsExpressionPlan(element)) return plan.dump();
+        }
+        std::ostringstream out;
+        out << "(function(scope){ return [";
+        for (size_t i = 0; i < elements.size(); ++i) {
+            if (i > 0) out << ",";
+            out << jsExpressionPlanArgument(elements[i]) << "(scope)";
+        }
+        out << "]; })";
+        return out.str();
+    }
+    if (kind == "object") {
+        const auto entries = plan.value("entries", nlohmann::json::array());
+        for (const auto& entry : entries) {
+            if (!entry.is_object() ||
+                !isDirectJsExpressionPlan(entry.value("value", nlohmann::json::object()))) {
+                return plan.dump();
+            }
+        }
+        std::ostringstream out;
+        out << "(function(scope){ return {";
+        for (size_t i = 0; i < entries.size(); ++i) {
+            if (i > 0) out << ",";
+            out << jsStringLiteral(entries[i].value("key", "")) << ":"
+                << jsExpressionPlanArgument(entries[i].value("value", nlohmann::json::object()))
+                << "(scope)";
+        }
+        out << "}; })";
+        return out.str();
+    }
     if (kind == "unary" && plan.value("operator", "") == "!") {
         const auto argument = plan.value("argument", nlohmann::json::object());
         if (!isDirectJsExpressionPlan(argument)) return plan.dump();
@@ -638,6 +733,29 @@ bool isDirectJsExpressionPlan(const nlohmann::json& plan) {
     if (!plan.is_object()) return false;
     const auto kind = plan.value("kind", "");
     if (kind == "empty" || kind == "literal" || kind == "path") return true;
+    if (kind == "member") {
+        return !plan.value("property", "").empty() &&
+               isDirectJsExpressionPlan(plan.value("base", nlohmann::json::object()));
+    }
+    if (kind == "subscript") {
+        return isDirectJsExpressionPlan(plan.value("base", nlohmann::json::object())) &&
+               isDirectJsExpressionPlan(plan.value("index", nlohmann::json::object()));
+    }
+    if (kind == "array") {
+        for (const auto& element : plan.value("elements", nlohmann::json::array())) {
+            if (!isDirectJsExpressionPlan(element)) return false;
+        }
+        return true;
+    }
+    if (kind == "object") {
+        for (const auto& entry : plan.value("entries", nlohmann::json::array())) {
+            if (!entry.is_object() ||
+                !isDirectJsExpressionPlan(entry.value("value", nlohmann::json::object()))) {
+                return false;
+            }
+        }
+        return true;
+    }
     if (kind == "unary") {
         return plan.value("operator", "") == "!" &&
                isDirectJsExpressionPlan(plan.value("argument", nlohmann::json::object()));
@@ -1114,9 +1232,20 @@ std::string directStaticSlotCreateExpression(size_t nodeIndex,
     const auto words = splitStaticComponentWords(node.value("text", ""));
     const auto slotName = words.size() > 1 ? words[1] : std::string();
     std::ostringstream out;
-    out << "(h && h.renderStaticComponentSlotNode ? "
+    out << "(function(){ "
+        << "const slotName = " << jsStringLiteral(slotName) << "; "
+        << "let html = null; "
+        << "if (!slotName && instance && instance.slotHtml != null) html = String(instance.slotHtml); "
+        << "else if (slotName && instance && instance.slotHtmlByName && "
+        << "Object.prototype.hasOwnProperty.call(instance.slotHtmlByName, slotName)) "
+        << "html = String(instance.slotHtmlByName[slotName]); "
+        << "if (html != null) return '<span data-jtml-direct-body-node=\""
+        << nodeIndex
+        << "\" data-jtml-direct-region=\"slot\" style=\"display:contents\">' + html + '</span>'; "
+        << "return (h && h.renderStaticComponentSlotNode ? "
         << "h.renderStaticComponentSlotNode(instance, definition, scope, "
-        << nodeIndex << ", " << jsStringLiteral(slotName) << ") : null)";
+        << nodeIndex << ", slotName) : null); "
+        << "})()";
     return out.str();
 }
 
@@ -1365,10 +1494,21 @@ std::string directStaticSlotPatchExpression(size_t nodeIndex,
     if (words.is_array() && words.size() > 1 && words[1].is_string()) {
         slotName = words[1].get<std::string>();
     }
+    nlohmann::json node = {
+        {"text", slotName.empty() ? std::string("slot") : std::string("slot ") + slotName}
+    };
+    const auto directCreate = directStaticSlotCreateExpression(nodeIndex, node);
     std::ostringstream out;
-    out << "(h && h.patchStaticComponentSlotNode ? "
-        << "h.patchStaticComponentSlotNode(instance, definition, "
-        << nodeIndex << ", scope, " << jsStringLiteral(slotName) << ") : false)";
+    out << "(function(){ "
+        << "const el = instance && instance.element ? "
+        << "instance.element.querySelector('[data-jtml-direct-body-node=\""
+        << nodeIndex << "\"]') : null; "
+        << "if (!el) return false; "
+        << "const html = " << directCreate << "; "
+        << "if (typeof html !== 'string' || !html.length) return false; "
+        << "el.outerHTML = html; "
+        << "return true; "
+        << "})()";
     return out.str();
 }
 
@@ -1376,10 +1516,21 @@ std::string directStaticNestedPatchExpression(size_t nodeIndex,
                                               const nlohmann::json& operation) {
     const auto name = operation.value("head", "");
     if (name.empty()) return "";
+    const auto directCreate = directStaticNestedCreateExpression(nodeIndex, name);
     std::ostringstream out;
-    out << "(h && h.patchStaticComponentNestedNode ? "
-        << "h.patchStaticComponentNestedNode(instance, definition, "
-        << nodeIndex << ", scope, " << jsStringLiteral(name) << ") : false)";
+    out << "(function(){ "
+        << "if (h && h.patchStaticComponentNestedParams && "
+        << "h.patchStaticComponentNestedParams(instance, definition, "
+        << nodeIndex << ", scope, " << jsStringLiteral(name) << ")) return true; "
+        << "const el = instance && instance.element ? "
+        << "instance.element.querySelector('[data-jtml-direct-body-node=\""
+        << nodeIndex << "\"]') : null; "
+        << "if (!el) return false; "
+        << "const html = " << directCreate << "; "
+        << "if (typeof html !== 'string' || !html.length) return false; "
+        << "el.outerHTML = html; "
+        << "return true; "
+        << "})()";
     return out.str();
 }
 

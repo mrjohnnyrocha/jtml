@@ -110,9 +110,11 @@ direct text, button, element, container-attribute, safe control-flow region,
 slot, and nested-component shapes before falling back to operation records. The older
 `rootCreateOperations` and per-entry operation payloads remain as fallback/debug
 metadata while the compiler path expands. The
-runtime-plan layer now owns the canonical expression-plan producer for
-literals, booleans, numbers, null, simple dot paths, unary `!`,
-binary/comparison/logical operators, and ternary conditionals. Static component
+runtime-plan layer now owns the canonical expression-plan producer and now
+prefers parsed JTML expression AST nodes before falling back to the legacy
+string planner. Literal, boolean, number, null, dot-path, unary `!`,
+binary/comparison/logical, ternary, composite string, array/object literal,
+member/subscript, and call-shaped plans carry `producer: "ast"` when the parser owns them. Static component
 emission consumes that same API, so expression plans flow consistently through
 text/element operations, element content, attributes, modifiers, component
 action arguments, body-plan conditions, `for` collection/key expressions,
@@ -124,6 +126,11 @@ safe control-flow, slot, and nested create functions that do not require runtime
 availability unless they hit a fallback shape, plus generated text, element
 attribute/content, button label/action-arg, safe region, slot, and nested
 patches update DOM directly without a generic region-helper requirement.
+Slot create functions now have a raw default/named slot HTML fast path, and
+slot patch functions replace their own marked DOM regions before falling back
+to generic runtime renderers. Nested component patches now first try true
+parameter/body updates inside the retained nested wrapper and only replace the
+wrapper when identity or shape checks fail.
 Static create fallbacks record source-first component/plan context in
 `window.jtml.directComponentCreateFallback`. Runtime-plan read analysis also treats
 value-taking attributes such as `title selected` as reads of `selected`, even
@@ -149,7 +156,7 @@ Remaining high-value runtime work:
 
 - Broaden static component modules into fuller generated update JS with fewer
   operation-record fallbacks.
-- Precompile richer action bodies. Literal/simple-path and first-slice
+- Precompile richer action bodies. AST-owned literal/simple-path and first-slice
   composite expression plans already cover component module `expressionPlan`,
   `contentPlan`, `exprPlan`, `argPlans`, body-plan conditions, loop
   collection/key plans, nested params, and matching live body-plan JSON.
@@ -158,7 +165,7 @@ Remaining high-value runtime work:
   keyed lists.
 - Remove embedded runtime duplication once `jtml-runtime.js` is the primary
   production runtime asset.
-- Add benchmark fixtures and enforce performance budgets.
+- Add benchmark fixtures and enforce tighter performance budgets.
 
 ## Test quirks
 
@@ -180,8 +187,12 @@ guardrails, not final benchmarks; tighten runtime/component budgets as direct
 generated modules replace body-plan helpers. The `control_flow` fixture also
 asserts that safe `if`/keyed-`for` regions, keyed list markers, and direct
 safe-region patching are present in `components/index.js`; the `composition`
-fixture asserts first-slice direct slot/nested component create/patch contracts
-and source-first static create fallback telemetry.
+fixture asserts first-slice direct slot/nested component create/patch contracts,
+in-place nested parameter patching, and source-first static create fallback
+telemetry. The smoke script also calls `scripts/benchmark_browser_runtime.sh`
+when a local Chrome/Chromium is available; that headless-browser harness
+executes real button clicks against built fixtures and enforces runtime timing
+plus nested-param/keyed-list telemetry.
 
 ## VS Code extension
 

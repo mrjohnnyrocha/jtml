@@ -3,8 +3,11 @@
 #include "jtml/runtime_plan.h"
 #include "json.hpp"
 
+struct ExpressionStatementNode;
+
 namespace jtml {
 
+nlohmann::json compileRuntimeExpressionPlan(const ExpressionStatementNode* expression);
 nlohmann::json compileRuntimeExpressionPlan(const std::string& expression);
 
 nlohmann::json runtimePlanBodyPlanToJson(

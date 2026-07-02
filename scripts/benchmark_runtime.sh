@@ -84,6 +84,10 @@ for fixture in "${FIXTURES}"/*.jtml; do
     echo "error: ${name} component module contains source-rich bodyPlan debug payload" >&2
     exit 1
   fi
+  if grep -q '"rootCreateOperations"\|"unsafeRootCreateEntries"\|"sourceLine"\|"sourceColumn"' "${component_module}"; then
+    echo "error: ${name} component module contains legacy debug/source metadata" >&2
+    exit 1
+  fi
   if ! grep -q '"assetRole":"component-module"' "${component_module}"; then
     echo "error: ${name} component module missing component-module asset role" >&2
     exit 1
@@ -111,20 +115,32 @@ for fixture in "${FIXTURES}"/*.jtml; do
     fi
   fi
   if [[ "${name}" == "composition" ]]; then
-    if ! grep -q 'renderStaticComponentSlotNode(instance, definition, scope' "${component_module}"; then
-      echo "error: ${name} component module missing direct slot create contract" >&2
+    if ! grep -q 'instance.slotHtml != null' "${component_module}"; then
+      echo "error: ${name} component module missing raw slot HTML fast path" >&2
+      exit 1
+    fi
+    if ! grep -q 'instance.slotHtmlByName' "${component_module}"; then
+      echo "error: ${name} component module missing named slot HTML fast path" >&2
       exit 1
     fi
     if ! grep -q 'renderStaticComponentNestedNode(instance, definition, scope' "${component_module}"; then
       echo "error: ${name} component module missing direct nested component create contract" >&2
       exit 1
     fi
-    if ! grep -q 'patchStaticComponentNestedNode(instance, definition' "${component_module}"; then
-      echo "error: ${name} component module missing direct nested component patch contract" >&2
+    if ! grep -q 'patchStaticComponentNestedParams(instance, definition' "${component_module}"; then
+      echo "error: ${name} component module missing in-place nested component parameter patch contract" >&2
+      exit 1
+    fi
+    if ! grep -q 'el.outerHTML = html' "${component_module}"; then
+      echo "error: ${name} component module missing direct static region replacement" >&2
       exit 1
     fi
     if ! grep -q 'recordStaticCreateFallback(instance, definition, plan' "${component_module}"; then
       echo "error: ${name} component module missing source-first static create fallback telemetry" >&2
+      exit 1
+    fi
+    if grep -q 'patchStaticComponentNestedNode(instance, definition' "${component_module}"; then
+      echo "error: ${name} component module still delegates nested patches to runtime helper" >&2
       exit 1
     fi
     if grep -q 'patchStaticComponentRegionNode(instance, definition' "${component_module}"; then
@@ -143,5 +159,9 @@ for fixture in "${FIXTURES}"/*.jtml; do
 
   echo "OK: ${name} index=${index_bytes}B runtime=${runtime_bytes}B components=${component_bytes}B app=${app_bytes}B updatePlans=${plan_bytes}B"
 done
+
+if [[ "${JTML_BROWSER_BENCHMARK:-1}" != "0" ]]; then
+  "${ROOT}/scripts/benchmark_browser_runtime.sh" "${OUT_ROOT}"
+fi
 
 echo "JTML runtime benchmark smoke passed."

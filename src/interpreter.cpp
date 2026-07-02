@@ -1100,18 +1100,31 @@ std::string Interpreter::getStateJSON() {
             auto value = evalComponentExpression(listExpr, env);
             const auto items = componentLoopItems(value);
             std::string out;
+            const std::string directListNode = nodeIndexString(def, node);
             size_t itemIndex = 0;
             for (const auto& item : items) {
                 assignLoopIterator(env, itemName, item);
-                std::string keySegment = std::to_string(itemIndex++);
+                const size_t currentIndex = itemIndex++;
+                std::string keySegment = std::to_string(currentIndex);
                 if (!node.keyExpression.empty()) {
                     keySegment = pathSegment(expressionText(node.keyExpression, env));
                 }
-                renderPath.push_back("for" + nodeIndexString(def, node) + "_" + keySegment);
+                renderPath.push_back("for" + directListNode + "_" + keySegment);
+                out += "<span data-jtml-direct-list-item=\"" +
+                    escapeAttr(directListNode) + "\"";
+                out += " data-jtml-direct-list-key=\"" +
+                    escapeAttr(keySegment) + "\"";
+                out += " data-jtml-direct-list-index=\"" +
+                    std::to_string(currentIndex) + "\"";
+                out += " style=\"display:contents\">";
                 out += renderChildren(def, instance, node, env, slotHtml);
+                out += "</span>";
                 renderPath.pop_back();
             }
-            return out;
+            return "<span data-jtml-direct-body-node=\"" +
+                   escapeAttr(directListNode) +
+                   "\" data-jtml-direct-region=\"for\" style=\"display:contents\">" +
+                   out + "</span>";
         }
         const auto preferredModule = node.definitionModule == jtml::InvalidSemanticModuleId
             ? def.moduleId
@@ -1134,6 +1147,17 @@ std::string Interpreter::getStateJSON() {
         for (size_t i = 1; i < words.size(); ++i) {
             const std::string& token = words[i];
             if (token == "click") break;
+            if (token == "into") {
+                if ((head == "video" || head == "audio") && i + 1 < words.size()) {
+                    attrs.push_back({
+                        "data-jtml-media-controller",
+                        words[++i]
+                    });
+                } else if (i + 1 < words.size()) {
+                    ++i;
+                }
+                continue;
+            }
             if ((head == "link" || head == "navlink") && token == "to" && i + 1 < words.size()) {
                 const std::string routeTarget = expressionText(words[++i], env);
                 const std::string routeHref = routeTarget.empty() || routeTarget.front() == '#'

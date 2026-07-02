@@ -777,6 +777,7 @@ int cmdDoctor(const Options& o) {
         {"build script", "scripts/build_site.sh", true},
         {"package script", "scripts/package_cli.sh", true},
         {"runtime benchmark script", "scripts/benchmark_runtime.sh", true},
+        {"browser runtime benchmark script", "scripts/benchmark_browser_runtime.sh", true},
         {"verification script", "scripts/verify_all.sh", true},
     };
     const std::vector<Gate> gates = {
@@ -789,6 +790,7 @@ int cmdDoctor(const Options& o) {
         {"asan-ubsan", "Sanitizer build", "cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=Debug -DJTML_ENABLE_SANITIZERS=ON", "planned"},
         {"coverage", "Coverage report", "planned", "planned"},
         {"benchmarks", "Runtime and compiler benchmark smoke", "scripts/benchmark_runtime.sh", "required"},
+        {"browser-benchmarks", "Headless browser click/runtime benchmark", "scripts/benchmark_browser_runtime.sh", "required"},
     };
     const std::vector<Tier> tiers = {
         {"stable", {
@@ -848,6 +850,8 @@ int cmdDoctor(const Options& o) {
             {"actionLocalDeclarations", true},
             {"bodyPlanActionExpressionPlans", true},
             {"canonicalRuntimeExpressionPlans", true},
+            {"astOwnedRuntimeExpressionPlans", true},
+            {"richerAstExpressionPlanShapes", true},
             {"memberWriteDependencyRoots", true},
             {"memberAssignmentDirectMutation", true},
             {"memberAssignmentDeepDictCreation", true},
@@ -870,6 +874,8 @@ int cmdDoctor(const Options& o) {
             {"directStaticControlFlowCreateHtml", true},
             {"directStaticSlotCreateHtml", true},
             {"directStaticNestedComponentCreateHtml", true},
+            {"directStaticSlotHtmlFastPath", true},
+            {"helperIndependentSlotNestedPatchFunctions", true},
             {"helperIndependentStaticUpdateFunctions", true},
             {"containerAttributePatchOperations", true},
             {"controlFlowRegionPatchOperations", true},
@@ -878,6 +884,7 @@ int cmdDoctor(const Options& o) {
             {"nestedComponentPatchOperations", true},
             {"directStaticSlotRegionPatches", true},
             {"directStaticNestedComponentPatches", true},
+            {"directStaticNestedParamPatches", true},
             {"legacyHeuristicPatchFallback", false},
             {"keyedListRegionMarkers", true},
             {"keyedListLifecycleTelemetry", true},
@@ -904,7 +911,7 @@ int cmdDoctor(const Options& o) {
             {"benchmarkPath", "compiler-first browser production target"},
             {"liveHtmlPatchPath", "dev/internal runtime backend"},
             {"optimizedJsCompiler", "planned"},
-            {"fineGrainedUpdates", "cached browser-local indexed compiled update functions with generated production update-function source, parsed expression dependency metadata, canonical runtime expression plans for literal/path/unary/binary/conditional expressions, precompiled text, attribute, container patch operation, safe control-flow create/patch operation shapes, direct slot/nested component node create/patch contracts, and direct region replacement for safe if/keyed-for regions; legacy heuristic patch fallback removed; optimized compiler planned"},
+            {"fineGrainedUpdates", "cached browser-local indexed compiled update functions with generated production update-function source, parsed expression dependency metadata, canonical runtime expression plans for literal/path/unary/binary/conditional expressions, precompiled text, attribute, container patch operation, safe control-flow create/patch operation shapes, direct slot/nested component node create/patch contracts, in-place nested component parameter/body patches, and direct region replacement for safe if/keyed-for regions; legacy heuristic patch fallback removed; optimized compiler planned"},
             {"bodyPlanReadWriteMetadata", true},
             {"typedExpressionDependencyAnalysis", true},
             {"memberSubscriptReadPaths", true},
@@ -918,6 +925,7 @@ int cmdDoctor(const Options& o) {
             {"componentModulePlanIndex", true},
             {"legacyUpdatePlanCompatibilityAsset", true},
             {"benchmarkSmoke", "scripts/benchmark_runtime.sh"},
+            {"browserRuntimeBenchmark", "scripts/benchmark_browser_runtime.sh"},
             {"browserAssetBudgets", "first-slice index/runtime/component/app/update-plan byte budgets"},
             {"dynamicGeneratedUpdateFunctions", "explicit opt-in bridge only"},
             {"keyedListDiffing", "first-slice direct list item key/index markers, lifecycle telemetry, conservative keyed for-region patching, below-wrapper element/text reconciliation for retained keyed items, child body-node marker reconciliation below retained wrappers, retained/inserted/removed/moved key reporting, and removed nested dynamic child pruning; optimized DOM diff planned"},

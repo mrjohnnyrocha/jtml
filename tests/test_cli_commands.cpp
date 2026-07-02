@@ -934,6 +934,8 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["actionLocalDeclarations"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["bodyPlanActionExpressionPlans"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["canonicalRuntimeExpressionPlans"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["astOwnedRuntimeExpressionPlans"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["richerAstExpressionPlanShapes"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["memberWriteDependencyRoots"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["memberAssignmentDirectMutation"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["memberAssignmentDeepDictCreation"], true);
@@ -956,6 +958,8 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["directStaticControlFlowCreateHtml"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["directStaticSlotCreateHtml"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["directStaticNestedComponentCreateHtml"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["directStaticSlotHtmlFastPath"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["helperIndependentSlotNestedPatchFunctions"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["helperIndependentStaticUpdateFunctions"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["containerAttributePatchOperations"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["controlFlowRegionPatchOperations"], true);
@@ -964,6 +968,7 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["nestedComponentPatchOperations"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["directStaticSlotRegionPatches"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["directStaticNestedComponentPatches"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["directStaticNestedParamPatches"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["legacyHeuristicPatchFallback"], false);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["keyedListRegionMarkers"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["keyedListLifecycleTelemetry"], true);
@@ -1006,6 +1011,8 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["legacyUpdatePlanCompatibilityAsset"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["benchmarkSmoke"],
               "scripts/benchmark_runtime.sh");
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["browserRuntimeBenchmark"],
+              "scripts/benchmark_browser_runtime.sh");
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["browserAssetBudgets"].get<std::string>().find("byte budgets"),
               std::string::npos);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["dynamicGeneratedUpdateFunctions"],
@@ -1041,6 +1048,8 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
               std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("direct slot/nested component node create/patch contracts"),
               std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("in-place nested component parameter/body patches"),
+              std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("direct region replacement for safe if/keyed-for regions"),
               std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["fineGrainedUpdates"].get<std::string>().find("legacy heuristic patch fallback removed"),
@@ -1060,6 +1069,7 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     const std::string gates = report["verificationGates"].dump();
     EXPECT_NE(gates.find("scripts/verify_all.sh"), std::string::npos);
     EXPECT_NE(gates.find("scripts/benchmark_runtime.sh"), std::string::npos);
+    EXPECT_NE(gates.find("scripts/benchmark_browser_runtime.sh"), std::string::npos);
     EXPECT_NE(gates.find("ctest --test-dir build --output-on-failure"), std::string::npos);
     EXPECT_NE(gates.find("asan-ubsan"), std::string::npos);
 
@@ -1495,15 +1505,17 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("\"staticCreateCoverage\":\"direct-text-button-element-container-control-flow-slot-nested-create-first-slice\""),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("\"rootCreateOperations\""),
+    EXPECT_EQ(componentModule.find("\"rootCreateOperations\""),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("\"unsafeRootCreateEntries\""),
+    EXPECT_EQ(componentModule.find("\"unsafeRootCreateEntries\""),
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("\"partsPlan\""),
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("\"expressionPlan\""),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("\"sourceColumn\""),
+    EXPECT_EQ(componentModule.find("\"sourceColumn\""),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"sourceLine\""),
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("\"contentPlan\""),
               std::string::npos) << componentModule;
@@ -1563,11 +1575,17 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("data-jtml-direct-list-key"),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("renderStaticComponentSlotNode(instance, definition, scope"),
+    EXPECT_NE(componentModule.find("instance.slotHtml != null"),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("instance.slotHtmlByName"),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("data-jtml-direct-region=\"slot\""),
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("renderStaticComponentNestedNode(instance, definition, scope"),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("patchStaticComponentNestedNode(instance, definition"),
+    EXPECT_NE(componentModule.find("patchStaticComponentNestedParams(instance, definition"),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("patchStaticComponentNestedNode(instance, definition"),
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("next['data-jtml-direct-component-args'] = JSON.stringify(actionArgs);"),
               std::string::npos) << componentModule;
@@ -1678,11 +1696,17 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("data-jtml-direct-list-key"),
               std::string::npos) << updatePlans;
-    EXPECT_NE(updatePlans.find("renderStaticComponentSlotNode(instance, definition, scope"),
+    EXPECT_NE(updatePlans.find("instance.slotHtml != null"),
+              std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("instance.slotHtmlByName"),
+              std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("data-jtml-direct-region=\"slot\""),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("renderStaticComponentNestedNode(instance, definition, scope"),
               std::string::npos) << updatePlans;
-    EXPECT_NE(updatePlans.find("patchStaticComponentNestedNode(instance, definition"),
+    EXPECT_NE(updatePlans.find("patchStaticComponentNestedParams(instance, definition"),
+              std::string::npos) << updatePlans;
+    EXPECT_EQ(updatePlans.find("patchStaticComponentNestedNode(instance, definition"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("function jtml_static_component_update_"),
               std::string::npos) << updatePlans;

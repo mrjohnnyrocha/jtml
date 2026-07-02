@@ -1,0 +1,23 @@
+jtml 2
+
+make Metric label value
+  card title label tone primary
+    text value
+
+make MetricGrid value
+  panel title "Nested component update"
+    Metric "Primary" value
+    Metric "Mirror" value
+
+make NestedUpdateBench
+  let count = 0
+  get value = "Value {count}"
+
+  when tick
+    count += 1
+
+  button "Tick" click tick
+  MetricGrid value
+
+page
+  NestedUpdateBench

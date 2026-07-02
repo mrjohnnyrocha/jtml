@@ -41,6 +41,25 @@ TEST(Parser, ConditionalExpressionParses) {
     EXPECT_EQ(def.expression->toString(), "(ok ? yes : no)");
 }
 
+TEST(Parser, StandaloneExpressionParsesAndRejectsTrailingTokens) {
+    Lexer lex("users.data[index].name");
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << "unexpected lex errors";
+    Parser parser(std::move(tokens));
+    auto expression = parser.parseStandaloneExpression();
+    ASSERT_TRUE(expression);
+    EXPECT_TRUE(parser.getErrors().empty()) << "unexpected parse errors";
+    EXPECT_EQ(expression->getExprType(), ExpressionStatementNodeType::ObjectPropertyAccess);
+
+    Lexer badLex("users.data extra");
+    auto badTokens = badLex.tokenize();
+    ASSERT_TRUE(badLex.getErrors().empty()) << "unexpected lex errors";
+    Parser badParser(std::move(badTokens));
+    auto badExpression = badParser.parseStandaloneExpression();
+    EXPECT_FALSE(badExpression);
+    EXPECT_FALSE(badParser.getErrors().empty());
+}
+
 TEST(Parser, CompoundAssignmentParsesAsAssignment) {
     auto prog = parseOk(
         "define count = 1\\\\\n"

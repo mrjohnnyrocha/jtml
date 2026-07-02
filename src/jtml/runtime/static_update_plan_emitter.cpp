@@ -475,7 +475,9 @@ nlohmann::json compileStaticComponentUpdatePlan(
         {"localState", definition.localState},
         {"localDerived", definition.localDerived},
         {"localActions", definition.localActions},
-        {"bodyPlan", runtimePlanBodyPlanToJson(definition.bodyPlan)},
+        {"bodyPlan", runtimePlanBodyPlanToJson(
+            definition.bodyPlan,
+            RuntimePlanJsonOptions{true})},
         {"entries", entries},
         {"entriesByRead", entriesByRead},
         {"unsafeEntries", unsafeEntries},
@@ -614,6 +616,12 @@ bool isDirectJsExpressionPlan(const nlohmann::json& plan);
 
 std::string jsExpressionPlanArgument(const nlohmann::json& plan) {
     if (!plan.is_object()) return plan.dump();
+    if (plan.value("directJs", false) && plan.contains("jsExpression") &&
+        plan["jsExpression"].is_string()) {
+        return "(function(scope){ const value = (" +
+               plan["jsExpression"].get<std::string>() +
+               "); return value == null ? '' : value; })";
+    }
     const auto kind = plan.value("kind", "");
     if (kind == "empty") {
         return "(function(scope){ return ''; })";
@@ -731,6 +739,10 @@ std::string jsExpressionPlanArgument(const nlohmann::json& plan) {
 
 bool isDirectJsExpressionPlan(const nlohmann::json& plan) {
     if (!plan.is_object()) return false;
+    if (plan.value("directJs", false) && plan.contains("jsExpression") &&
+        plan["jsExpression"].is_string()) {
+        return true;
+    }
     const auto kind = plan.value("kind", "");
     if (kind == "empty" || kind == "literal" || kind == "path") return true;
     if (kind == "member") {

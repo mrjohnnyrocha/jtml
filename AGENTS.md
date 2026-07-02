@@ -65,11 +65,10 @@ architecture should flow from Friendly/semantic/runtime-plan ownership.
 Do not add new CLI-level source scanners for semantic questions. Prefer typed
 AST, semantic IR, `SemanticProject`, or `RuntimePlan`.
 
-Do not introduce runtime `eval` / `new Function` as the production path.
-Dynamic generated update functions are an explicit development bridge only.
-Production browser builds should prefer CSP-safe external assets such as
+Do not introduce runtime `eval` / `new Function` in shipped browser assets.
+Generated production code must live in CSP-safe external assets such as
 `components/index.js`, `app.js`, and the legacy compatibility alias
-`jtml-update-plans.js`.
+`jtml-update-plans.js`; the browser runtime must refuse dynamic compilation.
 
 ## Current runtime compiler bridge
 
@@ -98,8 +97,9 @@ not publish the legacy update-plan global or carry source-rich body-plan debug
 payloads.
 
 The runtime should prefer static component create/update modules first, then
-interpreted static plans, then runtime plan compilation. Compatibility DOM is
-only for unsupported shapes and migration paths.
+interpreted static plans, then runtime plan compilation without dynamic code
+execution. Compatibility DOM is only for unsupported shapes and migration
+paths.
 
 Current static component modules emit direct escaped HTML create functions for
 supported root text, button, leaf element, direct-safe container nodes,
@@ -111,10 +111,10 @@ slot, and nested-component shapes before falling back to operation records. The 
 `rootCreateOperations` and per-entry operation payloads remain as fallback/debug
 metadata while the compiler path expands. The
 runtime-plan layer now owns the canonical expression-plan producer and now
-prefers parsed JTML expression AST nodes before falling back to the legacy
-string planner. Literal, boolean, number, null, dot-path, unary `!`,
+prefers parsed JTML expression AST nodes through `Parser::parseStandaloneExpression()`
+before falling back to the legacy string planner. Literal, boolean, number, null, dot-path, unary `!`,
 binary/comparison/logical, ternary, composite string, array/object literal,
-member/subscript, and call-shaped plans carry `producer: "ast"` when the parser owns them. Static component
+member/subscript, and call-shaped plans carry `producer: "typed-ir"` when the parser owns them. Static component
 emission consumes that same API, so expression plans flow consistently through
 text/element operations, element content, attributes, modifiers, component
 action arguments, body-plan conditions, `for` collection/key expressions,
@@ -178,7 +178,8 @@ Remaining high-value runtime work:
 
 Use `scripts/benchmark_runtime.sh` for first-slice runtime/compiler budgets.
 It builds browser targets from `tests/fixtures/performance/`, verifies that
-the split browser assets are emitted, and fails if generated assets exceed the
+the split browser assets are emitted, rejects dynamic `new Function`/direct
+`eval` in production browser assets, and fails if generated assets exceed the
 current size budgets. Defaults are intentionally conservative while the runtime
 is still being split: 50 KB for `index.html`, 260 KB for
 `jtml-runtime.js`, 180 KB for `components/index.js`, 20 KB for `app.js`, and
@@ -191,8 +192,11 @@ fixture asserts first-slice direct slot/nested component create/patch contracts,
 in-place nested parameter patching, and source-first static create fallback
 telemetry. The smoke script also calls `scripts/benchmark_browser_runtime.sh`
 when a local Chrome/Chromium is available; that headless-browser harness
-executes real button clicks against built fixtures and enforces runtime timing
-plus nested-param/keyed-list telemetry.
+executes real button clicks against built fixtures and enforces runtime timing,
+fixture-specific DOM results, plus nested-param/keyed-list telemetry. The
+fixture set includes small smoke cases plus `large_keyed_rows` and
+`nested_component_update` as first production-budget scaffolds for 1k keyed
+row lifecycle and nested component parameter updates.
 
 ## VS Code extension
 

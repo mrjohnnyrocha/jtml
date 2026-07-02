@@ -159,7 +159,7 @@ The runtime-plan layer now owns the canonical expression-plan producer and now
 prefers parsed JTML expression AST nodes before falling back to the legacy
 string planner. Literal, boolean, number, null, dot-path, unary `!`,
 binary/comparison/logical, ternary, composite string, array/object literal,
-member/subscript, and call-shaped plans carry `producer: "ast"` when the parser owns them; static
+member/subscript, and call-shaped plans carry `producer: "typed-ir"` when the parser owns them; static
 component emission consumes that same API instead of maintaining a private
 expression parser. Those plans travel through text/element patch operations, element
 content, attributes, modifiers, component action arguments, body-plan
@@ -694,10 +694,11 @@ Implementation slices:
    create/patch contracts; next precompile richer action bodies, broaden static
    update functions beyond the current body-plan patch helpers, expand
    text/attribute/button patches into keyed region updates, emit full
-   static JS runtime assets for production, add benchmark fixtures/budgets
-   beyond the current smoke script, and keep the current manifest interpreter
-   plus opt-in dynamic generated-function bridge as dev and compatibility
-   fallback.
+   static JS runtime assets for production, keep expanding the benchmark
+   fixtures/budgets beyond the current `large_keyed_rows` and
+   `nested_component_update` scaffolds, and keep the current manifest interpreter
+   as a compatibility fallback without runtime string compilation in shipped
+   browser assets.
 51. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
    same catalog endpoint pattern.
 52. Add contract-first JTL backend API design docs and prototypes only after

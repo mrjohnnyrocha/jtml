@@ -2077,17 +2077,17 @@ TEST(FriendlySyntax, DirectComponentBodyPlanRendererCoversConditionalsAndLoops) 
     EXPECT_NE(html.find("pruneDynamicComponentSubtree(instance.id, renderedDynamicIds)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("\"text\":\"if visible\""), std::string::npos) << html;
-    EXPECT_NE(html.find("\"expressionPlan\":{\"kind\":\"path\",\"producer\":\"ast\""),
+    EXPECT_NE(html.find("\"producer\":\"typed-ir\""),
               std::string::npos) << html;
     EXPECT_NE(html.find("\"root\":\"visible\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"text\":\"for item in items key item\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"loopPlan\":{\"collectionExpression\":\"items\""),
               std::string::npos) << html;
-    EXPECT_NE(html.find("\"collectionPlan\":{\"kind\":\"path\",\"producer\":\"ast\""),
+    EXPECT_NE(html.find("\"collectionPlan\""),
               std::string::npos) << html;
     EXPECT_NE(html.find("\"root\":\"items\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"keyExpression\":\"item\""), std::string::npos) << html;
-    EXPECT_NE(html.find("\"keyExpressionPlan\":{\"kind\":\"path\",\"producer\":\"ast\""),
+    EXPECT_NE(html.find("\"keyExpressionPlan\""),
               std::string::npos) << html;
     EXPECT_NE(html.find("\"root\":\"item\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"text\":\"for person in people\""), std::string::npos) << html;
@@ -2527,7 +2527,8 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("cspSafeUpdatePlans: !dynamicGeneratedUpdateFunctions"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("const factory = new Function('h', plan.generatedSource)"),
+    EXPECT_EQ(html.find("new Function"), std::string::npos) << html;
+    EXPECT_NE(html.find("dynamic generated update functions are not executed by the shipped runtime"),
               std::string::npos) << html;
     EXPECT_NE(html.find("generated-production-update-function"),
               std::string::npos) << html;
@@ -2860,6 +2861,9 @@ TEST(FriendlySyntax, DynamicGeneratedUpdateFunctionsAreExplicitlyOptIn) {
     devTranspiler.setDynamicGeneratedUpdateFunctions(true);
     const std::string devHtml = devTranspiler.transpile(program);
     EXPECT_NE(devHtml.find("const dynamicGeneratedUpdateFunctions = true;"),
+              std::string::npos) << devHtml;
+    EXPECT_EQ(devHtml.find("new Function"), std::string::npos) << devHtml;
+    EXPECT_NE(devHtml.find("dynamic generated update functions are not executed by the shipped runtime"),
               std::string::npos) << devHtml;
 }
 

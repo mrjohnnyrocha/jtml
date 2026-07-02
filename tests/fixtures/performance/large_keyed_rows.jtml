@@ -1,0 +1,19 @@
+jtml 2
+
+make LargeKeyedRows
+  let offset = 0
+
+  when rotate
+    if offset == 0
+      offset = 100
+    else
+      offset = 0
+
+  panel title "Large keyed rows"
+    button "Rotate rows" click rotate
+    for index in 1..1000 key index + offset
+      card title "Row {index + offset}" tone neutral
+        text "Row {index + offset}"
+
+page
+  LargeKeyedRows

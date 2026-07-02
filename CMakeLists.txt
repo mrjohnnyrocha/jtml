@@ -47,6 +47,7 @@ set(JTML_SYNTAX_SOURCES
     src/friendly.cpp
     src/friendly_formatter.cpp
     src/expression_source.cpp
+    src/expression_ir.cpp
     src/formatter.cpp
 )
 

@@ -1,4 +1,5 @@
 #include "jtml/friendly.h"
+#include "jtml/expression_ir.h"
 #include "jtml/language_catalog.h"
 #include "jtml/lexer.h"
 #include "jtml/parser.h"
@@ -1422,14 +1423,23 @@ TEST(RuntimePlan, BodyPlanReadsComeFromParsedExpressionAst) {
 }
 
 TEST(RuntimePlan, CanonicalExpressionPlanCoversCompositeOperators) {
+    const auto directExpression = jtml::compileRuntimeExpressionPlan("users.data[index].name");
+    ASSERT_EQ(directExpression["kind"], "member") << directExpression.dump(2);
+    EXPECT_EQ(directExpression["producer"], "typed-ir") << directExpression.dump(2);
+    EXPECT_EQ(directExpression["base"]["kind"], "subscript") << directExpression.dump(2);
+
+    const auto partial = jtml::compileRuntimeExpressionPlan("users.data extra");
+    EXPECT_EQ(partial["kind"], "source") << partial.dump(2);
+    EXPECT_FALSE(partial.contains("producer")) << partial.dump(2);
+
     const auto plan = jtml::compileRuntimeExpressionPlan(
         "(visible && title != \"Hidden\") ? items : empty");
 
     ASSERT_EQ(plan["kind"], "conditional") << plan.dump(2);
-    EXPECT_EQ(plan["producer"], "ast") << plan.dump(2);
+    EXPECT_EQ(plan["producer"], "typed-ir") << plan.dump(2);
     ASSERT_TRUE(plan.contains("test")) << plan.dump(2);
     EXPECT_EQ(plan["test"]["kind"], "binary") << plan.dump(2);
-    EXPECT_EQ(plan["test"]["producer"], "ast") << plan.dump(2);
+    EXPECT_EQ(plan["test"]["producer"], "typed-ir") << plan.dump(2);
     EXPECT_EQ(plan["test"]["operator"], "&&") << plan.dump(2);
     ASSERT_TRUE(plan["test"].contains("right")) << plan.dump(2);
     EXPECT_EQ(plan["test"]["right"]["kind"], "binary") << plan.dump(2);
@@ -1442,21 +1452,21 @@ TEST(RuntimePlan, CanonicalExpressionPlanCoversCompositeOperators) {
     const auto nested = jtml::compileRuntimeExpressionPlan(
         "title == \"Open\" ? item : \"none\"");
     ASSERT_EQ(nested["kind"], "conditional") << nested.dump(2);
-    EXPECT_EQ(nested["producer"], "ast") << nested.dump(2);
+    EXPECT_EQ(nested["producer"], "typed-ir") << nested.dump(2);
     EXPECT_EQ(nested["test"]["operator"], "==") << nested.dump(2);
     EXPECT_EQ(nested["whenTrue"]["kind"], "path") << nested.dump(2);
     EXPECT_EQ(nested["whenFalse"]["kind"], "literal") << nested.dump(2);
 
     const auto member = jtml::compileRuntimeExpressionPlan("users.data.active.name");
     ASSERT_EQ(member["kind"], "path") << member.dump(2);
-    EXPECT_EQ(member["producer"], "ast") << member.dump(2);
+    EXPECT_EQ(member["producer"], "typed-ir") << member.dump(2);
     ASSERT_EQ(member["segments"].size(), 4u) << member.dump(2);
     EXPECT_EQ(member["segments"][0], "users") << member.dump(2);
     EXPECT_EQ(member["segments"][3], "name") << member.dump(2);
 
     const auto subscript = jtml::compileRuntimeExpressionPlan("users.data[index].name");
     ASSERT_EQ(subscript["kind"], "member") << subscript.dump(2);
-    EXPECT_EQ(subscript["producer"], "ast") << subscript.dump(2);
+    EXPECT_EQ(subscript["producer"], "typed-ir") << subscript.dump(2);
     ASSERT_TRUE(subscript.contains("base")) << subscript.dump(2);
     EXPECT_EQ(subscript["property"], "name") << subscript.dump(2);
     ASSERT_EQ(subscript["base"]["kind"], "subscript") << subscript.dump(2);
@@ -1465,17 +1475,55 @@ TEST(RuntimePlan, CanonicalExpressionPlanCoversCompositeOperators) {
 
     const auto array = jtml::compileRuntimeExpressionPlan("[title, \"Ready\", count + 1]");
     ASSERT_EQ(array["kind"], "array") << array.dump(2);
-    EXPECT_EQ(array["producer"], "ast") << array.dump(2);
+    EXPECT_EQ(array["producer"], "typed-ir") << array.dump(2);
     ASSERT_EQ(array["elements"].size(), 3u) << array.dump(2);
     EXPECT_EQ(array["elements"][0]["kind"], "path") << array.dump(2);
     EXPECT_EQ(array["elements"][2]["kind"], "binary") << array.dump(2);
 
     const auto object = jtml::compileRuntimeExpressionPlan("{ \"name\": title, \"count\": count }");
     ASSERT_EQ(object["kind"], "object") << object.dump(2);
-    EXPECT_EQ(object["producer"], "ast") << object.dump(2);
+    EXPECT_EQ(object["producer"], "typed-ir") << object.dump(2);
     ASSERT_EQ(object["entries"].size(), 2u) << object.dump(2);
     EXPECT_EQ(object["entries"][0]["key"], "name") << object.dump(2);
     EXPECT_EQ(object["entries"][0]["value"]["kind"], "path") << object.dump(2);
+}
+
+TEST(RuntimePlan, TypedExpressionIrOwnsDependenciesJsonAndJsCodegen) {
+    auto ir = jtml::parseExpressionIr(
+        "(visible && users.data[index].active) ? [title, count + 1] : { \"fallback\": empty }");
+    ASSERT_TRUE(ir);
+
+    const auto deps = jtml::expressionIrDependencies(*ir);
+    std::string depsText;
+    for (const auto& dep : deps) depsText += dep + " ";
+    auto containsDep = [&](const std::string& value) {
+        return std::find(deps.begin(), deps.end(), value) != deps.end();
+    };
+    EXPECT_TRUE(containsDep("visible")) << depsText;
+    EXPECT_TRUE(containsDep("users.data[index].active")) << depsText;
+    EXPECT_TRUE(containsDep("users")) << depsText;
+    EXPECT_TRUE(containsDep("index")) << depsText;
+    EXPECT_TRUE(containsDep("title")) << depsText;
+    EXPECT_TRUE(containsDep("count")) << depsText;
+    EXPECT_TRUE(containsDep("empty")) << depsText;
+
+    const auto plan = jtml::expressionIrToRuntimePlanJson(*ir);
+    ASSERT_EQ(plan["kind"], "conditional") << plan.dump(2);
+    EXPECT_EQ(plan["producer"], "typed-ir") << plan.dump(2);
+    EXPECT_EQ(plan["directJs"], true) << plan.dump(2);
+    EXPECT_NE(plan["jsExpression"].get<std::string>().find("scope[\"visible\"]"),
+              std::string::npos) << plan.dump(2);
+    EXPECT_EQ(plan["test"]["kind"], "binary") << plan.dump(2);
+    EXPECT_EQ(plan["whenTrue"]["kind"], "array") << plan.dump(2);
+    EXPECT_EQ(plan["whenFalse"]["kind"], "object") << plan.dump(2);
+
+    ASSERT_TRUE(jtml::expressionIrSupportsDirectJs(*ir));
+    const auto js = jtml::expressionIrToJsExpression(*ir);
+    EXPECT_NE(js.find("scope[\"visible\"]"), std::string::npos) << js;
+    EXPECT_NE(js.find("scope[\"users\"]"), std::string::npos) << js;
+    EXPECT_NE(js.find("scope[\"index\"]"), std::string::npos) << js;
+    EXPECT_EQ(js.find("new Function"), std::string::npos) << js;
+    EXPECT_EQ(js.find("eval("), std::string::npos) << js;
 }
 
 TEST(RuntimePlan, BodyPlanWritesIncludeRootObservableForMemberAssignments) {

@@ -121,6 +121,26 @@ std::vector<std::unique_ptr<ASTNode>> Parser::parseProgram() {
     return nodes;
 }
 
+std::unique_ptr<ExpressionStatementNode> Parser::parseStandaloneExpression() {
+    try {
+        auto expression = parseExpression();
+        if (check(TokenType::STMT_TERMINATOR)) {
+            advance();
+        }
+        if (!isAtEnd()) {
+            const Token extra = peek();
+            recordError("Unexpected token after expression: '" + extra.text +
+                        "' (line " + std::to_string(extra.line) +
+                        ", col " + std::to_string(extra.column) + ")");
+            return nullptr;
+        }
+        return expression;
+    } catch (const std::runtime_error& error) {
+        recordError(error.what());
+        return nullptr;
+    }
+}
+
 std::unique_ptr<ASTNode> Parser::parseStatement() {
     JTML_PARSER_DEBUG << "[DEBUG] Attempting to parse a statement at token position: " << m_pos << "\n";
 

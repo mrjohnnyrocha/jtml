@@ -1,8 +1,6 @@
 #include "jtml/runtime_plan_json.h"
 
-#include "jtml/expression_source.h"
-#include "jtml/lexer.h"
-#include "jtml/parser.h"
+#include "jtml/expression_ir.h"
 
 #include <cctype>
 #include <cstdlib>
@@ -489,248 +487,18 @@ int findTopLevelRuntimeOperator(const std::string& expr,
     return -1;
 }
 
-nlohmann::json astSourcePlan(const ExpressionStatementNode* expression) {
-    nlohmann::json plan = {
-        {"kind", "source"},
-        {"source", expressionSource(expression)},
-        {"producer", "ast"},
-    };
-    if (expression) {
-        plan["astKind"] = static_cast<int>(expression->getExprType());
-    }
-    return plan;
-}
-
-bool collectPathSegmentsFromAst(const ExpressionStatementNode* expression,
-                                std::vector<std::string>& segments) {
-    if (!expression) return false;
-    switch (expression->getExprType()) {
-        case ExpressionStatementNodeType::Variable: {
-            const auto* variable = static_cast<const VariableExpressionStatementNode*>(expression);
-            if (variable->name.empty()) return false;
-            segments.push_back(variable->name);
-            return true;
-        }
-        case ExpressionStatementNodeType::ObjectPropertyAccess: {
-            const auto* access = static_cast<const ObjectPropertyAccessExpressionNode*>(expression);
-            if (!collectPathSegmentsFromAst(access->base.get(), segments) ||
-                access->propertyName.empty()) {
-                return false;
-            }
-            segments.push_back(access->propertyName);
-            return true;
-        }
-        default:
-            return false;
-    }
-}
-
-nlohmann::json compileAstPathPlan(const ExpressionStatementNode* expression) {
-    std::vector<std::string> segmentVector;
-    if (!collectPathSegmentsFromAst(expression, segmentVector) || segmentVector.empty()) {
-        return astSourcePlan(expression);
-    }
-    nlohmann::json segments = nlohmann::json::array();
-    std::ostringstream source;
-    for (size_t i = 0; i < segmentVector.size(); ++i) {
-        if (i) source << ".";
-        source << segmentVector[i];
-        segments.push_back(segmentVector[i]);
-    }
-    return {
-        {"kind", "path"},
-        {"source", source.str()},
-        {"producer", "ast"},
-        {"root", segmentVector.front()},
-        {"segments", segments}
-    };
-}
-
-std::unique_ptr<ExpressionStatementNode> parseRuntimeExpressionAst(const std::string& expression) {
-    const auto expr = stripOuterRuntimeParens(expression);
-    if (expr.empty()) return nullptr;
-    Lexer lexer("show " + expr + "\\\\\n");
-    auto tokens = lexer.tokenize();
-    if (!lexer.getErrors().empty()) return nullptr;
-    Parser parser(std::move(tokens));
-    std::vector<std::unique_ptr<ASTNode>> program;
-    try {
-        program = parser.parseProgram();
-    } catch (...) {
-        return nullptr;
-    }
-    if (!parser.getErrors().empty() || program.size() != 1 ||
-        program.front()->getType() != ASTNodeType::ShowStatement) {
-        return nullptr;
-    }
-    auto* show = static_cast<ShowStatementNode*>(program.front().get());
-    return show->expr ? show->expr->clone() : nullptr;
-}
-
 } // namespace
 
 nlohmann::json compileRuntimeExpressionPlan(const ExpressionStatementNode* expression) {
-    if (!expression) return {{"kind", "empty"}, {"source", ""}, {"producer", "ast"}};
-    switch (expression->getExprType()) {
-        case ExpressionStatementNodeType::StringLiteral: {
-            const auto* literal = static_cast<const StringLiteralExpressionStatementNode*>(expression);
-            return {
-                {"kind", "literal"},
-                {"source", expressionSource(expression)},
-                {"producer", "ast"},
-                {"value", literal->value}
-            };
-        }
-        case ExpressionStatementNodeType::NumberLiteral: {
-            const auto* literal = static_cast<const NumberLiteralExpressionStatementNode*>(expression);
-            return {
-                {"kind", "literal"},
-                {"source", expressionSource(expression)},
-                {"producer", "ast"},
-                {"value", literal->value}
-            };
-        }
-        case ExpressionStatementNodeType::BooleanLiteral: {
-            const auto* literal = static_cast<const BooleanLiteralExpressionStatementNode*>(expression);
-            return {
-                {"kind", "literal"},
-                {"source", expressionSource(expression)},
-                {"producer", "ast"},
-                {"value", literal->value}
-            };
-        }
-        case ExpressionStatementNodeType::Variable:
-            return compileAstPathPlan(expression);
-        case ExpressionStatementNodeType::ObjectPropertyAccess: {
-            auto path = compileAstPathPlan(expression);
-            if (path.value("kind", std::string{}) == "path") return path;
-            const auto* access = static_cast<const ObjectPropertyAccessExpressionNode*>(expression);
-            auto plan = astSourcePlan(expression);
-            plan["kind"] = "member";
-            plan["base"] = compileRuntimeExpressionPlan(access->base.get());
-            plan["property"] = access->propertyName;
-            return plan;
-        }
-        case ExpressionStatementNodeType::Unary: {
-            const auto* unary = static_cast<const UnaryExpressionStatementNode*>(expression);
-            if (unary->op != "!") return astSourcePlan(expression);
-            return {
-                {"kind", "unary"},
-                {"source", expressionSource(expression)},
-                {"producer", "ast"},
-                {"operator", unary->op},
-                {"argument", compileRuntimeExpressionPlan(unary->right.get())}
-            };
-        }
-        case ExpressionStatementNodeType::Binary: {
-            const auto* binary = static_cast<const BinaryExpressionStatementNode*>(expression);
-            static const std::set<std::string> supported = {
-                "||", "&&", "==", "!=", "<=", ">=", "<", ">", "+", "-", "*", "/", "%"
-            };
-            if (!supported.count(binary->op)) return astSourcePlan(expression);
-            return {
-                {"kind", "binary"},
-                {"source", expressionSource(expression)},
-                {"producer", "ast"},
-                {"operator", binary->op},
-                {"left", compileRuntimeExpressionPlan(binary->left.get())},
-                {"right", compileRuntimeExpressionPlan(binary->right.get())}
-            };
-        }
-        case ExpressionStatementNodeType::Conditional: {
-            const auto* conditional = static_cast<const ConditionalExpressionStatementNode*>(expression);
-            return {
-                {"kind", "conditional"},
-                {"source", expressionSource(expression)},
-                {"producer", "ast"},
-                {"test", compileRuntimeExpressionPlan(conditional->condition.get())},
-                {"whenTrue", compileRuntimeExpressionPlan(conditional->whenTrue.get())},
-                {"whenFalse", compileRuntimeExpressionPlan(conditional->whenFalse.get())}
-            };
-        }
-        case ExpressionStatementNodeType::EmbeddedVariable: {
-            const auto* embedded = static_cast<const EmbeddedVariableExpressionStatementNode*>(expression);
-            return compileRuntimeExpressionPlan(embedded->embeddedExpression.get());
-        }
-        case ExpressionStatementNodeType::CompositeString: {
-            const auto* composite = static_cast<const CompositeStringExpressionStatementNode*>(expression);
-            if (composite->parts.empty()) {
-                return {{"kind", "literal"}, {"source", "\"\""}, {"producer", "ast"}, {"value", ""}};
-            }
-            nlohmann::json current = compileRuntimeExpressionPlan(composite->parts.front().get());
-            for (size_t i = 1; i < composite->parts.size(); ++i) {
-                current = {
-                    {"kind", "binary"},
-                    {"source", expressionSource(expression)},
-                    {"producer", "ast"},
-                    {"operator", "+"},
-                    {"left", current},
-                    {"right", compileRuntimeExpressionPlan(composite->parts[i].get())}
-                };
-            }
-            return current;
-        }
-        case ExpressionStatementNodeType::Subscript: {
-            const auto* subscript = static_cast<const SubscriptExpressionStatementNode*>(expression);
-            auto plan = astSourcePlan(expression);
-            plan["kind"] = "subscript";
-            plan["base"] = compileRuntimeExpressionPlan(subscript->base.get());
-            plan["index"] = compileRuntimeExpressionPlan(subscript->index.get());
-            return plan;
-        }
-        case ExpressionStatementNodeType::FunctionCall: {
-            const auto* call = static_cast<const FunctionCallExpressionStatementNode*>(expression);
-            auto plan = astSourcePlan(expression);
-            plan["kind"] = "call";
-            plan["callee"] = call->functionName;
-            plan["arguments"] = nlohmann::json::array();
-            for (const auto& arg : call->arguments) {
-                plan["arguments"].push_back(compileRuntimeExpressionPlan(arg.get()));
-            }
-            return plan;
-        }
-        case ExpressionStatementNodeType::ObjectMethodCall: {
-            const auto* call = static_cast<const ObjectMethodCallExpressionNode*>(expression);
-            auto plan = astSourcePlan(expression);
-            plan["kind"] = "method-call";
-            plan["base"] = compileRuntimeExpressionPlan(call->base.get());
-            plan["method"] = call->methodName;
-            plan["arguments"] = nlohmann::json::array();
-            for (const auto& arg : call->arguments) {
-                plan["arguments"].push_back(compileRuntimeExpressionPlan(arg.get()));
-            }
-            return plan;
-        }
-        case ExpressionStatementNodeType::ArrayLiteral: {
-            const auto* array = static_cast<const ArrayLiteralExpressionStatementNode*>(expression);
-            auto plan = astSourcePlan(expression);
-            plan["kind"] = "array";
-            plan["elements"] = nlohmann::json::array();
-            for (const auto& element : array->elements) {
-                plan["elements"].push_back(compileRuntimeExpressionPlan(element.get()));
-            }
-            return plan;
-        }
-        case ExpressionStatementNodeType::DictionaryLiteral: {
-            const auto* dict = static_cast<const DictionaryLiteralExpressionStatementNode*>(expression);
-            auto plan = astSourcePlan(expression);
-            plan["kind"] = "object";
-            plan["entries"] = nlohmann::json::array();
-            for (const auto& entry : dict->entries) {
-                plan["entries"].push_back({
-                    {"key", entry.key.text},
-                    {"value", compileRuntimeExpressionPlan(entry.value.get())}
-                });
-            }
-            return plan;
-        }
+    if (auto ir = buildExpressionIr(expression)) {
+        return expressionIrToRuntimePlanJson(*ir);
     }
-    return astSourcePlan(expression);
+    return {{"kind", "empty"}, {"source", ""}, {"producer", "typed-ir"}};
 }
 
 nlohmann::json compileRuntimeExpressionPlan(const std::string& expression) {
-    if (auto ast = parseRuntimeExpressionAst(expression)) {
-        return compileRuntimeExpressionPlan(ast.get());
+    if (auto ir = parseExpressionIr(expression)) {
+        return expressionIrToRuntimePlanJson(*ir);
     }
     const auto expr = stripOuterRuntimeParens(expression);
     if (expr.empty()) return {{"kind", "empty"}, {"source", ""}};
@@ -912,10 +680,25 @@ nlohmann::json compileRuntimeLoopPlan(const RuntimePlanComponentBodyNode& node) 
     };
 }
 
+void stripExpressionCompilerHints(nlohmann::json& value) {
+    if (value.is_object()) {
+        value.erase("directJs");
+        value.erase("jsExpression");
+        for (auto& item : value.items()) {
+            stripExpressionCompilerHints(item.value());
+        }
+    } else if (value.is_array()) {
+        for (auto& item : value) {
+            stripExpressionCompilerHints(item);
+        }
+    }
+}
+
 } // namespace
 
 nlohmann::json runtimePlanBodyPlanToJson(
-        const std::vector<RuntimePlanComponentBodyNode>& bodyPlan) {
+        const std::vector<RuntimePlanComponentBodyNode>& bodyPlan,
+        const RuntimePlanJsonOptions& options) {
     nlohmann::json out = nlohmann::json::array();
     for (const auto& node : bodyPlan) {
         auto item = nlohmann::json({
@@ -944,6 +727,9 @@ nlohmann::json runtimePlanBodyPlanToJson(
         }
         if (node.kind == "call") {
             item["argPlans"] = compileRuntimeArgumentPlans(node.expression);
+        }
+        if (!options.includeExpressionCompilerHints) {
+            stripExpressionCompilerHints(item);
         }
         out.push_back(std::move(item));
     }

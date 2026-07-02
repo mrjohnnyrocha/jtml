@@ -266,8 +266,9 @@ and first-slice text/region/nested patch operations. The browser runtime
 prefers those static plans when available and compiles equivalent plan indexes
 at runtime only as a bridge/fallback. The asset is a bridge toward generated
 modules, not the final optimized compiler target. Runtime expression planning
-now prefers parsed JTML expression AST nodes and marks those plans with
-`producer: "ast"` before falling back to the legacy string planner, so the
+now prefers parsed JTML expression AST nodes through
+`Parser::parseStandaloneExpression()` and marks those plans with
+`producer: "typed-ir"` before falling back to the legacy string planner, so the
 bridge is moving toward a real typed expression IR instead of expanding
 source-string heuristics. Array/object literals, member access, subscripts, and
 call-shaped expressions now preserve structured plan metadata for browser/live
@@ -276,9 +277,13 @@ expression-plan surface for conditions, keys, rendered text words, loops, and
 component action calls, so browser/live parity checks can compare semantic
 execution data rather than only HTML output.
 `scripts/benchmark_runtime.sh` still enforces asset and generated-shape
-guardrails, but it now also delegates to `scripts/benchmark_browser_runtime.sh`
-for real headless-browser click/runtime measurements when Chrome/Chromium is
-available.
+guardrails, rejects dynamic `new Function`/direct `eval` in production browser
+assets, and delegates to `scripts/benchmark_browser_runtime.sh` for real
+headless-browser click/runtime measurements and fixture-specific DOM result
+assertions when Chrome/Chromium is available. The fixture set now includes
+`large_keyed_rows` and `nested_component_update` so 1k keyed row lifecycle and
+nested component update behavior are represented in executable budgets, even
+before full framework-comparison benchmarks exist.
 
 Remaining architectural work: broaden the supported body-plan subset until the
 expanded compatibility DOM is needed only for explicit fallback cases or can be

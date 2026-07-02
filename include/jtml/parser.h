@@ -18,6 +18,8 @@ public:
     std::vector<std::unique_ptr<ASTNode>> parseProgram();
     // Parses a single top-level JtmlElement (e.g., 'element div ... #')
     std::unique_ptr<JtmlElementNode> parseJtmlElement();
+    // Parses exactly one expression from the token stream.
+    std::unique_ptr<ExpressionStatementNode> parseStandaloneExpression();
     const std::vector<std::string>& getErrors() const { return m_errors; }
 
 

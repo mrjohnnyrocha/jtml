@@ -7,11 +7,16 @@ struct ExpressionStatementNode;
 
 namespace jtml {
 
+struct RuntimePlanJsonOptions {
+    bool includeExpressionCompilerHints = false;
+};
+
 nlohmann::json compileRuntimeExpressionPlan(const ExpressionStatementNode* expression);
 nlohmann::json compileRuntimeExpressionPlan(const std::string& expression);
 
 nlohmann::json runtimePlanBodyPlanToJson(
-    const std::vector<RuntimePlanComponentBodyNode>& bodyPlan);
+    const std::vector<RuntimePlanComponentBodyNode>& bodyPlan,
+    const RuntimePlanJsonOptions& options = {});
 
 nlohmann::json runtimePlanToExplainJson(const RuntimePlan& plan);
 

@@ -935,6 +935,10 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["bodyPlanActionExpressionPlans"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["canonicalRuntimeExpressionPlans"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["astOwnedRuntimeExpressionPlans"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["standaloneExpressionParser"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["typedExpressionIr"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["typedExpressionIrDependencyAnalysis"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["typedExpressionIrJsCodegen"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["richerAstExpressionPlanShapes"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["memberWriteDependencyRoots"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["memberAssignmentDirectMutation"], true);
@@ -983,6 +987,8 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["browserSourceFirstFallbackContext"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["browserSourceFirstCreateFallbackContext"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["liveSourceFirstFallbackContext"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["productionComponentDebugPayloadIsolation"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["productionRuntimeDynamicCompilation"], false);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["liveInterpreterParity"], false);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["fullParity"], false);
     EXPECT_EQ(report["runtimeCapabilities"]["contractFirstJtlApis"]["planned"], true);
@@ -1013,10 +1019,16 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
               "scripts/benchmark_runtime.sh");
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["browserRuntimeBenchmark"],
               "scripts/benchmark_browser_runtime.sh");
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["browserRuntimeDomAssertions"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["browserRuntimeLargeFixtureBudgets"], true);
+    const auto benchmarkFixtures = report["runtimeCapabilities"]["performanceTarget"]["benchmarkFixtures"].dump();
+    EXPECT_NE(benchmarkFixtures.find("large_keyed_rows"), std::string::npos);
+    EXPECT_NE(benchmarkFixtures.find("nested_component_update"), std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["browserAssetBudgets"].get<std::string>().find("byte budgets"),
               std::string::npos);
-    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["dynamicGeneratedUpdateFunctions"],
-              "explicit opt-in bridge only");
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["dynamicGeneratedUpdateFunctions"].get<std::string>().find("not executed"),
+              std::string::npos);
+    EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["productionRuntimeDynamicCompilation"], false);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["optimizedJsCompiler"], "planned");
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["keyedListDiffing"].get<std::string>().find("key/index markers"),
               std::string::npos);
@@ -1345,8 +1357,12 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
         << runtimeAsset;
     EXPECT_NE(runtimeAsset.find("Browser-local runtime active"), std::string::npos)
         << runtimeAsset;
+    EXPECT_EQ(runtimeAsset.find("new Function"), std::string::npos) << runtimeAsset;
+    EXPECT_EQ(runtimeAsset.find("eval("), std::string::npos) << runtimeAsset;
     const std::string appAsset = readTextFile(outDir / "app.js");
     EXPECT_NE(appAsset.find("productionAssets"), std::string::npos) << appAsset;
+    EXPECT_EQ(appAsset.find("new Function"), std::string::npos) << appAsset;
+    EXPECT_EQ(appAsset.find("eval("), std::string::npos) << appAsset;
 
     const std::string updatePlans = readTextFile(outDir / "jtml-update-plans.js");
     EXPECT_NE(updatePlans.find("CSP-safe static update plan/function seed"), std::string::npos)
@@ -1477,6 +1493,10 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
         << manifest.dump(2);
     EXPECT_EQ(manifest.dump().find("bodyHex"), std::string::npos)
         << manifest.dump(2);
+    EXPECT_EQ(manifest.dump().find("jsExpression"), std::string::npos)
+        << manifest.dump(2);
+    EXPECT_EQ(manifest.dump().find("directJs"), std::string::npos)
+        << manifest.dump(2);
     ASSERT_TRUE(manifest.contains("project")) << manifest.dump(2);
     const auto& project = manifest["project"];
     EXPECT_EQ(project["sourceOfTruth"], "runtime client manifest");
@@ -1531,7 +1551,7 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("function(scope){"),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("Object.prototype.hasOwnProperty.call(scope"),
+    EXPECT_NE(componentModule.find("scope == null ? undefined"),
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("el.textContent = String(value == null ? '' : value);"),
               std::string::npos) << componentModule;
@@ -1654,7 +1674,7 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("function(scope){"),
               std::string::npos) << updatePlans;
-    EXPECT_NE(updatePlans.find("Object.prototype.hasOwnProperty.call(scope"),
+    EXPECT_NE(updatePlans.find("scope == null ? undefined"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("el.textContent = String(value == null ? '' : value);"),
               std::string::npos) << updatePlans;
@@ -1772,6 +1792,8 @@ TEST(CliBuild, BrowserClientManifestEscapesScriptBreakingTextAndOmitsExplainFiel
               std::string::npos);
     EXPECT_EQ(manifest.dump().find("bodySource"), std::string::npos);
     EXPECT_EQ(manifest.dump().find("bodyHex"), std::string::npos);
+    EXPECT_EQ(manifest.dump().find("jsExpression"), std::string::npos);
+    EXPECT_EQ(manifest.dump().find("directJs"), std::string::npos);
 
     jtml::cli::Options explainOpts;
     explainOpts.inputFile = file.string();

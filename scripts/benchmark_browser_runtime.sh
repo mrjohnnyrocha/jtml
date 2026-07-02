@@ -52,7 +52,7 @@ echo "clicks per fixture: ${CLICK_COUNT}"
 echo "per-fixture budget: ${BUDGET_MS}ms"
 echo "browser launch timeout: ${BROWSER_TIMEOUT}s"
 
-fixtures=(static_counter keyed_list control_flow composition)
+fixtures=(static_counter keyed_list control_flow composition large_keyed_rows nested_component_update)
 for fixture in "${fixtures[@]}"; do
   fixture_dir="${OUT_ROOT}/${fixture}"
   index="${fixture_dir}/index.html"
@@ -101,11 +101,21 @@ harness = f"""
       }}
       const durationMs = performance.now() - started;
       const jtml = window.jtml || {{}};
+      const bodyText = document.body && document.body.innerText || '';
+      const keyedTexts = Array.prototype.slice.call(
+        document.querySelectorAll('[data-jtml-direct-list-key]')
+      ).map(function(el) {{
+        return {{
+          key: el.getAttribute('data-jtml-direct-list-key') || '',
+          text: (el.innerText || '').trim()
+        }};
+      }});
       finish({{
         fixture,
         clicks: clickCount,
         durationMs,
-        textSample: (document.body && document.body.innerText || '').slice(0, 240),
+        textSample: bodyText.slice(0, 1000),
+        keyedTexts,
         directComponentExecution: !!jtml.directComponentExecution,
         directComponentLastAction: !!jtml.directComponentLastAction,
         directNestedComponentParamPatch: !!jtml.directNestedComponentParamPatch,
@@ -246,8 +256,33 @@ if not math.isfinite(duration):
     raise SystemExit(f"error: {fixture} duration is not finite")
 if duration > budget_ms:
     raise SystemExit(f"error: {fixture} browser runtime {duration:.2f}ms exceeds budget {budget_ms:.2f}ms")
+text = str(result.get("textSample", ""))
+keyed_texts = result.get("keyedTexts", [])
+if fixture == "static_counter" and f"Count {expected_clicks}" not in text:
+    raise SystemExit(f"error: static_counter did not update DOM text to Count {expected_clicks}: {text!r}")
+if fixture == "composition" and "Beta" not in text:
+    raise SystemExit(f"error: composition did not update nested parameter DOM text to Beta: {text!r}")
+if fixture == "control_flow" and "No visible activity" in text:
+    raise SystemExit(f"error: control_flow ended hidden after an even number of toggles: {text!r}")
+if fixture == "keyed_list":
+    keys = [str(item.get("key", "")) for item in keyed_texts]
+    expected = ["Ship_static_module", "Measure_patch", "Audit_runtime"]
+    if keys[:3] != expected:
+        raise SystemExit(f"error: keyed_list did not keep rotated keyed order {expected}: {keys!r}")
+if fixture == "large_keyed_rows":
+    keys = [str(item.get("key", "")) for item in keyed_texts]
+    if len(keys) < 1000:
+        raise SystemExit(f"error: large_keyed_rows rendered only {len(keys)} keyed rows")
+    if expected_clicks % 2 == 0 and keys[:3] != ["1", "2", "3"]:
+        raise SystemExit(f"error: large_keyed_rows did not restore first keys after even rotations: {keys[:5]!r}")
+    if not result.get("directComponentListLifecycle"):
+        raise SystemExit("error: large_keyed_rows did not report keyed list lifecycle telemetry")
+if fixture == "nested_component_update" and f"Value {expected_clicks}" not in text:
+    raise SystemExit(f"error: nested_component_update did not update nested component text: {text!r}")
 if fixture == "composition" and not result.get("directNestedComponentParamPatch"):
     raise SystemExit("error: composition did not use in-place nested component parameter patch")
+if fixture == "nested_component_update" and not result.get("directNestedComponentParamPatch"):
+    raise SystemExit("error: nested_component_update did not use in-place nested component parameter patch")
 if fixture == "keyed_list" and not result.get("directComponentListLifecycle"):
     raise SystemExit("error: keyed_list did not report keyed list lifecycle telemetry")
 print(

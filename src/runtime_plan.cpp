@@ -1,5 +1,6 @@
 #include "jtml/runtime_plan.h"
 
+#include "jtml/expression_ir.h"
 #include "jtml/expression_source.h"
 #include "jtml/lexer.h"
 #include "jtml/parser.h"
@@ -393,27 +394,24 @@ void collectExpressionDependencies(
 std::unique_ptr<ExpressionStatementNode> parseExpressionFragment(const std::string& expression) {
     const std::string trimmed = trimCopy(expression);
     if (trimmed.empty()) return nullptr;
-    Lexer lexer("show " + trimmed + "\\\\\n");
+    Lexer lexer(trimmed);
     auto tokens = lexer.tokenize();
     if (!lexer.getErrors().empty()) return nullptr;
     Parser parser(std::move(tokens));
-    std::vector<std::unique_ptr<ASTNode>> program;
     try {
-        program = parser.parseProgram();
+        auto parsed = parser.parseStandaloneExpression();
+        if (!parser.getErrors().empty()) return nullptr;
+        return parsed;
     } catch (...) {
         return nullptr;
     }
-    if (!parser.getErrors().empty() || program.size() != 1 || !program[0]) return nullptr;
-    if (program[0]->getType() != ASTNodeType::ShowStatement) return nullptr;
-    auto& show = static_cast<ShowStatementNode&>(*program[0]);
-    return show.expr ? show.expr->clone() : nullptr;
 }
 
 std::vector<std::string> expressionDependencies(const std::string& expression) {
-    std::vector<std::string> names;
-    auto parsed = parseExpressionFragment(expression);
-    collectExpressionDependencies(parsed.get(), names);
-    return names;
+    if (auto ir = parseExpressionIr(expression)) {
+        return expressionIrDependencies(*ir);
+    }
+    return {};
 }
 
 std::vector<std::string> templateBindingWrites(const std::vector<std::string>& tokens) {

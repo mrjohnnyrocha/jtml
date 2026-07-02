@@ -2294,35 +2294,19 @@ const char* browserRuntimeComponentChunk() {
 
       function compileGeneratedComponentUpdateFunction(plan) {
         if (!plan || !plan.generatedSource) return null;
-        if (!dynamicGeneratedUpdateFunctions) {
-          window.jtml = Object.assign(window.jtml || {}, {
-            directComponentGeneratedUpdatePolicy: {
-              component: plan && plan.component || '',
-              planKey: plan && plan.key || '',
-              generatedSourceLength: String(plan && plan.generatedSource || '').length,
-              dynamicExecution: false,
-              reason: 'dynamic generated update functions disabled; using CSP-safe interpreted update plan'
-            }
-          });
-          return null;
-        }
-        if (typeof Function !== 'function') return null;
-        try {
-          const factory = new Function('h', plan.generatedSource);
-          const update = factory(generatedUpdateHelpers());
-          if (typeof update !== 'function') return null;
-          update.__jtmlGenerated = true;
-          return update;
-        } catch (err) {
-          window.jtml = Object.assign(window.jtml || {}, {
-            directComponentGeneratedUpdateError: {
-              component: plan && plan.component || '',
-              planKey: plan && plan.key || '',
-              message: err && err.message ? err.message : 'generated update function unavailable'
-            }
-          });
-          return null;
-        }
+        window.jtml = Object.assign(window.jtml || {}, {
+          directComponentGeneratedUpdatePolicy: {
+            component: plan && plan.component || '',
+            planKey: plan && plan.key || '',
+            generatedSourceLength: String(plan && plan.generatedSource || '').length,
+            dynamicExecution: false,
+            requestedDynamicExecution: !!dynamicGeneratedUpdateFunctions,
+            reason: dynamicGeneratedUpdateFunctions
+              ? 'dynamic generated update functions are not executed by the shipped runtime; use CSP-safe static component modules'
+              : 'dynamic generated update functions disabled; using CSP-safe interpreted update plan'
+          }
+        });
+        return null;
       }
 
       function compileStaticComponentUpdateFunction(plan) {

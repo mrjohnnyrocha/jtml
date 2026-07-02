@@ -29,8 +29,9 @@ benchmark path. Framework-competitive public builds require a compiler-first
 browser production target: typed AST and semantic graph to optimized body plan,
 generated JS component functions, fine-grained dependency updates, keyed DOM
 diffing, small runtime helpers, CSP-safe static JS assets, and a clear dev/prod
-runtime split. Runtime `new Function`/eval-style compilation is only an
-explicit development bridge, not the production security model.
+runtime split. Runtime `new Function`/eval-style compilation is no longer part
+of shipped browser assets; generated production code belongs in CSP-safe
+external assets and the browser runtime must refuse dynamic compilation.
 
 ## Phase 1: Try It In Five Minutes
 
@@ -405,7 +406,7 @@ The current focus is the semantic-core transition:
   prefers parsed JTML expression AST nodes before falling back to the legacy
   string planner. Literal, boolean, number, null, dot-path, unary `!`,
   binary/comparison/logical, ternary, composite string, array/object literal,
-  member/subscript, and call-shaped plans carry `producer: "ast"` when the parser owns them; static
+  member/subscript, and call-shaped plans carry `producer: "typed-ir"` when the parser owns them; static
   component emission consumes that same API instead of maintaining a private
   expression parser. Those plans flow through text/element patch operations,
   element content, attributes, modifiers, component action arguments,
@@ -435,13 +436,17 @@ The current focus is the semantic-core transition:
   those static modules/plans before
   compiling equivalent plan indexes in the browser.
   `scripts/benchmark_runtime.sh` now provides first-slice browser asset budgets,
-  production/legacy asset-shape checks, real headless-browser click benchmarks
-  through `scripts/benchmark_browser_runtime.sh` when Chrome/Chromium is
-  available, and a `control_flow` fixture that
+  production/legacy asset-shape checks, rejects dynamic `new Function`/direct
+  `eval` in production browser assets, runs real headless-browser click
+  benchmarks through `scripts/benchmark_browser_runtime.sh` when
+  Chrome/Chromium is available, and a `control_flow` fixture that
   asserts safe `if`/keyed-`for` regions, keyed list markers, and direct
   safe-region patching are generated in `components/index.js`. The `composition`
   fixture also asserts in-place nested parameter/body patch telemetry in the
-  browser runtime benchmark. This path has an executable guardrail: 50 KB
+  browser runtime benchmark. The benchmark fixture set now includes
+  `large_keyed_rows` and `nested_component_update` as the first larger-budget
+  scaffolds for 1k keyed row lifecycle and nested component update behavior.
+  This path has an executable guardrail: 50 KB
   for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
   `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
   `jtml-update-plans.js`, to tighten as direct generated update modules keep
@@ -583,14 +588,15 @@ hardened, or planned.
   body-plan emission now consume the shared core serializer instead of owning
   duplicate command/backend serializers.
 - AST-owned expression planning slice. ✅ — runtime expression planning now
-  accepts expression AST nodes directly, and the string entry point parses JTML
-  expression syntax into AST before using the older source-string fallback. The
-  same plan API is therefore available to semantic/runtime JSON, static
+  accepts expression AST nodes directly, and the string entry point now uses
+  `Parser::parseStandaloneExpression()` before the older source-string fallback.
+  The same plan API is therefore available to semantic/runtime JSON, static
   component emission, browser-local body-plan execution, and live body-plan
   parity work. Array/object literals, member access, subscripts, and call-shaped
   expressions now preserve structured AST-owned plan metadata instead of
   collapsing to opaque source strings. The next milestone is a dedicated typed
-  expression IR that can replace the remaining fallback parser helpers entirely.
+  expression IR plus production JS expression-function codegen that can replace
+  the remaining fallback parser/evaluator helpers entirely.
 - Per-file SemanticProject ownership slice. ✅ — `SemanticProject` now has a
   `SemanticModuleSource` API so module imports can be attached to the file that
   authored them instead of always being attributed to the entrypoint.

@@ -96,6 +96,14 @@ for fixture in "${FIXTURES}"/*.jtml; do
     echo "error: ${name} component module contains dynamic Function constructor" >&2
     exit 1
   fi
+  if grep -q "new Function" "${runtime}" "${app}" "${plans}"; then
+    echo "error: ${name} production browser assets contain dynamic Function constructor" >&2
+    exit 1
+  fi
+  if grep -Eq '(^|[^[:alnum:]_])eval[[:space:]]*\(' "${runtime}" "${component_module}" "${app}" "${plans}"; then
+    echo "error: ${name} production browser assets contain direct eval" >&2
+    exit 1
+  fi
   if [[ "${name}" == "control_flow" ]]; then
     if ! grep -q 'data-jtml-direct-region="if"' "${component_module}"; then
       echo "error: ${name} component module missing direct if-region create path" >&2

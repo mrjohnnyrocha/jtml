@@ -47,6 +47,37 @@ std::unique_ptr<ExpressionIr> makeIr(ExpressionIrKind kind,
     return ir;
 }
 
+ExpressionValueType mergedConditionalType(ExpressionValueType whenTrue,
+                                          ExpressionValueType whenFalse) {
+    if (whenTrue == whenFalse) return whenTrue;
+    return ExpressionValueType::Unknown;
+}
+
+ExpressionValueType binaryResultType(const std::string& op,
+                                     ExpressionValueType left,
+                                     ExpressionValueType right) {
+    if (op == "==" || op == "!=" || op == "<=" || op == ">=" ||
+        op == "<" || op == ">" || op == "&&" || op == "||") {
+        return ExpressionValueType::Boolean;
+    }
+    if (op == "+") {
+        if (left == ExpressionValueType::String || right == ExpressionValueType::String) {
+            return ExpressionValueType::String;
+        }
+        if (left == ExpressionValueType::Number && right == ExpressionValueType::Number) {
+            return ExpressionValueType::Number;
+        }
+        return ExpressionValueType::Unknown;
+    }
+    if (op == "-" || op == "*" || op == "/" || op == "%") {
+        if (left == ExpressionValueType::Number && right == ExpressionValueType::Number) {
+            return ExpressionValueType::Number;
+        }
+        return ExpressionValueType::Unknown;
+    }
+    return ExpressionValueType::Unknown;
+}
+
 std::unique_ptr<ExpressionIr> makeSourceIr(const ExpressionStatementNode* expression) {
     auto ir = makeIr(ExpressionIrKind::Source, expression);
     ir->supported = false;
@@ -164,18 +195,21 @@ std::unique_ptr<ExpressionIr> buildExpressionIr(const ExpressionStatementNode* e
             const auto* literal = static_cast<const StringLiteralExpressionStatementNode*>(expression);
             auto ir = makeIr(ExpressionIrKind::Literal, expression);
             ir->literal = literal->value;
+            ir->valueType = ExpressionValueType::String;
             return ir;
         }
         case ExpressionStatementNodeType::NumberLiteral: {
             const auto* literal = static_cast<const NumberLiteralExpressionStatementNode*>(expression);
             auto ir = makeIr(ExpressionIrKind::Literal, expression);
             ir->literal = literal->value;
+            ir->valueType = ExpressionValueType::Number;
             return ir;
         }
         case ExpressionStatementNodeType::BooleanLiteral: {
             const auto* literal = static_cast<const BooleanLiteralExpressionStatementNode*>(expression);
             auto ir = makeIr(ExpressionIrKind::Literal, expression);
             ir->literal = literal->value;
+            ir->valueType = ExpressionValueType::Boolean;
             return ir;
         }
         case ExpressionStatementNodeType::Variable:
@@ -202,6 +236,7 @@ std::unique_ptr<ExpressionIr> buildExpressionIr(const ExpressionStatementNode* e
             auto ir = makeIr(ExpressionIrKind::Unary, expression);
             ir->op = unary->op;
             ir->children.push_back(buildExpressionIr(unary->right.get()));
+            ir->valueType = ExpressionValueType::Boolean;
             return ir;
         }
         case ExpressionStatementNodeType::Binary: {
@@ -214,6 +249,10 @@ std::unique_ptr<ExpressionIr> buildExpressionIr(const ExpressionStatementNode* e
             ir->op = binary->op;
             ir->children.push_back(buildExpressionIr(binary->left.get()));
             ir->children.push_back(buildExpressionIr(binary->right.get()));
+            ir->valueType = binaryResultType(
+                ir->op,
+                ir->children[0] ? ir->children[0]->valueType : ExpressionValueType::Unknown,
+                ir->children[1] ? ir->children[1]->valueType : ExpressionValueType::Unknown);
             return ir;
         }
         case ExpressionStatementNodeType::Conditional: {
@@ -222,6 +261,9 @@ std::unique_ptr<ExpressionIr> buildExpressionIr(const ExpressionStatementNode* e
             ir->children.push_back(buildExpressionIr(conditional->condition.get()));
             ir->children.push_back(buildExpressionIr(conditional->whenTrue.get()));
             ir->children.push_back(buildExpressionIr(conditional->whenFalse.get()));
+            ir->valueType = mergedConditionalType(
+                ir->children[1] ? ir->children[1]->valueType : ExpressionValueType::Unknown,
+                ir->children[2] ? ir->children[2]->valueType : ExpressionValueType::Unknown);
             return ir;
         }
         case ExpressionStatementNodeType::EmbeddedVariable: {
@@ -234,6 +276,7 @@ std::unique_ptr<ExpressionIr> buildExpressionIr(const ExpressionStatementNode* e
                 auto ir = makeIr(ExpressionIrKind::Literal, expression);
                 ir->source = "\"\"";
                 ir->literal = "";
+                ir->valueType = ExpressionValueType::String;
                 return ir;
             }
             auto current = buildExpressionIr(composite->parts.front().get());
@@ -242,6 +285,7 @@ std::unique_ptr<ExpressionIr> buildExpressionIr(const ExpressionStatementNode* e
                 next->op = "+";
                 next->children.push_back(std::move(current));
                 next->children.push_back(buildExpressionIr(composite->parts[i].get()));
+                next->valueType = ExpressionValueType::String;
                 current = std::move(next);
             }
             return current;
@@ -250,6 +294,7 @@ std::unique_ptr<ExpressionIr> buildExpressionIr(const ExpressionStatementNode* e
             const auto* call = static_cast<const FunctionCallExpressionStatementNode*>(expression);
             auto ir = makeIr(ExpressionIrKind::Call, expression);
             ir->callee = call->functionName;
+            ir->valueType = ExpressionValueType::Unknown;
             for (const auto& arg : call->arguments) {
                 ir->children.push_back(buildExpressionIr(arg.get()));
             }
@@ -259,6 +304,7 @@ std::unique_ptr<ExpressionIr> buildExpressionIr(const ExpressionStatementNode* e
             const auto* call = static_cast<const ObjectMethodCallExpressionNode*>(expression);
             auto ir = makeIr(ExpressionIrKind::MethodCall, expression);
             ir->method = call->methodName;
+            ir->valueType = ExpressionValueType::Unknown;
             ir->children.push_back(buildExpressionIr(call->base.get()));
             for (const auto& arg : call->arguments) {
                 ir->children.push_back(buildExpressionIr(arg.get()));
@@ -268,6 +314,7 @@ std::unique_ptr<ExpressionIr> buildExpressionIr(const ExpressionStatementNode* e
         case ExpressionStatementNodeType::ArrayLiteral: {
             const auto* array = static_cast<const ArrayLiteralExpressionStatementNode*>(expression);
             auto ir = makeIr(ExpressionIrKind::Array, expression);
+            ir->valueType = ExpressionValueType::Array;
             for (const auto& element : array->elements) {
                 ir->children.push_back(buildExpressionIr(element.get()));
             }
@@ -276,6 +323,7 @@ std::unique_ptr<ExpressionIr> buildExpressionIr(const ExpressionStatementNode* e
         case ExpressionStatementNodeType::DictionaryLiteral: {
             const auto* dict = static_cast<const DictionaryLiteralExpressionStatementNode*>(expression);
             auto ir = makeIr(ExpressionIrKind::Object, expression);
+            ir->valueType = ExpressionValueType::Object;
             for (const auto& entry : dict->entries) {
                 ir->entries.push_back({entry.key.text, buildExpressionIr(entry.value.get())});
             }
@@ -307,10 +355,33 @@ std::vector<std::string> expressionIrDependencies(const ExpressionIr& ir) {
     return out;
 }
 
+std::string expressionValueTypeName(ExpressionValueType type) {
+    switch (type) {
+        case ExpressionValueType::Unknown:
+            return "unknown";
+        case ExpressionValueType::Null:
+            return "null";
+        case ExpressionValueType::Boolean:
+            return "boolean";
+        case ExpressionValueType::Number:
+            return "number";
+        case ExpressionValueType::String:
+            return "string";
+        case ExpressionValueType::Array:
+            return "array";
+        case ExpressionValueType::Object:
+            return "object";
+        case ExpressionValueType::Function:
+            return "function";
+    }
+    return "unknown";
+}
+
 nlohmann::json expressionIrToRuntimePlanJson(const ExpressionIr& ir) {
     auto base = nlohmann::json{
         {"source", ir.source},
-        {"producer", "typed-ir"}
+        {"producer", "typed-ir"},
+        {"valueType", expressionValueTypeName(ir.valueType)}
     };
     if (expressionIrSupportsDirectJs(ir)) {
         base["directJs"] = true;
@@ -481,7 +552,7 @@ std::string expressionIrToJsExpression(const ExpressionIr& ir) {
             out << "({";
             for (size_t i = 0; i < ir.entries.size(); ++i) {
                 if (i) out << ",";
-                out << jsQuotedString(ir.entries[i].key) << ":"
+                out << "[" << jsQuotedString(ir.entries[i].key) << "]:"
                     << (ir.entries[i].value ? expressionIrToJsExpression(*ir.entries[i].value) : "undefined");
             }
             out << "})";

@@ -1252,6 +1252,24 @@ TEST(RuntimePlan, OwnsBrowserLocalRuntimeShapeBeforeManifestEmission) {
     EXPECT_EQ(add->body[0].elseStatements[0].expr, "(count + 1.000000000000000)");
     EXPECT_NE(findRuntimeAction(plan.actions, "reloadUsers"), nullptr);
 
+    const auto planJson = jtml::runtimePlanToClientJson(plan);
+    ASSERT_TRUE(planJson.contains("statePlans")) << planJson.dump(2);
+    EXPECT_EQ(planJson["statePlans"]["count"].value("producer", ""),
+              "typed-ir") << planJson.dump(2);
+    ASSERT_TRUE(planJson.contains("derivedPlans")) << planJson.dump(2);
+    EXPECT_EQ(planJson["derivedPlans"]["label"].value("producer", ""),
+              "typed-ir") << planJson.dump(2);
+    ASSERT_TRUE(planJson.contains("actions")) << planJson.dump(2);
+    ASSERT_TRUE(planJson["actions"].is_object()) << planJson.dump(2);
+    ASSERT_TRUE(planJson["actions"].contains("add")) << planJson.dump(2);
+    const auto& actionJson = planJson["actions"]["add"];
+    ASSERT_TRUE(actionJson.contains("body")) << actionJson.dump(2);
+    ASSERT_EQ(actionJson["body"][0].value("kind", ""), "if") << actionJson.dump(2);
+    EXPECT_EQ(actionJson["body"][0]["conditionPlan"].value("producer", ""),
+              "typed-ir") << actionJson.dump(2);
+    EXPECT_EQ(actionJson["body"][0]["then"][0]["exprPlan"].value("producer", ""),
+              "typed-ir") << actionJson.dump(2);
+
     ASSERT_EQ(plan.componentDefinitions.size(), 1u);
     EXPECT_EQ(plan.componentDefinitions[0].name, "Counter");
     EXPECT_NE(plan.componentDefinitions[0].bodySource.find("text label"),
@@ -1483,9 +1501,22 @@ TEST(RuntimePlan, CanonicalExpressionPlanCoversCompositeOperators) {
     const auto object = jtml::compileRuntimeExpressionPlan("{ \"name\": title, \"count\": count }");
     ASSERT_EQ(object["kind"], "object") << object.dump(2);
     EXPECT_EQ(object["producer"], "typed-ir") << object.dump(2);
+    EXPECT_EQ(object["valueType"], "object") << object.dump(2);
     ASSERT_EQ(object["entries"].size(), 2u) << object.dump(2);
     EXPECT_EQ(object["entries"][0]["key"], "name") << object.dump(2);
     EXPECT_EQ(object["entries"][0]["value"]["kind"], "path") << object.dump(2);
+
+    const auto stringConcat = jtml::compileRuntimeExpressionPlan("\"Hello, \" + title");
+    ASSERT_EQ(stringConcat["kind"], "binary") << stringConcat.dump(2);
+    EXPECT_EQ(stringConcat["valueType"], "string") << stringConcat.dump(2);
+
+    const auto numericMath = jtml::compileRuntimeExpressionPlan("count + 1");
+    ASSERT_EQ(numericMath["kind"], "binary") << numericMath.dump(2);
+    EXPECT_EQ(numericMath["valueType"], "unknown") << numericMath.dump(2);
+
+    const auto comparison = jtml::compileRuntimeExpressionPlan("count > 3");
+    ASSERT_EQ(comparison["kind"], "binary") << comparison.dump(2);
+    EXPECT_EQ(comparison["valueType"], "boolean") << comparison.dump(2);
 }
 
 TEST(RuntimePlan, TypedExpressionIrOwnsDependenciesJsonAndJsCodegen) {
@@ -1524,6 +1555,31 @@ TEST(RuntimePlan, TypedExpressionIrOwnsDependenciesJsonAndJsCodegen) {
     EXPECT_NE(js.find("scope[\"index\"]"), std::string::npos) << js;
     EXPECT_EQ(js.find("new Function"), std::string::npos) << js;
     EXPECT_EQ(js.find("eval("), std::string::npos) << js;
+}
+
+TEST(RuntimePlan, ExpressionIrCodegenEscapesHostileLiteralText) {
+    auto ir = jtml::parseExpressionIr(
+        "{ \"\\\"]; globalThis.__jtmlInjected = true; //\": title, "
+        "\"body\": \"</script><script>alert(1)</script>\" }");
+    ASSERT_TRUE(ir);
+    ASSERT_TRUE(jtml::expressionIrSupportsDirectJs(*ir));
+
+    const auto js = jtml::expressionIrToJsExpression(*ir);
+    EXPECT_NE(js.find("({["), std::string::npos) << js;
+    EXPECT_NE(js.find("globalThis.__jtmlInjected"), std::string::npos) << js;
+    EXPECT_EQ(js.find("new Function"), std::string::npos) << js;
+    EXPECT_EQ(js.find("eval("), std::string::npos) << js;
+
+    const auto plan = jtml::expressionIrToRuntimePlanJson(*ir);
+    ASSERT_EQ(plan["kind"], "object") << plan.dump(2);
+    EXPECT_EQ(plan["valueType"], "object") << plan.dump(2);
+    EXPECT_EQ(plan["directJs"], true) << plan.dump(2);
+
+    auto protoIr = jtml::parseExpressionIr("{ \"__proto__\": title }");
+    ASSERT_TRUE(protoIr);
+    const auto protoJs = jtml::expressionIrToJsExpression(*protoIr);
+    EXPECT_NE(protoJs.find("[\"__proto__\"]"), std::string::npos) << protoJs;
+    EXPECT_EQ(protoJs.find("\"__proto__\":"), std::string::npos) << protoJs;
 }
 
 TEST(RuntimePlan, BodyPlanWritesIncludeRootObservableForMemberAssignments) {

@@ -1026,7 +1026,7 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_NE(benchmarkFixtures.find("nested_component_update"), std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["browserAssetBudgets"].get<std::string>().find("byte budgets"),
               std::string::npos);
-    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["dynamicGeneratedUpdateFunctions"].get<std::string>().find("not executed"),
+    EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["dynamicGeneratedUpdateFunctions"].get<std::string>().find("removed from shipped runtime"),
               std::string::npos);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["productionRuntimeDynamicCompilation"], false);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["optimizedJsCompiler"], "planned");
@@ -1359,6 +1359,32 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
         << runtimeAsset;
     EXPECT_EQ(runtimeAsset.find("new Function"), std::string::npos) << runtimeAsset;
     EXPECT_EQ(runtimeAsset.find("eval("), std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("function destroyRuntimeComponentInstance"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("function destroyDirectComponentChildren"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("function destroyDirectComponentInstancesUnderElement"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("function unregisterComponentInstance"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("staticDestroyFunction"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("function runtimeValuesEqual"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("function changedParamNames"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("mode: 'nested-component-static-update'"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("applyCompiledComponentUpdatePlan("),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("destroyRuntimeComponentInstance(id, 'subtree-prune')"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("destroyRuntimeComponentInstance(id, 'keyed-list-remove')"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("destroyDirectComponentInstancesUnderElement(el, 'body-node-html-replace')"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("destroyDirectComponentInstancesUnderElement(wrapper, 'keyed-item-html-replace')"),
+              std::string::npos) << runtimeAsset;
     const std::string appAsset = readTextFile(outDir / "app.js");
     EXPECT_NE(appAsset.find("productionAssets"), std::string::npos) << appAsset;
     EXPECT_EQ(appAsset.find("new Function"), std::string::npos) << appAsset;
@@ -1529,25 +1555,25 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_EQ(componentModule.find("\"unsafeRootCreateEntries\""),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("\"partsPlan\""),
+    EXPECT_EQ(componentModule.find("\"partsPlan\""),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("\"expressionPlan\""),
+    EXPECT_EQ(componentModule.find("\"expressionPlan\""),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"contentPlan\""),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"exprPlan\""),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"kind\":\"conditional\""),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"kind\":\"binary\""),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"operator\":\"+\""),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"operator\":\"==\""),
               std::string::npos) << componentModule;
     EXPECT_EQ(componentModule.find("\"sourceColumn\""),
               std::string::npos) << componentModule;
     EXPECT_EQ(componentModule.find("\"sourceLine\""),
-              std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("\"contentPlan\""),
-              std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("\"exprPlan\""),
-              std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("\"kind\":\"conditional\""),
-              std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("\"kind\":\"binary\""),
-              std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("\"operator\":\"+\""),
-              std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("\"operator\":\"==\""),
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("function(scope){"),
               std::string::npos) << componentModule;
@@ -1603,6 +1629,12 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("renderStaticComponentNestedNode(instance, definition, scope"),
               std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"childComponentId\""),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("modulesById["),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("__jtml_static_component_modules_by_id"),
+              std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("patchStaticComponentNestedParams(instance, definition"),
               std::string::npos) << componentModule;
     EXPECT_EQ(componentModule.find("patchStaticComponentNestedNode(instance, definition"),
@@ -1615,13 +1647,29 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("function jtml_static_component_patch_"),
               std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("function jtml_static_component_destroy_"),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("static-production-destroy-function"),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("destroy: jtml_static_component_destroy_"),
+              std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("recordStaticCreateFallback(instance, definition, plan"),
               std::string::npos) << componentModule;
     EXPECT_EQ(componentModule.find("if (!plan || !h) return { handled: false, patched: 0 };"),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("function affectedEntries()"),
+    EXPECT_NE(componentModule.find("function affectedIndexes()"),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("h && h.componentPlanAffectedEntries ? h.componentPlanAffectedEntries(plan, changed) : affectedEntries()"),
+    EXPECT_NE(componentModule.find("const affected = affectedIndexes();"),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"entries\""),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"entriesByRead\""),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"unsafeEntries\""),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("executeComponentPatchOperation"),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("componentPlanAffectedEntries"),
               std::string::npos) << componentModule;
     EXPECT_EQ(componentModule.find("patchStaticComponentTextNode"),
               std::string::npos) << componentModule;
@@ -1631,7 +1679,7 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("el.textContent = String(value == null ? '' : value);"),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("renderStaticComponentCreateOperations(instance"),
+    EXPECT_EQ(componentModule.find("renderStaticComponentCreateOperations(instance"),
               std::string::npos) << componentModule;
     const std::string updatePlans = readTextFile(outDir / "jtml-update-plans.js");
     EXPECT_NE(updatePlans.find("\"mode\":\"csp-safe static update plans\""),
@@ -1724,19 +1772,31 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("renderStaticComponentNestedNode(instance, definition, scope"),
               std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("\"childComponentKey\""),
+              std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("\"childComponentId\""),
+              std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("modulesById["),
+              std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("patchStaticComponentNestedParams(instance, definition"),
               std::string::npos) << updatePlans;
     EXPECT_EQ(updatePlans.find("patchStaticComponentNestedNode(instance, definition"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("function jtml_static_component_update_"),
               std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("function jtml_static_component_destroy_"),
+              std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("recordStaticCreateFallback(instance, definition, plan"),
               std::string::npos) << updatePlans;
     EXPECT_EQ(updatePlans.find("if (!plan || !h) return { handled: false, patched: 0 };"),
               std::string::npos) << updatePlans;
-    EXPECT_NE(updatePlans.find("function affectedEntries()"),
+    EXPECT_NE(updatePlans.find("function affectedIndexes()"),
               std::string::npos) << updatePlans;
-    EXPECT_NE(updatePlans.find("h && h.componentPlanAffectedEntries ? h.componentPlanAffectedEntries(plan, changed) : affectedEntries()"),
+    EXPECT_NE(updatePlans.find("const affected = affectedIndexes();"),
+              std::string::npos) << updatePlans;
+    EXPECT_EQ(updatePlans.find("executeComponentPatchOperation"),
+              std::string::npos) << updatePlans;
+    EXPECT_EQ(updatePlans.find("componentPlanAffectedEntries"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("function jtml_static_component_create_"),
               std::string::npos) << updatePlans;
@@ -1747,6 +1807,8 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
     EXPECT_NE(updatePlans.find("create: jtml_static_component_create_"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("update: jtml_static_component_update_"),
+              std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("destroy: jtml_static_component_destroy_"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("plans.staticUpdateFunctionCount = Object.keys(functions).length"),
               std::string::npos) << updatePlans;

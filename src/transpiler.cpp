@@ -39,10 +39,6 @@ void JtmlTranspiler::setExternalRuntimeScript(bool enabled) {
     externalRuntimeScript = enabled;
 }
 
-void JtmlTranspiler::setDynamicGeneratedUpdateFunctions(bool enabled) {
-    dynamicGeneratedUpdateFunctions = enabled;
-}
-
 void JtmlTranspiler::setRuntimeProjectPlan(const jtml::RuntimeProjectPlan& plan) {
     runtimeProjectPlan = plan;
 }
@@ -431,8 +427,7 @@ std::string JtmlTranspiler::generateClientManifest(const std::vector<std::unique
 //--------------------------------------------------
 std::string JtmlTranspiler::generateScriptBlock() {
     return jtml::emitBrowserRuntimeScript(webSocketPort,
-                                          browserLocalRuntime,
-                                          dynamicGeneratedUpdateFunctions);
+                                          browserLocalRuntime);
 }
 
 bool JtmlTranspiler::isVoidElement(const std::string& tagName) const {

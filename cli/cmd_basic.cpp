@@ -943,7 +943,7 @@ int cmdDoctor(const Options& o) {
                 "nested_component_update",
             }},
             {"browserAssetBudgets", "first-slice index/runtime/component/app/update-plan byte budgets"},
-            {"dynamicGeneratedUpdateFunctions", "not executed by shipped runtime; static component modules are the production path"},
+            {"dynamicGeneratedUpdateFunctions", "removed from shipped runtime; static component modules are the production path"},
             {"productionRuntimeDynamicCompilation", false},
             {"keyedListDiffing", "first-slice direct list item key/index markers, lifecycle telemetry, conservative keyed for-region patching, below-wrapper element/text reconciliation for retained keyed items, child body-node marker reconciliation below retained wrappers, retained/inserted/removed/moved key reporting, and removed nested dynamic child pruning; optimized DOM diff planned"},
             {"prodDevRuntimeSplit", "external jtml-runtime.js is primary for browser build; embedded runtime retained for transpile/live compatibility"},
@@ -1826,7 +1826,7 @@ int cmdBuild(const Options& o) {
         const auto componentModuleAsset =
             emitStaticComponentModuleAsset(runtimeProjectPlan);
         writeBuildAsset(runtimeFile,
-                        jtml::emitBrowserRuntimeScript(8080, true, false),
+                        jtml::emitBrowserRuntimeScript(8080, true),
                         "browser runtime output");
         writeBuildAsset(componentModuleFile,
                         componentModuleAsset,

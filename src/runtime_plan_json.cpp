@@ -28,6 +28,14 @@ nlohmann::json runtimePlanBindingsObjectToJson(const std::vector<RuntimePlanBind
     return out;
 }
 
+nlohmann::json runtimePlanBindingPlansObjectToJson(const std::vector<RuntimePlanBinding>& bindings) {
+    nlohmann::json out = nlohmann::json::object();
+    for (const auto& binding : bindings) {
+        out[binding.name] = compileRuntimeExpressionPlan(binding.expr);
+    }
+    return out;
+}
+
 nlohmann::json runtimePlanActionsObjectToJson(const std::vector<RuntimePlanAction>& actions) {
     nlohmann::json out = nlohmann::json::object();
     for (const auto& action : actions) {
@@ -57,8 +65,14 @@ nlohmann::json runtimePlanStatementsToJson(const std::vector<RuntimePlanStatemen
             {"kind", statement.kind},
         };
         if (!statement.lhs.empty()) item["lhs"] = statement.lhs;
-        if (!statement.expr.empty()) item["expr"] = statement.expr;
-        if (!statement.condition.empty()) item["condition"] = statement.condition;
+        if (!statement.expr.empty()) {
+            item["expr"] = statement.expr;
+            item["exprPlan"] = compileRuntimeExpressionPlan(statement.expr);
+        }
+        if (!statement.condition.empty()) {
+            item["condition"] = statement.condition;
+            item["conditionPlan"] = compileRuntimeExpressionPlan(statement.condition);
+        }
         if (!statement.thenStatements.empty()) {
             item["then"] = runtimePlanStatementsToJson(statement.thenStatements);
         }
@@ -772,9 +786,11 @@ nlohmann::json runtimeProjectPlanToExplainJson(const RuntimeProjectPlan& plan) {
 }
 
 nlohmann::json runtimePlanToClientJson(const RuntimePlan& plan) {
-    return {
+    auto client = nlohmann::json({
         {"state", runtimePlanBindingsObjectToJson(plan.state)},
+        {"statePlans", runtimePlanBindingPlansObjectToJson(plan.state)},
         {"derived", runtimePlanBindingsObjectToJson(plan.derived)},
+        {"derivedPlans", runtimePlanBindingPlansObjectToJson(plan.derived)},
         {"actions", runtimePlanActionsObjectToJson(plan.actions)},
         {"routes", runtimePlanRoutesToJson(plan.routes)},
         {"fetches", runtimePlanFetchesToJson(plan.fetches)},
@@ -782,7 +798,9 @@ nlohmann::json runtimePlanToClientJson(const RuntimePlan& plan) {
             runtimePlanComponentDefinitionsToClientJson(plan.componentDefinitions)},
         {"componentInstances",
             runtimePlanComponentInstancesToClientJson(plan.componentInstances)},
-    };
+    });
+    stripExpressionCompilerHints(client);
+    return client;
 }
 
 nlohmann::json runtimeProjectPlanToClientJson(const RuntimeProjectPlan& plan) {

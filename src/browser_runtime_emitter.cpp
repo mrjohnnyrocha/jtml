@@ -20,8 +20,7 @@ void replaceAll(std::string& value, const std::string& needle, const std::string
 } // namespace
 
 std::string emitBrowserRuntimeScript(int webSocketPort,
-                                     bool browserLocalRuntime,
-                                     bool dynamicGeneratedUpdateFunctions) {
+                                     bool browserLocalRuntime) {
     // The browser runtime is authored as owned asset chunks instead of one
     // giant emitter literal. Keep this function as the stable C++ API that
     // parameterizes the runtime for live WebSocket and browser-local modes.
@@ -37,9 +36,6 @@ std::string emitBrowserRuntimeScript(int webSocketPort,
     }
     replaceAll(script, "@JTML_WS_PORT@", std::to_string(webSocketPort));
     replaceAll(script, "@JTML_BROWSER_LOCAL_RUNTIME@", browserLocalRuntime ? "true" : "false");
-    replaceAll(script,
-               "@JTML_DYNAMIC_GENERATED_UPDATE_FUNCTIONS@",
-               dynamicGeneratedUpdateFunctions ? "true" : "false");
     return script;
 }
 

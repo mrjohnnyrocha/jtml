@@ -34,7 +34,6 @@ public:
     void setWebSocketPort(int port);
     void setBrowserLocalRuntime(bool enabled);
     void setExternalRuntimeScript(bool enabled);
-    void setDynamicGeneratedUpdateFunctions(bool enabled);
     void setRuntimeProjectPlan(const jtml::RuntimeProjectPlan& plan);
     const std::string* getNodeBinding(const ASTNode& node, const std::string& role) const;
     const TranspiledBinding* getAttributeBinding(const JtmlAttribute& attr) const;
@@ -46,7 +45,6 @@ private:
     int webSocketPort = 8080;
     bool browserLocalRuntime = false;
     bool externalRuntimeScript = false;
-    bool dynamicGeneratedUpdateFunctions = false;
     std::optional<jtml::RuntimeProjectPlan> runtimeProjectPlan;
 
     std::unordered_map<const ASTNode*, std::unordered_map<std::string, std::string>> nodeBindings;

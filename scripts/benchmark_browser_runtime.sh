@@ -119,6 +119,7 @@ harness = f"""
         directComponentExecution: !!jtml.directComponentExecution,
         directComponentLastAction: !!jtml.directComponentLastAction,
         directNestedComponentParamPatch: !!jtml.directNestedComponentParamPatch,
+        directNestedComponentParamPatchMode: jtml.directNestedComponentParamPatch && jtml.directNestedComponentParamPatch.mode || '',
         directComponentListLifecycle: !!jtml.directComponentListLifecycle,
         directComponentCompiledUpdatePlan: !!jtml.directComponentCompiledUpdatePlan
       }});
@@ -283,6 +284,10 @@ if fixture == "composition" and not result.get("directNestedComponentParamPatch"
     raise SystemExit("error: composition did not use in-place nested component parameter patch")
 if fixture == "nested_component_update" and not result.get("directNestedComponentParamPatch"):
     raise SystemExit("error: nested_component_update did not use in-place nested component parameter patch")
+if fixture in ("composition", "nested_component_update"):
+    mode = str(result.get("directNestedComponentParamPatchMode", ""))
+    if mode != "nested-component-static-update":
+        raise SystemExit(f"error: {fixture} did not use nested static component update mode: {mode!r}")
 if fixture == "keyed_list" and not result.get("directComponentListLifecycle"):
     raise SystemExit("error: keyed_list did not report keyed list lifecycle telemetry")
 print(

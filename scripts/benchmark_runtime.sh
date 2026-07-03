@@ -88,6 +88,14 @@ for fixture in "${FIXTURES}"/*.jtml; do
     echo "error: ${name} component module contains legacy debug/source metadata" >&2
     exit 1
   fi
+  if grep -q '"entries"\|"entriesByRead"\|"unsafeEntries"' "${component_module}"; then
+    echo "error: ${name} component module contains operation-record fallback metadata" >&2
+    exit 1
+  fi
+  if grep -q "executeComponentPatchOperation\|componentPlanAffectedEntries" "${component_module}"; then
+    echo "error: ${name} component module still delegates to operation-record patch helpers" >&2
+    exit 1
+  fi
   if ! grep -q '"assetRole":"component-module"' "${component_module}"; then
     echo "error: ${name} component module missing component-module asset role" >&2
     exit 1
@@ -133,6 +141,14 @@ for fixture in "${FIXTURES}"/*.jtml; do
     fi
     if ! grep -q 'renderStaticComponentNestedNode(instance, definition, scope' "${component_module}"; then
       echo "error: ${name} component module missing direct nested component create contract" >&2
+      exit 1
+    fi
+    if grep -q '"childComponentId"' "${component_module}"; then
+      echo "error: ${name} component module serializes nested child component ids instead of using generated lookup code" >&2
+      exit 1
+    fi
+    if ! grep -q 'modulesById\[' "${component_module}"; then
+      echo "error: ${name} component module missing compact static nested child module lookup" >&2
       exit 1
     fi
     if ! grep -q 'patchStaticComponentNestedParams(instance, definition' "${component_module}"; then

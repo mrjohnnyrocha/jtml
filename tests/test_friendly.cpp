@@ -892,6 +892,12 @@ TEST(FriendlySyntax, BrowserRuntimeAssetsExposeOwnedChunks) {
     EXPECT_NE(std::string(chunks[0].source).find("<script>"), std::string::npos);
     EXPECT_NE(std::string(chunks[1].source).find("function renderDirectComponent"),
               std::string::npos);
+    EXPECT_NE(std::string(chunks[1].source).find("function fnv1a64Hex(value)"),
+              std::string::npos);
+    EXPECT_NE(std::string(chunks[1].source).find("String(node.sourceColumn || 0)"),
+              std::string::npos);
+    EXPECT_NE(std::string(chunks[1].source).find("':' + fnv1a64Hex(signature)"),
+              std::string::npos);
     EXPECT_NE(std::string(chunks[2].source).find("function startFetchBindings"),
               std::string::npos);
     EXPECT_NE(std::string(chunks[3].source).find("window.addEventListener('hashchange'"),
@@ -2166,7 +2172,7 @@ TEST(FriendlySyntax, DirectComponentSlotsNestedCallsAttributesAndActionArgsUseBo
     EXPECT_EQ(manifest.dump().find("slotHex"), std::string::npos) << manifest.dump(2);
     EXPECT_EQ(manifest.dump().find("slotSource"), std::string::npos) << manifest.dump(2);
     EXPECT_NE(html.find("function renderComponentSlot(instance, scope, name)"), std::string::npos) << html;
-    EXPECT_NE(html.find("function renderNestedComponentCall(parentDefinition, parentInstance, node, scope, name, directNodeAttr)"),
+    EXPECT_NE(html.find("function renderNestedComponentCall(parentDefinition, parentInstance, node, scope, name, directNodeAttr, staticModule)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("node && node.definitionModule"), std::string::npos) << html;
     EXPECT_NE(html.find("const dynamicComponentInstances = {}"), std::string::npos) << html;
@@ -2495,9 +2501,9 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("function executeComponentPatchOperation(instance, definition, operation, scope)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("function generateComponentUpdateFunctionSource(plan)"),
+    EXPECT_EQ(html.find("function generateComponentUpdateFunctionSource(plan)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("function compileGeneratedComponentUpdateFunction(plan)"),
+    EXPECT_EQ(html.find("function compileGeneratedComponentUpdateFunction(plan)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("function compileStaticComponentUpdateFunction(plan)"),
               std::string::npos) << html;
@@ -2517,20 +2523,22 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("static-production-create-function"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("plan.generatedSource = generateComponentUpdateFunctionSource(plan)"),
+    EXPECT_EQ(html.find("plan.generatedSource = generateComponentUpdateFunctionSource(plan)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("plan.update = compileGeneratedComponentUpdateFunction(plan) ||"),
+    EXPECT_EQ(html.find("plan.update = compileGeneratedComponentUpdateFunction(plan) ||"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("const dynamicGeneratedUpdateFunctions = false;"),
+    EXPECT_EQ(html.find("const dynamicGeneratedUpdateFunctions = false;"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("dynamic generated update functions disabled; using CSP-safe interpreted update plan"),
+    EXPECT_EQ(html.find("dynamic generated update functions disabled; using CSP-safe interpreted update plan"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("cspSafeUpdatePlans: !dynamicGeneratedUpdateFunctions"),
+    EXPECT_NE(html.find("cspSafeUpdatePlans: true"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("generatedUpdateSourceAvailable: false"),
               std::string::npos) << html;
     EXPECT_EQ(html.find("new Function"), std::string::npos) << html;
-    EXPECT_NE(html.find("dynamic generated update functions are not executed by the shipped runtime"),
+    EXPECT_EQ(html.find("dynamic generated update functions are not executed by the shipped runtime"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("generated-production-update-function"),
+    EXPECT_EQ(html.find("generated-production-update-function"),
               std::string::npos) << html;
     EXPECT_NE(html.find("const entriesByRead = {}"),
               std::string::npos) << html;
@@ -2638,7 +2646,7 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("unsafeEntryCount: (plan && plan.unsafeEntries || []).length"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("generatedSourceLength: String(plan && plan.generatedSource || '').length"),
+    EXPECT_EQ(html.find("generatedSourceLength: String(plan && plan.generatedSource || '').length"),
               std::string::npos) << html;
     EXPECT_NE(html.find("'indexed-compiled-update-function'"),
               std::string::npos) << html;
@@ -2832,7 +2840,7 @@ TEST(FriendlySyntax, DirectComponentActionsCanCallOtherLocalActions) {
     EXPECT_TRUE(foundCounter) << state.dump(2);
 }
 
-TEST(FriendlySyntax, DynamicGeneratedUpdateFunctionsAreExplicitlyOptIn) {
+TEST(FriendlySyntax, BrowserRuntimeHasNoDynamicGeneratedUpdateKnob) {
     std::string classic = normalizeOk(
         "jtml 2\n"
         "make Counter\n"
@@ -2853,18 +2861,13 @@ TEST(FriendlySyntax, DynamicGeneratedUpdateFunctionsAreExplicitlyOptIn) {
     JtmlTranspiler secureTranspiler;
     secureTranspiler.setBrowserLocalRuntime(true);
     const std::string secureHtml = secureTranspiler.transpile(program);
-    EXPECT_NE(secureHtml.find("const dynamicGeneratedUpdateFunctions = false;"),
+    EXPECT_EQ(secureHtml.find("const dynamicGeneratedUpdateFunctions = false;"),
               std::string::npos) << secureHtml;
-
-    JtmlTranspiler devTranspiler;
-    devTranspiler.setBrowserLocalRuntime(true);
-    devTranspiler.setDynamicGeneratedUpdateFunctions(true);
-    const std::string devHtml = devTranspiler.transpile(program);
-    EXPECT_NE(devHtml.find("const dynamicGeneratedUpdateFunctions = true;"),
-              std::string::npos) << devHtml;
-    EXPECT_EQ(devHtml.find("new Function"), std::string::npos) << devHtml;
-    EXPECT_NE(devHtml.find("dynamic generated update functions are not executed by the shipped runtime"),
-              std::string::npos) << devHtml;
+    EXPECT_EQ(secureHtml.find("new Function"), std::string::npos) << secureHtml;
+    EXPECT_EQ(secureHtml.find("dynamic generated update functions are not executed by the shipped runtime"),
+              std::string::npos) << secureHtml;
+    EXPECT_NE(secureHtml.find("cspSafeUpdatePlans: true"),
+              std::string::npos) << secureHtml;
 }
 
 TEST(FriendlySyntax, ComponentMetadataListsIsolatedLocals) {
@@ -4748,11 +4751,19 @@ TEST(FriendlySyntax, BrowserLocalRuntimeEmitsStateDerivedAndActionManifest) {
 
     EXPECT_NE(html.find("id=\"__jtml_client_manifest\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"state\":{\"count\":\"0.000000000000000\"}"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"statePlans\":{\"count\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"derived\":{\"label\":\"(\\\"Count \\\" + count)\"}"), std::string::npos) << html;
+    EXPECT_NE(html.find("\"derivedPlans\":{\"label\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"actions\":{\"add\""), std::string::npos) << html;
     EXPECT_NE(html.find("\"kind\":\"assign\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"exprPlan\":{\"astKind\""), std::string::npos) << html;
+    EXPECT_NE(html.find("\"producer\":\"typed-ir\""), std::string::npos) << html;
     EXPECT_NE(html.find("const browserLocalRuntime = true;"), std::string::npos) << html;
     EXPECT_NE(html.find("executeClientAction(fnName"), std::string::npos) << html;
+    EXPECT_NE(html.find("stmt.exprPlan || compileComponentExpressionPlan(stmt.expr || '')"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("clientDerivedPlans[name] || compileComponentExpressionPlan(clientDerived[name])"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("data-jtml-expr=\"&quot;Add&quot;\""), std::string::npos) << html;
 }
 

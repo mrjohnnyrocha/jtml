@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <iterator>
 #include <map>
 #include <set>
@@ -38,6 +39,21 @@ std::string joinInts(const std::vector<int>& values,
     return out.str();
 }
 
+std::string fnv1a64Hex(const std::string& value) {
+    uint64_t hash = 14695981039346656037ull;
+    for (unsigned char ch : value) {
+        hash ^= static_cast<uint64_t>(ch);
+        hash *= 1099511628211ull;
+    }
+    static constexpr char digits[] = "0123456789abcdef";
+    std::string out(16, '0');
+    for (int i = 15; i >= 0; --i) {
+        out[static_cast<size_t>(i)] = digits[hash & 0x0f];
+        hash >>= 4;
+    }
+    return out;
+}
+
 std::string componentUpdatePlanKey(
         const RuntimePlanComponentDefinition& definition) {
     std::ostringstream signature;
@@ -62,7 +78,7 @@ std::string componentUpdatePlanKey(
                 : std::to_string(definition.moduleId))
         << ':' << definition.name
         << ':' << definition.bodyPlan.size()
-        << ':' << signature.str();
+        << ':' << fnv1a64Hex(signature.str());
     return key.str();
 }
 
@@ -361,6 +377,37 @@ bool isKnownNestedComponent(
            definitionKeys.count({InvalidSemanticModuleId, head});
 }
 
+const RuntimePlanComponentDefinition* findNestedComponentDefinition(
+        const std::vector<RuntimePlanComponentDefinition>& definitions,
+        const RuntimePlanComponentDefinition& owner,
+        const RuntimePlanComponentBodyNode& node) {
+    const auto head = componentNodeHead(node);
+    if (head.empty()) return nullptr;
+    const SemanticModuleId module =
+        node.definitionModule != InvalidSemanticModuleId
+            ? node.definitionModule
+            : owner.moduleId;
+    for (const auto& candidate : definitions) {
+        if (candidate.name == head && candidate.moduleId == module) {
+            return &candidate;
+        }
+    }
+    for (const auto& candidate : definitions) {
+        if (candidate.name == head) {
+            return &candidate;
+        }
+    }
+    return nullptr;
+}
+
+std::string nestedComponentPlanKey(
+        const std::vector<RuntimePlanComponentDefinition>& definitions,
+        const RuntimePlanComponentDefinition& owner,
+        const RuntimePlanComponentBodyNode& node) {
+    const auto* nested = findNestedComponentDefinition(definitions, owner, node);
+    return nested ? componentUpdatePlanKey(*nested) : std::string();
+}
+
 std::string staticPatchOperationKind(
         const std::set<DefinitionKey>& definitionKeys,
         const RuntimePlanComponentDefinition& definition,
@@ -381,7 +428,8 @@ std::string staticPatchOperationKind(
 nlohmann::json staticPatchOperation(
         const std::string& kind,
         const RuntimePlanComponentBodyNode& node,
-        size_t index) {
+        size_t index,
+        const std::string& childComponentKey = "") {
     const auto words = splitStaticComponentWords(node.text);
     nlohmann::json out = {
         {"operation", kind},
@@ -404,12 +452,15 @@ nlohmann::json staticPatchOperation(
             : nlohmann::json({{"name", ""}, {"argExpressions", nlohmann::json::array()}});
     } else if (kind == "element" || kind == "container-attrs") {
         out["partsPlan"] = compileStaticElementParts(words, 1);
+    } else if (kind == "nested-component" && !childComponentKey.empty()) {
+        out["childComponentKey"] = childComponentKey;
     }
     return out;
 }
 
 nlohmann::json compileStaticComponentUpdatePlan(
         const RuntimePlanComponentDefinition& definition,
+        const std::vector<RuntimePlanComponentDefinition>& definitions,
         const std::set<DefinitionKey>& definitionKeys,
         const std::string& origin) {
     nlohmann::json entries = nlohmann::json::array();
@@ -432,8 +483,11 @@ nlohmann::json compileStaticComponentUpdatePlan(
                     {"sourceColumn", node.sourceColumn},
                 });
             } else {
+                const auto childKey = rootOperationKind == "nested-component"
+                    ? nestedComponentPlanKey(definitions, definition, node)
+                    : std::string();
                 rootCreateOperations.push_back(
-                    staticPatchOperation(rootOperationKind, node, i));
+                    staticPatchOperation(rootOperationKind, node, i, childKey));
             }
         }
         const auto reads = expandedNodeReads(definition, node);
@@ -452,17 +506,30 @@ nlohmann::json compileStaticComponentUpdatePlan(
             continue;
         }
 
+        const auto childKey = operationKind == "nested-component"
+            ? nestedComponentPlanKey(definitions, definition, node)
+            : std::string();
         nlohmann::json entry = {
             {"index", i},
             {"reads", reads},
             {"kind", componentNodeHead(node)},
             {"sourceLine", node.sourceLine},
             {"sourceColumn", node.sourceColumn},
-            {"operation", staticPatchOperation(operationKind, node, i)},
+            {"operation", staticPatchOperation(operationKind, node, i, childKey)},
         };
         entries.push_back(entry);
         for (const auto& read : reads) {
             entriesByRead[read].push_back(entry);
+        }
+    }
+
+    auto bodyPlanJson = runtimePlanBodyPlanToJson(
+        definition.bodyPlan,
+        RuntimePlanJsonOptions{true});
+    if (bodyPlanJson.is_array()) {
+        for (size_t i = 0; i < definition.bodyPlan.size() && i < bodyPlanJson.size(); ++i) {
+            const auto childKey = nestedComponentPlanKey(definitions, definition, definition.bodyPlan[i]);
+            if (!childKey.empty()) bodyPlanJson[i]["childComponentKey"] = childKey;
         }
     }
 
@@ -475,9 +542,7 @@ nlohmann::json compileStaticComponentUpdatePlan(
         {"localState", definition.localState},
         {"localDerived", definition.localDerived},
         {"localActions", definition.localActions},
-        {"bodyPlan", runtimePlanBodyPlanToJson(
-            definition.bodyPlan,
-            RuntimePlanJsonOptions{true})},
+        {"bodyPlan", bodyPlanJson},
         {"entries", entries},
         {"entriesByRead", entriesByRead},
         {"unsafeEntries", unsafeEntries},
@@ -495,7 +560,7 @@ void appendComponentPlans(
         const std::string& origin) {
     for (const auto& definition : definitions) {
         components.push_back(
-            compileStaticComponentUpdatePlan(definition, definitionKeys, origin));
+            compileStaticComponentUpdatePlan(definition, definitions, definitionKeys, origin));
     }
 }
 
@@ -518,6 +583,39 @@ nlohmann::json collectComponentPlans(const RuntimeProjectPlan& plan) {
     return components;
 }
 
+nlohmann::json assignComponentIdsAndChildIds(nlohmann::json components) {
+    if (!components.is_array()) return components;
+
+    std::map<std::string, size_t> keyToId;
+    for (size_t i = 0; i < components.size(); ++i) {
+        if (!components[i].is_object()) continue;
+        components[i]["componentId"] = i;
+        if (components[i].contains("key") && components[i]["key"].is_string()) {
+            keyToId[components[i]["key"].get<std::string>()] = i;
+        }
+    }
+
+    std::function<void(nlohmann::json&)> annotate = [&](nlohmann::json& value) {
+        if (value.is_object()) {
+            if (value.contains("childComponentKey") && value["childComponentKey"].is_string()) {
+                const auto key = value["childComponentKey"].get<std::string>();
+                const auto it = keyToId.find(key);
+                if (it != keyToId.end()) value["childComponentId"] = it->second;
+            }
+            for (auto it = value.begin(); it != value.end(); ++it) {
+                annotate(it.value());
+            }
+            return;
+        }
+        if (value.is_array()) {
+            for (auto& item : value) annotate(item);
+        }
+    };
+
+    for (auto& component : components) annotate(component);
+    return components;
+}
+
 nlohmann::json componentModulePlanPayload(nlohmann::json component) {
     std::function<void(nlohmann::json&)> stripDebugFields =
         [&](nlohmann::json& value) {
@@ -526,6 +624,9 @@ nlohmann::json componentModulePlanPayload(nlohmann::json component) {
                 value.erase("sourceColumn");
                 value.erase("rootCreateOperations");
                 value.erase("unsafeRootCreateEntries");
+                if (value.contains("childComponentId")) {
+                    value.erase("childComponentKey");
+                }
                 for (auto it = value.begin(); it != value.end(); ++it) {
                     stripDebugFields(it.value());
                 }
@@ -546,29 +647,9 @@ nlohmann::json componentModulePlanPayload(nlohmann::json component) {
     component.erase("params");
     component.erase("rootCreateOperations");
     component.erase("unsafeRootCreateEntries");
-    if (component.contains("entries") && component["entries"].is_array()) {
-        nlohmann::json entries = nlohmann::json::array();
-        nlohmann::json entriesByRead = nlohmann::json::object();
-        for (auto entry : component["entries"]) {
-            if (!entry.is_object()) continue;
-            stripDebugFields(entry);
-            entries.push_back(entry);
-            if (entry.contains("reads") && entry["reads"].is_array()) {
-                for (const auto& read : entry["reads"]) {
-                    if (!read.is_string()) continue;
-                    entriesByRead[read.get<std::string>()].push_back(entry);
-                }
-            }
-        }
-        component["entries"] = entries;
-        component["entriesByRead"] = entriesByRead;
-    }
-    if (component.contains("unsafeEntries") && component["unsafeEntries"].is_array()) {
-        for (auto& entry : component["unsafeEntries"]) {
-            if (!entry.is_object()) continue;
-            stripDebugFields(entry);
-        }
-    }
+    component.erase("entries");
+    component.erase("entriesByRead");
+    component.erase("unsafeEntries");
     stripDebugFields(component);
     return component;
 }
@@ -1262,12 +1343,29 @@ std::string directStaticSlotCreateExpression(size_t nodeIndex,
 }
 
 std::string directStaticNestedCreateExpression(size_t nodeIndex,
-                                               const std::string& name) {
+                                               const std::string& name,
+                                               const std::string& childComponentKey = "",
+                                               int childComponentId = -1) {
     if (name.empty()) return "";
+    const auto emittedChildKey =
+        childComponentId >= 0 ? std::string() : childComponentKey;
     std::ostringstream out;
     out << "(h && h.renderStaticComponentNestedNode ? "
         << "h.renderStaticComponentNestedNode(instance, definition, scope, "
-        << nodeIndex << ", " << jsStringLiteral(name) << ") : null)";
+        << nodeIndex << ", " << jsStringLiteral(name) << ", "
+        << jsStringLiteral(emittedChildKey) << ", "
+        << childComponentId << ", "
+        << "((typeof modulesById !== 'undefined' && "
+        << childComponentId << " >= 0 && modulesById[" << childComponentId << "]) || ";
+    if (emittedChildKey.empty()) {
+        out << "null";
+    } else {
+        out << "(typeof modules !== 'undefined' ? modules["
+            << jsStringLiteral(emittedChildKey) << "] : null)";
+    }
+    out
+        << ")"
+        << ") : null)";
     return out.str();
 }
 
@@ -1332,7 +1430,11 @@ std::string directStaticNodeCreateExpression(const nlohmann::json& componentPlan
         return directStaticSlotCreateExpression(nodeIndex, node);
     }
     if (looksLikeComponentCallHead(resolvedHead)) {
-        return directStaticNestedCreateExpression(nodeIndex, resolvedHead);
+        return directStaticNestedCreateExpression(
+            nodeIndex,
+            resolvedHead,
+            node.value("childComponentKey", ""),
+            node.value("childComponentId", -1));
     }
     if (resolvedHead == "if") {
         return directStaticIfCreateExpression(componentPlan, nodeIndex, node, visiting);
@@ -1456,8 +1558,15 @@ std::string directStaticCreateCall(
         }
     } else if (kind == "nested-component") {
         std::set<size_t> visiting;
-        const auto directCreate = directStaticNodeCreateExpression(
+        auto directCreate = directStaticNodeCreateExpression(
             componentPlan, static_cast<size_t>(nodeIndex), visiting);
+        if (directCreate.empty()) {
+            directCreate = directStaticNestedCreateExpression(
+                static_cast<size_t>(nodeIndex),
+                operation.value("head", ""),
+                operation.value("childComponentKey", ""),
+                operation.value("childComponentId", -1));
+        }
         if (!directCreate.empty()) {
             out << directCreate << ";\n";
         } else {
@@ -1528,7 +1637,11 @@ std::string directStaticNestedPatchExpression(size_t nodeIndex,
                                               const nlohmann::json& operation) {
     const auto name = operation.value("head", "");
     if (name.empty()) return "";
-    const auto directCreate = directStaticNestedCreateExpression(nodeIndex, name);
+    const auto directCreate = directStaticNestedCreateExpression(
+        nodeIndex,
+        name,
+        operation.value("childComponentKey", ""),
+        operation.value("childComponentId", -1));
     std::ostringstream out;
     out << "(function(){ "
         << "if (h && h.patchStaticComponentNestedParams && "
@@ -1656,15 +1769,61 @@ std::string directStaticPatchCase(const nlohmann::json& componentPlan,
     return out.str();
 }
 
+std::string staticUpdateAffectedIndexesFunctionBody(const nlohmann::json& componentPlan) {
+    std::ostringstream out;
+    out << "    function affectedIndexes() {\n"
+        << "      const out = [];\n"
+        << "      const seen = {};\n"
+        << "      const writes = {};\n"
+        << "      (changed || []).forEach(function(name) { writes[name] = true; });\n";
+    const auto entries = componentPlan.value("entries", nlohmann::json::array());
+    for (const auto& entry : entries) {
+        if (!entry.is_object() || !entry.contains("index")) continue;
+        const auto index = entry.value("index", -1);
+        if (index < 0) continue;
+        out << "      if (!seen[" << index << "]";
+        const auto reads = entry.value("reads", nlohmann::json::array());
+        for (const auto& read : reads) {
+            if (!read.is_string()) continue;
+            out << " && !writes[" << jsStringLiteral(read.get<std::string>()) << "]";
+        }
+        out << ") {}\n";
+        out << "      else if (!seen[" << index << "]) { seen[" << index
+            << "] = true; out.push(" << index << "); }\n";
+    }
+    out << "      return out;\n"
+        << "    }\n";
+    return out.str();
+}
+
+std::string staticUpdateUnsafeAffectedFunctionBody(const nlohmann::json& componentPlan) {
+    std::ostringstream out;
+    out << "    function hasUnsafeAffectedNode() {\n"
+        << "      const writes = {};\n"
+        << "      (changed || []).forEach(function(name) { writes[name] = true; });\n";
+    const auto entries = componentPlan.value("unsafeEntries", nlohmann::json::array());
+    for (const auto& entry : entries) {
+        if (!entry.is_object()) continue;
+        out << "      if (";
+        bool emitted = false;
+        for (const auto& read : entry.value("reads", nlohmann::json::array())) {
+            if (!read.is_string()) continue;
+            if (emitted) out << " || ";
+            out << "writes[" << jsStringLiteral(read.get<std::string>()) << "]";
+            emitted = true;
+        }
+        out << (emitted ? ") return true;\n" : "false) return true;\n");
+    }
+    out << "      return false;\n"
+        << "    }\n";
+    return out.str();
+}
+
 std::string staticCreateFallbackFunctionBody(size_t componentIndex) {
     std::ostringstream out;
     out << "    function jtml_static_component_create_fallback_"
         << componentIndex << "() {\n"
         << "      if (h && h.recordStaticCreateFallback) h.recordStaticCreateFallback(instance, definition, plan, \"static component create function fell back to runtime renderer\");\n"
-        << "      if (h && h.renderStaticComponentCreateOperations && plan && plan.rootCreateOperations) {\n"
-        << "        const html = h.renderStaticComponentCreateOperations(instance, definition, scope, plan.rootCreateOperations);\n"
-        << "        if (typeof html === 'string') return html;\n"
-        << "      }\n"
         << "      if (!h || !h.renderStaticComponentRoots) return '';\n"
         << "      return h.renderStaticComponentRoots(instance, definition, scope);\n"
         << "    }\n";
@@ -1716,9 +1875,8 @@ std::string staticUpdateFunctionBody(size_t componentIndex,
     out
         << "  }\n";
     out << "  function jtml_static_component_patch_" << componentIndex
-        << "(entry, node, instance, definition, scope, h) {\n"
-        << "    if (!entry) return false;\n"
-        << "    switch (entry.index) {\n";
+        << "(nodeIndex, node, instance, definition, scope, h) {\n"
+        << "    switch (nodeIndex) {\n";
     size_t emittedPatchCases = 0;
     const auto entries = componentPlan.value("entries", nlohmann::json::array());
     for (const auto& entry : entries) {
@@ -1731,52 +1889,36 @@ std::string staticUpdateFunctionBody(size_t componentIndex,
     out << "      default: return false;\n"
         << "    }\n"
         << "  }\n";
+    out << "  function jtml_static_component_destroy_" << componentIndex
+        << "(instance, definition, h) {\n"
+        << "    const plan = plans.components[" << componentIndex << "];\n"
+        << "    const childrenDestroyed = h && h.destroyDirectComponentChildren ? h.destroyDirectComponentChildren(instance, definition) : 0;\n"
+        << "    if (h && h.unregisterComponentInstance) h.unregisterComponentInstance(instance, definition);\n"
+        << "    if (plan) plan.__lastDestroyMode = 'static-production-destroy-function';\n"
+        << "    return { handled: true, destroyed: 1, childrenDestroyed: childrenDestroyed };\n"
+        << "  }\n";
     out << "  function jtml_static_component_update_" << componentIndex
         << "(instance, definition, changed, scope, h) {\n"
         << "    const plan = plans.components[" << componentIndex << "];\n"
         << "    if (!plan) return { handled: false, patched: 0 };\n"
-        << "    function affectedEntries() {\n"
-        << "      const out = [];\n"
-        << "      const seen = {};\n"
-        << "      const byRead = plan.entriesByRead || {};\n"
-        << "      (changed || []).forEach(function(name) {\n"
-        << "        (byRead[name] || []).forEach(function(entry) {\n"
-        << "          const key = String(entry && entry.index);\n"
-        << "          if (seen[key]) return;\n"
-        << "          seen[key] = true;\n"
-        << "          out.push(entry);\n"
-        << "        });\n"
-        << "      });\n"
-        << "      return out;\n"
-        << "    }\n"
-        << "    function firstUnsafeEntry() {\n"
-        << "      const writes = {};\n"
-        << "      (changed || []).forEach(function(name) { writes[name] = true; });\n"
-        << "      const unsafe = plan.unsafeEntries || [];\n"
-        << "      for (let i = 0; i < unsafe.length; i += 1) {\n"
-        << "        const reads = unsafe[i].reads || [];\n"
-        << "        for (let r = 0; r < reads.length; r += 1) {\n"
-        << "          if (writes[reads[r]]) return unsafe[i];\n"
-        << "        }\n"
-        << "      }\n"
-        << "      return null;\n"
-        << "    }\n"
-        << "    const affected = h && h.componentPlanAffectedEntries ? h.componentPlanAffectedEntries(plan, changed) : affectedEntries();\n"
-        << "    plan.__lastOperationCount = affected.length;\n"
+        << staticUpdateAffectedIndexesFunctionBody(componentPlan)
+        << staticUpdateUnsafeAffectedFunctionBody(componentPlan)
+        << "    const affected = affectedIndexes();\n"
+        << "    plan.__lastAffectedNodeCount = affected.length;\n"
         << "    if (!affected.length) return { handled: false, patched: 0 };\n"
         << "    const unsafeNode = h && h.firstUnsafeAffectedRenderNodeFromPlan ? h.firstUnsafeAffectedRenderNodeFromPlan(plan, definition, changed) : null;\n"
-        << "    const unsafeEntry = unsafeNode ? null : firstUnsafeEntry();\n"
-        << "    if (unsafeNode || unsafeEntry) {\n"
-        << "      if (h && h.recordCompiledPatchFallback) h.recordCompiledPatchFallback(instance, definition, unsafeNode || ((definition.bodyPlan || [])[unsafeEntry.index]), \"affected body-plan node requires full rerender\", changed);\n"
+        << "    const unsafeGeneratedNode = !unsafeNode && hasUnsafeAffectedNode();\n"
+        << "    if (unsafeNode || unsafeGeneratedNode) {\n"
+        << "      if (h && h.recordCompiledPatchFallback) h.recordCompiledPatchFallback(instance, definition, unsafeNode || null, \"affected body-plan node requires full rerender\", changed);\n"
         << "      return { handled: false, patched: 0 };\n"
         << "    }\n"
         << "    let patched = 0;\n"
         << "    for (let i = 0; i < affected.length; i += 1) {\n"
-        << "      const node = (definition.bodyPlan || [])[affected[i].index];\n"
+        << "      const nodeIndex = affected[i];\n"
+        << "      const node = (definition.bodyPlan || [])[nodeIndex];\n"
         << "      if (!node) return { handled: false, patched: patched };\n"
         << "      if (!jtml_static_component_patch_" << componentIndex
-        << "(affected[i], node, instance, definition, scope, h) &&\n"
-        << "          !(h && h.executeComponentPatchOperation && h.executeComponentPatchOperation(instance, definition, affected[i].operation, scope)) &&\n"
+        << "(nodeIndex, node, instance, definition, scope, h) &&\n"
         << "          !(h && h.replaceDirectComponentNode && h.replaceDirectComponentNode(instance, definition, node, scope))) {\n"
         << "        if (h && h.recordCompiledPatchFallback) h.recordCompiledPatchFallback(instance, definition, node, \"static update function failed for affected body-plan node\", changed);\n"
         << "        return { handled: false, patched: patched };\n"
@@ -1793,7 +1935,7 @@ std::string staticUpdateFunctionBody(size_t componentIndex,
 
 std::string emitStaticComponentAsset(const RuntimeProjectPlan& plan,
                                      bool componentModule) {
-    const auto fullComponents = collectComponentPlans(plan);
+    const auto fullComponents = assignComponentIdsAndChildIds(collectComponentPlans(plan));
     const auto components = componentModule
         ? componentModulePlansPayload(fullComponents)
         : fullComponents;
@@ -1820,6 +1962,7 @@ std::string emitStaticComponentAsset(const RuntimeProjectPlan& plan,
         << "  const plans = JSON.parse('" << escapeJsScriptText(asset.dump()) << "');\n"
         << "  const functions = {};\n";
     out << "  const modules = {};\n";
+    out << "  const modulesById = {};\n";
     for (size_t i = 0; i < components.size(); ++i) {
         out << staticUpdateFunctionBody(i, fullComponents[i])
             << "  if (plans.components[" << i << "] && plans.components[" << i << "].key) {\n"
@@ -1827,10 +1970,12 @@ std::string emitStaticComponentAsset(const RuntimeProjectPlan& plan,
             << "    modules[plans.components[" << i << "].key] = {\n"
             << "      create: jtml_static_component_create_" << i << ",\n"
             << "      update: jtml_static_component_update_" << i << ",\n"
+            << "      destroy: jtml_static_component_destroy_" << i << ",\n"
             << "      component: plans.components[" << i << "].name || '',\n"
             << "      moduleId: plans.components[" << i << "].moduleId == null ? null : plans.components[" << i << "].moduleId,\n"
             << "      key: plans.components[" << i << "].key\n"
             << "    };\n"
+            << "    if (plans.components[" << i << "].componentId != null) modulesById[plans.components[" << i << "].componentId] = modules[plans.components[" << i << "].key];\n"
             << "  }\n";
     }
     out
@@ -1841,12 +1986,14 @@ std::string emitStaticComponentAsset(const RuntimeProjectPlan& plan,
             : "  window.__jtml_static_update_plans = plans;\n")
         << "  window.__jtml_static_update_functions = functions;\n"
         << "  window.__jtml_static_component_modules = modules;\n"
+        << "  window.__jtml_static_component_modules_by_id = modulesById;\n"
         << "  if (window.jtml) {\n"
         << (componentModule
             ? "    window.jtml.staticComponentPlanIndex = plans;\n"
             : "    window.jtml.staticUpdatePlans = plans;\n")
         << "    window.jtml.staticUpdateFunctions = functions;\n"
         << "    window.jtml.staticComponentModules = modules;\n"
+        << "    window.jtml.staticComponentModulesById = modulesById;\n"
         << "    window.jtml.runtimeSecurity = window.jtml.runtimeSecurity || {};\n"
         << (componentModule
             ? "    window.jtml.runtimeSecurity.staticComponentPlanIndexAsset = true;\n"

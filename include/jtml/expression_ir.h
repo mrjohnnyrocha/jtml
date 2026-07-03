@@ -26,6 +26,17 @@ enum class ExpressionIrKind {
     Source,
 };
 
+enum class ExpressionValueType {
+    Unknown,
+    Null,
+    Boolean,
+    Number,
+    String,
+    Array,
+    Object,
+    Function,
+};
+
 struct ExpressionIrObjectEntry {
     std::string key;
     std::unique_ptr<struct ExpressionIr> value;
@@ -33,6 +44,7 @@ struct ExpressionIrObjectEntry {
 
 struct ExpressionIr {
     ExpressionIrKind kind = ExpressionIrKind::Empty;
+    ExpressionValueType valueType = ExpressionValueType::Unknown;
     std::string source;
     std::string op;
     std::string name;
@@ -53,6 +65,7 @@ std::unique_ptr<ExpressionIr> parseExpressionIr(const std::string& expression);
 
 std::vector<std::string> expressionIrDependencies(const ExpressionIr& ir);
 nlohmann::json expressionIrToRuntimePlanJson(const ExpressionIr& ir);
+std::string expressionValueTypeName(ExpressionValueType type);
 
 bool expressionIrSupportsDirectJs(const ExpressionIr& ir);
 std::string expressionIrToJsExpression(const ExpressionIr& ir);

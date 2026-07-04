@@ -1,5 +1,10 @@
 #pragma once
 
+// Legacy live/interpreter runtime collection API.
+//
+// ReactiveArray is used by the compatibility Environment runtime. Browser
+// production code should not depend on this API.
+
 #include "jtml/value.h"
 #include <vector>
 #include <memory>

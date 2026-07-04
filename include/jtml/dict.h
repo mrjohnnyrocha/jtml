@@ -1,6 +1,11 @@
 // ReactiveDict.h
 #pragma once
 
+// Legacy live/interpreter runtime collection API.
+//
+// ReactiveDict is used by the compatibility Environment runtime. Browser
+// production code should not depend on this API.
+
 #include "jtml/value.h"
 #include <unordered_map>
 #include <memory>

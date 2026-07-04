@@ -778,7 +778,8 @@ int cmdDoctor(const Options& o) {
     };
     const nlohmann::json runtimeCapabilities = {
         {"runtimeAssembly", {
-            {"v02ProductionCompilerIsolation", "complete"},
+            {"v02ProductionCompilerIsolation", "library-boundary-complete; shipped-cli-aggregate; prod-asset-legacy-output-pending"},
+            {"productionCompilerIsolationStage", "library-linkcheck"},
             {"browserRuntimeEmitterWrapper", true},
             {"browserRuntimeAssetChunks", true},
             {"productionCompilerOwnershipSplit", true},
@@ -790,6 +791,8 @@ int cmdDoctor(const Options& o) {
             {"browserProductionTargetExcludesLiveAndLegacy", true},
             {"shippedCliStillAggregateLinksLiveAndLegacy", true},
             {"shippedCliAggregateLinkage", "compatibility"},
+            {"productionLegacyUpdatePlanAssetDefault", "emitted-for-compatibility"},
+            {"productionDebugMetadataSplit", "partial"},
             {"browserProductionLinkIsolation", "browser build/transpile service isolated; shipped CLI binary still aggregate-linked for compatibility"},
             {"commandFamilyBinarySplit", "deferred"},
         }},

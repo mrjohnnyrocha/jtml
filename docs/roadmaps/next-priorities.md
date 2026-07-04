@@ -14,8 +14,9 @@ runtime parity, or remove monolithic/embedded implementation debt. `jtml
 doctor --json` reports the current stable/first-slice/experimental tiers and
 the verification gates expected before release work.
 
-Current v0.2 status: production browser compiler isolation is complete. The
-build now has
+Current v0.2 status: production browser compiler isolation is complete at the
+library/linkcheck level, not as final shipped-binary or production-asset
+separation. The build now has
 separate browser-production, live-runtime, and legacy-runtime source/object
 ownership, plus a `jtml_browser_production` library and CTest link-check that
 proves the compiler slice can parse Friendly JTML, build a runtime plan, and
@@ -24,14 +25,18 @@ support while excluding the live interpreter and legacy `Environment` runtime
 objects.
 The `jtml build --target browser` implementation now lives behind
 `jtml_browser_build_lib`, which links to the production compiler target and has
-its own functional link-check that calls the real browser transpile service
-without aggregate `jtml_core`. `transpile --target browser` uses the same
-service boundary. Command-family packaging for the shipped CLI binary is
+its own functional link-check that calls the real browser transpile and browser
+build services, inspects split browser assets, and runs without aggregate
+`jtml_core`. `transpile --target browser` uses the same service boundary.
+Command-family packaging for the shipped CLI binary is
 deferred until compatibility and live/server command ownership are less
 volatile.
 Legacy `Environment` runtime implementation files have also been physically
-quarantined under `src/jtml/legacy_runtime/`; public headers stay stable for
-compatibility while the browser production compiler boundary matures.
+quarantined under `src/jtml/legacy_runtime/`; public headers stay stable and
+are marked as legacy/live interpreter APIs while the browser production
+compiler boundary matures. Browser builds still emit `jtml-update-plans.js` as
+an explicit compatibility/debug asset; the next production-clean gate is a
+`--prod` path that omits that asset by default.
 
 ## 1. Semantic Styling And UI Primitives
 

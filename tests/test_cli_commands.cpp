@@ -10,6 +10,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -919,7 +920,9 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
               std::string::npos);
     ASSERT_TRUE(report.contains("runtimeCapabilities")) << report.dump(2);
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["v02ProductionCompilerIsolation"],
-              "complete");
+              "library-boundary-complete; shipped-cli-aggregate; prod-asset-legacy-output-pending");
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionCompilerIsolationStage"],
+              "library-linkcheck");
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserRuntimeEmitterWrapper"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserRuntimeAssetChunks"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionCompilerOwnershipSplit"], true);
@@ -931,6 +934,10 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserProductionTargetExcludesLiveAndLegacy"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["shippedCliStillAggregateLinksLiveAndLegacy"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["shippedCliAggregateLinkage"], "compatibility");
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionLegacyUpdatePlanAssetDefault"],
+              "emitted-for-compatibility");
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionDebugMetadataSplit"],
+              "partial");
     EXPECT_FALSE(report["runtimeCapabilities"]["runtimeAssembly"].contains("browserProductionLinksLiveAndLegacyRuntime"))
         << report["runtimeCapabilities"]["runtimeAssembly"].dump(2);
     EXPECT_NE(report["runtimeCapabilities"]["runtimeAssembly"]["browserProductionLinkIsolation"].get<std::string>().find("build/transpile service isolated"),
@@ -1209,6 +1216,23 @@ TEST(BuildOwnership, BrowserProductionSourcesAreSeparatedFromLiveAndLegacyRuntim
     EXPECT_NE(transpileBlock.find("return cmdTranspileBrowser(o);"), std::string::npos);
     EXPECT_EQ(transpileBlock.find("setBrowserLocalRuntime"), std::string::npos);
     EXPECT_EQ(transpileBlock.find("buildRuntimeProjectPlanForInput"), std::string::npos);
+
+    const std::vector<std::filesystem::path> browserProductionSources = {
+        "src/transpiler.cpp",
+        "src/browser_runtime_emitter.cpp",
+        "src/browser_runtime_assets.cpp",
+        "src/client_manifest_emitter.cpp",
+        "src/runtime_plan.cpp",
+        "src/runtime_plan_json.cpp",
+        "src/jtml/runtime/static_update_plan_emitter.cpp",
+    };
+    for (const auto& source : browserProductionSources) {
+        const auto text = readTextFile(std::filesystem::path(JTML_SOURCE_DIR) / source);
+        EXPECT_EQ(text.find("#include \"jtml/environment.h\""), std::string::npos) << source;
+        EXPECT_EQ(text.find("#include \"jtml/value.h\""), std::string::npos) << source;
+        EXPECT_EQ(text.find("#include \"jtml/array.h\""), std::string::npos) << source;
+        EXPECT_EQ(text.find("#include \"jtml/dict.h\""), std::string::npos) << source;
+    }
 }
 
 TEST(CliTranspile, BrowserTargetUsesBrowserBuildServiceRuntimePlan) {

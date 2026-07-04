@@ -1,5 +1,12 @@
 #pragma once
 
+// Legacy live/interpreter runtime API.
+//
+// Environment belongs to the compatibility/live execution stack and is not part
+// of the browser production compiler boundary. New browser-production code
+// should use semantic IR, runtime plans, and generated component modules
+// instead of including this header directly.
+
 #include "jtml/value.h"
 #include "jtml/function.h"
 #include "jtml/ast.h" // Assuming all AST node definitions are here

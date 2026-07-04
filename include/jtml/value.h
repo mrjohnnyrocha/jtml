@@ -1,5 +1,11 @@
 #pragma once
 
+// Legacy live/interpreter runtime value API.
+//
+// VarValue/CompositeKey support the compatibility interpreter and C API. They
+// remain public for migration/embed compatibility, but they are not the value
+// model for the browser production compiler path.
+
 #include <variant>
 #include <vector>
 #include <unordered_map>

@@ -176,16 +176,20 @@ only when the target boundary owns a stable contract and regression coverage.
   --target browser` implementation now lives in a
   separate `jtml_browser_build_lib` service linked to `jtml_browser_production`
   and CLI file/module loading, with its own functional linkcheck that calls the
-  real browser transpile service and excludes aggregate `jtml_core`. Both
+  real browser transpile and browser build services, inspects split browser
+  assets, and excludes aggregate `jtml_core`. Both
   `build --target browser` and `transpile --target browser`
   delegate to that service boundary. This completes the v0.2 production
-  compiler isolation gate. The all-in-one shipped CLI binary remains
-  aggregate-linked for compatibility; command-family binaries are a later
-  packaging/release concern, not a blocker for v0.2.
+  compiler isolation gate at the library/linkcheck level. The all-in-one
+  shipped CLI binary remains aggregate-linked for compatibility, and browser
+  builds still emit `jtml-update-plans.js` as an explicit compatibility/debug
+  asset until a later `--prod`/`--compat` split. Command-family binaries are a
+  later packaging/release concern, not a blocker for this gate.
 - **Legacy runtime quarantine**: `environment.cpp`, `array.cpp`, `dict.cpp`,
   and `value.cpp` now live under `src/jtml/legacy_runtime/`. The public headers
-  remain in `include/jtml/` for compatibility, but the implementation no longer
-  sits beside syntax/semantic/browser compiler files at the source root.
+  remain in `include/jtml/` for compatibility and are marked as legacy/live
+  interpreter APIs, but the implementation no longer sits beside
+  syntax/semantic/browser compiler files at the source root.
 - **Namespace (deferred)**: the CLI already lives in `namespace jtml::cli`. The core library still uses global and `JTMLInterpreter::*` names; wrapping the entire core in `namespace jtml` is a single atomic refactor planned for the next sprint (it touches every AST reference in every file).
 
 ## Current Focus

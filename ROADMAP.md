@@ -170,15 +170,22 @@ only when the target boundary owns a stable contract and regression coverage.
   production compiler isolation has an enforceable build boundary. A dedicated
   `jtml_browser_production` target links syntax, semantic, tooling, and browser
   production objects without live interpreter or legacy `Environment` runtime
-  objects, and `jtml_browser_production_linkcheck` guards that boundary in
-  CTest. The `jtml build --target browser` implementation now lives in a
+  objects, and `jtml_browser_production_linkcheck` now guards that boundary by
+  parsing Friendly JTML, building a runtime plan, and emitting a browser-local
+  runtime plus client manifest without aggregate `jtml_core`. The `jtml build
+  --target browser` implementation now lives in a
   separate `jtml_browser_build_lib` service linked to `jtml_browser_production`
-  and CLI file/module loading, with its own linkcheck that excludes aggregate
-  `jtml_core`. Both `build --target browser` and `transpile --target browser`
+  and CLI file/module loading, with its own functional linkcheck that calls the
+  real browser transpile service and excludes aggregate `jtml_core`. Both
+  `build --target browser` and `transpile --target browser`
   delegate to that service boundary. This completes the v0.2 production
   compiler isolation gate. The all-in-one shipped CLI binary remains
   aggregate-linked for compatibility; command-family binaries are a later
   packaging/release concern, not a blocker for v0.2.
+- **Legacy runtime quarantine**: `environment.cpp`, `array.cpp`, `dict.cpp`,
+  and `value.cpp` now live under `src/jtml/legacy_runtime/`. The public headers
+  remain in `include/jtml/` for compatibility, but the implementation no longer
+  sits beside syntax/semantic/browser compiler files at the source root.
 - **Namespace (deferred)**: the CLI already lives in `namespace jtml::cli`. The core library still uses global and `JTMLInterpreter::*` names; wrapping the entire core in `namespace jtml` is a single atomic refactor planned for the next sprint (it touches every AST reference in every file).
 
 ## Current Focus
@@ -453,11 +460,13 @@ The current focus is the semantic-core transition:
   benchmarks through `scripts/benchmark_browser_runtime.sh` when
   Chrome/Chromium is available, and a `control_flow` fixture that
   asserts safe `if`/keyed-`for` regions, keyed list markers, and direct
-  safe-region patching are generated in `components/index.js`. The `composition`
-  fixture also asserts in-place nested parameter/body patch telemetry in the
-  browser runtime benchmark. The benchmark fixture set now includes
-  `large_keyed_rows` and `nested_component_update` as the first larger-budget
-  scaffolds for 1k keyed row lifecycle and nested component update behavior.
+  safe-region patching are generated in `components/index.js`. The
+  `composition` and `nested_component_update` fixtures also assert in-place
+  nested parameter/body patch telemetry and retained nested wrapper DOM identity
+  in the browser runtime benchmark. The `keyed_list` fixture asserts retained
+  row identity across keyed reorder, and the benchmark fixture set now includes
+  `large_keyed_rows` as the first larger-budget scaffold for 1k keyed row
+  lifecycle behavior.
   This path has an executable guardrail: 50 KB
   for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
   `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy

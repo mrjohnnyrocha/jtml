@@ -75,10 +75,10 @@ set(JTML_LIVE_RUNTIME_SOURCES
 )
 
 set(JTML_LEGACY_RUNTIME_SOURCES
-    src/environment.cpp
-    src/array.cpp
-    src/dict.cpp
-    src/value.cpp
+    src/jtml/legacy_runtime/environment.cpp
+    src/jtml/legacy_runtime/array.cpp
+    src/jtml/legacy_runtime/dict.cpp
+    src/jtml/legacy_runtime/value.cpp
 )
 
 set(JTML_TOOLING_SOURCES

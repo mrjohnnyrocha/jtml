@@ -95,6 +95,14 @@ harness = f"""
         finish({{ fixture, clicks: 0, durationMs: 0, error: 'no direct component action button' }});
         return;
       }}
+      const beforeNestedWrapper = document.querySelector('[data-jtml-nested-component="true"]');
+      const beforeKeyedByKey = new Map();
+      Array.prototype.slice.call(
+        document.querySelectorAll('[data-jtml-direct-list-key]')
+      ).forEach(function(el) {{
+        const key = el.getAttribute('data-jtml-direct-list-key') || '';
+        if (key && !beforeKeyedByKey.has(key)) beforeKeyedByKey.set(key, el);
+      }});
       const started = performance.now();
       for (let i = 0; i < clickCount; i += 1) {{
         target.click();
@@ -110,12 +118,25 @@ harness = f"""
           text: (el.innerText || '').trim()
         }};
       }});
+      const afterNestedWrapper = document.querySelector('[data-jtml-nested-component="true"]');
+      const keyedAfter = Array.prototype.slice.call(
+        document.querySelectorAll('[data-jtml-direct-list-key]')
+      );
+      let keyedRetainedCount = 0;
+      keyedAfter.forEach(function(el) {{
+        const key = el.getAttribute('data-jtml-direct-list-key') || '';
+        if (key && beforeKeyedByKey.get(key) === el) keyedRetainedCount += 1;
+      }});
       finish({{
         fixture,
         clicks: clickCount,
         durationMs,
         textSample: bodyText.slice(0, 1000),
         keyedTexts,
+        nestedWrapperRetained: !!beforeNestedWrapper && beforeNestedWrapper === afterNestedWrapper,
+        keyedRetainedCount,
+        keyedInitialCount: beforeKeyedByKey.size,
+        keyedFinalCount: keyedAfter.length,
         directComponentExecution: !!jtml.directComponentExecution,
         directComponentLastAction: !!jtml.directComponentLastAction,
         directNestedComponentParamPatch: !!jtml.directNestedComponentParamPatch,
@@ -270,6 +291,11 @@ if fixture == "keyed_list":
     expected = ["Ship_static_module", "Measure_patch", "Audit_runtime"]
     if keys[:3] != expected:
         raise SystemExit(f"error: keyed_list did not keep rotated keyed order {expected}: {keys!r}")
+    if int(result.get("keyedRetainedCount", 0)) < 3:
+        raise SystemExit(
+            "error: keyed_list recreated keyed rows instead of retaining/moving them "
+            f"(retained={result.get('keyedRetainedCount')}, final={result.get('keyedFinalCount')})"
+        )
 if fixture == "large_keyed_rows":
     keys = [str(item.get("key", "")) for item in keyed_texts]
     if len(keys) < 1000:
@@ -288,6 +314,8 @@ if fixture in ("composition", "nested_component_update"):
     mode = str(result.get("directNestedComponentParamPatchMode", ""))
     if mode != "nested-component-static-update":
         raise SystemExit(f"error: {fixture} did not use nested static component update mode: {mode!r}")
+    if not result.get("nestedWrapperRetained"):
+        raise SystemExit(f"error: {fixture} replaced nested component wrapper instead of patching it in place")
 if fixture == "keyed_list" and not result.get("directComponentListLifecycle"):
     raise SystemExit("error: keyed_list did not report keyed list lifecycle telemetry")
 print(

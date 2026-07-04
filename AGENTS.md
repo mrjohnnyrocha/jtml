@@ -193,10 +193,11 @@ in-place nested parameter patching, and source-first static create fallback
 telemetry. The smoke script also calls `scripts/benchmark_browser_runtime.sh`
 when a local Chrome/Chromium is available; that headless-browser harness
 executes real button clicks against built fixtures and enforces runtime timing,
-fixture-specific DOM results, plus nested-param/keyed-list telemetry. The
-fixture set includes small smoke cases plus `large_keyed_rows` and
-`nested_component_update` as first production-budget scaffolds for 1k keyed
-row lifecycle and nested component parameter updates.
+fixture-specific DOM results, nested-param/keyed-list telemetry, retained
+nested wrapper identity, and retained keyed row identity for reorder fixtures.
+The fixture set includes small smoke cases plus `large_keyed_rows` and
+`nested_component_update` as first production-budget scaffolds for 1k keyed row
+lifecycle and nested component parameter updates.
 
 ## VS Code extension
 

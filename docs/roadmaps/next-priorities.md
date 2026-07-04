@@ -18,14 +18,20 @@ Current v0.2 status: production browser compiler isolation is complete. The
 build now has
 separate browser-production, live-runtime, and legacy-runtime source/object
 ownership, plus a `jtml_browser_production` library and CTest link-check that
-prove the compiler slice can link with syntax, semantic, and tooling support
-while excluding the live interpreter and legacy `Environment` runtime objects.
+proves the compiler slice can parse Friendly JTML, build a runtime plan, and
+emit a browser-local runtime/client manifest with syntax, semantic, and tooling
+support while excluding the live interpreter and legacy `Environment` runtime
+objects.
 The `jtml build --target browser` implementation now lives behind
 `jtml_browser_build_lib`, which links to the production compiler target and has
-its own link-check without aggregate `jtml_core`. `transpile --target browser`
-uses the same service boundary. Command-family packaging for the shipped CLI
-binary is deferred until compatibility and live/server command ownership are
-less volatile.
+its own functional link-check that calls the real browser transpile service
+without aggregate `jtml_core`. `transpile --target browser` uses the same
+service boundary. Command-family packaging for the shipped CLI binary is
+deferred until compatibility and live/server command ownership are less
+volatile.
+Legacy `Environment` runtime implementation files have also been physically
+quarantined under `src/jtml/legacy_runtime/`; public headers stay stable for
+compatibility while the browser production compiler boundary matures.
 
 ## 1. Semantic Styling And UI Primitives
 
@@ -205,8 +211,10 @@ budgets, production/legacy asset-shape checks, and real headless-browser click
 benchmarks through `scripts/benchmark_browser_runtime.sh` when Chrome/Chromium
 is available. The `control_flow` fixture asserts safe `if`/keyed-`for` regions,
 keyed list markers, and direct safe-region patching are generated in
-`components/index.js`; the `composition` fixture asserts in-place nested
-parameter/body patch telemetry during actual browser clicks. Current guardrails:
+`components/index.js`; the `composition` and `nested_component_update` fixtures
+assert in-place nested parameter/body patch telemetry plus retained nested
+wrapper DOM identity during actual browser clicks, and `keyed_list` asserts
+retained row identity across keyed reorder. Current guardrails:
 50 KB for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
 `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
 `jtml-update-plans.js`, all meant to tighten as direct generated update modules

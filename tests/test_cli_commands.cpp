@@ -928,7 +928,11 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserBuildServiceLibraryTarget"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserBuildServiceLinkcheckWithoutAggregateCore"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserTranspileUsesBrowserBuildService"], true);
-    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserProductionLinksLiveAndLegacyRuntime"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserProductionTargetExcludesLiveAndLegacy"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["shippedCliStillAggregateLinksLiveAndLegacy"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["shippedCliAggregateLinkage"], "compatibility");
+    EXPECT_FALSE(report["runtimeCapabilities"]["runtimeAssembly"].contains("browserProductionLinksLiveAndLegacyRuntime"))
+        << report["runtimeCapabilities"]["runtimeAssembly"].dump(2);
     EXPECT_NE(report["runtimeCapabilities"]["runtimeAssembly"]["browserProductionLinkIsolation"].get<std::string>().find("build/transpile service isolated"),
               std::string::npos);
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["commandFamilyBinarySplit"], "deferred");
@@ -1138,8 +1142,8 @@ TEST(BuildOwnership, BrowserProductionSourcesAreSeparatedFromLiveAndLegacyRuntim
     EXPECT_NE(browserBlock.find("src/browser_runtime_assets.cpp"), std::string::npos);
     EXPECT_NE(browserBlock.find("src/runtime_plan_json.cpp"), std::string::npos);
     EXPECT_EQ(browserBlock.find("src/interpreter.cpp"), std::string::npos);
-    EXPECT_EQ(browserBlock.find("src/environment.cpp"), std::string::npos);
-    EXPECT_EQ(browserBlock.find("src/value.cpp"), std::string::npos);
+    EXPECT_EQ(browserBlock.find("src/jtml/legacy_runtime/environment.cpp"), std::string::npos);
+    EXPECT_EQ(browserBlock.find("src/jtml/legacy_runtime/value.cpp"), std::string::npos);
 
     const auto legacyBegin = cmake.find("set(JTML_LEGACY_RUNTIME_SOURCES");
     const auto toolingBegin = cmake.find("set(JTML_TOOLING_SOURCES");
@@ -1148,10 +1152,10 @@ TEST(BuildOwnership, BrowserProductionSourcesAreSeparatedFromLiveAndLegacyRuntim
     const auto liveBlock = cmake.substr(liveBegin, legacyBegin - liveBegin);
     const auto legacyBlock = cmake.substr(legacyBegin, toolingBegin - legacyBegin);
     EXPECT_NE(liveBlock.find("src/interpreter.cpp"), std::string::npos);
-    EXPECT_NE(legacyBlock.find("src/environment.cpp"), std::string::npos);
-    EXPECT_NE(legacyBlock.find("src/array.cpp"), std::string::npos);
-    EXPECT_NE(legacyBlock.find("src/dict.cpp"), std::string::npos);
-    EXPECT_NE(legacyBlock.find("src/value.cpp"), std::string::npos);
+    EXPECT_NE(legacyBlock.find("src/jtml/legacy_runtime/environment.cpp"), std::string::npos);
+    EXPECT_NE(legacyBlock.find("src/jtml/legacy_runtime/array.cpp"), std::string::npos);
+    EXPECT_NE(legacyBlock.find("src/jtml/legacy_runtime/dict.cpp"), std::string::npos);
+    EXPECT_NE(legacyBlock.find("src/jtml/legacy_runtime/value.cpp"), std::string::npos);
 
     const auto browserLibBegin = cmake.find("add_library(jtml_browser_production STATIC");
     const auto linkcheckBegin = cmake.find("add_executable(jtml_browser_production_linkcheck",

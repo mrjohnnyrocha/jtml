@@ -778,7 +778,7 @@ int cmdDoctor(const Options& o) {
     };
     const nlohmann::json runtimeCapabilities = {
         {"runtimeAssembly", {
-            {"v02ProductionCompilerIsolation", "library-boundary-complete; shipped-cli-aggregate; prod-clean-asset-mode-available"},
+            {"v02ProductionCompilerIsolation", "library-boundary-complete; shipped-cli-aggregate; browser-build-defaults-clean-prod"},
             {"productionCompilerIsolationStage", "library-linkcheck"},
             {"browserRuntimeEmitterWrapper", true},
             {"browserRuntimeAssetChunks", true},
@@ -791,11 +791,12 @@ int cmdDoctor(const Options& o) {
             {"browserProductionTargetExcludesLiveAndLegacy", true},
             {"shippedCliStillAggregateLinksLiveAndLegacy", true},
             {"shippedCliAggregateLinkage", "compatibility"},
-            {"productionLegacyUpdatePlanAssetDefault", "emitted-for-compatibility"},
-            {"productionLegacyUpdatePlanAssetWithProd", "omitted"},
-            {"productionAppBootstrapWithProd", "omits compatibilityUpdatePlans"},
-            {"productionImportStubsWithProd", "disabled"},
-            {"productionDebugMetadataSplit", "partial"},
+            {"productionLegacyUpdatePlanAssetDefault", "omitted"},
+            {"productionLegacyUpdatePlanAssetWithCompat", "emitted-for-explicit-compat-debug"},
+            {"productionAppBootstrapDefault", "omits compatibilityUpdatePlans"},
+            {"productionImportStubsDefault", "disabled"},
+            {"productionModeFlags", "mutually-exclusive"},
+            {"productionDebugMetadataSplit", "partial-debug-mode-planned"},
             {"browserProductionLinkIsolation", "browser build/transpile service isolated; shipped CLI binary still aggregate-linked for compatibility"},
             {"commandFamilyBinarySplit", "deferred"},
         }},

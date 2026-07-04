@@ -2016,6 +2016,59 @@ std::string emitStaticUpdatePlanAsset(const RuntimeProjectPlan& plan) {
     return emitStaticComponentAsset(plan, false);
 }
 
+std::vector<std::string> validateStaticComponentModuleForProduction(
+        const RuntimeProjectPlan& plan) {
+    std::vector<std::string> issues;
+    const auto components = assignComponentIdsAndChildIds(collectComponentPlans(plan));
+    if (!components.is_array()) return issues;
+
+    for (const auto& component : components) {
+        if (!component.is_object()) continue;
+        const auto name = component.value("name", "<anonymous>");
+        const auto key = component.value("key", "");
+        const auto origin = component.value("origin", "");
+        const auto context =
+            name + (origin.empty() ? "" : " (" + origin + ")") +
+            (key.empty() ? "" : " [" + key + "]");
+
+        const auto unsafeRoots =
+            component.value("unsafeRootCreateEntries", nlohmann::json::array());
+        for (const auto& entry : unsafeRoots) {
+            if (!entry.is_object()) continue;
+            std::ostringstream issue;
+            issue << "component " << context
+                  << " has unsupported production create node `"
+                  << entry.value("kind", "<unknown>") << "`";
+            if (entry.value("sourceLine", 0) > 0) {
+                issue << " at line " << entry.value("sourceLine", 0);
+                if (entry.value("sourceColumn", 0) > 0) {
+                    issue << ":" << entry.value("sourceColumn", 0);
+                }
+            }
+            issues.push_back(issue.str());
+        }
+
+        const auto unsafeUpdates =
+            component.value("unsafeEntries", nlohmann::json::array());
+        for (const auto& entry : unsafeUpdates) {
+            if (!entry.is_object()) continue;
+            std::ostringstream issue;
+            issue << "component " << context
+                  << " has unsupported production update node `"
+                  << entry.value("kind", "<unknown>") << "`";
+            if (entry.value("sourceLine", 0) > 0) {
+                issue << " at line " << entry.value("sourceLine", 0);
+                if (entry.value("sourceColumn", 0) > 0) {
+                    issue << ":" << entry.value("sourceColumn", 0);
+                }
+            }
+            issues.push_back(issue.str());
+        }
+    }
+
+    return issues;
+}
+
 std::string emitStaticComponentModuleAsset(const RuntimeProjectPlan& plan) {
     return emitStaticComponentAsset(plan, true);
 }

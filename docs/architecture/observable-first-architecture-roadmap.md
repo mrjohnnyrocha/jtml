@@ -257,14 +257,14 @@ an explicit comparison surface while live compatibility DOM continues to shrink.
 Performance note: `/api/rendered-components` and live HTML patches are the
 right path for Studio, dev preview, internal live apps, debugging, and
 server-owned UI. They are not the benchmark path. Public/performance builds
-should move toward `jtml build --target browser --prod`: static assets,
-generated component functions, precompiled expressions, keyed DOM diffing,
-tiny runtime helpers, and no live patch endpoint requirement. Browser builds
-now emit a first CSP-safe `jtml-update-plans.js` static seed with component
-body-plan read/write metadata, precomputed read indexes, unsafe-entry lists,
-and first-slice text/region/nested patch operations. The browser runtime
-prefers those static plans when available and compiles equivalent plan indexes
-at runtime only as a bridge/fallback. The asset is a bridge toward generated
+use `jtml build --target browser`: static assets, generated component
+functions, precompiled expressions, keyed DOM diffing, tiny runtime helpers,
+and no live patch endpoint requirement. `--compat`/`--debug` builds also emit
+a CSP-safe `jtml-update-plans.js` static seed with component body-plan
+read/write metadata, precomputed read indexes, unsafe-entry lists, and
+first-slice text/region/nested patch operations. The browser runtime prefers
+production component modules and treats equivalent runtime plan indexes as a
+bridge/fallback. The legacy asset is a bridge toward generated
 modules, not the final optimized compiler target. Runtime expression planning
 now prefers parsed JTML expression AST nodes through
 `Parser::parseStandaloneExpression()` and marks those plans with

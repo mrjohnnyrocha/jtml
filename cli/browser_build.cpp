@@ -23,6 +23,40 @@
 namespace jtml::cli {
 namespace {
 
+enum class BrowserBuildMode {
+    Production,
+    Compatibility,
+    Debug,
+};
+
+BrowserBuildMode browserBuildModeFromOptions(const Options& o) {
+    const int requestedModes = (o.prod ? 1 : 0) + (o.compat ? 1 : 0) + (o.debug ? 1 : 0);
+    if (requestedModes > 1) {
+        throw std::runtime_error(
+            "browser build modes are mutually exclusive; choose exactly one of --prod, --compat, or --debug");
+    }
+    if (o.compat) return BrowserBuildMode::Compatibility;
+    if (o.debug) return BrowserBuildMode::Debug;
+    return BrowserBuildMode::Production;
+}
+
+const char* browserBuildModeName(BrowserBuildMode mode) {
+    switch (mode) {
+        case BrowserBuildMode::Production: return "prod";
+        case BrowserBuildMode::Compatibility: return "compat";
+        case BrowserBuildMode::Debug: return "debug";
+    }
+    return "prod";
+}
+
+bool browserBuildModeEmitsCompatibilityAsset(BrowserBuildMode mode) {
+    return mode == BrowserBuildMode::Compatibility || mode == BrowserBuildMode::Debug;
+}
+
+bool browserBuildModeAllowsImportStubs(BrowserBuildMode mode) {
+    return mode == BrowserBuildMode::Compatibility || mode == BrowserBuildMode::Debug;
+}
+
 bool pathIsInside(const std::filesystem::path& path, const std::filesystem::path& parent) {
     auto rel = std::filesystem::relative(path, parent);
     return rel.empty() || (rel.native().rfind("..", 0) != 0 && rel != ".");
@@ -64,6 +98,7 @@ void copyBuildAssets(const std::filesystem::path& inputDir,
         const auto src = entry.path();
         if (pathIsInside(src, absOut)) continue;
         if (entry.is_directory()) continue;
+        if (entry.is_symlink()) continue;
         if (!entry.is_regular_file()) continue;
         if (src.extension() == ".jtml") continue;
 
@@ -292,6 +327,11 @@ jtml::RuntimeProjectPlan buildRuntimeProjectPlanForInput(
                 ? jtml::analyzeSemanticProgram({}, moduleSource)
                 : jtml::analyzeSemanticProgram(parsedModule.program, moduleSource);
         } catch (const std::exception& e) {
+            if (!allowImportStubs) {
+                throw std::runtime_error(
+                    "Cannot build clean browser production module plan for " +
+                    path + ": " + e.what());
+            }
             moduleSemantic = jtml::analyzeSemanticProgram({}, moduleSource);
             ir.available = false;
             ir.syntax = "unknown";
@@ -319,6 +359,7 @@ jtml::RuntimeProjectPlan buildRuntimeProjectPlanForInput(
 
 int cmdBuildBrowser(const Options& o) {
     if (o.inputFile.empty() || o.outputFile.empty()) usage();
+    const auto buildMode = browserBuildModeFromOptions(o);
 
     std::filesystem::path input = o.inputFile;
     const bool inputWasDirectory = std::filesystem::is_directory(input);
@@ -338,11 +379,30 @@ int cmdBuildBrowser(const Options& o) {
     JtmlTranspiler transpiler;
     transpiler.setBrowserLocalRuntime(true);
     transpiler.setExternalRuntimeScript(true);
-    const bool emitCompatibilityAsset = !o.prod || o.compat || o.debug;
+    const bool emitCompatibilityAsset =
+        browserBuildModeEmitsCompatibilityAsset(buildMode);
     const auto semantic = jtml::analyzeSemanticProgram(program, readFile(input.string()));
     auto runtimeProjectPlan =
-        buildRuntimeProjectPlanForInput(input.string(), o.syntax, program, semantic, !o.prod);
+        buildRuntimeProjectPlanForInput(input.string(),
+                                        o.syntax,
+                                        program,
+                                        semantic,
+                                        browserBuildModeAllowsImportStubs(buildMode));
     transpiler.setRuntimeProjectPlan(runtimeProjectPlan);
+
+    if (buildMode == BrowserBuildMode::Production) {
+        const auto productionIssues =
+            jtml::validateStaticComponentModuleForProduction(runtimeProjectPlan);
+        if (!productionIssues.empty()) {
+            std::ostringstream message;
+            message << "clean browser production build is not available for this app yet";
+            for (const auto& issue : productionIssues) {
+                message << "\n- " << issue;
+            }
+            message << "\nUse --compat for an explicit compatibility/debug build while this shape is unsupported.";
+            throw std::runtime_error(message.str());
+        }
+    }
 
     std::string html = transpiler.transpile(program);
     html = injectBrowserBuildAssetScript(html, "jtml-runtime.js");
@@ -380,7 +440,7 @@ int cmdBuildBrowser(const Options& o) {
         << "\n"
         << "  });\n"
         << "  window.jtml.productionMode = "
-        << (emitCompatibilityAsset ? "'compatibility'" : "'prod'")
+        << "'" << browserBuildModeName(buildMode) << "'"
         << ";\n"
         << "}());\n";
     writeBuildAsset(runtimeFile,
@@ -409,7 +469,7 @@ int cmdBuildBrowser(const Options& o) {
         std::cout << "Built legacy browser update plans -> "
                   << legacyUpdatePlanFile.string() << "\n";
     } else {
-        std::cout << "Skipped legacy browser update plans for --prod output\n";
+        std::cout << "Skipped legacy browser update plans for production browser output\n";
     }
 
     if (inputWasDirectory) {
@@ -419,12 +479,17 @@ int cmdBuildBrowser(const Options& o) {
 }
 
 int cmdTranspileBrowser(const Options& o) {
+    if (o.prod || o.compat || o.debug) {
+        throw std::runtime_error(
+            "browser asset mode flags are only supported by `jtml build --target browser`; "
+            "`jtml transpile --target browser` is an inline preview artifact");
+    }
     auto program = parseProgramFromFile(o.inputFile, o.syntax);
     JtmlTranspiler transpiler;
     transpiler.setBrowserLocalRuntime(true);
     const auto semantic = jtml::analyzeSemanticProgram(program, readFile(o.inputFile));
     transpiler.setRuntimeProjectPlan(
-        buildRuntimeProjectPlanForInput(o.inputFile, o.syntax, program, semantic));
+        buildRuntimeProjectPlanForInput(o.inputFile, o.syntax, program, semantic, true));
     std::string html = transpiler.transpile(program);
 
     if (!o.outputFile.empty()) {

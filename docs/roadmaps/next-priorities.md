@@ -34,13 +34,13 @@ volatile.
 Legacy `Environment` runtime implementation files have also been physically
 quarantined under `src/jtml/legacy_runtime/`; public headers stay stable and
 are marked as legacy/live interpreter APIs while the browser production
-compiler boundary matures. Browser builds now support clean `--prod` output
-that omits `jtml-update-plans.js` and does not advertise
-`compatibilityUpdatePlans`; default/`--compat`/`--debug` output keeps that
-asset explicit for migration and tooling until clean prod can become the
-default. Clean `--prod` also disables synthetic imported-component stubs, so
-module parse/import problems must be real diagnostics instead of silent
-approximations.
+compiler boundary matures. Browser builds now default to clean production
+output that omits `jtml-update-plans.js`, does not advertise
+`compatibilityUpdatePlans`, disables synthetic imported-component stubs, and
+rejects mixed production/compat/debug modes. `--compat` and `--debug` keep the
+legacy update-plan asset explicit for migration and tooling while the debug
+model is split further. Clean production also validates that static component
+modules do not require compatibility/update-plan fallback.
 
 ## 1. Semantic Styling And UI Primitives
 
@@ -151,7 +151,7 @@ Target:
 
 ```sh
 jtml build app.jtml --target browser --out dist
-jtml build app.jtml --target browser --prod --out dist
+jtml build app.jtml --target browser --compat --out dist  # explicit migration/debug bridge
 ```
 
 Output:
@@ -161,17 +161,17 @@ dist/index.html
 dist/jtml-runtime.js
 dist/components/index.js
 dist/app.js
-dist/jtml-update-plans.js
 dist/assets/...
 ```
 
 Current browser builds emit `dist/index.html`, `dist/jtml-runtime.js`,
-`dist/components/index.js`, `dist/app.js`, and a legacy
-`dist/jtml-update-plans.js` alias. `jtml-runtime.js` is now primary for browser
-builds instead of duplicating the runtime inline. `components/index.js` now owns
-the production `window.__jtml_static_component_plan_index`; the legacy
-`jtml-update-plans.js` asset keeps `window.__jtml_static_update_plans` and
-source-rich `bodyPlan` metadata for compatibility/debug tooling. The component
+`dist/components/index.js`, and `dist/app.js` by default. `--compat`/`--debug`
+also emit the legacy `dist/jtml-update-plans.js` alias. `jtml-runtime.js` is
+now primary for browser builds instead of duplicating the runtime inline.
+`components/index.js` now owns the production
+`window.__jtml_static_component_plan_index`; the legacy `jtml-update-plans.js`
+asset keeps `window.__jtml_static_update_plans` and source-rich `bodyPlan`
+metadata for compatibility/debug tooling. The component
 module no longer publishes the legacy update-plan global or carries source-rich
 body-plan payloads. It carries component read indexes, unsafe-entry lists, root
 create operations, precompiled element `partsPlan` records, first-slice

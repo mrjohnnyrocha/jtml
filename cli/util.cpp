@@ -99,7 +99,7 @@ std::string versionString() {
         << "  jtml refactor rename <file.jtml|dir/> --from <name> --to <newname> [-w] [--json]\n"
         << "                                          (directory = workspace-wide rename)\n"
         << "\n"
-        << "  Browser builds accept --prod for clean static assets; --compat/--debug keeps compatibility update plans\n"
+        << "  Browser builds are clean production by default; --compat/--debug keeps compatibility update plans\n"
         << "  All compile commands accept --syntax auto|classic|friendly\n"
         << "  check, fix, lint, and doctor accept --json\n"
         << "\n"

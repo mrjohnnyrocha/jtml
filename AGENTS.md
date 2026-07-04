@@ -84,11 +84,11 @@ dist/app.js
 `components/index.js` is the current compiler-first component bridge and now
 owns the production component plan index. `jtml-update-plans.js` remains a
 legacy compatibility/debug asset for older tooling while the runtime split is
-completed. It is emitted by default/`--compat`/`--debug`, but clean
-`jtml build --target browser --prod` output must omit it and must not advertise
-`compatibilityUpdatePlans` from `app.js`. Clean `--prod` also disables
-synthetic imported-component stubs; module parse/import issues must surface as
-diagnostics rather than approximate generated components. The component module exposes:
+completed. Clean `jtml build --target browser` output is the default and must
+omit it, must not advertise `compatibilityUpdatePlans` from `app.js`, must
+disable synthetic imported-component stubs, and must fail if the component
+module still needs compatibility/update-plan fallback. `--compat` and `--debug`
+opt into the legacy asset explicitly for migration/tooling paths. The component module exposes:
 
 - `window.__jtml_static_component_plan_index`
 - `window.__jtml_static_update_functions`
@@ -180,13 +180,15 @@ Remaining high-value runtime work:
 ## Performance checks
 
 Use `scripts/benchmark_runtime.sh` for first-slice runtime/compiler budgets.
-It builds browser targets from `tests/fixtures/performance/`, verifies that
-the split browser assets are emitted, rejects dynamic `new Function`/direct
-`eval` in production browser assets, and fails if generated assets exceed the
-current size budgets. Defaults are intentionally conservative while the runtime
-is still being split: 50 KB for `index.html`, 260 KB for
-`jtml-runtime.js`, 180 KB for `components/index.js`, 20 KB for `app.js`, and
-180 KB for the legacy `jtml-update-plans.js` in compatibility/debug outputs.
+It builds clean production browser targets from `tests/fixtures/performance/`,
+verifies that the split browser assets are emitted without
+`jtml-update-plans.js`, builds explicit `--compat` outputs for the legacy
+update-plan budget, rejects dynamic `new Function`/direct `eval` in browser
+assets, and fails if generated assets exceed the current size budgets. Defaults
+are intentionally conservative while the runtime is still being split: 50 KB
+for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
+`components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
+`jtml-update-plans.js` in compatibility/debug outputs.
 Treat these budgets as
 guardrails, not final benchmarks; tighten runtime/component budgets as direct
 generated modules replace body-plan helpers. The `control_flow` fixture also

@@ -32,7 +32,7 @@ int main() {
         const auto input = root / "input.jtml";
         const auto output = root / "out.html";
         const auto outDir = root / "dist";
-        const auto prodDir = root / "dist-prod";
+        const auto compatDir = root / "dist-compat";
 
         {
             std::ofstream out(input);
@@ -81,15 +81,18 @@ int main() {
         const auto app = outDir / "app.js";
         const auto legacyPlans = outDir / "jtml-update-plans.js";
         if (!existsFile(index) || !existsFile(runtime) || !existsFile(components) ||
-            !existsFile(app) || !existsFile(legacyPlans)) {
+            !existsFile(app)) {
             std::cerr << "cmdBuildBrowser did not emit the expected split browser assets\n";
+            return 3;
+        }
+        if (existsFile(legacyPlans)) {
+            std::cerr << "cmdBuildBrowser emitted legacy update plans in default production mode\n";
             return 3;
         }
         const auto indexHtml = readFile(index);
         const auto runtimeJs = readFile(runtime);
         const auto componentJs = readFile(components);
         const auto appJs = readFile(app);
-        const auto legacyJs = readFile(legacyPlans);
         if (!contains(indexHtml, "<script src=\"./jtml-runtime.js\" defer></script>") ||
             !contains(indexHtml, "<script src=\"./components/index.js\" defer></script>") ||
             !contains(indexHtml, "<script src=\"./app.js\" defer></script>")) {
@@ -112,45 +115,34 @@ int main() {
             std::cerr << "cmdBuildBrowser component module asset leaked legacy/debug metadata\n";
             return 6;
         }
-        if (!contains(legacyJs, "__jtml_static_update_plans = plans") ||
-            !contains(legacyJs, "\"assetRole\":\"legacy-update-plan\"")) {
-            std::cerr << "cmdBuildBrowser legacy update-plan asset lost explicit compatibility role\n";
-            return 7;
-        }
-        if (!contains(appJs, "compatibilityUpdatePlans")) {
-            std::cerr << "cmdBuildBrowser app bootstrap no longer reports compatibility update-plan asset explicitly\n";
+        if (contains(appJs, "compatibilityUpdatePlans") ||
+            contains(appJs, "jtml-update-plans.js")) {
+            std::cerr << "cmdBuildBrowser default app bootstrap still reports compatibility update plans\n";
             return 8;
         }
 
-        jtml::cli::Options prodOptions = buildOptions;
-        prodOptions.outputFile = prodDir.string();
-        prodOptions.prod = true;
-        const int prodResult = jtml::cli::cmdBuildBrowser(prodOptions);
-        if (prodResult != 0) {
-            std::cerr << "cmdBuildBrowser --prod returned " << prodResult << "\n";
-            return prodResult;
+        jtml::cli::Options compatOptions = buildOptions;
+        compatOptions.outputFile = compatDir.string();
+        compatOptions.compat = true;
+        const int compatResult = jtml::cli::cmdBuildBrowser(compatOptions);
+        if (compatResult != 0) {
+            std::cerr << "cmdBuildBrowser --compat returned " << compatResult << "\n";
+            return compatResult;
         }
-        const auto prodIndex = prodDir / "index.html";
-        const auto prodRuntime = prodDir / "jtml-runtime.js";
-        const auto prodComponents = prodDir / "components" / "index.js";
-        const auto prodApp = prodDir / "app.js";
-        const auto prodLegacyPlans = prodDir / "jtml-update-plans.js";
-        if (!existsFile(prodIndex) || !existsFile(prodRuntime) ||
-            !existsFile(prodComponents) || !existsFile(prodApp)) {
-            std::cerr << "cmdBuildBrowser --prod did not emit required split browser assets\n";
+        const auto compatApp = compatDir / "app.js";
+        const auto compatLegacyPlans = compatDir / "jtml-update-plans.js";
+        if (!existsFile(compatApp) || !existsFile(compatLegacyPlans)) {
+            std::cerr << "cmdBuildBrowser --compat did not emit compatibility assets\n";
             return 9;
         }
-        if (existsFile(prodLegacyPlans)) {
-            std::cerr << "cmdBuildBrowser --prod emitted legacy update plans by default\n";
+        const auto compatAppJs = readFile(compatApp);
+        const auto compatLegacyJs = readFile(compatLegacyPlans);
+        if (!contains(compatAppJs, "compatibilityUpdatePlans") ||
+            !contains(compatAppJs, "jtml-update-plans.js") ||
+            !contains(compatLegacyJs, "__jtml_static_update_plans = plans") ||
+            !contains(compatLegacyJs, "\"assetRole\":\"legacy-update-plan\"")) {
+            std::cerr << "cmdBuildBrowser --compat lost explicit legacy update plan contract\n";
             return 10;
-        }
-        const auto prodAppJs = readFile(prodApp);
-        const auto prodHtml = readFile(prodIndex);
-        if (contains(prodAppJs, "compatibilityUpdatePlans") ||
-            contains(prodAppJs, "jtml-update-plans.js") ||
-            contains(prodHtml, "jtml-update-plans.js")) {
-            std::cerr << "cmdBuildBrowser --prod still references legacy compatibility update plans\n";
-            return 11;
         }
         return 0;
     } catch (const std::exception& e) {

@@ -30,15 +30,29 @@ echo "update-plan budget: ${PLAN_BUDGET_BYTES} bytes"
 for fixture in "${FIXTURES}"/*.jtml; do
   name="$(basename "${fixture}" .jtml)"
   out="${OUT_ROOT}/${name}"
+  compat_out="${OUT_ROOT}/${name}-compat"
   "${JTML}" build "${fixture}" --target browser --out "${out}" >/dev/null
+  "${JTML}" build "${fixture}" --target browser --compat --out "${compat_out}" >/dev/null
 
   index="${out}/index.html"
   runtime="${out}/jtml-runtime.js"
   component_module="${out}/components/index.js"
   app="${out}/app.js"
-  plans="${out}/jtml-update-plans.js"
-  if [[ ! -f "${index}" || ! -f "${runtime}" || ! -f "${component_module}" || ! -f "${app}" || ! -f "${plans}" ]]; then
-    echo "error: ${name} did not emit split browser runtime/component/app assets and legacy update plans" >&2
+  plans="${compat_out}/jtml-update-plans.js"
+  if [[ ! -f "${index}" || ! -f "${runtime}" || ! -f "${component_module}" || ! -f "${app}" ]]; then
+    echo "error: ${name} did not emit split browser runtime/component/app assets" >&2
+    exit 1
+  fi
+  if [[ -f "${out}/jtml-update-plans.js" ]]; then
+    echo "error: ${name} clean production build emitted legacy update plans" >&2
+    exit 1
+  fi
+  if grep -q "compatibilityUpdatePlans\|jtml-update-plans.js" "${app}" "${index}"; then
+    echo "error: ${name} clean production build references compatibility update plans" >&2
+    exit 1
+  fi
+  if [[ ! -f "${plans}" ]]; then
+    echo "error: ${name} explicit compatibility build did not emit legacy update plans" >&2
     exit 1
   fi
 

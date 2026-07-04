@@ -182,13 +182,12 @@ only when the target boundary owns a stable contract and regression coverage.
   delegate to that service boundary. This completes the v0.2 production
   compiler isolation gate at the library/linkcheck level. The all-in-one
   shipped CLI binary remains aggregate-linked for compatibility. Browser builds
-  now support a clean `--prod` mode that omits `jtml-update-plans.js` and does
-  not advertise `compatibilityUpdatePlans`; default/`--compat`/`--debug` builds
-  still emit the legacy asset explicitly for migration and tooling. Clean
-  `--prod` also disables synthetic imported-component stubs, so production
-  module problems surface as diagnostics instead of approximate generated
-  components. Making clean prod the default is a later compatibility/release
-  decision.
+  now default to clean production output: no `jtml-update-plans.js`, no
+  `compatibilityUpdatePlans` advertisement, no synthetic imported-component
+  stubs, and no mixed mode flags. `--compat` and `--debug` are explicit opt-in
+  modes for migration/tooling output while the debug model is split further.
+  Clean production also validates the static component module plan and fails
+  when a component shape still needs compatibility/update-plan fallback.
 - **Legacy runtime quarantine**: `environment.cpp`, `array.cpp`, `dict.cpp`,
   and `value.cpp` now live under `src/jtml/legacy_runtime/`. The public headers
   remain in `include/jtml/` for compatibility and are marked as legacy/live
@@ -409,14 +408,15 @@ The current focus is the semantic-core transition:
   same dependency-routed call boundary that the production compiler can later
   emit directly as static JS. Dynamic execution of generated source is disabled
   by default for CSP-safe browser builds and must be explicitly opted into as a
-  development bridge; the conservative interpreted updater is the default
-  runtime fallback. Browser production builds now emit first-slice split
-  assets: `jtml-runtime.js`, `components/index.js`, `app.js`, and the legacy
-  `jtml-update-plans.js` alias, with `jtml-runtime.js` now primary for browser
-  builds instead of duplicating the runtime inline. The component module now
-  owns a production `window.__jtml_static_component_plan_index`, while the
-  legacy `jtml-update-plans.js` asset keeps `window.__jtml_static_update_plans`
-  plus source-rich `bodyPlan` metadata for compatibility/debug tooling. The
+  development bridge; the conservative interpreted updater is now an explicit
+  compatibility/debug fallback. Browser production builds now emit first-slice
+  split assets: `jtml-runtime.js`, `components/index.js`, and `app.js`, with
+  `jtml-runtime.js` now primary for browser builds instead of duplicating the
+  runtime inline. `--compat`/`--debug` also emit the legacy
+  `jtml-update-plans.js` alias. The component module now owns a production
+  `window.__jtml_static_component_plan_index`, while the legacy
+  `jtml-update-plans.js` asset keeps `window.__jtml_static_update_plans` plus
+  source-rich `bodyPlan` metadata for compatibility/debug tooling. The
   component module no longer publishes the legacy update-plan global or carries
   source-rich body-plan payloads. The component module carries precomputed
   component read indexes, unsafe-entry lists, root create operations,

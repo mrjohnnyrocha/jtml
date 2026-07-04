@@ -104,9 +104,11 @@ For another static host, deploy the contents of `site/` and configure the custom
 - Proxy both HTTP and WebSocket traffic.
 - Use `--watch` for local development, not production.
 - Use `jtml doctor --json` in CI or image builds to verify the local toolkit shape.
-- For static pages, prefer `jtml build <input.jtml|app/> --target browser --prod --out dist`; it writes
+- For static pages, use `jtml build <input.jtml|app/> --target browser --out dist`; it writes
   `dist/index.html`. Directory builds also copy non-`.jtml` assets such as
   images, CSS, JSON, fonts, and downloads into the same relative paths. Hidden
   files, `.env*`, `.jtml` sources, `node_modules`, `dist`, `build`,
   `jtml_modules`, and common generated/dependency folders are skipped.
+  `--compat` and `--debug` are explicit migration/tooling modes that keep the
+  legacy browser update-plan asset.
   `jtml transpile <file> -o <output.html>` remains useful for one-off files.

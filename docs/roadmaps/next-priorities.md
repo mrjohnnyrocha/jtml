@@ -14,6 +14,19 @@ runtime parity, or remove monolithic/embedded implementation debt. `jtml
 doctor --json` reports the current stable/first-slice/experimental tiers and
 the verification gates expected before release work.
 
+Current v0.2 status: production browser compiler isolation is complete. The
+build now has
+separate browser-production, live-runtime, and legacy-runtime source/object
+ownership, plus a `jtml_browser_production` library and CTest link-check that
+prove the compiler slice can link with syntax, semantic, and tooling support
+while excluding the live interpreter and legacy `Environment` runtime objects.
+The `jtml build --target browser` implementation now lives behind
+`jtml_browser_build_lib`, which links to the production compiler target and has
+its own link-check without aggregate `jtml_core`. `transpile --target browser`
+uses the same service boundary. Command-family packaging for the shipped CLI
+binary is deferred until compatibility and live/server command ownership are
+less volatile.
+
 ## 1. Semantic Styling And UI Primitives
 
 Status: first slice implemented. `theme`, semantic UI primitives, utility

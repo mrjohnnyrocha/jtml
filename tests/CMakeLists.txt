@@ -56,3 +56,17 @@ gtest_discover_tests(jtml_tests
     DISCOVERY_TIMEOUT 30
     PROPERTIES LABELS "unit"
 )
+
+add_test(NAME BrowserProduction.LinkcheckWithoutLiveOrLegacy
+    COMMAND jtml_browser_production_linkcheck
+)
+set_tests_properties(BrowserProduction.LinkcheckWithoutLiveOrLegacy
+    PROPERTIES LABELS "unit;architecture"
+)
+
+add_test(NAME BrowserBuild.LinkcheckWithoutAggregateCore
+    COMMAND jtml_browser_build_linkcheck
+)
+set_tests_properties(BrowserBuild.LinkcheckWithoutAggregateCore
+    PROPERTIES LABELS "unit;architecture"
+)

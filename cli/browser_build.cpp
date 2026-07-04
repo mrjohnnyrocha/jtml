@@ -1,0 +1,391 @@
+#include "browser_build.h"
+
+#include "jtml/browser_runtime_emitter.h"
+#include "jtml/diagnostic.h"
+#include "jtml/friendly.h"
+#include "jtml/lexer.h"
+#include "jtml/parser.h"
+#include "jtml/runtime/static_update_plan_emitter.h"
+#include "jtml/semantic.h"
+#include "jtml/semantic/module_graph.h"
+#include "jtml/transpiler.h"
+
+#include <algorithm>
+#include <cctype>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stdexcept>
+
+namespace jtml::cli {
+namespace {
+
+bool pathIsInside(const std::filesystem::path& path, const std::filesystem::path& parent) {
+    auto rel = std::filesystem::relative(path, parent);
+    return rel.empty() || (rel.native().rfind("..", 0) != 0 && rel != ".");
+}
+
+void copyBuildAssets(const std::filesystem::path& inputDir,
+                     const std::filesystem::path& outDir) {
+    if (!std::filesystem::is_directory(inputDir)) return;
+
+    const auto absInput = std::filesystem::weakly_canonical(inputDir);
+    const auto absOut = std::filesystem::absolute(outDir).lexically_normal();
+    int copied = 0;
+
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(absInput)) {
+        const auto src = entry.path();
+        if (pathIsInside(src, absOut)) continue;
+        if (entry.is_directory()) continue;
+        if (!entry.is_regular_file()) continue;
+        if (src.extension() == ".jtml") continue;
+
+        auto rel = std::filesystem::relative(src, absInput);
+        auto dest = outDir / rel;
+        std::filesystem::create_directories(dest.parent_path());
+        std::filesystem::copy_file(src, dest, std::filesystem::copy_options::overwrite_existing);
+        ++copied;
+    }
+
+    if (copied > 0) {
+        std::cout << "Copied " << copied << " asset(s) from " << inputDir.string() << "\n";
+    }
+}
+
+std::string injectBrowserBuildAssetScript(std::string html,
+                                          const std::string& assetName) {
+    const std::string tag = "<script src=\"./" + assetName + "\" defer></script>\n";
+    const auto body = html.rfind("</body>");
+    if (body != std::string::npos) {
+        html.insert(body, tag);
+        return html;
+    }
+    html += "\n" + tag;
+    return html;
+}
+
+void writeBuildAsset(const std::filesystem::path& path,
+                     const std::string& content,
+                     const std::string& label) {
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream out(path);
+    if (!out.is_open()) {
+        throw std::runtime_error("Cannot write " + label + ": " + path.string());
+    }
+    out << content;
+}
+
+struct ParsedModuleForBrowserBuild {
+    std::vector<std::unique_ptr<ASTNode>> program;
+    std::string syntax;
+};
+
+std::string trimDisplay(std::string value) {
+    while (!value.empty() && std::isspace(static_cast<unsigned char>(value.front()))) {
+        value.erase(value.begin());
+    }
+    while (!value.empty() && std::isspace(static_cast<unsigned char>(value.back()))) {
+        value.pop_back();
+    }
+    return value;
+}
+
+std::pair<std::size_t, std::size_t> locateModuleParseError(
+        const std::string& source,
+        const std::string& message) {
+    const auto diagnostic = jtml::diagnosticFromMessage(message);
+    if (diagnostic.line > 0) {
+        return {
+            static_cast<std::size_t>(diagnostic.line),
+            diagnostic.column > 0 ? static_cast<std::size_t>(diagnostic.column) : 0,
+        };
+    }
+
+    const std::string marker = "friendly JTML line:";
+    const auto markerPos = message.find(marker);
+    if (markerPos == std::string::npos) return {0, 0};
+    const std::string fragment = trimDisplay(message.substr(markerPos + marker.size()));
+    if (fragment.empty()) return {0, 0};
+
+    std::istringstream input(source);
+    std::string line;
+    std::size_t lineNo = 0;
+    while (std::getline(input, line)) {
+        ++lineNo;
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        const auto trimmed = trimDisplay(line);
+        if (trimmed == fragment || trimmed.find(fragment) != std::string::npos ||
+            fragment.find(trimmed) != std::string::npos) {
+            const auto column = line.find_first_not_of(" \t");
+            return {lineNo, column == std::string::npos ? 1 : column + 1};
+        }
+    }
+    return {0, 0};
+}
+
+std::string importedComponentStubsForBrowserBuild(const std::string& source) {
+    const auto semantic = jtml::analyzeSemanticProgram({}, source);
+    std::map<std::string, size_t> names;
+    for (const auto& import : semantic.importRecords) {
+        for (const auto& name : import.names) {
+            if (!name.empty() && std::isupper(static_cast<unsigned char>(name.front()))) {
+                names.emplace(name, 0);
+            }
+        }
+    }
+    if (names.empty()) return "";
+
+    std::istringstream input(source);
+    std::string line;
+    while (std::getline(input, line)) {
+        const auto text = trimDisplay(line);
+        if (text.empty() || !std::isupper(static_cast<unsigned char>(text.front()))) continue;
+        std::istringstream words(text);
+        std::string name;
+        words >> name;
+        auto found = names.find(name);
+        if (found == names.end()) continue;
+        std::string rest;
+        std::getline(words, rest);
+        rest = trimDisplay(rest);
+        if (rest.empty()) continue;
+
+        size_t args = 0;
+        bool inString = false;
+        bool sawQuotedArg = false;
+        for (size_t i = 0; i < rest.size(); ++i) {
+            if (rest[i] == '"' && (i == 0 || rest[i - 1] != '\\')) {
+                inString = !inString;
+                if (inString) {
+                    ++args;
+                    sawQuotedArg = true;
+                }
+            }
+        }
+        if (!sawQuotedArg) {
+            std::istringstream restWords(rest);
+            std::string arg;
+            while (restWords >> arg) ++args;
+        }
+        found->second = std::max(found->second, args);
+    }
+
+    std::ostringstream out;
+    out << "\n";
+    for (const auto& [name, argCount] : names) {
+        out << "make " << name;
+        for (size_t i = 0; i < argCount; ++i) {
+            out << " arg" << (i + 1);
+        }
+        out << "\n"
+            << "  page\n"
+            << "    text \"\"\n\n";
+    }
+    return out.str();
+}
+
+std::vector<std::unique_ptr<ASTNode>> parseStandaloneNormalizedSource(const std::string& source) {
+    Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    const auto& lexErrors = lexer.getErrors();
+    if (!lexErrors.empty()) {
+        std::ostringstream oss;
+        for (const auto& error : lexErrors) oss << error << "\n";
+        throw std::runtime_error(oss.str());
+    }
+
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    const auto& parseErrors = parser.getErrors();
+    if (!parseErrors.empty()) {
+        std::ostringstream oss;
+        for (const auto& error : parseErrors) oss << error << "\n";
+        throw std::runtime_error(oss.str());
+    }
+    return program;
+}
+
+ParsedModuleForBrowserBuild parseStandaloneModuleForBrowserBuild(const std::string& source,
+                                                                 SyntaxMode syntax) {
+    const bool friendly =
+        syntax == SyntaxMode::Friendly ||
+        (syntax == SyntaxMode::Auto &&
+         (isFriendlySyntax(source) || looksLikeFriendlySyntax(source)));
+    if (!friendly) {
+        return {parseStandaloneNormalizedSource(normalizeSourceSyntax(source, SyntaxMode::Classic)),
+                "classic"};
+    }
+
+    try {
+        return {parseStandaloneNormalizedSource(normalizeSourceSyntax(source, SyntaxMode::Friendly)),
+                "friendly"};
+    } catch (const std::exception& firstError) {
+        const auto stubs = importedComponentStubsForBrowserBuild(source);
+        if (stubs.empty()) throw;
+        try {
+            return {parseStandaloneNormalizedSource(
+                        normalizeSourceSyntax(source + stubs, SyntaxMode::Friendly)),
+                    "friendly+import-stubs"};
+        } catch (...) {
+            throw firstError;
+        }
+    }
+}
+
+} // namespace
+
+jtml::RuntimeProjectPlan buildRuntimeProjectPlanForInput(
+        const std::string& inputFile,
+        SyntaxMode syntax,
+        const std::vector<std::unique_ptr<ASTNode>>& linkedProgram,
+        const jtml::SemanticProgram& linkedSemantic) {
+    std::set<std::string> seenModuleFiles;
+    std::vector<jtml::SemanticModuleSource> moduleSources;
+    for (const auto& file : collectSourceFiles(inputFile, syntax)) {
+        const auto path = file.generic_string();
+        if (!seenModuleFiles.insert(path).second) continue;
+
+        const auto moduleSource = readFile(path);
+        jtml::SemanticModuleIr ir;
+        jtml::SemanticProgram moduleSemantic;
+        std::shared_ptr<const jtml::SemanticModuleAst> moduleAst;
+        try {
+            SilenceStdout silence;
+            auto parsedModule = parseStandaloneModuleForBrowserBuild(moduleSource, syntax);
+            ir = jtml::summarizeSemanticAst(parsedModule.program, parsedModule.syntax);
+            moduleAst = jtml::cloneSemanticAst(parsedModule.program, parsedModule.syntax);
+            moduleSemantic = parsedModule.syntax == "friendly+import-stubs"
+                ? jtml::analyzeSemanticProgram({}, moduleSource)
+                : jtml::analyzeSemanticProgram(parsedModule.program, moduleSource);
+        } catch (const std::exception& e) {
+            moduleSemantic = jtml::analyzeSemanticProgram({}, moduleSource);
+            ir.available = false;
+            ir.syntax = "unknown";
+            ir.parseError = e.what();
+            const auto location = locateModuleParseError(moduleSource, ir.parseError);
+            ir.parseErrorLine = location.first;
+            ir.parseErrorColumn = location.second;
+        }
+
+        moduleSources.push_back({
+            path,
+            std::move(moduleSemantic),
+            std::move(ir),
+            std::move(moduleAst),
+        });
+    }
+
+    const auto project = moduleSources.empty()
+        ? jtml::buildSemanticProject(linkedSemantic, inputFile)
+        : jtml::buildSemanticProject(moduleSources, inputFile, linkedSemantic);
+    return jtml::buildRuntimePlan(
+        project,
+        jtml::buildRuntimePlan(linkedProgram, linkedSemantic));
+}
+
+int cmdBuildBrowser(const Options& o) {
+    if (o.inputFile.empty() || o.outputFile.empty()) usage();
+
+    std::filesystem::path input = o.inputFile;
+    const bool inputWasDirectory = std::filesystem::is_directory(input);
+    std::filesystem::path inputDir = inputWasDirectory ? input : input.parent_path();
+    if (std::filesystem::is_directory(input)) {
+        input /= "index.jtml";
+    }
+    if (!std::filesystem::exists(input)) {
+        throw std::runtime_error("Build input not found: " + input.string());
+    }
+
+    std::filesystem::path outDir = o.outputFile;
+    std::filesystem::create_directories(outDir);
+    std::filesystem::path outFile = outDir / "index.html";
+
+    auto program = parseProgramFromFile(input.string(), o.syntax);
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    transpiler.setExternalRuntimeScript(true);
+    const auto semantic = jtml::analyzeSemanticProgram(program, readFile(input.string()));
+    auto runtimeProjectPlan =
+        buildRuntimeProjectPlanForInput(input.string(), o.syntax, program, semantic);
+    transpiler.setRuntimeProjectPlan(runtimeProjectPlan);
+
+    std::string html = transpiler.transpile(program);
+    html = injectBrowserBuildAssetScript(html, "jtml-runtime.js");
+    html = injectBrowserBuildAssetScript(html, "components/index.js");
+    html = injectBrowserBuildAssetScript(html, "app.js");
+
+    std::ofstream ofs(outFile);
+    if (!ofs.is_open()) {
+        throw std::runtime_error("Cannot write build output: " + outFile.string());
+    }
+    ofs << html;
+
+    std::cout << "Built " << input.string() << " -> " << outFile.string() << "\n";
+
+    const auto runtimeFile = outDir / "jtml-runtime.js";
+    const auto componentModuleFile = outDir / "components" / "index.js";
+    const auto appFile = outDir / "app.js";
+    const auto legacyUpdatePlanFile = outDir / "jtml-update-plans.js";
+    const auto componentModuleAsset =
+        emitStaticComponentModuleAsset(runtimeProjectPlan);
+    writeBuildAsset(runtimeFile,
+                    jtml::emitBrowserRuntimeScript(8080, true),
+                    "browser runtime output");
+    writeBuildAsset(componentModuleFile,
+                    componentModuleAsset,
+                    "browser component module output");
+    writeBuildAsset(appFile,
+                    "/* Generated by jtml build --target browser. */\n"
+                    "(function(){\n"
+                    "  window.jtml = window.jtml || {};\n"
+                    "  window.jtml.productionAssets = Object.assign({}, window.jtml.productionAssets || {}, {\n"
+                    "    runtime: './jtml-runtime.js',\n"
+                    "    components: './components/index.js',\n"
+                    "    app: './app.js',\n"
+                    "    compatibilityUpdatePlans: './jtml-update-plans.js'\n"
+                    "  });\n"
+                    "}());\n",
+                    "browser app bootstrap output");
+    writeBuildAsset(legacyUpdatePlanFile,
+                    emitStaticUpdatePlanAsset(runtimeProjectPlan),
+                    "legacy browser update plan output");
+    std::cout << "Built browser runtime asset -> "
+              << runtimeFile.string() << "\n";
+    std::cout << "Built browser component modules -> "
+              << componentModuleFile.string() << "\n";
+    std::cout << "Built browser app bootstrap -> "
+              << appFile.string() << "\n";
+    std::cout << "Built legacy browser update plans -> "
+              << legacyUpdatePlanFile.string() << "\n";
+
+    if (inputWasDirectory) {
+        copyBuildAssets(inputDir, outDir);
+    }
+    return 0;
+}
+
+int cmdTranspileBrowser(const Options& o) {
+    auto program = parseProgramFromFile(o.inputFile, o.syntax);
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    const auto semantic = jtml::analyzeSemanticProgram(program, readFile(o.inputFile));
+    transpiler.setRuntimeProjectPlan(
+        buildRuntimeProjectPlanForInput(o.inputFile, o.syntax, program, semantic));
+    std::string html = transpiler.transpile(program);
+
+    if (!o.outputFile.empty()) {
+        std::ofstream ofs(o.outputFile);
+        if (!ofs.is_open())
+            throw std::runtime_error("Cannot open output file: " + o.outputFile);
+        ofs << html;
+        std::cout << "Wrote transpiled HTML to " << o.outputFile << "\n";
+    } else {
+        std::cout << html << "\n";
+    }
+    return 0;
+}
+
+} // namespace jtml::cli

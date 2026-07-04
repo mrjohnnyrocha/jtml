@@ -918,8 +918,20 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_NE(report["architectureSourceOfTruth"].get<std::string>().find("semantic IR"),
               std::string::npos);
     ASSERT_TRUE(report.contains("runtimeCapabilities")) << report.dump(2);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["v02ProductionCompilerIsolation"],
+              "complete");
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserRuntimeEmitterWrapper"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserRuntimeAssetChunks"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionCompilerOwnershipSplit"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserProductionLibraryTarget"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserProductionLinkcheckWithoutLiveLegacy"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserBuildServiceLibraryTarget"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserBuildServiceLinkcheckWithoutAggregateCore"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserTranspileUsesBrowserBuildService"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserProductionLinksLiveAndLegacyRuntime"], true);
+    EXPECT_NE(report["runtimeCapabilities"]["runtimeAssembly"]["browserProductionLinkIsolation"].get<std::string>().find("build/transpile service isolated"),
+              std::string::npos);
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["commandFamilyBinarySplit"], "deferred");
     EXPECT_EQ(report["runtimeCapabilities"]["moduleSystem"]["relativeImportsFromImporter"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["moduleSystem"]["recoverableModuleParseIssues"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["moduleSystem"]["sourceFirstImportIssueSpans"], true);
@@ -1090,6 +1102,145 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
               std::string::npos);
     EXPECT_NE(targets.find("OpenAPI generation"), std::string::npos);
     EXPECT_NE(targets.find("Studio content externalization"), std::string::npos);
+}
+
+TEST(BuildOwnership, BrowserProductionSourcesAreSeparatedFromLiveAndLegacyRuntime) {
+    const auto cmake = readTextFile(std::filesystem::path(JTML_SOURCE_DIR) / "CMakeLists.txt");
+    ASSERT_NE(cmake.find("set(JTML_BROWSER_PRODUCTION_SOURCES"), std::string::npos)
+        << cmake;
+    ASSERT_NE(cmake.find("set(JTML_LIVE_RUNTIME_SOURCES"), std::string::npos)
+        << cmake;
+    ASSERT_NE(cmake.find("set(JTML_LEGACY_RUNTIME_SOURCES"), std::string::npos)
+        << cmake;
+    ASSERT_NE(cmake.find("add_library(jtml_browser_production_obj OBJECT"),
+              std::string::npos) << cmake;
+    ASSERT_NE(cmake.find("add_library(jtml_live_runtime_obj OBJECT"),
+              std::string::npos) << cmake;
+    ASSERT_NE(cmake.find("add_library(jtml_legacy_runtime_obj OBJECT"),
+              std::string::npos) << cmake;
+    ASSERT_NE(cmake.find("add_library(jtml_browser_production STATIC"),
+              std::string::npos) << cmake;
+    ASSERT_NE(cmake.find("add_library(jtml_browser_build_lib STATIC"),
+              std::string::npos) << cmake;
+    ASSERT_NE(cmake.find("add_library(jtml_cli_common STATIC"),
+              std::string::npos) << cmake;
+    ASSERT_NE(cmake.find("add_executable(jtml_browser_production_linkcheck"),
+              std::string::npos) << cmake;
+    ASSERT_NE(cmake.find("add_executable(jtml_browser_build_linkcheck"),
+              std::string::npos) << cmake;
+
+    const auto browserBegin = cmake.find("set(JTML_BROWSER_PRODUCTION_SOURCES");
+    const auto liveBegin = cmake.find("set(JTML_LIVE_RUNTIME_SOURCES");
+    ASSERT_NE(browserBegin, std::string::npos);
+    ASSERT_NE(liveBegin, std::string::npos);
+    const auto browserBlock = cmake.substr(browserBegin, liveBegin - browserBegin);
+    EXPECT_NE(browserBlock.find("src/transpiler.cpp"), std::string::npos);
+    EXPECT_NE(browserBlock.find("src/browser_runtime_assets.cpp"), std::string::npos);
+    EXPECT_NE(browserBlock.find("src/runtime_plan_json.cpp"), std::string::npos);
+    EXPECT_EQ(browserBlock.find("src/interpreter.cpp"), std::string::npos);
+    EXPECT_EQ(browserBlock.find("src/environment.cpp"), std::string::npos);
+    EXPECT_EQ(browserBlock.find("src/value.cpp"), std::string::npos);
+
+    const auto legacyBegin = cmake.find("set(JTML_LEGACY_RUNTIME_SOURCES");
+    const auto toolingBegin = cmake.find("set(JTML_TOOLING_SOURCES");
+    ASSERT_NE(legacyBegin, std::string::npos);
+    ASSERT_NE(toolingBegin, std::string::npos);
+    const auto liveBlock = cmake.substr(liveBegin, legacyBegin - liveBegin);
+    const auto legacyBlock = cmake.substr(legacyBegin, toolingBegin - legacyBegin);
+    EXPECT_NE(liveBlock.find("src/interpreter.cpp"), std::string::npos);
+    EXPECT_NE(legacyBlock.find("src/environment.cpp"), std::string::npos);
+    EXPECT_NE(legacyBlock.find("src/array.cpp"), std::string::npos);
+    EXPECT_NE(legacyBlock.find("src/dict.cpp"), std::string::npos);
+    EXPECT_NE(legacyBlock.find("src/value.cpp"), std::string::npos);
+
+    const auto browserLibBegin = cmake.find("add_library(jtml_browser_production STATIC");
+    const auto linkcheckBegin = cmake.find("add_executable(jtml_browser_production_linkcheck",
+                                           browserLibBegin);
+    ASSERT_NE(browserLibBegin, std::string::npos);
+    ASSERT_NE(linkcheckBegin, std::string::npos);
+    const auto browserLibBlock = cmake.substr(browserLibBegin, linkcheckBegin - browserLibBegin);
+    EXPECT_NE(browserLibBlock.find("$<TARGET_OBJECTS:jtml_syntax_obj>"), std::string::npos);
+    EXPECT_NE(browserLibBlock.find("$<TARGET_OBJECTS:jtml_semantic_obj>"), std::string::npos);
+    EXPECT_NE(browserLibBlock.find("$<TARGET_OBJECTS:jtml_browser_production_obj>"), std::string::npos);
+    EXPECT_NE(browserLibBlock.find("$<TARGET_OBJECTS:jtml_tooling_obj>"), std::string::npos);
+    EXPECT_EQ(browserLibBlock.find("$<TARGET_OBJECTS:jtml_live_runtime_obj>"), std::string::npos);
+    EXPECT_EQ(browserLibBlock.find("$<TARGET_OBJECTS:jtml_legacy_runtime_obj>"), std::string::npos);
+
+    const auto cApiBegin = cmake.find("add_library(jtml_c SHARED", linkcheckBegin);
+    ASSERT_NE(cApiBegin, std::string::npos);
+    const auto linkcheckBlock = cmake.substr(linkcheckBegin, cApiBegin - linkcheckBegin);
+    EXPECT_NE(linkcheckBlock.find("jtml_browser_production"), std::string::npos);
+    EXPECT_EQ(linkcheckBlock.find("jtml_core"), std::string::npos);
+
+    const auto browserBuildBegin = cmake.find("add_library(jtml_browser_build_lib STATIC");
+    const auto browserProductionLinkcheckBegin =
+        cmake.find("add_executable(jtml_browser_production_linkcheck", browserBuildBegin);
+    ASSERT_NE(browserBuildBegin, std::string::npos);
+    ASSERT_NE(browserProductionLinkcheckBegin, std::string::npos);
+    const auto browserBuildBlock =
+        cmake.substr(browserBuildBegin, browserProductionLinkcheckBegin - browserBuildBegin);
+    EXPECT_NE(browserBuildBlock.find("cli/browser_build.cpp"), std::string::npos);
+    EXPECT_NE(browserBuildBlock.find("jtml_browser_production"), std::string::npos);
+    EXPECT_NE(browserBuildBlock.find("jtml_cli_common"), std::string::npos);
+    EXPECT_EQ(browserBuildBlock.find("jtml_core"), std::string::npos);
+
+    const auto browserBuildLinkcheckBegin =
+        cmake.find("add_executable(jtml_browser_build_linkcheck", browserProductionLinkcheckBegin);
+    const auto cApiAfterBuildLinkcheck =
+        cmake.find("add_library(jtml_c SHARED", browserBuildLinkcheckBegin);
+    ASSERT_NE(browserBuildLinkcheckBegin, std::string::npos);
+    ASSERT_NE(cApiAfterBuildLinkcheck, std::string::npos);
+    const auto browserBuildLinkcheckBlock =
+        cmake.substr(browserBuildLinkcheckBegin,
+                     cApiAfterBuildLinkcheck - browserBuildLinkcheckBegin);
+    EXPECT_NE(browserBuildLinkcheckBlock.find("jtml_browser_build_lib"), std::string::npos);
+    EXPECT_EQ(browserBuildLinkcheckBlock.find("jtml_core"), std::string::npos);
+
+    const auto cmdBasic = readTextFile(std::filesystem::path(JTML_SOURCE_DIR) / "cli" / "cmd_basic.cpp");
+    const auto transpileBegin = cmdBasic.find("int cmdTranspile");
+    const auto buildBegin = cmdBasic.find("int cmdBuild", transpileBegin);
+    ASSERT_NE(transpileBegin, std::string::npos);
+    ASSERT_NE(buildBegin, std::string::npos);
+    const auto transpileBlock = cmdBasic.substr(transpileBegin, buildBegin - transpileBegin);
+    EXPECT_NE(transpileBlock.find("return cmdTranspileBrowser(o);"), std::string::npos);
+    EXPECT_EQ(transpileBlock.find("setBrowserLocalRuntime"), std::string::npos);
+    EXPECT_EQ(transpileBlock.find("buildRuntimeProjectPlanForInput"), std::string::npos);
+}
+
+TEST(CliTranspile, BrowserTargetUsesBrowserBuildServiceRuntimePlan) {
+    const auto file = writeTempJtml(
+        "browser-transpile",
+        "jtml 2\n"
+        "let count = 0\n"
+        "when add\n"
+        "  count += 1\n"
+        "page\n"
+        "  text count\n"
+        "  button \"Add\" click add\n");
+    const auto outFile = std::filesystem::temp_directory_path() /
+                         ("jtml-browser-transpile-" +
+                          std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
+                          ".html");
+
+    jtml::cli::Options opts;
+    opts.inputFile = file.string();
+    opts.outputFile = outFile.string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.target = "browser";
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdTranspile(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+    ASSERT_TRUE(std::filesystem::exists(outFile));
+
+    const std::string html = readTextFile(outFile);
+    EXPECT_NE(html.find("id=\"__jtml_client_manifest\""), std::string::npos) << html;
+    EXPECT_NE(html.find("const browserLocalRuntime = true;"), std::string::npos) << html;
+    EXPECT_EQ(html.find("<script src=\"./jtml-runtime.js\" defer></script>"),
+              std::string::npos) << html;
+    const auto manifest = extractClientManifestJson(html);
+    EXPECT_TRUE(manifest.contains("actions")) << manifest.dump(2);
+    EXPECT_EQ(manifest.dump().find("bodySource"), std::string::npos) << manifest.dump(2);
+    EXPECT_EQ(manifest.dump().find("bodyHex"), std::string::npos) << manifest.dump(2);
 }
 
 TEST(CliLint, RawEscapeHatchesAreVisibleWarnings) {

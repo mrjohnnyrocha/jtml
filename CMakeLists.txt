@@ -37,8 +37,10 @@ if(EXISTS /opt/homebrew/include)
 endif()
 
 # ---------------------------------------------------------------------------
-# Core library. Source lists are grouped by ownership so repo modularization can
-# proceed incrementally without breaking stable public headers.
+# Core library ownership groups. v0.2 production hardening keeps jtml_core as
+# the stable aggregate ABI, but compiles each architecture slice through its
+# own object target so browser production work cannot keep hiding inside a
+# catch-all runtime bucket.
 # ---------------------------------------------------------------------------
 set(JTML_SYNTAX_SOURCES
     src/ast.cpp
@@ -58,8 +60,7 @@ set(JTML_SEMANTIC_SOURCES
     src/jtml/semantic/module_graph.cpp
 )
 
-set(JTML_RUNTIME_SOURCES
-    src/interpreter.cpp
+set(JTML_BROWSER_PRODUCTION_SOURCES
     src/transpiler.cpp
     src/browser_runtime_emitter.cpp
     src/browser_runtime_assets.cpp
@@ -67,6 +68,13 @@ set(JTML_RUNTIME_SOURCES
     src/runtime_plan.cpp
     src/runtime_plan_json.cpp
     src/jtml/runtime/static_update_plan_emitter.cpp
+)
+
+set(JTML_LIVE_RUNTIME_SOURCES
+    src/interpreter.cpp
+)
+
+set(JTML_LEGACY_RUNTIME_SOURCES
     src/environment.cpp
     src/array.cpp
     src/dict.cpp
@@ -82,6 +90,12 @@ set(JTML_TOOLING_SOURCES
     src/refactor.cpp
 )
 
+set(JTML_RUNTIME_SOURCES
+    ${JTML_BROWSER_PRODUCTION_SOURCES}
+    ${JTML_LIVE_RUNTIME_SOURCES}
+    ${JTML_LEGACY_RUNTIME_SOURCES}
+)
+
 set(JTML_CORE_SOURCES
     ${JTML_SYNTAX_SOURCES}
     ${JTML_SEMANTIC_SOURCES}
@@ -89,17 +103,86 @@ set(JTML_CORE_SOURCES
     ${JTML_TOOLING_SOURCES}
 )
 
-add_library(jtml_core STATIC ${JTML_CORE_SOURCES})
-set_target_properties(jtml_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_include_directories(jtml_core PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+function(jtml_configure_core_target target_name)
+    set_target_properties(${target_name} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_include_directories(${target_name} PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    target_link_libraries(${target_name} PUBLIC
+        Boost::system
+        Threads::Threads
+        jtml_third_party
+    )
+endfunction()
+
+add_library(jtml_syntax_obj OBJECT ${JTML_SYNTAX_SOURCES})
+jtml_configure_core_target(jtml_syntax_obj)
+
+add_library(jtml_semantic_obj OBJECT ${JTML_SEMANTIC_SOURCES})
+jtml_configure_core_target(jtml_semantic_obj)
+
+add_library(jtml_browser_production_obj OBJECT ${JTML_BROWSER_PRODUCTION_SOURCES})
+jtml_configure_core_target(jtml_browser_production_obj)
+
+add_library(jtml_live_runtime_obj OBJECT ${JTML_LIVE_RUNTIME_SOURCES})
+jtml_configure_core_target(jtml_live_runtime_obj)
+
+add_library(jtml_legacy_runtime_obj OBJECT ${JTML_LEGACY_RUNTIME_SOURCES})
+jtml_configure_core_target(jtml_legacy_runtime_obj)
+
+add_library(jtml_tooling_obj OBJECT ${JTML_TOOLING_SOURCES})
+jtml_configure_core_target(jtml_tooling_obj)
+
+add_library(jtml_core STATIC
+    $<TARGET_OBJECTS:jtml_syntax_obj>
+    $<TARGET_OBJECTS:jtml_semantic_obj>
+    $<TARGET_OBJECTS:jtml_browser_production_obj>
+    $<TARGET_OBJECTS:jtml_live_runtime_obj>
+    $<TARGET_OBJECTS:jtml_legacy_runtime_obj>
+    $<TARGET_OBJECTS:jtml_tooling_obj>
 )
-target_link_libraries(jtml_core PUBLIC
-    Boost::system
-    Threads::Threads
-    jtml_third_party
+jtml_configure_core_target(jtml_core)
+
+add_library(jtml_browser_production STATIC
+    $<TARGET_OBJECTS:jtml_syntax_obj>
+    $<TARGET_OBJECTS:jtml_semantic_obj>
+    $<TARGET_OBJECTS:jtml_browser_production_obj>
+    $<TARGET_OBJECTS:jtml_tooling_obj>
 )
+jtml_configure_core_target(jtml_browser_production)
+
+set(JTML_CLI_COMMON_SOURCES
+    cli/util.cpp
+    cli/module_loader.cpp
+)
+
+add_library(jtml_cli_common STATIC ${JTML_CLI_COMMON_SOURCES})
+jtml_configure_core_target(jtml_cli_common)
+
+add_library(jtml_browser_build_lib STATIC
+    cli/browser_build.cpp
+)
+target_link_libraries(jtml_browser_build_lib PUBLIC
+    jtml_browser_production
+    jtml_cli_common
+)
+
+if(JTML_BUILD_TESTS)
+    add_executable(jtml_browser_production_linkcheck
+        tests/browser_production_linkcheck.cpp
+    )
+    target_link_libraries(jtml_browser_production_linkcheck PRIVATE
+        jtml_browser_production
+    )
+
+    add_executable(jtml_browser_build_linkcheck
+        tests/browser_build_linkcheck.cpp
+    )
+    target_link_libraries(jtml_browser_build_linkcheck PRIVATE
+        jtml_browser_build_lib
+    )
+endif()
 
 # ---------------------------------------------------------------------------
 # Stable C ABI for embedding JTML from Python, Node native addons, Go, Rust,
@@ -118,8 +201,6 @@ jtml_apply_version_defs(jtml_c)
 # `main.cpp` does only dispatch.
 # ---------------------------------------------------------------------------
 set(JTML_CLI_LIB_SOURCES
-    cli/util.cpp
-    cli/module_loader.cpp
     cli/package_manager.cpp
     cli/diagnostic_json.cpp
     cli/cmd_basic.cpp
@@ -134,7 +215,11 @@ set(JTML_CLI_LIB_SOURCES
 )
 
 add_library(jtml_cli_lib STATIC ${JTML_CLI_LIB_SOURCES})
-target_link_libraries(jtml_cli_lib PUBLIC jtml_core)
+target_link_libraries(jtml_cli_lib PUBLIC
+    jtml_core
+    jtml_cli_common
+    jtml_browser_build_lib
+)
 
 add_executable(jtml_cli cli/main.cpp)
 set_target_properties(jtml_cli PROPERTIES OUTPUT_NAME jtml)

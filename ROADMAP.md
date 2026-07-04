@@ -164,9 +164,21 @@ only when the target boundary owns a stable contract and regression coverage.
 - **CLI split**: `cli/main.cpp` does arg parsing + dispatch only; each command is its own translation unit (`cmd_basic`, `cmd_fmt_lint`, `cmd_serve`, `cmd_tutorial`). The tutorial's embedded HTML shell is isolated in `cli/tutorial_shell.cpp`.
 - **Runtime ownership slice**: the static browser update-plan asset emitter now
   lives under `include/jtml/runtime/` and `src/jtml/runtime/`, while the old
-  top-level include remains as a compatibility shim. CMake groups core sources
-  by syntax, semantic, runtime, and tooling ownership so future movement is
-  explicit and reviewable.
+  top-level include remains as a compatibility shim. CMake now separates
+  browser production, live runtime, and legacy runtime source groups into
+  dedicated object targets before aggregating them into `jtml_core`, so v0.2
+  production compiler isolation has an enforceable build boundary. A dedicated
+  `jtml_browser_production` target links syntax, semantic, tooling, and browser
+  production objects without live interpreter or legacy `Environment` runtime
+  objects, and `jtml_browser_production_linkcheck` guards that boundary in
+  CTest. The `jtml build --target browser` implementation now lives in a
+  separate `jtml_browser_build_lib` service linked to `jtml_browser_production`
+  and CLI file/module loading, with its own linkcheck that excludes aggregate
+  `jtml_core`. Both `build --target browser` and `transpile --target browser`
+  delegate to that service boundary. This completes the v0.2 production
+  compiler isolation gate. The all-in-one shipped CLI binary remains
+  aggregate-linked for compatibility; command-family binaries are a later
+  packaging/release concern, not a blocker for v0.2.
 - **Namespace (deferred)**: the CLI already lives in `namespace jtml::cli`. The core library still uses global and `JTMLInterpreter::*` names; wrapping the entire core in `namespace jtml` is a single atomic refactor planned for the next sprint (it touches every AST reference in every file).
 
 ## Current Focus

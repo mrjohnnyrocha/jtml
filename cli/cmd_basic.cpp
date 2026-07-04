@@ -2,11 +2,11 @@
 // pipelines: examples, new, check, interpret, transpile. Each stays short
 // and self-contained.
 #include "commands.h"
+#include "browser_build.h"
 #include "diagnostic_json.h"
 #include "package_manager.h"
 
 #include "jtml/interpreter.h"
-#include "jtml/browser_runtime_emitter.h"
 #include "jtml/language_catalog.h"
 #include "jtml/linter.h"
 #include "jtml/runtime_plan.h"
@@ -14,7 +14,6 @@
 #include "jtml/semantic.h"
 #include "jtml/semantic/module_graph.h"
 #include "jtml/semantic_project_json.h"
-#include "jtml/runtime/static_update_plan_emitter.h"
 #include "jtml/transpiler.h"
 #include "json.hpp"
 
@@ -514,55 +513,6 @@ ParsedModuleForExplain parseStandaloneModuleForExplain(const std::string& source
     }
 }
 
-jtml::RuntimeProjectPlan buildRuntimeProjectPlanForInput(
-        const std::string& inputFile,
-        SyntaxMode syntax,
-        const std::vector<std::unique_ptr<ASTNode>>& linkedProgram,
-        const jtml::SemanticProgram& linkedSemantic) {
-    std::set<std::string> seenModuleFiles;
-    std::vector<jtml::SemanticModuleSource> moduleSources;
-    for (const auto& file : collectSourceFiles(inputFile, syntax)) {
-        const auto path = file.generic_string();
-        if (!seenModuleFiles.insert(path).second) continue;
-
-        const auto moduleSource = readFile(path);
-        jtml::SemanticModuleIr ir;
-        jtml::SemanticProgram moduleSemantic;
-        std::shared_ptr<const jtml::SemanticModuleAst> moduleAst;
-        try {
-            SilenceStdout silence;
-            auto parsedModule = parseStandaloneModuleForExplain(moduleSource, syntax);
-            ir = jtml::summarizeSemanticAst(parsedModule.program, parsedModule.syntax);
-            moduleAst = jtml::cloneSemanticAst(parsedModule.program, parsedModule.syntax);
-            moduleSemantic = parsedModule.syntax == "friendly+import-stubs"
-                ? jtml::analyzeSemanticProgram({}, moduleSource)
-                : jtml::analyzeSemanticProgram(parsedModule.program, moduleSource);
-        } catch (const std::exception& e) {
-            moduleSemantic = jtml::analyzeSemanticProgram({}, moduleSource);
-            ir.available = false;
-            ir.syntax = "unknown";
-            ir.parseError = e.what();
-            const auto location = locateModuleParseError(moduleSource, ir.parseError);
-            ir.parseErrorLine = location.first;
-            ir.parseErrorColumn = location.second;
-        }
-
-        moduleSources.push_back({
-            path,
-            std::move(moduleSemantic),
-            std::move(ir),
-            std::move(moduleAst),
-        });
-    }
-
-    const auto project = moduleSources.empty()
-        ? jtml::buildSemanticProject(linkedSemantic, inputFile)
-        : jtml::buildSemanticProject(moduleSources, inputFile, linkedSemantic);
-    return jtml::buildRuntimePlan(
-        project,
-        jtml::buildRuntimePlan(linkedProgram, linkedSemantic));
-}
-
 struct DepthSummary {
     int level = 0;
     std::string label = "static";
@@ -828,8 +778,18 @@ int cmdDoctor(const Options& o) {
     };
     const nlohmann::json runtimeCapabilities = {
         {"runtimeAssembly", {
+            {"v02ProductionCompilerIsolation", "complete"},
             {"browserRuntimeEmitterWrapper", true},
             {"browserRuntimeAssetChunks", true},
+            {"productionCompilerOwnershipSplit", true},
+            {"browserProductionLibraryTarget", true},
+            {"browserProductionLinkcheckWithoutLiveLegacy", true},
+            {"browserBuildServiceLibraryTarget", true},
+            {"browserBuildServiceLinkcheckWithoutAggregateCore", true},
+            {"browserTranspileUsesBrowserBuildService", true},
+            {"browserProductionLinksLiveAndLegacyRuntime", true},
+            {"browserProductionLinkIsolation", "browser build/transpile service isolated; shipped CLI binary still aggregate-linked for compatibility"},
+            {"commandFamilyBinarySplit", "deferred"},
         }},
         {"moduleSystem", {
             {"relativeImportsFromImporter", true},
@@ -1752,14 +1712,11 @@ int cmdInterpret(const Options& o) {
 }
 
 int cmdTranspile(const Options& o) {
+    if (o.target == "browser") {
+        return cmdTranspileBrowser(o);
+    }
     auto program = parseProgramFromFile(o.inputFile, o.syntax);
     JtmlTranspiler transpiler;
-    if (o.target == "browser") {
-        transpiler.setBrowserLocalRuntime(true);
-        const auto semantic = jtml::analyzeSemanticProgram(program, readFile(o.inputFile));
-        transpiler.setRuntimeProjectPlan(
-            buildRuntimeProjectPlanForInput(o.inputFile, o.syntax, program, semantic));
-    }
     std::string html = transpiler.transpile(program);
 
     if (!o.outputFile.empty()) {
@@ -1776,6 +1733,9 @@ int cmdTranspile(const Options& o) {
 
 int cmdBuild(const Options& o) {
     if (o.inputFile.empty() || o.outputFile.empty()) usage();
+    if (o.target == "browser") {
+        return cmdBuildBrowser(o);
+    }
 
     std::filesystem::path input = o.inputFile;
     const bool inputWasDirectory = std::filesystem::is_directory(input);
@@ -1793,23 +1753,7 @@ int cmdBuild(const Options& o) {
 
     auto program = parseProgramFromFile(input.string(), o.syntax);
     JtmlTranspiler transpiler;
-    jtml::RuntimeProjectPlan runtimeProjectPlan;
-    bool hasRuntimeProjectPlan = false;
-    if (o.target == "browser") {
-        transpiler.setBrowserLocalRuntime(true);
-        transpiler.setExternalRuntimeScript(true);
-        const auto semantic = jtml::analyzeSemanticProgram(program, readFile(input.string()));
-        runtimeProjectPlan =
-            buildRuntimeProjectPlanForInput(input.string(), o.syntax, program, semantic);
-        hasRuntimeProjectPlan = true;
-        transpiler.setRuntimeProjectPlan(runtimeProjectPlan);
-    }
     std::string html = transpiler.transpile(program);
-    if (hasRuntimeProjectPlan) {
-        html = injectBrowserBuildAssetScript(html, "jtml-runtime.js");
-        html = injectBrowserBuildAssetScript(html, "components/index.js");
-        html = injectBrowserBuildAssetScript(html, "app.js");
-    }
 
     std::ofstream ofs(outFile);
     if (!ofs.is_open()) {
@@ -1818,43 +1762,6 @@ int cmdBuild(const Options& o) {
     ofs << html;
 
     std::cout << "Built " << input.string() << " -> " << outFile.string() << "\n";
-    if (hasRuntimeProjectPlan) {
-        const auto runtimeFile = outDir / "jtml-runtime.js";
-        const auto componentModuleFile = outDir / "components" / "index.js";
-        const auto appFile = outDir / "app.js";
-        const auto legacyUpdatePlanFile = outDir / "jtml-update-plans.js";
-        const auto componentModuleAsset =
-            emitStaticComponentModuleAsset(runtimeProjectPlan);
-        writeBuildAsset(runtimeFile,
-                        jtml::emitBrowserRuntimeScript(8080, true),
-                        "browser runtime output");
-        writeBuildAsset(componentModuleFile,
-                        componentModuleAsset,
-                        "browser component module output");
-        writeBuildAsset(appFile,
-                        "/* Generated by jtml build --target browser. */\n"
-                        "(function(){\n"
-                        "  window.jtml = window.jtml || {};\n"
-                        "  window.jtml.productionAssets = Object.assign({}, window.jtml.productionAssets || {}, {\n"
-                        "    runtime: './jtml-runtime.js',\n"
-                        "    components: './components/index.js',\n"
-                        "    app: './app.js',\n"
-                        "    compatibilityUpdatePlans: './jtml-update-plans.js'\n"
-                        "  });\n"
-                        "}());\n",
-                        "browser app bootstrap output");
-        writeBuildAsset(legacyUpdatePlanFile,
-                        emitStaticUpdatePlanAsset(runtimeProjectPlan),
-                        "legacy browser update plan output");
-        std::cout << "Built browser runtime asset -> "
-                  << runtimeFile.string() << "\n";
-        std::cout << "Built browser component modules -> "
-                  << componentModuleFile.string() << "\n";
-        std::cout << "Built browser app bootstrap -> "
-                  << appFile.string() << "\n";
-        std::cout << "Built legacy browser update plans -> "
-                  << legacyUpdatePlanFile.string() << "\n";
-    }
     if (inputWasDirectory) {
         copyBuildAssets(inputDir, outDir);
     }

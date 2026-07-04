@@ -32,6 +32,7 @@ int main() {
         const auto input = root / "input.jtml";
         const auto output = root / "out.html";
         const auto outDir = root / "dist";
+        const auto prodDir = root / "dist-prod";
 
         {
             std::ofstream out(input);
@@ -119,6 +120,37 @@ int main() {
         if (!contains(appJs, "compatibilityUpdatePlans")) {
             std::cerr << "cmdBuildBrowser app bootstrap no longer reports compatibility update-plan asset explicitly\n";
             return 8;
+        }
+
+        jtml::cli::Options prodOptions = buildOptions;
+        prodOptions.outputFile = prodDir.string();
+        prodOptions.prod = true;
+        const int prodResult = jtml::cli::cmdBuildBrowser(prodOptions);
+        if (prodResult != 0) {
+            std::cerr << "cmdBuildBrowser --prod returned " << prodResult << "\n";
+            return prodResult;
+        }
+        const auto prodIndex = prodDir / "index.html";
+        const auto prodRuntime = prodDir / "jtml-runtime.js";
+        const auto prodComponents = prodDir / "components" / "index.js";
+        const auto prodApp = prodDir / "app.js";
+        const auto prodLegacyPlans = prodDir / "jtml-update-plans.js";
+        if (!existsFile(prodIndex) || !existsFile(prodRuntime) ||
+            !existsFile(prodComponents) || !existsFile(prodApp)) {
+            std::cerr << "cmdBuildBrowser --prod did not emit required split browser assets\n";
+            return 9;
+        }
+        if (existsFile(prodLegacyPlans)) {
+            std::cerr << "cmdBuildBrowser --prod emitted legacy update plans by default\n";
+            return 10;
+        }
+        const auto prodAppJs = readFile(prodApp);
+        const auto prodHtml = readFile(prodIndex);
+        if (contains(prodAppJs, "compatibilityUpdatePlans") ||
+            contains(prodAppJs, "jtml-update-plans.js") ||
+            contains(prodHtml, "jtml-update-plans.js")) {
+            std::cerr << "cmdBuildBrowser --prod still references legacy compatibility update plans\n";
+            return 11;
         }
         return 0;
     } catch (const std::exception& e) {

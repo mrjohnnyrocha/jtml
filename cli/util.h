@@ -34,6 +34,9 @@ struct Options {
     bool        force  = false;  // --force / -w (fmt writes in place)
     bool        watch  = false;  // --watch
     bool        json   = false;  // --json (machine-readable output where supported)
+    bool        prod   = false;  // --prod (production-clean browser build)
+    bool        compat = false;  // --compat (emit compatibility/debug assets)
+    bool        debug  = false;  // --debug (emit debug/compatibility assets)
     int         port   = 8000;   // --port; `serve` uses port+80 for WebSocket.
     SyntaxMode  syntax = SyntaxMode::Auto;
 };

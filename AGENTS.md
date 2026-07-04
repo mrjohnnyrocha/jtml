@@ -79,13 +79,16 @@ dist/index.html
 dist/jtml-runtime.js
 dist/components/index.js
 dist/app.js
-dist/jtml-update-plans.js
 ```
 
 `components/index.js` is the current compiler-first component bridge and now
 owns the production component plan index. `jtml-update-plans.js` remains a
 legacy compatibility/debug asset for older tooling while the runtime split is
-completed. The component module exposes:
+completed. It is emitted by default/`--compat`/`--debug`, but clean
+`jtml build --target browser --prod` output must omit it and must not advertise
+`compatibilityUpdatePlans` from `app.js`. Clean `--prod` also disables
+synthetic imported-component stubs; module parse/import issues must surface as
+diagnostics rather than approximate generated components. The component module exposes:
 
 - `window.__jtml_static_component_plan_index`
 - `window.__jtml_static_update_functions`
@@ -183,7 +186,8 @@ the split browser assets are emitted, rejects dynamic `new Function`/direct
 current size budgets. Defaults are intentionally conservative while the runtime
 is still being split: 50 KB for `index.html`, 260 KB for
 `jtml-runtime.js`, 180 KB for `components/index.js`, 20 KB for `app.js`, and
-180 KB for the legacy `jtml-update-plans.js`. Treat these budgets as
+180 KB for the legacy `jtml-update-plans.js` in compatibility/debug outputs.
+Treat these budgets as
 guardrails, not final benchmarks; tighten runtime/component budgets as direct
 generated modules replace body-plan helpers. The `control_flow` fixture also
 asserts that safe `if`/keyed-`for` regions, keyed list markers, and direct

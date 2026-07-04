@@ -920,7 +920,7 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
               std::string::npos);
     ASSERT_TRUE(report.contains("runtimeCapabilities")) << report.dump(2);
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["v02ProductionCompilerIsolation"],
-              "library-boundary-complete; shipped-cli-aggregate; prod-asset-legacy-output-pending");
+              "library-boundary-complete; shipped-cli-aggregate; prod-clean-asset-mode-available");
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionCompilerIsolationStage"],
               "library-linkcheck");
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["browserRuntimeEmitterWrapper"], true);
@@ -936,6 +936,12 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["shippedCliAggregateLinkage"], "compatibility");
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionLegacyUpdatePlanAssetDefault"],
               "emitted-for-compatibility");
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionLegacyUpdatePlanAssetWithProd"],
+              "omitted");
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionAppBootstrapWithProd"],
+              "omits compatibilityUpdatePlans");
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionImportStubsWithProd"],
+              "disabled");
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionDebugMetadataSplit"],
               "partial");
     EXPECT_FALSE(report["runtimeCapabilities"]["runtimeAssembly"].contains("browserProductionLinksLiveAndLegacyRuntime"))
@@ -1566,6 +1572,8 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
               std::string::npos) << runtimeAsset;
     const std::string appAsset = readTextFile(outDir / "app.js");
     EXPECT_NE(appAsset.find("productionAssets"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("compatibilityUpdatePlans"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("productionMode = 'compatibility'"), std::string::npos) << appAsset;
     EXPECT_EQ(appAsset.find("new Function"), std::string::npos) << appAsset;
     EXPECT_EQ(appAsset.find("eval("), std::string::npos) << appAsset;
 
@@ -1603,6 +1611,98 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
     EXPECT_EQ(updatePlans.find("new Function"), std::string::npos) << updatePlans;
     EXPECT_EQ(updatePlans.find("bodySource"), std::string::npos) << updatePlans;
     EXPECT_EQ(updatePlans.find("bodyHex"), std::string::npos) << updatePlans;
+}
+
+TEST(CliBuild, BrowserTargetProdOmitsLegacyCompatibilityAssets) {
+    const auto file = writeTempJtml(
+        "browser-build-prod",
+        "jtml 2\n"
+        "let count = 0\n"
+        "when add\n"
+        "  count += 1\n"
+        "page\n"
+        "  text count\n"
+        "  button \"Add\" click add\n");
+
+    const auto outDir = std::filesystem::temp_directory_path() /
+                        ("jtml-browser-build-prod-" +
+                         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+
+    jtml::cli::Options opts;
+    opts.inputFile = file.string();
+    opts.outputFile = outDir.string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.target = "browser";
+    opts.prod = true;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdBuild(opts); });
+    EXPECT_EQ(result.code, 0) << result.out << result.err;
+
+    ASSERT_TRUE(std::filesystem::exists(outDir / "index.html"));
+    ASSERT_TRUE(std::filesystem::exists(outDir / "jtml-runtime.js"));
+    ASSERT_TRUE(std::filesystem::exists(outDir / "components" / "index.js"));
+    ASSERT_TRUE(std::filesystem::exists(outDir / "app.js"));
+    EXPECT_FALSE(std::filesystem::exists(outDir / "jtml-update-plans.js"));
+
+    const std::string html = readTextFile(outDir / "index.html");
+    EXPECT_NE(html.find("<script src=\"./jtml-runtime.js\" defer></script>"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("<script src=\"./components/index.js\" defer></script>"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("<script src=\"./app.js\" defer></script>"),
+              std::string::npos) << html;
+    EXPECT_EQ(html.find("jtml-update-plans.js"), std::string::npos) << html;
+
+    const std::string appAsset = readTextFile(outDir / "app.js");
+    EXPECT_NE(appAsset.find("productionMode = 'prod'"), std::string::npos) << appAsset;
+    EXPECT_EQ(appAsset.find("compatibilityUpdatePlans"), std::string::npos) << appAsset;
+    EXPECT_EQ(appAsset.find("jtml-update-plans.js"), std::string::npos) << appAsset;
+
+    const std::string componentModule = readTextFile(outDir / "components" / "index.js");
+    EXPECT_NE(componentModule.find("\"assetRole\":\"component-module\""), std::string::npos)
+        << componentModule;
+    EXPECT_EQ(componentModule.find("\"bodyPlan\""), std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"sourceLine\""), std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("\"sourceColumn\""), std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("window.__jtml_static_update_plans = plans"),
+              std::string::npos) << componentModule;
+}
+
+TEST(CliBuild, BrowserDirectoryBuildSkipsSensitiveAndGeneratedAssets) {
+    const auto root = makeTempDir("browser-assets");
+    writeTempFile(root / "index.jtml",
+        "jtml 2\n"
+        "page\n"
+        "  text \"Assets\"\n");
+    writeTempFile(root / "public" / "logo.txt", "ship me");
+    writeTempFile(root / ".env", "SECRET=1");
+    writeTempFile(root / ".hidden", "hidden");
+    writeTempFile(root / "node_modules" / "dep.js", "dependency");
+    writeTempFile(root / "dist" / "old.html", "old output");
+    writeTempFile(root / "nested" / ".secret", "secret");
+    writeTempFile(root / "nested" / "component.jtml", "jtml 2\npage\n  text \"no\"\n");
+
+    const auto outDir = std::filesystem::temp_directory_path() /
+                        ("jtml-browser-assets-" +
+                         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+
+    jtml::cli::Options opts;
+    opts.inputFile = root.string();
+    opts.outputFile = outDir.string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.target = "browser";
+    opts.prod = true;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdBuild(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+
+    EXPECT_TRUE(std::filesystem::exists(outDir / "public" / "logo.txt"));
+    EXPECT_FALSE(std::filesystem::exists(outDir / ".env"));
+    EXPECT_FALSE(std::filesystem::exists(outDir / ".hidden"));
+    EXPECT_FALSE(std::filesystem::exists(outDir / "node_modules" / "dep.js"));
+    EXPECT_FALSE(std::filesystem::exists(outDir / "dist" / "old.html"));
+    EXPECT_FALSE(std::filesystem::exists(outDir / "nested" / ".secret"));
+    EXPECT_FALSE(std::filesystem::exists(outDir / "nested" / "component.jtml"));
 }
 
 TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {

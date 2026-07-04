@@ -22,7 +22,8 @@ jtml::RuntimeProjectPlan buildRuntimeProjectPlanForInput(
     const std::string& inputFile,
     SyntaxMode syntax,
     const std::vector<std::unique_ptr<ASTNode>>& linkedProgram,
-    const jtml::SemanticProgram& linkedSemantic);
+    const jtml::SemanticProgram& linkedSemantic,
+    bool allowImportStubs = true);
 
 int cmdBuildBrowser(const Options& o);
 int cmdTranspileBrowser(const Options& o);

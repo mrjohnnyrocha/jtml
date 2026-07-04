@@ -34,9 +34,13 @@ volatile.
 Legacy `Environment` runtime implementation files have also been physically
 quarantined under `src/jtml/legacy_runtime/`; public headers stay stable and
 are marked as legacy/live interpreter APIs while the browser production
-compiler boundary matures. Browser builds still emit `jtml-update-plans.js` as
-an explicit compatibility/debug asset; the next production-clean gate is a
-`--prod` path that omits that asset by default.
+compiler boundary matures. Browser builds now support clean `--prod` output
+that omits `jtml-update-plans.js` and does not advertise
+`compatibilityUpdatePlans`; default/`--compat`/`--debug` output keeps that
+asset explicit for migration and tooling until clean prod can become the
+default. Clean `--prod` also disables synthetic imported-component stubs, so
+module parse/import problems must be real diagnostics instead of silent
+approximations.
 
 ## 1. Semantic Styling And UI Primitives
 
@@ -147,6 +151,7 @@ Target:
 
 ```sh
 jtml build app.jtml --target browser --out dist
+jtml build app.jtml --target browser --prod --out dist
 ```
 
 Output:

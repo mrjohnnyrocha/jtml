@@ -181,10 +181,14 @@ only when the target boundary owns a stable contract and regression coverage.
   `build --target browser` and `transpile --target browser`
   delegate to that service boundary. This completes the v0.2 production
   compiler isolation gate at the library/linkcheck level. The all-in-one
-  shipped CLI binary remains aggregate-linked for compatibility, and browser
-  builds still emit `jtml-update-plans.js` as an explicit compatibility/debug
-  asset until a later `--prod`/`--compat` split. Command-family binaries are a
-  later packaging/release concern, not a blocker for this gate.
+  shipped CLI binary remains aggregate-linked for compatibility. Browser builds
+  now support a clean `--prod` mode that omits `jtml-update-plans.js` and does
+  not advertise `compatibilityUpdatePlans`; default/`--compat`/`--debug` builds
+  still emit the legacy asset explicitly for migration and tooling. Clean
+  `--prod` also disables synthetic imported-component stubs, so production
+  module problems surface as diagnostics instead of approximate generated
+  components. Making clean prod the default is a later compatibility/release
+  decision.
 - **Legacy runtime quarantine**: `environment.cpp`, `array.cpp`, `dict.cpp`,
   and `value.cpp` now live under `src/jtml/legacy_runtime/`. The public headers
   remain in `include/jtml/` for compatibility and are marked as legacy/live
@@ -474,7 +478,7 @@ The current focus is the semantic-core transition:
   This path has an executable guardrail: 50 KB
   for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
   `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
-  `jtml-update-plans.js`, to tighten as direct generated update modules keep
+  `jtml-update-plans.js` in compatibility/debug mode, to tighten as direct generated update modules keep
   replacing operation-record patch helpers.
   Structured container elements
   with children can now patch their own compiled attributes in place without

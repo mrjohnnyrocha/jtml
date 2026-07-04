@@ -78,6 +78,12 @@ Options parseArgs(int argc, char* argv[]) {
             o.watch = true;
         } else if (std::strcmp(argv[i], "--json") == 0) {
             o.json = true;
+        } else if (std::strcmp(argv[i], "--prod") == 0) {
+            o.prod = true;
+        } else if (std::strcmp(argv[i], "--compat") == 0) {
+            o.compat = true;
+        } else if (std::strcmp(argv[i], "--debug") == 0) {
+            o.debug = true;
         } else if (std::strcmp(argv[i], "--syntax") == 0 && i + 1 < argc) {
             o.syntax = parseSyntaxMode(argv[++i]);
         } else if (std::strcmp(argv[i], "--from") == 0 && i + 1 < argc) {

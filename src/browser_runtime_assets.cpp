@@ -547,6 +547,17 @@ const char* browserRuntimePreludeChunk() {
           destroyDirectComponentChildren(instance, definition);
           unregisterComponentInstance(instance, definition);
         }
+        window.jtml = window.jtml || {};
+        const destroyInfo = window.jtml.directComponentDestroyLifecycle || {
+          count: 0,
+          reasons: {},
+          lastReason: ''
+        };
+        const destroyReason = reason || 'unknown';
+        destroyInfo.count += 1;
+        destroyInfo.lastReason = destroyReason;
+        destroyInfo.reasons[destroyReason] = (destroyInfo.reasons[destroyReason] || 0) + 1;
+        window.jtml.directComponentDestroyLifecycle = destroyInfo;
         delete instance.__jtmlDestroying;
         return true;
       }

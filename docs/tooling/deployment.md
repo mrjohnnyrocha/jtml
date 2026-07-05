@@ -98,17 +98,86 @@ For GitHub Pages:
 
 For another static host, deploy the contents of `site/` and configure the custom domain in that host's dashboard.
 
+## Browser Production Builds
+
+Use this for deployable browser apps:
+
+```sh
+jtml build app.jtml --target browser --out dist
+```
+
+This is a clean production build by default. It writes:
+
+- `dist/index.html`
+- `dist/jtml-runtime.js`
+- `dist/components/index.js`
+- `dist/app.js`
+
+Clean production output does not emit `jtml-update-plans.js`, does not expose
+`compatibilityUpdatePlans`, does not enable synthetic imported-component stubs,
+and refuses component shapes that still need the legacy compatibility/update-plan
+fallback. If a build fails for that reason, the error should name the component,
+source location when known, unsupported shape, and the migration command:
+
+```sh
+jtml build app.jtml --target browser --compat --out dist
+```
+
+Use `--compat` only as a temporary migration bridge. It emits the legacy
+`dist/jtml-update-plans.js` asset for older/debug tooling.
+
+Use `--debug` when you need source-rich compatibility metadata and fallback
+telemetry while investigating compiler/runtime behavior:
+
+```sh
+jtml build app.jtml --target browser --debug --out dist-debug
+```
+
+`dist/app.js` exposes the formal browser build contract at
+`window.jtml.browserBuild`:
+
+- `version`
+- `mode`: `prod`, `compat`, or `debug`
+- `cleanProduction`
+- `compatibility`
+- `debug`
+- `assets`
+- `diagnostics.sourceSpans`
+- `diagnostics.fallbackTelemetry`
+
+`window.jtml.productionMode` remains as a compatibility alias for older local
+tools; new integrations should read `window.jtml.browserBuild.mode`.
+
+Every browser build validates its emitted asset schema before returning
+success. Production validates the absence of legacy update-plan references and
+source-rich component debug payloads. Compat/debug validate the explicit legacy
+asset and mode flags. All modes reject shipped browser assets containing
+runtime dynamic compilation (`new Function` / direct `eval`).
+
+## Browser Assets
+
+Directory builds copy a conservative public asset allowlist:
+
+- files under `public/`
+- files under `assets/`
+- root web metadata files such as `favicon.ico`, `robots.txt`, `sitemap.xml`,
+  `manifest.json`, `site.webmanifest`, `browserconfig.xml`, and `humans.txt`
+
+Project-private files are not copied by default. That includes hidden paths,
+`.env*`, `.jtml` sources, `node_modules`, `dist`, `build`, `target`,
+`jtml_modules`, lockfiles, nested README files, and arbitrary nested folders
+outside `public/` or `assets/`.
+
+Symlinks are skipped intentionally. Put deployable assets in `public/` or
+`assets/` directly until configurable include/exclude rules ship.
+
+`jtml transpile <file> -o <output.html>` remains useful for one-off inline
+browser artifacts and previews, but production asset-mode flags are only
+supported by `jtml build --target browser`.
+
 ## Production Notes
 
 - Put a reverse proxy such as nginx or Caddy in front of `jtml serve` for TLS.
 - Proxy both HTTP and WebSocket traffic.
 - Use `--watch` for local development, not production.
 - Use `jtml doctor --json` in CI or image builds to verify the local toolkit shape.
-- For static pages, use `jtml build <input.jtml|app/> --target browser --out dist`; it writes
-  `dist/index.html`. Directory builds also copy non-`.jtml` assets such as
-  images, CSS, JSON, fonts, and downloads into the same relative paths. Hidden
-  files, `.env*`, `.jtml` sources, `node_modules`, `dist`, `build`,
-  `jtml_modules`, and common generated/dependency folders are skipped.
-  `--compat` and `--debug` are explicit migration/tooling modes that keep the
-  legacy browser update-plan asset.
-  `jtml transpile <file> -o <output.html>` remains useful for one-off files.

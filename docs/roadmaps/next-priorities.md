@@ -27,8 +27,9 @@ The `jtml build --target browser` implementation now lives behind
 `jtml_browser_build_lib`, which links to the production compiler target and has
 its own functional link-check that calls the real browser transpile and browser
 build services, inspects split browser assets, and runs without aggregate
-`jtml_core`. Browser mode and public asset-copy policy are isolated in
-`cli/browser_build_policy.cpp`. `transpile --target browser` uses the same
+`jtml_core`. Browser mode and public asset eligibility are isolated in
+`cli/browser_build_policy.cpp`, and filesystem asset copying is isolated in
+`cli/browser_build_assets.cpp`. `transpile --target browser` uses the same
 service boundary.
 Command-family packaging for the shipped CLI binary is
 deferred until compatibility and live/server command ownership are less
@@ -39,10 +40,18 @@ are marked as legacy/live interpreter APIs while the browser production
 compiler boundary matures. Browser builds now default to clean production
 output that omits `jtml-update-plans.js`, does not advertise
 `compatibilityUpdatePlans`, disables synthetic imported-component stubs, and
-rejects mixed production/compat/debug modes. `--compat` and `--debug` keep the
-legacy update-plan asset explicit for migration and tooling while the debug
-model is split further. Clean production also validates that static component
-modules do not require compatibility/update-plan fallback.
+rejects mixed production/compat/debug modes. `--compat` is the migration
+bridge; `--debug` is the source-rich diagnostics/fallback-telemetry bridge.
+Both emit the legacy update-plan asset explicitly, but neither is the
+production contract. `dist/app.js` exposes the formal
+`window.jtml.browserBuild` object; `window.jtml.productionMode` is only a
+compatibility alias. Clean production also validates that static component
+modules do not require compatibility/update-plan fallback and reports
+remediation text when a shape is unsupported. Directory builds copy only
+`public/`, `assets/`, and selected root web metadata files by default; symlinks
+are skipped intentionally until configurable asset include/exclude rules exist.
+`cli/browser_build_schema.cpp` now validates the emitted prod/compat/debug
+asset contract before `cmdBuildBrowser` returns success.
 
 ## 1. Semantic Styling And UI Primitives
 
@@ -186,6 +195,10 @@ unsupported shapes still use helper/fallback create paths. Static update
 functions also emit direct per-node patch cases for text, button, element,
 container-attribute, safe control-flow region, slot, and nested-component nodes
 before falling back to operation records.
+The next production proof must run these clean `--target browser` outputs in a
+real browser with no `jtml-update-plans.js`, validate DOM behavior, nested
+identity, keyed identity, and lifecycle cleanup, and fail if compatibility
+fallback becomes implicit again.
 The runtime-plan layer now owns the canonical expression-plan producer and now
 prefers parsed JTML expression AST nodes before falling back to the legacy
 string planner. Literal, boolean, number, null, dot-path, unary `!`,
@@ -229,7 +242,9 @@ keyed list markers, and direct safe-region patching are generated in
 `components/index.js`; the `composition` and `nested_component_update` fixtures
 assert in-place nested parameter/body patch telemetry plus retained nested
 wrapper DOM identity during actual browser clicks, and `keyed_list` asserts
-retained row identity across keyed reorder. Current guardrails:
+retained row identity across keyed reorder. `lifecycle_cleanup` now asserts the
+conditional/keyed destroy lifecycle path and clean-prod browser build mode/no
+legacy script loading in the browser harness. Current guardrails:
 50 KB for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
 `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
 `jtml-update-plans.js`, all meant to tighten as direct generated update modules
@@ -735,15 +750,31 @@ Implementation slices:
    `nested_component_update` scaffolds, and keep the current manifest interpreter
    as a compatibility fallback without runtime string compilation in shipped
    browser assets.
-51. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
+51. ✅ First browser build asset schemas per mode: clean prod, compat, and debug.
+   `cmdBuildBrowser` now validates required assets, mode contract, debug
+   telemetry flags, dynamic-compilation bans, prod legacy-asset absence,
+   component-module debug-payload absence, and legacy update-plan presence for
+   compat/debug. Next: replace remaining test-side string checks with reusable
+   schema helpers and add client-manifest JSON schema validation.
+52. Add a source span model from parser/AST through semantic IR, runtime plan,
+   static compiler metadata, live diagnostics, and browser fallback telemetry.
+   Current line adjustment is a bridge and must not be treated as final
+   AI-native diagnostics.
+53. ✅ First lifecycle and clean-prod browser behavior proof: the browser
+   harness now checks clean `window.jtml.browserBuild` mode, no loaded legacy
+   update-plan script, retained nested/keyed identity, and a
+   `lifecycle_cleanup` fixture for conditional nested removal plus keyed item
+   cleanup. Next: add registry-size/handler cleanup assertions and
+   focus/cursor preservation for forms.
+54. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
    same catalog endpoint pattern.
-52. Add contract-first JTL backend API design docs and prototypes only after
+55. Add contract-first JTL backend API design docs and prototypes only after
    runtime/module semantics are stable. Target governed internal operations:
    approval consoles, incident consoles, AI governance, cost controls, and
    deployment controls. Planned phases are contracts/types/errors, OpenAPI,
    policies/validation, runtime adapters, JTML `fetch`/future `call`
    integration, and enterprise hardening.
-53. Add security, compatibility, deprecation, contribution, benchmark, and
+56. Add security, compatibility, deprecation, contribution, benchmark, and
    release-policy docs once the internal contracts stop moving every slice.
 
 ## Decision

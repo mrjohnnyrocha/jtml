@@ -2038,7 +2038,11 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
         }
         int line = entry.value("sourceLine", 0);
         const int componentLine = component.value("sourceLine", 0);
-        if (line > 0 && componentLine > 0) {
+        // Current body-plan nodes may carry either component-body-relative
+        // lines or already-absolute lines, depending on which bridge produced
+        // them. Prefer the absolute-looking value and only adjust relative
+        // lines until parser/AST source spans are carried end-to-end.
+        if (line > 0 && componentLine > 0 && line < componentLine) {
             line += componentLine;
         }
         if (line > 0) {

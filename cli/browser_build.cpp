@@ -1,6 +1,8 @@
 #include "browser_build.h"
 
+#include "browser_build_assets.h"
 #include "browser_build_policy.h"
+#include "browser_build_schema.h"
 
 #include "jtml/browser_runtime_emitter.h"
 #include "jtml/diagnostic.h"
@@ -305,11 +307,21 @@ int cmdBuildBrowser(const Options& o) {
             jtml::validateStaticComponentModuleForProduction(runtimeProjectPlan);
         if (!productionIssues.empty()) {
             std::ostringstream message;
-            message << "clean browser production build is not available for this app yet";
+            message << "This app cannot compile to clean browser production yet.\n"
+                    << "The clean production target only ships static browser assets and "
+                    << "does not include the legacy compatibility update-plan fallback.\n"
+                    << "Unsupported shape(s):";
             for (const auto& issue : productionIssues) {
                 message << "\n- " << issue;
             }
-            message << "\nUse --compat for an explicit compatibility/debug build while this shape is unsupported.";
+            message
+                << "\n\nWhat to do:\n"
+                << "- Temporary migration build: jtml build " << input.string()
+                << " --target browser --compat --out " << outDir.string() << "\n"
+                << "- Diagnostic build with source-rich compatibility metadata: jtml build "
+                << input.string() << " --target browser --debug --out "
+                << outDir.string() << "\n"
+                << "- Or change the component shape above to clean-prod supported template/action semantics.";
             throw std::runtime_error(message.str());
         }
     }
@@ -361,6 +373,8 @@ int cmdBuildBrowser(const Options& o) {
     } else {
         std::cout << "Skipped legacy browser update plans for production browser output\n";
     }
+
+    validateBrowserBuildOutputSchema(outDir, buildMode);
 
     if (inputWasDirectory) {
         copyBrowserBuildAssets(inputDir, outDir);

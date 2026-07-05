@@ -162,7 +162,9 @@ jtml_configure_core_target(jtml_cli_common)
 
 add_library(jtml_browser_build_lib STATIC
     cli/browser_build.cpp
+    cli/browser_build_assets.cpp
     cli/browser_build_policy.cpp
+    cli/browser_build_schema.cpp
 )
 target_link_libraries(jtml_browser_build_lib PUBLIC
     jtml_browser_production

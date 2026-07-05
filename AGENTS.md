@@ -86,11 +86,22 @@ owns the production component plan index. `jtml-update-plans.js` remains a
 legacy compatibility/debug asset for older tooling while the runtime split is
 completed. Clean `jtml build --target browser` output is the default and must
 omit it, must not advertise `compatibilityUpdatePlans` from `app.js`, must
-disable synthetic imported-component stubs, and must fail if the component
-module still needs compatibility/update-plan fallback. `--compat` and `--debug`
-opt into the legacy asset explicitly for migration/tooling paths. Browser mode
-precedence and public asset-copy rules live in `cli/browser_build_policy.cpp`;
-keep new policy decisions there instead of growing `cli/browser_build.cpp`.
+disable synthetic imported-component stubs, and must fail with source-first
+remediation text if the component module still needs compatibility/update-plan
+fallback. `--compat` opts into the legacy asset explicitly for migration paths.
+`--debug` also emits the legacy asset, but its contract is source-rich
+diagnostics/fallback telemetry, not production behavior. `dist/app.js` exposes
+the formal `window.jtml.browserBuild` object (`version`, `mode`,
+`cleanProduction`, `compatibility`, `debug`, `assets`, `diagnostics`);
+`window.jtml.productionMode` is only a compatibility alias. Browser mode
+precedence and public asset eligibility live in `cli/browser_build_policy.cpp`,
+while filesystem copying lives in `cli/browser_build_assets.cpp`; keep new
+policy decisions out of `cli/browser_build.cpp`. Mode-specific output schema
+validation lives in `cli/browser_build_schema.cpp` and runs before
+`cmdBuildBrowser` returns success. Directory browser builds copy only
+`public/`, `assets/`, and selected root web metadata files by default, and
+intentionally skip symlinks until configurable asset include/exclude rules
+exist.
 The component module exposes:
 
 - `window.__jtml_static_component_plan_index`
@@ -210,7 +221,10 @@ fixture-specific DOM results, nested-param/keyed-list telemetry, retained
 nested wrapper identity, and retained keyed row identity for reorder fixtures.
 The fixture set includes small smoke cases plus `large_keyed_rows` and
 `nested_component_update` as first production-budget scaffolds for 1k keyed row
-lifecycle and nested component parameter updates.
+lifecycle and nested component parameter updates. `lifecycle_cleanup` exercises
+conditional nested-component removal and keyed item cleanup, and the browser
+harness asserts clean `window.jtml.browserBuild` mode plus absence of loaded
+legacy update-plan scripts.
 
 ## VS Code extension
 

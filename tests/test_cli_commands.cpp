@@ -1,5 +1,6 @@
 #include "cli/commands.h"
 #include "cli/browser_build_policy.h"
+#include "cli/browser_build_schema.h"
 #include "json.hpp"
 
 #include <gtest/gtest.h>
@@ -942,13 +943,21 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionLegacyUpdatePlanAssetWithCompat"],
               "emitted-for-explicit-compat-debug");
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionAppBootstrapDefault"],
-              "omits compatibilityUpdatePlans");
+              "browserBuild contract; omits compatibilityUpdatePlans");
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionAppBootstrapContract"],
+              "window.jtml.browserBuild");
+    EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionModeCompatibilityAlias"],
+              true);
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionImportStubsDefault"],
               "disabled");
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionModeFlags"],
               "mutually-exclusive");
     EXPECT_EQ(report["runtimeCapabilities"]["runtimeAssembly"]["productionDebugMetadataSplit"],
-              "partial-debug-mode-planned");
+              "first-slice: source spans + fallback telemetry + legacy metadata");
+    EXPECT_NE(report["runtimeCapabilities"]["runtimeAssembly"]["productionAssetCopyPolicy"].get<std::string>().find("skip symlinks"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["runtimeAssembly"]["productionAssetSchemaValidation"].get<std::string>().find("prod/compat/debug"),
+              std::string::npos);
     EXPECT_FALSE(report["runtimeCapabilities"]["runtimeAssembly"].contains("browserProductionLinksLiveAndLegacyRuntime"))
         << report["runtimeCapabilities"]["runtimeAssembly"].dump(2);
     EXPECT_NE(report["runtimeCapabilities"]["runtimeAssembly"]["browserProductionLinkIsolation"].get<std::string>().find("build/transpile service isolated"),
@@ -1014,6 +1023,7 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["keyedListBelowWrapperReconciliation"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["keyedListChildMarkerReconciliation"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["keyedListPrunesRemovedDynamicChildren"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["destroyLifecycleTelemetry"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["liveBodyPlanPatchTelemetry"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["liveBodyPlanExpressionPlans"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["liveBodyPlanPrimaryTransportContract"], true);
@@ -1058,6 +1068,7 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     const auto benchmarkFixtures = report["runtimeCapabilities"]["performanceTarget"]["benchmarkFixtures"].dump();
     EXPECT_NE(benchmarkFixtures.find("large_keyed_rows"), std::string::npos);
     EXPECT_NE(benchmarkFixtures.find("nested_component_update"), std::string::npos);
+    EXPECT_NE(benchmarkFixtures.find("lifecycle_cleanup"), std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["browserAssetBudgets"].get<std::string>().find("byte budgets"),
               std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["dynamicGeneratedUpdateFunctions"].get<std::string>().find("removed from shipped runtime"),
@@ -1202,7 +1213,9 @@ TEST(BuildOwnership, BrowserProductionSourcesAreSeparatedFromLiveAndLegacyRuntim
     const auto browserBuildBlock =
         cmake.substr(browserBuildBegin, browserProductionLinkcheckBegin - browserBuildBegin);
     EXPECT_NE(browserBuildBlock.find("cli/browser_build.cpp"), std::string::npos);
+    EXPECT_NE(browserBuildBlock.find("cli/browser_build_assets.cpp"), std::string::npos);
     EXPECT_NE(browserBuildBlock.find("cli/browser_build_policy.cpp"), std::string::npos);
+    EXPECT_NE(browserBuildBlock.find("cli/browser_build_schema.cpp"), std::string::npos);
     EXPECT_NE(browserBuildBlock.find("jtml_browser_production"), std::string::npos);
     EXPECT_NE(browserBuildBlock.find("jtml_cli_common"), std::string::npos);
     EXPECT_EQ(browserBuildBlock.find("jtml_core"), std::string::npos);
@@ -1578,8 +1591,14 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
               std::string::npos) << runtimeAsset;
     const std::string appAsset = readTextFile(outDir / "app.js");
     EXPECT_NE(appAsset.find("productionAssets"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("browserBuild = {"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("mode: 'prod'"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("cleanProduction: true"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("compatibility: false"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("debug: false"), std::string::npos) << appAsset;
     EXPECT_EQ(appAsset.find("compatibilityUpdatePlans"), std::string::npos) << appAsset;
-    EXPECT_NE(appAsset.find("productionMode = 'prod'"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("productionMode = window.jtml.browserBuild.mode"),
+              std::string::npos) << appAsset;
     EXPECT_EQ(appAsset.find("new Function"), std::string::npos) << appAsset;
     EXPECT_EQ(appAsset.find("eval("), std::string::npos) << appAsset;
 }
@@ -1624,7 +1643,13 @@ TEST(BrowserBuildPolicy, AppBootstrapReflectsModeContract) {
     EXPECT_NE(prod.find("runtime: './jtml-runtime.js'"), std::string::npos) << prod;
     EXPECT_NE(prod.find("components: './components/index.js'"), std::string::npos) << prod;
     EXPECT_NE(prod.find("app: './app.js'"), std::string::npos) << prod;
-    EXPECT_NE(prod.find("productionMode = 'prod'"), std::string::npos) << prod;
+    EXPECT_NE(prod.find("browserBuild = {"), std::string::npos) << prod;
+    EXPECT_NE(prod.find("mode: 'prod'"), std::string::npos) << prod;
+    EXPECT_NE(prod.find("cleanProduction: true"), std::string::npos) << prod;
+    EXPECT_NE(prod.find("compatibility: false"), std::string::npos) << prod;
+    EXPECT_NE(prod.find("debug: false"), std::string::npos) << prod;
+    EXPECT_NE(prod.find("productionMode = window.jtml.browserBuild.mode"),
+              std::string::npos) << prod;
     EXPECT_EQ(prod.find("compatibilityUpdatePlans"), std::string::npos) << prod;
     EXPECT_EQ(prod.find("jtml-update-plans.js"), std::string::npos) << prod;
     EXPECT_EQ(prod.find("new Function"), std::string::npos) << prod;
@@ -1632,13 +1657,19 @@ TEST(BrowserBuildPolicy, AppBootstrapReflectsModeContract) {
 
     const auto compat = jtml::cli::emitBrowserBuildAppBootstrap(
         jtml::cli::BrowserBuildMode::Compatibility);
-    EXPECT_NE(compat.find("productionMode = 'compat'"), std::string::npos) << compat;
+    EXPECT_NE(compat.find("mode: 'compat'"), std::string::npos) << compat;
+    EXPECT_NE(compat.find("compatibility: true"), std::string::npos) << compat;
+    EXPECT_NE(compat.find("debug: false"), std::string::npos) << compat;
     EXPECT_NE(compat.find("compatibilityUpdatePlans: './jtml-update-plans.js'"),
               std::string::npos) << compat;
 
     const auto debug = jtml::cli::emitBrowserBuildAppBootstrap(
         jtml::cli::BrowserBuildMode::Debug);
-    EXPECT_NE(debug.find("productionMode = 'debug'"), std::string::npos) << debug;
+    EXPECT_NE(debug.find("mode: 'debug'"), std::string::npos) << debug;
+    EXPECT_NE(debug.find("compatibility: true"), std::string::npos) << debug;
+    EXPECT_NE(debug.find("debug: true"), std::string::npos) << debug;
+    EXPECT_NE(debug.find("sourceSpans: true"), std::string::npos) << debug;
+    EXPECT_NE(debug.find("fallbackTelemetry: true"), std::string::npos) << debug;
     EXPECT_NE(debug.find("compatibilityUpdatePlans: './jtml-update-plans.js'"),
               std::string::npos) << debug;
 }
@@ -1646,6 +1677,10 @@ TEST(BrowserBuildPolicy, AppBootstrapReflectsModeContract) {
 TEST(BrowserBuildPolicy, PublicAssetFilterSkipsProjectPrivateAndGeneratedFiles) {
     EXPECT_TRUE(jtml::cli::shouldCopyBrowserBuildAsset("public/logo.png"));
     EXPECT_TRUE(jtml::cli::shouldCopyBrowserBuildAsset("assets/data.json"));
+    EXPECT_TRUE(jtml::cli::shouldCopyBrowserBuildAsset("robots.txt"));
+    EXPECT_TRUE(jtml::cli::shouldCopyBrowserBuildAsset("manifest.json"));
+    EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset("README.md"));
+    EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset("nested/readme.txt"));
     EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset(".env"));
     EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset(".env.local"));
     EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset(".hidden/logo.png"));
@@ -1655,6 +1690,57 @@ TEST(BrowserBuildPolicy, PublicAssetFilterSkipsProjectPrivateAndGeneratedFiles) 
     EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset("jtml_modules/pkg/index.jtml"));
     EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset("jtml.lock"));
     EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset("package-lock.json"));
+}
+
+TEST(BrowserBuildSchema, RejectsProdLegacyReferencesAndDebugRequiresTelemetryContract) {
+    const auto root = makeTempDir("browser-build-schema");
+    writeTempFile(root / "index.jtml",
+        "jtml 2\n"
+        "page\n"
+        "  text \"Schema\"\n");
+
+    const auto prodOut = root / "dist-prod";
+    jtml::cli::Options prod;
+    prod.inputFile = (root / "index.jtml").string();
+    prod.outputFile = prodOut.string();
+    prod.syntax = jtml::SyntaxMode::Auto;
+    prod.target = "browser";
+    const auto prodResult = captureCommand([&] { return jtml::cli::cmdBuild(prod); });
+    ASSERT_EQ(prodResult.code, 0) << prodResult.out << prodResult.err;
+    EXPECT_NO_THROW({
+        jtml::cli::validateBrowserBuildOutputSchema(
+            prodOut, jtml::cli::BrowserBuildMode::Production);
+    });
+
+    writeTempFile(prodOut / "app.js",
+        "window.jtml={productionAssets:{compatibilityUpdatePlans:'./jtml-update-plans.js'},"
+        "browserBuild:{mode:'prod'}};");
+    EXPECT_THROW({
+        jtml::cli::validateBrowserBuildOutputSchema(
+            prodOut, jtml::cli::BrowserBuildMode::Production);
+    }, std::runtime_error);
+
+    const auto debugOut = root / "dist-debug";
+    jtml::cli::Options debug = prod;
+    debug.outputFile = debugOut.string();
+    debug.debug = true;
+    const auto debugResult = captureCommand([&] { return jtml::cli::cmdBuild(debug); });
+    ASSERT_EQ(debugResult.code, 0) << debugResult.out << debugResult.err;
+    EXPECT_NO_THROW({
+        jtml::cli::validateBrowserBuildOutputSchema(
+            debugOut, jtml::cli::BrowserBuildMode::Debug);
+    });
+
+    std::string debugApp = readTextFile(debugOut / "app.js");
+    const auto telemetry = debugApp.find("fallbackTelemetry: true");
+    ASSERT_NE(telemetry, std::string::npos) << debugApp;
+    debugApp.replace(telemetry, std::string("fallbackTelemetry: true").size(),
+                     "fallbackTelemetry: false");
+    writeTempFile(debugOut / "app.js", debugApp);
+    EXPECT_THROW({
+        jtml::cli::validateBrowserBuildOutputSchema(
+            debugOut, jtml::cli::BrowserBuildMode::Debug);
+    }, std::runtime_error);
 }
 
 TEST(CliBuild, BrowserTargetCompatEmitsLegacyCompatibilityAssets) {
@@ -1686,8 +1772,13 @@ TEST(CliBuild, BrowserTargetCompatEmitsLegacyCompatibilityAssets) {
 
     const std::string appAsset = readTextFile(outDir / "app.js");
     EXPECT_NE(appAsset.find("productionAssets"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("browserBuild = {"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("mode: 'compat'"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("compatibility: true"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("debug: false"), std::string::npos) << appAsset;
     EXPECT_NE(appAsset.find("compatibilityUpdatePlans"), std::string::npos) << appAsset;
-    EXPECT_NE(appAsset.find("productionMode = 'compat'"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("productionMode = window.jtml.browserBuild.mode"),
+              std::string::npos) << appAsset;
     EXPECT_EQ(appAsset.find("new Function"), std::string::npos) << appAsset;
     EXPECT_EQ(appAsset.find("eval("), std::string::npos) << appAsset;
 
@@ -1768,7 +1859,9 @@ TEST(CliBuild, BrowserTargetProdOmitsLegacyCompatibilityAssets) {
     EXPECT_EQ(html.find("jtml-update-plans.js"), std::string::npos) << html;
 
     const std::string appAsset = readTextFile(outDir / "app.js");
-    EXPECT_NE(appAsset.find("productionMode = 'prod'"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("browserBuild = {"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("mode: 'prod'"), std::string::npos) << appAsset;
+    EXPECT_NE(appAsset.find("cleanProduction: true"), std::string::npos) << appAsset;
     EXPECT_EQ(appAsset.find("compatibilityUpdatePlans"), std::string::npos) << appAsset;
     EXPECT_EQ(appAsset.find("jtml-update-plans.js"), std::string::npos) << appAsset;
 
@@ -1877,7 +1970,72 @@ TEST(CliBuild, BrowserTargetProdUnsupportedComponentShapeReportsSourcePath) {
                   std::string::npos) << message;
         EXPECT_NE(message.find(input.string()), std::string::npos) << message;
         EXPECT_NE(message.find(":4:"), std::string::npos) << message;
-        EXPECT_NE(message.find("Use --compat"), std::string::npos) << message;
+        EXPECT_NE(message.find("Temporary migration build:"), std::string::npos) << message;
+        EXPECT_NE(message.find("--compat"), std::string::npos) << message;
+        EXPECT_NE(message.find("--debug"), std::string::npos) << message;
+        EXPECT_NE(message.find("clean-prod supported template/action semantics"),
+                  std::string::npos) << message;
+    }
+}
+
+TEST(CliBuild, BrowserTargetProdUnsupportedShapeMatrixReportsRemediation) {
+    struct Case {
+        std::string name;
+        std::string source;
+        std::string expectedNode;
+    };
+    const std::vector<Case> cases = {
+        {
+            "while",
+            "jtml 2\n"
+            "let ready = true\n"
+            "make LoopBox\n"
+            "\n"
+            "  while ready\n"
+            "    text \"Still unsupported\"\n"
+            "page\n"
+            "  LoopBox\n",
+            "while",
+        },
+        {
+            "nested-while",
+            "jtml 2\n"
+            "let ready = true\n"
+            "make NestedLoop\n"
+            "  card title \"Control\"\n"
+            "    while ready\n"
+            "      text \"Still unsupported under containers\"\n"
+            "page\n"
+            "  NestedLoop\n",
+            "while",
+        },
+    };
+
+    for (const auto& item : cases) {
+        const auto root = makeTempDir("browser-prod-unsupported-" + item.name);
+        const auto input = root / "index.jtml";
+        writeTempFile(input, item.source);
+
+        jtml::cli::Options opts;
+        opts.inputFile = input.string();
+        opts.outputFile = (root / "dist").string();
+        opts.syntax = jtml::SyntaxMode::Auto;
+        opts.target = "browser";
+
+        try {
+            (void)jtml::cli::cmdBuild(opts);
+            FAIL() << "clean production build should reject unsupported shape " << item.name;
+        } catch (const std::runtime_error& error) {
+            const std::string message = error.what();
+            EXPECT_NE(message.find("This app cannot compile to clean browser production yet."),
+                      std::string::npos) << message;
+            EXPECT_NE(message.find("unsupported production"), std::string::npos) << message;
+            EXPECT_NE(message.find("node `" + item.expectedNode + "`"),
+                      std::string::npos) << message;
+            EXPECT_NE(message.find(input.string()), std::string::npos) << message;
+            EXPECT_NE(message.find("--compat"), std::string::npos) << message;
+            EXPECT_NE(message.find("--debug"), std::string::npos) << message;
+        }
     }
 }
 
@@ -1888,6 +2046,9 @@ TEST(CliBuild, BrowserDirectoryBuildSkipsSensitiveAndGeneratedAssets) {
         "page\n"
         "  text \"Assets\"\n");
     writeTempFile(root / "public" / "logo.txt", "ship me");
+    writeTempFile(root / "assets" / "data.json", "{\"ok\":true}");
+    writeTempFile(root / "robots.txt", "User-agent: *");
+    writeTempFile(root / "README.md", "do not ship");
     writeTempFile(root / ".env", "SECRET=1");
     writeTempFile(root / ".hidden", "hidden");
     writeTempFile(root / "node_modules" / "dep.js", "dependency");
@@ -1910,6 +2071,9 @@ TEST(CliBuild, BrowserDirectoryBuildSkipsSensitiveAndGeneratedAssets) {
     ASSERT_EQ(result.code, 0) << result.out << result.err;
 
     EXPECT_TRUE(std::filesystem::exists(outDir / "public" / "logo.txt"));
+    EXPECT_TRUE(std::filesystem::exists(outDir / "assets" / "data.json"));
+    EXPECT_TRUE(std::filesystem::exists(outDir / "robots.txt"));
+    EXPECT_FALSE(std::filesystem::exists(outDir / "README.md"));
     EXPECT_FALSE(std::filesystem::exists(outDir / ".env"));
     EXPECT_FALSE(std::filesystem::exists(outDir / ".hidden"));
     EXPECT_FALSE(std::filesystem::exists(outDir / "node_modules" / "dep.js"));

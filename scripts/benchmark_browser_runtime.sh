@@ -52,7 +52,7 @@ echo "clicks per fixture: ${CLICK_COUNT}"
 echo "per-fixture budget: ${BUDGET_MS}ms"
 echo "browser launch timeout: ${BROWSER_TIMEOUT}s"
 
-fixtures=(static_counter keyed_list control_flow composition large_keyed_rows nested_component_update)
+fixtures=(static_counter keyed_list control_flow composition large_keyed_rows nested_component_update lifecycle_cleanup)
 for fixture in "${fixtures[@]}"; do
   fixture_dir="${OUT_ROOT}/${fixture}"
   index="${fixture_dir}/index.html"
@@ -146,6 +146,13 @@ harness = f"""
         clicks: clickCount,
         durationMs,
         textSample: bodyText.slice(0, 1000),
+        loadedScripts: Array.prototype.slice.call(document.querySelectorAll('script[src]')).map(function(el) {{
+          return el.getAttribute('src') || '';
+        }}),
+        browserBuildMode: jtml.browserBuild && jtml.browserBuild.mode || '',
+        browserBuildCleanProduction: !!(jtml.browserBuild && jtml.browserBuild.cleanProduction),
+        browserBuildCompatibility: !!(jtml.browserBuild && jtml.browserBuild.compatibility),
+        browserBuildDebug: !!(jtml.browserBuild && jtml.browserBuild.debug),
         keyedTexts,
         nestedWrapperRetained: !!beforeNestedWrapper && beforeNestedWrapper === afterNestedWrapper,
         keyedRetainedCount,
@@ -153,6 +160,7 @@ harness = f"""
         keyedFinalCount: keyedAfter.length,
         nestedWrappersRetainedCount,
         nestedWrappersInitialCount: beforeNestedWrappersById.size,
+        directComponentDestroyLifecycle: jtml.directComponentDestroyLifecycle || null,
         directComponentExecution: !!jtml.directComponentExecution,
         directComponentLastAction: !!jtml.directComponentLastAction,
         directNestedComponentParamPatch: !!jtml.directNestedComponentParamPatch,
@@ -296,6 +304,16 @@ if duration > budget_ms:
     raise SystemExit(f"error: {fixture} browser runtime {duration:.2f}ms exceeds budget {budget_ms:.2f}ms")
 text = str(result.get("textSample", ""))
 keyed_texts = result.get("keyedTexts", [])
+loaded_scripts = [str(item) for item in result.get("loadedScripts", [])]
+if result.get("browserBuildMode") != "prod" or not result.get("browserBuildCleanProduction"):
+    raise SystemExit(
+        f"error: {fixture} did not run the clean production browser build contract: "
+        f"mode={result.get('browserBuildMode')!r}, clean={result.get('browserBuildCleanProduction')!r}"
+    )
+if result.get("browserBuildCompatibility") or result.get("browserBuildDebug"):
+    raise SystemExit(f"error: {fixture} browser benchmark ran compat/debug mode in clean prod")
+if any("jtml-update-plans.js" in item for item in loaded_scripts):
+    raise SystemExit(f"error: {fixture} loaded legacy update-plan asset in clean prod: {loaded_scripts!r}")
 if fixture == "static_counter" and f"Count {expected_clicks}" not in text:
     raise SystemExit(f"error: static_counter did not update DOM text to Count {expected_clicks}: {text!r}")
 if fixture == "composition" and "Beta" not in text:
@@ -329,6 +347,15 @@ if fixture == "large_keyed_rows":
             )
 if fixture == "nested_component_update" and f"Value {expected_clicks}" not in text:
     raise SystemExit(f"error: nested_component_update did not update nested component text: {text!r}")
+if fixture == "lifecycle_cleanup":
+    if "Mounted" not in text or "alpha" not in text:
+        raise SystemExit(f"error: lifecycle_cleanup did not restore visible nested/list state: {text!r}")
+    destroy = result.get("directComponentDestroyLifecycle") or {}
+    reasons = destroy.get("reasons") or {}
+    if int(destroy.get("count", 0)) <= 0:
+        raise SystemExit("error: lifecycle_cleanup did not report component destroy lifecycle telemetry")
+    if not (int(reasons.get("subtree-prune", 0)) > 0 or int(reasons.get("keyed-list-remove", 0)) > 0):
+        raise SystemExit(f"error: lifecycle_cleanup did not report subtree/keyed cleanup reasons: {reasons!r}")
 if fixture == "composition" and not result.get("directNestedComponentParamPatch"):
     raise SystemExit("error: composition did not use in-place nested component parameter patch")
 if fixture == "nested_component_update" and not result.get("directNestedComponentParamPatch"):

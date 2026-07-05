@@ -1,6 +1,6 @@
 // cli/browser_build_policy.h
 //
-// Browser build policy owns mode selection and public asset-copy rules. Keep
+// Browser build policy owns mode selection and public asset eligibility. Keep
 // these decisions outside browser_build.cpp so the build service does not grow
 // into another command monolith.
 #pragma once
@@ -25,7 +25,5 @@ bool browserBuildModeAllowsImportStubs(BrowserBuildMode mode);
 std::string emitBrowserBuildAppBootstrap(BrowserBuildMode mode);
 
 bool shouldCopyBrowserBuildAsset(const std::filesystem::path& rel);
-int copyBrowserBuildAssets(const std::filesystem::path& inputDir,
-                           const std::filesystem::path& outDir);
 
 } // namespace jtml::cli

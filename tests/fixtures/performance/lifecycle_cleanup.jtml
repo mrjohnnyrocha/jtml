@@ -1,0 +1,25 @@
+jtml 2
+
+make Badge label
+  badge label tone good
+
+make LifecycleDemo
+  let visible = true
+  get rows = visible ? ["alpha", "beta", "gamma"] : ["beta", "gamma"]
+
+  when cycle
+    visible = !visible
+
+  panel title "Lifecycle cleanup"
+    if visible
+      card title "Nested child" tone primary
+        Badge "Mounted"
+    else
+      empty "Nested child removed"
+    for item in rows key item
+      card title item tone neutral
+        text item
+    button "Cycle" click cycle
+
+page
+  LifecycleDemo

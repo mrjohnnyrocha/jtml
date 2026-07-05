@@ -176,7 +176,8 @@ only when the target boundary owns a stable contract and regression coverage.
   --target browser` implementation now lives in a
   separate `jtml_browser_build_lib` service linked to `jtml_browser_production`
   and CLI file/module loading, with browser mode and public asset-copy policy
-  isolated in `cli/browser_build_policy.cpp`. Its functional linkcheck calls
+  isolated in `cli/browser_build_policy.cpp` and filesystem asset copying split
+  into `cli/browser_build_assets.cpp`. Its functional linkcheck calls
   the real browser transpile and browser build services, inspects split browser
   assets, and excludes aggregate `jtml_core`. Both
   `build --target browser` and `transpile --target browser`
@@ -185,10 +186,18 @@ only when the target boundary owns a stable contract and regression coverage.
   shipped CLI binary remains aggregate-linked for compatibility. Browser builds
   now default to clean production output: no `jtml-update-plans.js`, no
   `compatibilityUpdatePlans` advertisement, no synthetic imported-component
-  stubs, and no mixed mode flags. `--compat` and `--debug` are explicit opt-in
-  modes for migration/tooling output while the debug model is split further.
-  Clean production also validates the static component module plan and fails
-  when a component shape still needs compatibility/update-plan fallback.
+  stubs, and no mixed mode flags. `--compat` is the explicit migration bridge;
+  `--debug` is the source-rich diagnostics/fallback-telemetry bridge. Both emit
+  the legacy update-plan asset, but neither is the production contract.
+  `dist/app.js` now exposes the formal `window.jtml.browserBuild` object, with
+  `window.jtml.productionMode` kept only as a compatibility alias. Clean
+  production also validates the static component module plan and fails with
+  remediation text when a component shape still needs compatibility/update-plan
+  fallback. Directory builds now copy only public assets from `public/`,
+  `assets/`, and selected root web metadata files; symlinks are intentionally
+  skipped until configurable asset include/exclude rules ship. ✅ Asset schema
+  slice: `cli/browser_build_schema.cpp` validates the emitted prod/compat/debug
+  browser asset contract before `cmdBuildBrowser` returns success.
 - **Legacy runtime quarantine**: `environment.cpp`, `array.cpp`, `dict.cpp`,
   and `value.cpp` now live under `src/jtml/legacy_runtime/`. The public headers
   remain in `include/jtml/` for compatibility and are marked as legacy/live
@@ -204,7 +213,10 @@ The current focus is the semantic-core transition:
   classification, literal/reactive separation, source spans, and source-first
   diagnostics. ✅ First slice: `JtmlAttributeKind` now classifies
   literal/boolean/reactive/event/special/passthrough attributes before
-  transpiler/interpreter runtime binding.
+  transpiler/interpreter runtime binding. Source-line diagnostics currently
+  flow through runtime-plan/body-plan bridges, but the next required slice is a
+  parser/AST source span model carried end-to-end instead of line adjustment at
+  validation time.
 - P1 observable graph: make `jtml explain` consume a real semantic model rather
   than ad-hoc parser guesses. ✅ First slice: state/constants/derived/actions,
   fetches, routes, effects, stores, components, imports, attribute kinds, and
@@ -479,7 +491,10 @@ The current focus is the semantic-core transition:
   in the browser runtime benchmark. The `keyed_list` fixture asserts retained
   row identity across keyed reorder, and the benchmark fixture set now includes
   `large_keyed_rows` as the first larger-budget scaffold for 1k keyed row
-  lifecycle behavior.
+  lifecycle behavior. `lifecycle_cleanup` now exercises conditional
+  nested-component removal and keyed item cleanup, and the browser harness
+  asserts clean `window.jtml.browserBuild` mode plus absence of loaded legacy
+  update-plan scripts.
   This path has an executable guardrail: 50 KB
   for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
   `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
@@ -500,8 +515,9 @@ The current focus is the semantic-core transition:
   contents with below-wrapper element/text reconciliation where the body-plan
   shape matches, reconciles child elements by stable body-node markers below
   retained wrappers, reports retained/inserted/removed/moved key sets, prunes
-  removed nested dynamic children for keyed list items, and fails closed to
-  whole-region replacement when keys are unsafe.
+  removed nested dynamic children for keyed list items, reports destroy
+  lifecycle telemetry, and fails closed to whole-region replacement when keys
+  are unsafe.
   Static create fallback paths now record source-first component/plan context in
   `window.jtml.directComponentCreateFallback`, so unsupported shapes are
   debuggable instead of disappearing into generic runtime helpers. Nested

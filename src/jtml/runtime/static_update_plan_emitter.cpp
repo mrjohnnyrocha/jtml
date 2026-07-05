@@ -542,6 +542,7 @@ nlohmann::json compileStaticComponentUpdatePlan(
         {"localState", definition.localState},
         {"localDerived", definition.localDerived},
         {"localActions", definition.localActions},
+        {"sourceLine", definition.sourceLine},
         {"bodyPlan", bodyPlanJson},
         {"entries", entries},
         {"entriesByRead", entriesByRead},
@@ -1327,17 +1328,14 @@ std::string directStaticSlotCreateExpression(size_t nodeIndex,
     std::ostringstream out;
     out << "(function(){ "
         << "const slotName = " << jsStringLiteral(slotName) << "; "
-        << "let html = null; "
+        << "let html = ''; "
         << "if (!slotName && instance && instance.slotHtml != null) html = String(instance.slotHtml); "
         << "else if (slotName && instance && instance.slotHtmlByName && "
         << "Object.prototype.hasOwnProperty.call(instance.slotHtmlByName, slotName)) "
         << "html = String(instance.slotHtmlByName[slotName]); "
-        << "if (html != null) return '<span data-jtml-direct-body-node=\""
+        << "return '<span data-jtml-direct-body-node=\""
         << nodeIndex
         << "\" data-jtml-direct-region=\"slot\" style=\"display:contents\">' + html + '</span>'; "
-        << "return (h && h.renderStaticComponentSlotNode ? "
-        << "h.renderStaticComponentSlotNode(instance, definition, scope, "
-        << nodeIndex << ", slotName) : null); "
         << "})()";
     return out.str();
 }
@@ -2019,6 +2017,42 @@ std::string emitStaticUpdatePlanAsset(const RuntimeProjectPlan& plan) {
 std::vector<std::string> validateStaticComponentModuleForProduction(
         const RuntimeProjectPlan& plan) {
     std::vector<std::string> issues;
+    std::map<SemanticModuleId, std::string> modulePaths;
+    for (const auto& module : plan.modules) {
+        if (module.id != InvalidSemanticModuleId && !module.path.empty()) {
+            modulePaths[module.id] = module.path;
+        }
+    }
+
+    auto sourceLabelFor = [&](const nlohmann::json& component,
+                              const nlohmann::json& entry) {
+        std::ostringstream out;
+        bool emitted = false;
+        if (component.contains("moduleId") && component["moduleId"].is_number_integer()) {
+            const auto id = static_cast<SemanticModuleId>(component["moduleId"].get<int>());
+            const auto found = modulePaths.find(id);
+            if (found != modulePaths.end() && !found->second.empty()) {
+                out << found->second;
+                emitted = true;
+            }
+        }
+        int line = entry.value("sourceLine", 0);
+        const int componentLine = component.value("sourceLine", 0);
+        if (line > 0 && componentLine > 0) {
+            line += componentLine;
+        }
+        if (line > 0) {
+            if (emitted) out << ":";
+            else out << "line ";
+            out << line;
+            if (entry.value("sourceColumn", 0) > 0) {
+                out << ":" << entry.value("sourceColumn", 0);
+            }
+            emitted = true;
+        }
+        return emitted ? out.str() : std::string();
+    };
+
     const auto components = assignComponentIdsAndChildIds(collectComponentPlans(plan));
     if (!components.is_array()) return issues;
 
@@ -2039,11 +2073,9 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
             issue << "component " << context
                   << " has unsupported production create node `"
                   << entry.value("kind", "<unknown>") << "`";
-            if (entry.value("sourceLine", 0) > 0) {
-                issue << " at line " << entry.value("sourceLine", 0);
-                if (entry.value("sourceColumn", 0) > 0) {
-                    issue << ":" << entry.value("sourceColumn", 0);
-                }
+            const auto source = sourceLabelFor(component, entry);
+            if (!source.empty()) {
+                issue << " at " << source;
             }
             issues.push_back(issue.str());
         }
@@ -2056,11 +2088,9 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
             issue << "component " << context
                   << " has unsupported production update node `"
                   << entry.value("kind", "<unknown>") << "`";
-            if (entry.value("sourceLine", 0) > 0) {
-                issue << " at line " << entry.value("sourceLine", 0);
-                if (entry.value("sourceColumn", 0) > 0) {
-                    issue << ":" << entry.value("sourceColumn", 0);
-                }
+            const auto source = sourceLabelFor(component, entry);
+            if (!source.empty()) {
+                issue << " at " << source;
             }
             issues.push_back(issue.str());
         }

@@ -175,8 +175,9 @@ only when the target boundary owns a stable contract and regression coverage.
   runtime plus client manifest without aggregate `jtml_core`. The `jtml build
   --target browser` implementation now lives in a
   separate `jtml_browser_build_lib` service linked to `jtml_browser_production`
-  and CLI file/module loading, with its own functional linkcheck that calls the
-  real browser transpile and browser build services, inspects split browser
+  and CLI file/module loading, with browser mode and public asset-copy policy
+  isolated in `cli/browser_build_policy.cpp`. Its functional linkcheck calls
+  the real browser transpile and browser build services, inspects split browser
   assets, and excludes aggregate `jtml_core`. Both
   `build --target browser` and `transpile --target browser`
   delegate to that service boundary. This completes the v0.2 production
@@ -448,8 +449,9 @@ The current focus is the semantic-core transition:
   shape, and generated text, element attribute/content, button
   label/action-argument, safe region, slot, and nested patch cases that update
   DOM directly before falling back to runtime patch helpers. Slot create
-  functions now have a raw default/named slot HTML fast path, slot patch
-  functions perform their own marked-region DOM replacement, and nested
+  functions now render default/named slot HTML directly, including empty marked
+  slot regions when content is absent, slot patch functions perform their own
+  marked-region DOM replacement, and nested
   component patches first try true parameter/body updates inside the retained
   nested wrapper before wrapper replacement fallback.
   Runtime-plan read analysis now recognizes
@@ -458,6 +460,9 @@ The current focus is the semantic-core transition:
   Body-plan nodes now carry `sourceLine` and `sourceColumn` through the
   semantic runtime plan, live `/api/state`, static component/update-plan
   metadata, browser fallback telemetry, and HTTP runtime diagnostic context.
+  Clean browser production validation also reports unsupported static component
+  shapes with module path plus component-body-adjusted source line/column where
+  available.
   `rootCreateOperations` and per-entry operation payloads remain as
   fallback/debug metadata rather than the primary path. The runtime prefers
   those static modules/plans before

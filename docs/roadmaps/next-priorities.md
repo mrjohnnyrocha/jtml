@@ -27,7 +27,9 @@ The `jtml build --target browser` implementation now lives behind
 `jtml_browser_build_lib`, which links to the production compiler target and has
 its own functional link-check that calls the real browser transpile and browser
 build services, inspects split browser assets, and runs without aggregate
-`jtml_core`. `transpile --target browser` uses the same service boundary.
+`jtml_core`. Browser mode and public asset-copy policy are isolated in
+`cli/browser_build_policy.cpp`. `transpile --target browser` uses the same
+service boundary.
 Command-family packaging for the shipped CLI binary is
 deferred until compatibility and live/server command ownership are less
 volatile.
@@ -202,12 +204,15 @@ that do not require generic runtime region helpers unless they hit a fallback
 shape, and generated text, element attribute/content, button
 label/action-argument, safe region, slot, and nested patches that update DOM
 directly before falling back to runtime patch helpers. Slot create functions
-now have a raw default/named slot HTML fast path, slot patch functions perform
-their own marked-region DOM replacement, and nested patches first try true
+now render default/named slot HTML directly, including empty marked slot
+regions when content is absent, slot patch functions perform their own
+marked-region DOM replacement, and nested patches first try true
 parameter/body updates inside the retained nested wrapper before wrapper
 replacement fallback. Static create fallbacks
 record source-first component/plan context in
-`window.jtml.directComponentCreateFallback`. Runtime-plan read
+`window.jtml.directComponentCreateFallback`, and clean browser production
+validation reports unsupported static component shapes with module path plus
+component-body-adjusted source line/column where available. Runtime-plan read
 analysis also recognizes value-taking attributes such as `title selected` as
 reads of `selected` instead of treating `selected` as a standalone boolean
 attribute.

@@ -1,4 +1,5 @@
 #include "cli/commands.h"
+#include "cli/browser_build_policy.h"
 #include "json.hpp"
 
 #include <gtest/gtest.h>
@@ -1201,6 +1202,7 @@ TEST(BuildOwnership, BrowserProductionSourcesAreSeparatedFromLiveAndLegacyRuntim
     const auto browserBuildBlock =
         cmake.substr(browserBuildBegin, browserProductionLinkcheckBegin - browserBuildBegin);
     EXPECT_NE(browserBuildBlock.find("cli/browser_build.cpp"), std::string::npos);
+    EXPECT_NE(browserBuildBlock.find("cli/browser_build_policy.cpp"), std::string::npos);
     EXPECT_NE(browserBuildBlock.find("jtml_browser_production"), std::string::npos);
     EXPECT_NE(browserBuildBlock.find("jtml_cli_common"), std::string::npos);
     EXPECT_EQ(browserBuildBlock.find("jtml_core"), std::string::npos);
@@ -1582,6 +1584,79 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
     EXPECT_EQ(appAsset.find("eval("), std::string::npos) << appAsset;
 }
 
+TEST(BrowserBuildPolicy, ModeDefaultsToProductionAndExplicitCompatDebugOptIn) {
+    jtml::cli::Options opts;
+    EXPECT_EQ(jtml::cli::browserBuildModeName(
+                  jtml::cli::browserBuildModeFromOptions(opts)),
+              std::string("prod"));
+    EXPECT_FALSE(jtml::cli::browserBuildModeEmitsCompatibilityAsset(
+        jtml::cli::browserBuildModeFromOptions(opts)));
+    EXPECT_FALSE(jtml::cli::browserBuildModeAllowsImportStubs(
+        jtml::cli::browserBuildModeFromOptions(opts)));
+
+    opts.compat = true;
+    EXPECT_EQ(jtml::cli::browserBuildModeName(
+                  jtml::cli::browserBuildModeFromOptions(opts)),
+              std::string("compat"));
+    EXPECT_TRUE(jtml::cli::browserBuildModeEmitsCompatibilityAsset(
+        jtml::cli::browserBuildModeFromOptions(opts)));
+    EXPECT_TRUE(jtml::cli::browserBuildModeAllowsImportStubs(
+        jtml::cli::browserBuildModeFromOptions(opts)));
+
+    opts.compat = false;
+    opts.debug = true;
+    EXPECT_EQ(jtml::cli::browserBuildModeName(
+                  jtml::cli::browserBuildModeFromOptions(opts)),
+              std::string("debug"));
+    EXPECT_TRUE(jtml::cli::browserBuildModeEmitsCompatibilityAsset(
+        jtml::cli::browserBuildModeFromOptions(opts)));
+    EXPECT_TRUE(jtml::cli::browserBuildModeAllowsImportStubs(
+        jtml::cli::browserBuildModeFromOptions(opts)));
+
+    opts.prod = true;
+    EXPECT_THROW({ (void)jtml::cli::browserBuildModeFromOptions(opts); },
+                 std::runtime_error);
+}
+
+TEST(BrowserBuildPolicy, AppBootstrapReflectsModeContract) {
+    const auto prod = jtml::cli::emitBrowserBuildAppBootstrap(
+        jtml::cli::BrowserBuildMode::Production);
+    EXPECT_NE(prod.find("runtime: './jtml-runtime.js'"), std::string::npos) << prod;
+    EXPECT_NE(prod.find("components: './components/index.js'"), std::string::npos) << prod;
+    EXPECT_NE(prod.find("app: './app.js'"), std::string::npos) << prod;
+    EXPECT_NE(prod.find("productionMode = 'prod'"), std::string::npos) << prod;
+    EXPECT_EQ(prod.find("compatibilityUpdatePlans"), std::string::npos) << prod;
+    EXPECT_EQ(prod.find("jtml-update-plans.js"), std::string::npos) << prod;
+    EXPECT_EQ(prod.find("new Function"), std::string::npos) << prod;
+    EXPECT_EQ(prod.find("eval("), std::string::npos) << prod;
+
+    const auto compat = jtml::cli::emitBrowserBuildAppBootstrap(
+        jtml::cli::BrowserBuildMode::Compatibility);
+    EXPECT_NE(compat.find("productionMode = 'compat'"), std::string::npos) << compat;
+    EXPECT_NE(compat.find("compatibilityUpdatePlans: './jtml-update-plans.js'"),
+              std::string::npos) << compat;
+
+    const auto debug = jtml::cli::emitBrowserBuildAppBootstrap(
+        jtml::cli::BrowserBuildMode::Debug);
+    EXPECT_NE(debug.find("productionMode = 'debug'"), std::string::npos) << debug;
+    EXPECT_NE(debug.find("compatibilityUpdatePlans: './jtml-update-plans.js'"),
+              std::string::npos) << debug;
+}
+
+TEST(BrowserBuildPolicy, PublicAssetFilterSkipsProjectPrivateAndGeneratedFiles) {
+    EXPECT_TRUE(jtml::cli::shouldCopyBrowserBuildAsset("public/logo.png"));
+    EXPECT_TRUE(jtml::cli::shouldCopyBrowserBuildAsset("assets/data.json"));
+    EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset(".env"));
+    EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset(".env.local"));
+    EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset(".hidden/logo.png"));
+    EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset("node_modules/pkg/index.js"));
+    EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset("dist/app.js"));
+    EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset("build/app.js"));
+    EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset("jtml_modules/pkg/index.jtml"));
+    EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset("jtml.lock"));
+    EXPECT_FALSE(jtml::cli::shouldCopyBrowserBuildAsset("package-lock.json"));
+}
+
 TEST(CliBuild, BrowserTargetCompatEmitsLegacyCompatibilityAssets) {
     const auto file = writeTempJtml(
         "browser-build-compat",
@@ -1773,6 +1848,37 @@ TEST(CliBuild, BrowserTargetProdRejectsSyntheticImportedComponentStubs) {
     const auto compatResult = captureCommand([&] { return jtml::cli::cmdBuild(compat); });
     EXPECT_EQ(compatResult.code, 0) << compatResult.out << compatResult.err;
     EXPECT_TRUE(std::filesystem::exists(compatOut / "jtml-update-plans.js"));
+}
+
+TEST(CliBuild, BrowserTargetProdUnsupportedComponentShapeReportsSourcePath) {
+    const auto root = makeTempDir("browser-prod-source-diagnostic");
+    const auto input = root / "index.jtml";
+    writeTempFile(input,
+        "jtml 2\n"
+        "let ready = true\n"
+        "make LoopBox\n"
+        "  while ready\n"
+        "    text \"Unsupported in prod direct create today\"\n"
+        "page\n"
+        "  LoopBox\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = input.string();
+    opts.outputFile = (root / "dist").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.target = "browser";
+
+    try {
+        (void)jtml::cli::cmdBuild(opts);
+        FAIL() << "clean production build should reject unsupported component while root";
+    } catch (const std::runtime_error& error) {
+        const std::string message = error.what();
+        EXPECT_NE(message.find("unsupported production create node `while`"),
+                  std::string::npos) << message;
+        EXPECT_NE(message.find(input.string()), std::string::npos) << message;
+        EXPECT_NE(message.find(":4:"), std::string::npos) << message;
+        EXPECT_NE(message.find("Use --compat"), std::string::npos) << message;
+    }
 }
 
 TEST(CliBuild, BrowserDirectoryBuildSkipsSensitiveAndGeneratedAssets) {
@@ -2014,6 +2120,8 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("data-jtml-direct-region=\"slot\""),
               std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("renderStaticComponentSlotNode"),
+              std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("renderStaticComponentNestedNode(instance, definition, scope"),
               std::string::npos) << componentModule;
     EXPECT_EQ(componentModule.find("\"childComponentId\""),
@@ -2156,6 +2264,8 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
     EXPECT_NE(updatePlans.find("instance.slotHtmlByName"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("data-jtml-direct-region=\"slot\""),
+              std::string::npos) << updatePlans;
+    EXPECT_EQ(updatePlans.find("renderStaticComponentSlotNode"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("renderStaticComponentNestedNode(instance, definition, scope"),
               std::string::npos) << updatePlans;

@@ -88,7 +88,10 @@ completed. Clean `jtml build --target browser` output is the default and must
 omit it, must not advertise `compatibilityUpdatePlans` from `app.js`, must
 disable synthetic imported-component stubs, and must fail if the component
 module still needs compatibility/update-plan fallback. `--compat` and `--debug`
-opt into the legacy asset explicitly for migration/tooling paths. The component module exposes:
+opt into the legacy asset explicitly for migration/tooling paths. Browser mode
+precedence and public asset-copy rules live in `cli/browser_build_policy.cpp`;
+keep new policy decisions there instead of growing `cli/browser_build.cpp`.
+The component module exposes:
 
 - `window.__jtml_static_component_plan_index`
 - `window.__jtml_static_update_functions`
@@ -129,9 +132,10 @@ safe control-flow, slot, and nested create functions that do not require runtime
 availability unless they hit a fallback shape, plus generated text, element
 attribute/content, button label/action-arg, safe region, slot, and nested
 patches update DOM directly without a generic region-helper requirement.
-Slot create functions now have a raw default/named slot HTML fast path, and
-slot patch functions replace their own marked DOM regions before falling back
-to generic runtime renderers. Nested component patches now first try true
+Slot create functions now render default/named slot HTML directly, including
+empty marked slot regions when content is absent, and slot patch functions
+replace their own marked DOM regions before falling back to generic runtime
+renderers. Nested component patches now first try true
 parameter/body updates inside the retained nested wrapper and only replace the
 wrapper when identity or shape checks fail.
 Static create fallbacks record source-first component/plan context in
@@ -140,6 +144,9 @@ value-taking attributes such as `title selected` as reads of `selected`, even
 when the value token is also a valid boolean attribute name. Continue with
 richer action-body expression precompilation, stronger keyed reconciliation,
 and broader direct DOM generation.
+Clean browser production validation reports unsupported static component shapes
+with module path plus component-body-adjusted source line/column where
+available.
 Live body-plan JSON mirrors the first-slice browser manifest expression surface
 for node expressions, key expressions, rendered word plans, loop collection
 plans, and component-action call arguments. Live `/api/event` and

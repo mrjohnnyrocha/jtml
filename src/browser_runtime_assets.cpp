@@ -528,6 +528,7 @@ const char* browserRuntimePreludeChunk() {
         const definition = componentDefinitionForInstance(instance) ||
           componentDefinitionForName(instance.component || '', instance.definitionModule, instance.moduleId) ||
           {};
+        const handlerCount = Object.keys(instance.eventHandlers || {}).length;
         let handled = false;
         try {
           const plan = definition && definition.name ? compileComponentUpdatePlan(definition) : null;
@@ -556,6 +557,12 @@ const char* browserRuntimePreludeChunk() {
         const destroyReason = reason || 'unknown';
         destroyInfo.count += 1;
         destroyInfo.lastReason = destroyReason;
+        destroyInfo.lastDestroyedId = instance.id;
+        destroyInfo.lastHandlerCount = handlerCount;
+        destroyInfo.handlerCountTotal = (destroyInfo.handlerCountTotal || 0) + handlerCount;
+        destroyInfo.handlerInstanceDestroyCount =
+          (destroyInfo.handlerInstanceDestroyCount || 0) + (handlerCount > 0 ? 1 : 0);
+        destroyInfo.registrySizeAfter = Object.keys(dynamicComponentInstances).length;
         destroyInfo.reasons[destroyReason] = (destroyInfo.reasons[destroyReason] || 0) + 1;
         window.jtml.directComponentDestroyLifecycle = destroyInfo;
         delete instance.__jtmlDestroying;
@@ -618,7 +625,10 @@ const char* browserRuntimePreludeChunk() {
         Object.assign(scope, instance.params || {});
         (definition.bodyPlan || []).forEach(function (node) {
           if (!node || node.kind !== 'state' || !node.name || node.parentIndex !== -1) return;
-          const result = evaluateClientBodyExpression(node.expression || '', scope);
+          const result = evaluateCompiledComponentExpressionResult(
+            node.expressionPlan || compileComponentExpressionPlan(node.expression || ''),
+            node.expression || '',
+            scope);
           scope[node.name] = result.found ? result.value : unquoteComponentText(node.expression || '');
         });
         componentScopes[instance.id] = scope;
@@ -628,7 +638,10 @@ const char* browserRuntimePreludeChunk() {
       function applyComponentDerived(scope, definition) {
         (definition.bodyPlan || []).forEach(function (node) {
           if (!node || node.kind !== 'derived' || !node.name) return;
-          const result = evaluateClientBodyExpression(node.expression || '', scope);
+          const result = evaluateCompiledComponentExpressionResult(
+            node.expressionPlan || compileComponentExpressionPlan(node.expression || ''),
+            node.expression || '',
+            scope);
           if (result.found) scope[node.name] = result.value;
         });
       }
@@ -1164,6 +1177,11 @@ const char* browserRuntimePreludeChunk() {
         for (let i = start; i < words.length; i += 1) {
           const token = words[i];
           if (stops[token]) break;
+          if (token === 'into' && i + 1 < words.length) {
+            attrs.push({ name: 'data-jtml-direct-component-bind', raw: words[i + 1], exprPlan: { kind: 'literal', value: words[i + 1] } });
+            i += 1;
+            continue;
+          }
           if (isSemanticUiModifierName(token)) {
             const raw = i + 1 < words.length ? words[i + 1] : '';
             if (raw && !stops[raw] && !isComponentAttributeName(raw) &&
@@ -1428,14 +1446,14 @@ const char* browserRuntimeComponentChunk() {
         const nestedInstance = nested.instance;
         const nestedScope = componentScopeFor(nestedInstance, nestedDefinition);
         applyComponentDerived(nestedScope, nestedDefinition);
-        let html = '';
+        let html = null;
         if (staticModule && typeof staticModule.create === 'function') {
           html = staticModule.create(
             nestedInstance,
             nestedDefinition,
             nestedScope,
             Object.assign(generatedUpdateHelpers(), {
-              renderStaticComponentRoots: renderStaticComponentRoots
+                renderStaticComponentRoots: renderStaticComponentRoots
             }));
         }
         if (typeof html !== 'string') {
@@ -1543,11 +1561,11 @@ const char* browserRuntimeComponentChunk() {
         const extras = semanticUiRenderExtras(head, parts);
         if (head === 'checkbox' && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'checkbox';
         if ((head === 'file' || head === 'dropzone') && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'file';
+        if (componentPartsHaveAttribute(parts, 'data-jtml-direct-component-bind')) extras['data-jtml-direct-component-id'] = instance && instance.id || '';
         extras['data-jtml-direct-node'] = head;
-        return '<' + tag + directNodeAttr +
-          componentManagedAttributeMarker(parts, extras) +
-          renderComponentAttributes(parts, extras) + '>' +
-          inline + children + '</' + tag + '>';
+        const attrs = directNodeAttr + componentManagedAttributeMarker(parts, extras) + renderComponentAttributes(parts, extras);
+        if (tag === 'input' || tag === 'img') return '<' + tag + attrs + '>';
+        return '<' + tag + attrs + '>' + inline + children + '</' + tag + '>';
       }
 
       function renderComponentForRegion(definition, instance, node, scope, words) {
@@ -1564,12 +1582,14 @@ const char* browserRuntimeComponentChunk() {
         const loopItemName = loopPlan.item || (match ? match[1] : '');
         const collectionExpr = loopPlan.collectionExpression || (match ? match[2] : raw);
         if (!loopItemName) return [];
-        const result = evaluateCompiledComponentExpressionResult(
-          loopPlan.collectionPlan || compileComponentExpressionPlan(collectionExpr),
-          collectionExpr,
-          scope);
-        if (!result.found) return [];
-        let values = result.value;
+        let values=null,m=String(collectionExpr||'').match(/^(\d+)\.\.(\d+)$/);if(m){let a=+m[1],b=+m[2],s=a<=b?1:-1;values=[];for(let v=a;s>0?v<=b:v>=b;v+=s)values.push(v);}else {
+          const result = evaluateCompiledComponentExpressionResult(
+            loopPlan.collectionPlan || compileComponentExpressionPlan(collectionExpr),
+            collectionExpr,
+            scope);
+          if (!result.found) return [];
+          values = result.value;
+        }
         if (values == null) values = [];
         if (!Array.isArray(values)) {
           if (typeof values === 'string') values = values.split('');
@@ -2013,37 +2033,18 @@ const char* browserRuntimeComponentChunk() {
           ':' + fnv1a64Hex(signature);
       }
 
-      function staticComponentUpdatePlanForKey(key) {
-        const asset = window.__jtml_static_component_plan_index || window.__jtml_static_update_plans;
-        const staticFunctions = window.__jtml_static_update_functions || {};
-        const staticModules = window.__jtml_static_component_modules || {};
-        const components = asset && Array.isArray(asset.components) ? asset.components : [];
-        for (let i = 0; i < components.length; i += 1) {
-          const candidate = components[i] || {};
-          if (candidate.key !== key) continue;
-          const staticUpdate = staticFunctions[key];
-          const staticModule = staticModules[key] || {};
-          return {
-            key: key,
-            component: candidate.name || '',
-            moduleId: candidate.moduleId == null ? null : candidate.moduleId,
-            entries: Array.isArray(candidate.entries) ? candidate.entries : [],
-            entriesByRead: candidate.entriesByRead || {},
-            unsafeEntries: Array.isArray(candidate.unsafeEntries) ? candidate.unsafeEntries : [],
-            staticSource: true,
-            staticCreateFunction: typeof staticModule.create === 'function' ? staticModule.create : null,
-            staticUpdateFunction: typeof staticUpdate === 'function' ? staticUpdate : null,
-            staticDestroyFunction: typeof staticModule.destroy === 'function' ? staticModule.destroy : null,
-            staticPatchCoverage: candidate.staticPatchCoverage || 'unknown'
-          };
-        }
-        return null;
+      function staticComponentUpdatePlanFromCandidate(c, key) { c=c||{}; key=key||c.key||''; if(!key)return null; const sm=(window.__jtml_static_component_modules||{})[key]||{},sf=(window.__jtml_static_update_functions||{})[key]; return {key:key,component:c.name||'',moduleId:c.moduleId==null?null:c.moduleId,entries:Array.isArray(c.entries)?c.entries:[],entriesByRead:c.entriesByRead||{},unsafeEntries:Array.isArray(c.unsafeEntries)?c.unsafeEntries:[],staticSource:true,staticCreateFunction:typeof sm.create==='function'?sm.create:null,staticUpdateFunction:typeof sf==='function'?sf:null,staticDestroyFunction:typeof sm.destroy==='function'?sm.destroy:null,staticPatchCoverage:c.staticPatchCoverage||'unknown'}; }
+
+      function staticComponentUpdatePlanForDefinition(definition, key) {
+        const a=window.__jtml_static_component_plan_index||window.__jtml_static_update_plans,cs=a&&Array.isArray(a.components)?a.components:[]; let n=null;
+        for(let i=0;i<cs.length;i+=1){const c=cs[i]||{};if(c.key===key)return staticComponentUpdatePlanFromCandidate(c,key);if(!definition||c.name!==definition.name)continue;if((c.moduleId==null&&definition.moduleId==null)||(c.moduleId!=null&&definition.moduleId!=null&&Number(c.moduleId)===Number(definition.moduleId)))return staticComponentUpdatePlanFromCandidate(c,c.key);if(!n)n=c;}
+        return n?staticComponentUpdatePlanFromCandidate(n,n.key):null;
       }
 
       function compileComponentUpdatePlan(definition) {
         const key = componentUpdatePlanKey(definition);
         if (componentUpdatePlanCache[key]) return componentUpdatePlanCache[key];
-        const staticPlan = staticComponentUpdatePlanForKey(key);
+        const staticPlan = staticComponentUpdatePlanForDefinition(definition, key);
         if (staticPlan) {
           staticPlan.update = compileStaticComponentUpdateFunction(staticPlan) ||
             compileInterpretedComponentUpdateFunction(staticPlan);
@@ -2235,17 +2236,21 @@ const char* browserRuntimeComponentChunk() {
           recordStaticCreateFallback: recordStaticCreateFallback,
           recordComponentUpdatePlanSuccess: recordComponentUpdatePlanSuccess,
           destroyDirectComponentChildren: destroyDirectComponentChildren,
+          destroyDirectComponentInstancesUnderElement: destroyDirectComponentInstancesUnderElement,
           unregisterComponentInstance: unregisterComponentInstance,
           patchStaticComponentButtonNode: patchStaticComponentButtonNode,
           patchStaticComponentElementNode: patchStaticComponentElementNode,
           renderStaticComponentButtonNode: renderStaticComponentButtonNode,
           renderStaticComponentElementNode: renderStaticComponentElementNode,
           patchStaticComponentNodeHtml: patchStaticComponentNodeHtml,
+          directComponentElementForNode: directComponentElementForNode,
+          patchComponentForRegion: patchComponentForRegion,
           patchStaticComponentRegionNode: patchStaticComponentRegionNode,
           patchStaticComponentSlotNode: patchStaticComponentSlotNode,
           patchStaticComponentNestedParams: patchStaticComponentNestedParams,
           patchStaticComponentNestedNode: patchStaticComponentNestedNode,
           patchStaticComponentTextNode: patchStaticComponentTextNode,
+          renderComponentSlot: renderComponentSlot,
           renderStaticComponentSlotNode: renderStaticComponentSlotNode,
           renderStaticComponentNestedNode: renderStaticComponentNestedNode,
           renderStaticComponentRegionNode: renderStaticComponentRegionNode,
@@ -2325,12 +2330,12 @@ const char* browserRuntimeComponentChunk() {
         const extras = semanticUiRenderExtras(resolvedHead, parts);
         if (resolvedHead === 'checkbox' && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'checkbox';
         if ((resolvedHead === 'file' || resolvedHead === 'dropzone') && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'file';
+        if (componentPartsHaveAttribute(parts, 'data-jtml-direct-component-bind')) extras['data-jtml-direct-component-id'] = instance && instance.id || '';
         extras['data-jtml-direct-node'] = resolvedHead;
         const directNodeAttr = ' data-jtml-direct-body-node="' + String(nodeIndex) + '"';
-        return '<' + resolvedTag + directNodeAttr +
-          componentManagedAttributeMarker(parts, extras) +
-          renderComponentAttributes(parts, extras) + '>' +
-          inline + children + '</' + resolvedTag + '>';
+        const attrs = directNodeAttr + componentManagedAttributeMarker(parts, extras) + renderComponentAttributes(parts, extras);
+        if (resolvedTag === 'input' || resolvedTag === 'img') return '<' + resolvedTag + attrs + '>';
+        return '<' + resolvedTag + attrs + '>' + inline + children + '</' + resolvedTag + '>';
       }
 
       function renderDirectComponentHtml(instance, definition, scope) {
@@ -2414,20 +2419,17 @@ const char* browserRuntimeComponentChunk() {
         return patchStaticComponentNodeHtml(instance, index, html);
       }
 
-      function patchStaticComponentNodeHtml(instance, nodeIndex, html) {
+      function patchStaticComponentNodeHtml(instance, nodeIndex, html, reason) {
         if (!instance || !instance.element) return false;
-        const el = instance.element.querySelector('[data-jtml-direct-body-node="' + String(nodeIndex) + '"]');
+        const el = directComponentElementForNode(instance, nodeIndex);
         if (!el) return false;
         if (typeof html !== 'string' || !html.length) return false;
-        destroyDirectComponentInstancesUnderElement(el, 'body-node-html-replace');
+        destroyDirectComponentInstancesUnderElement(el, reason || 'body-node-html-replace');
         el.outerHTML = html;
         return true;
       }
 
-      function directComponentElementForNode(instance, nodeIndex) {
-        if (!instance || !instance.element) return null;
-        return instance.element.querySelector('[data-jtml-direct-body-node="' + String(nodeIndex) + '"]');
-      }
+      function directComponentElementForNode(instance, nodeIndex) { if (!instance || !instance.element) return null; const root = instance.element; const items = root.querySelectorAll('[data-jtml-direct-body-node="' + String(nodeIndex) + '"]'); for (let i = 0; i < items.length; i += 1) { const item = items[i]; const probe = item.hasAttribute('data-jtml-nested-component') ? item.parentElement : item; const owner = probe && probe.closest('[data-jtml-direct-instance]'); if (!owner || owner === root) return item; } return null; }
 
       function patchStaticComponentTextNode(instance, nodeIndex, expression, scope, expressionPlan) {
         const el = directComponentElementForNode(instance, nodeIndex);
@@ -2445,7 +2447,7 @@ const char* browserRuntimeComponentChunk() {
           return true;
         }
         const html = renderComponentPlanNode(definition, instance, node, scope);
-        return patchStaticComponentNodeHtml(instance, nodeIndex, html);
+        return patchStaticComponentNodeHtml(instance,nodeIndex,html,componentNodeHead(node)==='if'?'subtree-prune':'body-node-html-replace');
       }
 
       function renderStaticComponentSlotNode(instance, definition, scope, nodeIndex, name) {
@@ -2502,35 +2504,30 @@ const char* browserRuntimeComponentChunk() {
         if (el.getAttribute('data-jtml-direct-instance') !== nestedId) return false;
         const nextParams = nestedComponentParamsForNode(nestedDefinition, node, scope);
         const changedParams = changedParamNames(existing.params || {}, nextParams);
+        const nextSlotPlan = slotPlanForComponentNode(definition, node);
+        const nextSlotHtml = renderComponentChildren(definition, instance, node, scope);
+        const slotChanged = !runtimeValuesEqual(existing.slotPlan || [], nextSlotPlan) ||
+          String(existing.slotHtml == null ? '' : existing.slotHtml) !== String(nextSlotHtml == null ? '' : nextSlotHtml);
         existing.params = nextParams;
+        existing.slotPlan = nextSlotPlan;
+        existing.slotHtml = nextSlotHtml;
         existing.element = el;
         const existingScope = componentScopeFor(existing, nestedDefinition);
         Object.assign(existingScope, nextParams);
         applyComponentDerived(existingScope, nestedDefinition);
-        if (changedParams.length) {
+        if (slotChanged) { if (changedParams.length) { const compiled = applyCompiledComponentUpdatePlan(existing, nestedDefinition, changedParams, existingScope); if (!compiled || !compiled.handled) return false; } const plan = nestedDefinition.bodyPlan || []; for (let i = 0; i < plan.length; i += 1) { const slotNode = plan[i]; if (!slotNode || slotNode.kind !== 'slot') continue; if (!patchStaticComponentSlotNode(existing, nestedDefinition, i, existingScope, componentSlotName(slotNode))) return false; } window.jtml = window.jtml || {}; window.jtml.directNestedComponentParamPatch = { mode: 'nested-component-static-update' }; return true; }
+        if (changedParams.length && !slotChanged) {
           const compiled = applyCompiledComponentUpdatePlan(
             existing,
             nestedDefinition,
             changedParams,
             existingScope);
           if (compiled && compiled.handled) {
-            window.jtml = Object.assign(window.jtml || {}, {
-              directNestedComponentParamPatch: {
-                componentId: existing.id || '',
-                patched: Number(compiled.patched || 0),
-                mode: 'nested-component-static-update'
-              }
-            });
+            window.jtml = window.jtml || {};
+            window.jtml.directNestedComponentParamPatch = { mode: 'nested-component-static-update' };
             return true;
           }
-        } else {
-          window.jtml = Object.assign(window.jtml || {}, {
-            directNestedComponentParamPatch: {
-              componentId: existing.id || '',
-              patched: 0,
-              mode: 'nested-component-static-update-noop'
-            }
-          });
+        } else if (!slotChanged) {
           return true;
         }
         const nested = nestedComponentInstanceForNode(
@@ -2565,18 +2562,8 @@ const char* browserRuntimeComponentChunk() {
         el.setAttribute('data-jtml-component', nestedName);
         el.setAttribute('data-jtml-component-parent', nestedInstance.parentId || '');
         el.setAttribute('data-jtml-nested-component', 'true');
-        window.jtml = Object.assign(window.jtml || {}, {
-          directNestedComponentParamPatch: {
-            componentId: nestedInstance.id || '',
-            component: nestedName,
-            parentId: nestedInstance.parentId || '',
-            moduleId: nested.definition.moduleId == null ? null : nested.definition.moduleId,
-            bodyNodeIndex: nodeIndex,
-            bodySourceLine: node.sourceLine || 0,
-            bodySourceColumn: node.sourceColumn || 0,
-            mode: 'in-place-param-body-patch'
-          }
-        });
+        window.jtml = window.jtml || {};
+        window.jtml.directNestedComponentParamPatch = { mode: 'in-place-param-body-patch' };
         return true;
       }
 
@@ -2644,7 +2631,7 @@ const char* browserRuntimeComponentChunk() {
 
       function executeComponentPatchOperation(instance, definition, operation, scope) {
         if (!operation || !instance || !instance.element) return false;
-        const el = instance.element.querySelector('[data-jtml-direct-body-node="' + String(operation.nodeIndex) + '"]');
+        const el = directComponentElementForNode(instance, operation.nodeIndex);
         if (!el) return false;
         if (operation.operation === 'text') {
           return patchStaticComponentTextNode(
@@ -3180,6 +3167,24 @@ const char* browserRuntimeComponentChunk() {
             event.preventDefault();
             event.stopPropagation();
           }
+        });
+        document.addEventListener('input', function (event) {
+          const el = event.target && event.target.closest &&
+            event.target.closest('[data-jtml-direct-component-bind]');
+          if (!el) return;
+          const componentId = el.getAttribute('data-jtml-direct-component-id') || '';
+          const name = el.getAttribute('data-jtml-direct-component-bind') || '';
+          if (!componentId || !name) return;
+          const instance = findRuntimeComponentInstance(componentId);
+          if (!instance) return;
+          const definition = componentDefinitionForInstance(instance);
+          if (!definition) return;
+          const scope = componentScopeFor(instance, definition);
+          scope[name] = el.type === 'checkbox' ? !!el.checked : el.value;
+          instance.scope = scope;
+          const writes = {};
+          writes[name] = true;
+          patchDirectComponentFromWrites(instance, definition, writes);
         });
       }
 

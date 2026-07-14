@@ -47,6 +47,67 @@ std::unique_ptr<ExpressionIr> makeIr(ExpressionIrKind kind,
     return ir;
 }
 
+std::unique_ptr<ExpressionIr> makeStringLiteralIr(std::string value) {
+    auto ir = std::make_unique<ExpressionIr>();
+    ir->kind = ExpressionIrKind::Literal;
+    ir->valueType = ExpressionValueType::String;
+    ir->source = nlohmann::json(value).dump();
+    ir->literal = std::move(value);
+    return ir;
+}
+
+std::unique_ptr<ExpressionIr> makeStringConcatenationIr(std::unique_ptr<ExpressionIr> left,
+                                                        std::unique_ptr<ExpressionIr> right,
+                                                        const ExpressionStatementNode* expression) {
+    auto ir = makeIr(ExpressionIrKind::Binary, expression);
+    ir->op = "+";
+    ir->children.push_back(std::move(left));
+    ir->children.push_back(std::move(right));
+    ir->valueType = ExpressionValueType::String;
+    return ir;
+}
+
+std::unique_ptr<ExpressionIr> buildInterpolatedStringIr(const std::string& value,
+                                                        const ExpressionStatementNode* expression) {
+    std::vector<std::unique_ptr<ExpressionIr>> parts;
+    std::string literal;
+    bool sawInterpolation = false;
+    for (size_t i = 0; i < value.size();) {
+        if (value[i] != '{') {
+            literal.push_back(value[i++]);
+            continue;
+        }
+        const auto close = value.find('}', i + 1);
+        if (close == std::string::npos) {
+            literal.push_back(value[i++]);
+            continue;
+        }
+        const auto inside = trimCopy(value.substr(i + 1, close - i - 1));
+        if (inside.empty()) {
+            literal.append(value.substr(i, close - i + 1));
+            i = close + 1;
+            continue;
+        }
+        if (!literal.empty()) {
+            parts.push_back(makeStringLiteralIr(literal));
+            literal.clear();
+        }
+        parts.push_back(parseExpressionIr(inside));
+        sawInterpolation = true;
+        i = close + 1;
+    }
+    if (!literal.empty()) {
+        parts.push_back(makeStringLiteralIr(literal));
+    }
+    if (!sawInterpolation || parts.empty()) return nullptr;
+    if (parts.size() == 1) return std::move(parts.front());
+    auto current = std::move(parts.front());
+    for (size_t i = 1; i < parts.size(); ++i) {
+        current = makeStringConcatenationIr(std::move(current), std::move(parts[i]), expression);
+    }
+    return current;
+}
+
 ExpressionValueType mergedConditionalType(ExpressionValueType whenTrue,
                                           ExpressionValueType whenFalse) {
     if (whenTrue == whenFalse) return whenTrue;
@@ -193,6 +254,9 @@ std::unique_ptr<ExpressionIr> buildExpressionIr(const ExpressionStatementNode* e
     switch (expression->getExprType()) {
         case ExpressionStatementNodeType::StringLiteral: {
             const auto* literal = static_cast<const StringLiteralExpressionStatementNode*>(expression);
+            if (auto interpolated = buildInterpolatedStringIr(literal->value, expression)) {
+                return interpolated;
+            }
             auto ir = makeIr(ExpressionIrKind::Literal, expression);
             ir->literal = literal->value;
             ir->valueType = ExpressionValueType::String;

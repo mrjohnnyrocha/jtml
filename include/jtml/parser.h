@@ -122,6 +122,8 @@ private:
     Token previous() const;
     bool isAtEnd() const;
     const Token& peek() const;
+    SourceSpan spanFromTokenRange(size_t begin, size_t endExclusive) const;
+    void attachStatementSpan(ASTNode& node, size_t begin, size_t endExclusive) const;
 
     bool matchNumberLiteral();
 

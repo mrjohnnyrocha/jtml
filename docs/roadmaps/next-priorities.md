@@ -14,9 +14,8 @@ runtime parity, or remove monolithic/embedded implementation debt. `jtml
 doctor --json` reports the current stable/first-slice/experimental tiers and
 the verification gates expected before release work.
 
-Current v0.2 status: production browser compiler isolation is complete at the
-library/linkcheck level, not as final shipped-binary or production-asset
-separation. The build now has
+Current v0.2 status: production browser compiler isolation is closed enough to
+start v0.3, while full enterprise readiness remains false. The build now has
 separate browser-production, live-runtime, and legacy-runtime source/object
 ownership, plus a `jtml_browser_production` library and CTest link-check that
 proves the compiler slice can parse Friendly JTML, build a runtime plan, and
@@ -244,8 +243,11 @@ assert in-place nested parameter/body patch telemetry plus retained nested
 wrapper DOM identity during actual browser clicks, and `keyed_list` asserts
 retained row identity across keyed reorder. `lifecycle_cleanup` now asserts the
 conditional/keyed destroy lifecycle path and clean-prod browser build mode/no
-legacy script loading in the browser harness. Current guardrails:
-50 KB for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
+legacy script loading, registry-size cleanup, and event-handler cleanup
+telemetry in the browser harness. `form_focus` asserts input binding preserves
+the input element, focus, and cursor selection. Current
+guardrails:
+70 KB for `index.html`, 265 KB for `jtml-runtime.js`, 180 KB for
 `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
 `jtml-update-plans.js`, all meant to tighten as direct generated update modules
 keep replacing operation-record patch helpers.
@@ -754,18 +756,23 @@ Implementation slices:
    `cmdBuildBrowser` now validates required assets, mode contract, debug
    telemetry flags, dynamic-compilation bans, prod legacy-asset absence,
    component-module debug-payload absence, and legacy update-plan presence for
-   compat/debug. Next: replace remaining test-side string checks with reusable
-   schema helpers and add client-manifest JSON schema validation.
-52. Add a source span model from parser/AST through semantic IR, runtime plan,
-   static compiler metadata, live diagnostics, and browser fallback telemetry.
-   Current line adjustment is a bridge and must not be treated as final
-   AI-native diagnostics.
+   compat/debug. It also parses the embedded client manifest and validates
+   required collections, component definitions, instances, and source-rich key
+   bans. Next: replace the remaining test-side string checks with reusable
+   artifact schema helpers and richer app/component-module schema validation.
+52. ✅ First parser/AST source-span model through runtime/compiler diagnostics:
+   statement spans now flow into runtime-plan body nodes, static compiler
+   metadata, live diagnostic context, and browser fallback telemetry. Next:
+   normalize spans semantic-wide so every diagnostic owns file/line/column
+   without body-line adjustment.
 53. ✅ First lifecycle and clean-prod browser behavior proof: the browser
    harness now checks clean `window.jtml.browserBuild` mode, no loaded legacy
    update-plan script, retained nested/keyed identity, and a
    `lifecycle_cleanup` fixture for conditional nested removal plus keyed item
-   cleanup. Next: add registry-size/handler cleanup assertions and
-   focus/cursor preservation for forms.
+   cleanup. It also checks registry-size cleanup, event-handler cleanup
+   telemetry, and form input focus/cursor preservation via the `form_focus`
+   fixture. Next: add deeper runtime-owned handler detachment
+   assertions from runtime-owned handler registries.
 54. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
    same catalog endpoint pattern.
 55. Add contract-first JTL backend API design docs and prototypes only after

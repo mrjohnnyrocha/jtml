@@ -2489,11 +2489,11 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("function compileComponentUpdatePlan(definition)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("function staticComponentUpdatePlanForKey(key)"),
+    EXPECT_NE(html.find("function staticComponentUpdatePlanForDefinition(definition, key)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("const asset = window.__jtml_static_component_plan_index || window.__jtml_static_update_plans"),
+    EXPECT_NE(html.find("const a=window.__jtml_static_component_plan_index||window.__jtml_static_update_plans"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("const staticPlan = staticComponentUpdatePlanForKey(key);"),
+    EXPECT_NE(html.find("const staticPlan = staticComponentUpdatePlanForDefinition(definition, key);"),
               std::string::npos) << html;
     EXPECT_NE(html.find("static-update-plan-interpreter"),
               std::string::npos) << html;

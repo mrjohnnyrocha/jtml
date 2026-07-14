@@ -143,95 +143,100 @@ std::unique_ptr<ExpressionStatementNode> Parser::parseStandaloneExpression() {
 
 std::unique_ptr<ASTNode> Parser::parseStatement() {
     JTML_PARSER_DEBUG << "[DEBUG] Attempting to parse a statement at token position: " << m_pos << "\n";
+    const size_t statementStart = m_pos;
+    auto finish = [&](std::unique_ptr<ASTNode> node) -> std::unique_ptr<ASTNode> {
+        if (node) attachStatementSpan(*node, statementStart, m_pos);
+        return node;
+    };
 
     if (check(TokenType::SHOW)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'show' statement.\n";
-        return parseShowStatement();
+        return finish(parseShowStatement());
     }
     if (check(TokenType::DEFINE)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'define' statement.\n";
-        return parseDefineStatement();
+        return finish(parseDefineStatement());
     }
     if (check(TokenType::CONST)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'const' statement.\n";
-        return parseConstStatement();
+        return finish(parseConstStatement());
     }
     if (check(TokenType::DERIVE)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'derive' statement.\n";
-        return parseDeriveStatement();
+        return finish(parseDeriveStatement());
     }
     if (check(TokenType::UNBIND)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'unbind' statement.\n";
-        return parseUnbindStatement();
+        return finish(parseUnbindStatement());
     }
     if (check(TokenType::STORE)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'store' statement.\n";
-        return parseStoreStatement();
+        return finish(parseStoreStatement());
     }
     if (check(TokenType::IF)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'if' statement.\n";
-        return parseIfElseStatement();
+        return finish(parseIfElseStatement());
     }
     if (check(TokenType::WHILE)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'while' statement.\n";
-        return parseWhileStatement();
+        return finish(parseWhileStatement());
     }
     if (check(TokenType::BREAK)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'break' statement.\n";
-        return parseBreakStatement();
+        return finish(parseBreakStatement());
     }
     if (check(TokenType::CONTINUE)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'continue' statement.\n";
-        return parseContinueStatement();
+        return finish(parseContinueStatement());
     }
     if (check(TokenType::FUNCTION)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'function' declaration.\n";
-        return parseFunctionDeclaration();
+        return finish(parseFunctionDeclaration());
     }
     if (check(TokenType::ASYNC)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'async function' declaration.\n";
         advance();
-        return parseFunctionDeclaration(true);
+        return finish(parseFunctionDeclaration(true));
     }
     if (check(TokenType::OBJECT)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'object' declaration.\n";
-        return parseClassDeclaration();
+        return finish(parseClassDeclaration());
     }
     if (check(TokenType::SUBSCRIBE)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'subscribe' declaration.\n";
-        return parseSubscribeStatement();
+        return finish(parseSubscribeStatement());
     }
     if (check(TokenType::UNSUBSCRIBE)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'unsubscribe' declaration.\n";
-        return parseUnsubscribeStatement();
+        return finish(parseUnsubscribeStatement());
     }
     if (check(TokenType::FOR)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'for' statement.\n";
-        return parseForStatement();
+        return finish(parseForStatement());
     }
     if (check(TokenType::TRY)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'try' statement.\n";
-        return parseTryExceptThenStatement();
+        return finish(parseTryExceptThenStatement());
     }
     if (check(TokenType::RETURN)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'return' statement.\n";
-        return parseReturnStatement();
+        return finish(parseReturnStatement());
     }
     if (check(TokenType::THROW)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'throw' statement.\n";
-        return parseThrowStatement();
+        return finish(parseThrowStatement());
     }
     if (check(TokenType::IMPORT)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found 'import' statement.\n";
-        return parseImportStatement();
+        return finish(parseImportStatement());
     }
     if (check(TokenType::ELEMENT)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found JtmlElement (element).\n";
-        return parseJtmlElement();
+        return finish(parseJtmlElement());
     }
     if (check(TokenType::AT)) {
         JTML_PARSER_DEBUG << "[DEBUG] Found JtmlElement shorthand (@tag).\n";
-        return parseJtmlElement();
+        return finish(parseJtmlElement());
     }
 
     // Handle assignment statements
@@ -241,15 +246,15 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         JTML_PARSER_DEBUG << "[DEBUG] Found potential LHS expression: " << potentialLHS->toString() << "\n";
         if (isAssignmentOperator(peek().type)) {
             // If '=' follows, it's an assignment statement
-            return parseAssignmentStatement(std::move(potentialLHS));
+            return finish(parseAssignmentStatement(std::move(potentialLHS)));
         } else {
             // Otherwise, it's a standalone expression statement
-            return parseExpressionStatement(std::move(potentialLHS));
+            return finish(parseExpressionStatement(std::move(potentialLHS)));
         }
     }
 
     JTML_PARSER_DEBUG << "[DEBUG] Found expression statement.\n";
-    return parseExpressionStatement();
+    return finish(parseExpressionStatement());
 
     // Fallback for unexpected tokens
     Token t = peek();
@@ -1048,6 +1053,29 @@ bool Parser::isAtEnd() const {
 
 const Token& Parser::peek() const {
     return m_tokens[m_pos];
+}
+
+SourceSpan Parser::spanFromTokenRange(size_t begin, size_t endExclusive) const {
+    SourceSpan span;
+    if (m_tokens.empty() || begin >= m_tokens.size()) return span;
+    if (endExclusive <= begin) endExclusive = begin + 1;
+    if (endExclusive > m_tokens.size()) endExclusive = m_tokens.size();
+
+    const Token& first = m_tokens[begin];
+    const Token& last = m_tokens[endExclusive - 1];
+    span.startLine = first.line;
+    span.startColumn = first.column;
+    span.startOffset = first.position;
+    span.endLine = last.line;
+    span.endColumn = last.column + static_cast<int>(last.text.size());
+    span.endOffset = last.position + static_cast<int>(last.text.size());
+    return span;
+}
+
+void Parser::attachStatementSpan(ASTNode& node,
+                                 size_t begin,
+                                 size_t endExclusive) const {
+    node.sourceSpan = spanFromTokenRange(begin, endExclusive);
 }
 
 bool Parser::matchNumberLiteral() {

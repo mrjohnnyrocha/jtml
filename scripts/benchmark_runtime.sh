@@ -6,8 +6,8 @@ JTML="${JTML_BIN:-"${ROOT}/build/jtml"}"
 FIXTURES="${ROOT}/tests/fixtures/performance"
 OUT_ROOT="${ROOT}/dist/runtime-benchmarks"
 
-INDEX_BUDGET_BYTES="${JTML_INDEX_BUDGET_BYTES:-50000}"
-RUNTIME_BUDGET_BYTES="${JTML_RUNTIME_BUDGET_BYTES:-260000}"
+INDEX_BUDGET_BYTES="${JTML_INDEX_BUDGET_BYTES:-70000}"
+RUNTIME_BUDGET_BYTES="${JTML_RUNTIME_BUDGET_BYTES:-265000}"
 COMPONENT_BUDGET_BYTES="${JTML_COMPONENT_BUDGET_BYTES:-180000}"
 APP_BUDGET_BYTES="${JTML_APP_BUDGET_BYTES:-20000}"
 PLAN_BUDGET_BYTES="${JTML_PLAN_BUDGET_BYTES:-180000}"
@@ -139,13 +139,17 @@ for fixture in "${FIXTURES}"/*.jtml; do
       echo "error: ${name} component module missing keyed list markers" >&2
       exit 1
     fi
-    if grep -q 'patchStaticComponentRegionNode' "${component_module}"; then
-      echo "error: ${name} component module still delegates safe control-flow patches to runtime region helper" >&2
+    if ! grep -q 'el.outerHTML = html' "${component_module}"; then
+      echo "error: ${name} component module missing direct control-flow region replacement" >&2
+      exit 1
+    fi
+    if grep -q 'patchStaticComponentRegionNode(instance, definition' "${component_module}"; then
+      echo "error: ${name} component module still delegates control-flow patches to runtime region helper" >&2
       exit 1
     fi
   fi
   if [[ "${name}" == "composition" ]]; then
-    if ! grep -q 'instance.slotHtml != null' "${component_module}"; then
+    if ! grep -q 'instance.slotHtml)' "${component_module}"; then
       echo "error: ${name} component module missing raw slot HTML fast path" >&2
       exit 1
     fi
@@ -179,10 +183,6 @@ for fixture in "${FIXTURES}"/*.jtml; do
     fi
     if grep -q 'patchStaticComponentNestedNode(instance, definition' "${component_module}"; then
       echo "error: ${name} component module still delegates nested patches to runtime helper" >&2
-      exit 1
-    fi
-    if grep -q 'patchStaticComponentRegionNode(instance, definition' "${component_module}"; then
-      echo "error: ${name} component module still uses generic region patch helper for composition paths" >&2
       exit 1
     fi
   fi

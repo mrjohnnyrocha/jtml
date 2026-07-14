@@ -11,7 +11,7 @@ make LargeKeyedRows
 
   panel title "Large keyed rows"
     button "Rotate rows" click rotate
-    for index in 1..1000 key index + offset
+    for index in 1..1000 key index
       card title "Row {index + offset}" tone neutral
         text "Row {index + offset}"
 

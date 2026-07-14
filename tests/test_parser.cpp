@@ -72,6 +72,29 @@ TEST(Parser, CompoundAssignmentParsesAsAssignment) {
     EXPECT_EQ(assign.rhs->toString(), "(count + 2.000000000000000)");
 }
 
+TEST(Parser, StatementsCarrySourceSpans) {
+    auto prog = parseOk(
+        "define count = 0\\\\\n"
+        "element main\\\\\n"
+        "    show count\\\\\n"
+        "#\n");
+    ASSERT_EQ(prog.size(), 2u);
+    EXPECT_TRUE(prog[0]->sourceSpan.valid());
+    EXPECT_EQ(prog[0]->sourceSpan.startLine, 1);
+    EXPECT_EQ(prog[0]->sourceSpan.startColumn, 1);
+    EXPECT_GE(prog[0]->sourceSpan.endColumn, prog[0]->sourceSpan.startColumn);
+
+    ASSERT_EQ(prog[1]->getType(), ASTNodeType::JtmlElement);
+    const auto& el = static_cast<const JtmlElementNode&>(*prog[1]);
+    EXPECT_TRUE(el.sourceSpan.valid());
+    EXPECT_EQ(el.sourceSpan.startLine, 2);
+    EXPECT_EQ(el.sourceSpan.startColumn, 1);
+    ASSERT_EQ(el.content.size(), 1u);
+    EXPECT_TRUE(el.content[0]->sourceSpan.valid());
+    EXPECT_EQ(el.content[0]->sourceSpan.startLine, 3);
+    EXPECT_GT(el.content[0]->sourceSpan.startColumn, 1);
+}
+
 TEST(Parser, ElementWithChildrenParses) {
     auto prog = parseOk(
         "element main\\\\\n"

@@ -1,25 +1,31 @@
 jtml 2
 
-make Badge label
-  badge label tone good
+make Badge label emits pinged(name)
+  box class "badge"
+    button label click pinged(label)
 
 make LifecycleDemo
   let visible = true
-  get rows = visible ? ["alpha", "beta", "gamma"] : ["beta", "gamma"]
+  let lastPing = ""
+  get rows = visible ? ["alpha"] : []
+
+  when remember source name
+    lastPing = source + ":" + name
 
   when cycle
     visible = !visible
 
-  panel title "Lifecycle cleanup"
-    if visible
-      card title "Nested child" tone primary
-        Badge "Mounted"
-    else
-      empty "Nested child removed"
-    for item in rows key item
-      card title item tone neutral
-        text item
+  box class "lifecycle"
+    h2 "Lifecycle cleanup"
     button "Cycle" click cycle
+    if visible
+      box class "child"
+        Badge "Mounted" on pinged remember("child")
+    else
+      text "Nested child removed"
+    for item in rows key item
+      box class "row"
+        text item
 
 page
   LifecycleDemo

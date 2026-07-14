@@ -8,6 +8,9 @@ namespace jtml {
 std::string emitBrowserRuntimeScript(int webSocketPort,
                                      bool browserLocalRuntime);
 
+std::string emitBrowserRuntimeExternalAsset(int webSocketPort,
+                                            bool browserLocalRuntime);
+
 } // namespace jtml
 
 #endif // JTML_BROWSER_RUNTIME_EMITTER_H

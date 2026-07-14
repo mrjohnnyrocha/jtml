@@ -203,13 +203,14 @@ verifies that the split browser assets are emitted without
 `jtml-update-plans.js`, builds explicit `--compat` outputs for the legacy
 update-plan budget, rejects dynamic `new Function`/direct `eval` in browser
 assets, and fails if generated assets exceed the current size budgets. Defaults
-are intentionally conservative while the runtime is still being split: 50 KB
-for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
+are intentionally conservative while the runtime is still being split: 70 KB
+for `index.html`, 265 KB for `jtml-runtime.js`, 180 KB for
 `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
 `jtml-update-plans.js` in compatibility/debug outputs.
 Treat these budgets as
-guardrails, not final benchmarks; tighten runtime/component budgets as direct
-generated modules replace body-plan helpers. The `control_flow` fixture also
+guardrails, not final benchmarks; tighten runtime/component/index budgets as
+direct generated modules replace body-plan helpers and source-span metadata
+moves out of production manifests. The `control_flow` fixture also
 asserts that safe `if`/keyed-`for` regions, keyed list markers, and direct
 safe-region patching are present in `components/index.js`; the `composition`
 fixture asserts first-slice direct slot/nested component create/patch contracts,
@@ -224,7 +225,13 @@ The fixture set includes small smoke cases plus `large_keyed_rows` and
 lifecycle and nested component parameter updates. `lifecycle_cleanup` exercises
 conditional nested-component removal and keyed item cleanup, and the browser
 harness asserts clean `window.jtml.browserBuild` mode plus absence of loaded
-legacy update-plan scripts.
+legacy update-plan scripts, registry-size cleanup, and event-handler cleanup
+telemetry. `form_focus` exercises input binding without replacing the input
+element, losing focus, or moving the cursor.
+Local browser runs may skip when Chrome/Chromium is missing or blocked by the
+desktop sandbox; release CI should run `JTML_REQUIRE_BROWSER_BENCH=1
+scripts/benchmark_runtime.sh` in an environment where Chrome/Chromium can
+launch.
 
 ## VS Code extension
 

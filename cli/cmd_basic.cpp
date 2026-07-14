@@ -916,6 +916,7 @@ int cmdDoctor(const Options& o) {
                 "large_keyed_rows",
                 "nested_component_update",
                 "lifecycle_cleanup",
+                "form_focus",
             }},
             {"browserAssetBudgets", "first-slice index/runtime/component/app/update-plan byte budgets"},
             {"dynamicGeneratedUpdateFunctions", "removed from shipped runtime; static component modules are the production path"},
@@ -923,6 +924,29 @@ int cmdDoctor(const Options& o) {
             {"keyedListDiffing", "first-slice direct list item key/index markers, lifecycle telemetry, conservative keyed for-region patching, below-wrapper element/text reconciliation for retained keyed items, child body-node marker reconciliation below retained wrappers, retained/inserted/removed/moved key reporting, and removed nested dynamic child pruning; optimized DOM diff planned"},
             {"prodDevRuntimeSplit", "external jtml-runtime.js is primary for browser build; embedded runtime retained for transpile/live compatibility"},
             {"liveBodyPlanTransport", "body-plan primary for supported live components with compatibility DOM only as explicit unsupported fallback"},
+        }},
+        {"v02Closure", {
+            {"status", "closed"},
+            {"readyForV03", true},
+            {"scope", "v0.2 production compiler isolation and clean browser build gate; not full enterprise readiness"},
+            {"sourceSpanModel", "parser/AST statement spans now flow into runtime-plan body nodes, static compiler metadata, browser fallback telemetry, and live diagnostic context; semantic-wide span normalization remains a v0.3 target"},
+            {"browserBenchmarkPolicy", "release/CI-equivalent runs must set JTML_REQUIRE_BROWSER_BENCH=1 so scripts/benchmark_runtime.sh fails instead of skipping when Chrome/Chromium is unavailable; local ad-hoc runs may still skip by default"},
+            {"browserBuildSchema", "mode-specific asset contract plus parsed client-manifest JSON schema for required collections, component definitions, instances, and source-rich key bans"},
+            {"lifecycleProof", "mandatory browser benchmark fixtures cover clean prod mode, no legacy update-plan script, retained keyed/nested identity, registry-size cleanup, event-handler cleanup telemetry, and form focus/cursor preservation"},
+            {"closureEvidence", {
+                "cmake --build build --target jtml_tests jtml_cli -j4",
+                "ctest --test-dir build --output-on-failure",
+                "JTML_REQUIRE_BROWSER_BENCH=1 scripts/benchmark_runtime.sh",
+                "scripts/verify_all.sh",
+            }},
+            {"remainingBlockers", nlohmann::json::array()},
+            {"v03CarryForward", {
+                "full semantic source-span normalization across every diagnostic",
+                "TypeEnvironment-backed expression IR",
+                "deeper keyed diffing and nested/helper fallback removal",
+                "broader live/browser body-plan parity",
+                "parser split and richer AI-verifiable jtml check rules",
+            }},
         }},
     };
     auto findProjectRoot = [] {

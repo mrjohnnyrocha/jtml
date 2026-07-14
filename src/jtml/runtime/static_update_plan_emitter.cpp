@@ -215,6 +215,15 @@ nlohmann::json compileStaticElementParts(
     for (size_t i = start; i < words.size(); ++i) {
         const auto& token = words[i];
         if (stopWords.count(token)) break;
+        if (token == "into" && i + 1 < words.size()) {
+            attrs.push_back({
+                {"name", "data-jtml-direct-component-bind"},
+                {"raw", words[i + 1]},
+                {"exprPlan", nlohmann::json({{"kind", "literal"}, {"value", words[i + 1]}})}
+            });
+            ++i;
+            continue;
+        }
         if (isSemanticUiModifierName(token)) {
             const auto raw = i + 1 < words.size() ? words[i + 1] : std::string();
             if (!raw.empty() && !stopWords.count(raw) &&
@@ -337,6 +346,29 @@ std::vector<std::string> expandedNodeReads(
 
     std::set<std::string> reads;
     addNameSet(reads, node.reads);
+    const auto head = componentNodeHead(node);
+    std::set<std::string> loopLocals;
+    if (head == "for") {
+        const auto words = splitStaticComponentWords(node.text);
+        if (words.size() > 1) loopLocals.insert(words[1]);
+    }
+    if (head == "for" || head == "if") {
+        std::vector<int> stack = node.childIndices;
+        int guardChildren = 0;
+        while (!stack.empty() && guardChildren++ < 10000) {
+            const int childIndex = stack.back();
+            stack.pop_back();
+            if (childIndex < 0 ||
+                static_cast<size_t>(childIndex) >= definition.bodyPlan.size()) {
+                continue;
+            }
+            const auto& child = definition.bodyPlan[static_cast<size_t>(childIndex)];
+            for (const auto& read : child.reads) {
+                if (!loopLocals.count(read)) reads.insert(read);
+            }
+            for (const auto grandchild : child.childIndices) stack.push_back(grandchild);
+        }
+    }
     bool changed = true;
     int guard = 0;
     while (changed && guard++ < 1000) {
@@ -344,10 +376,13 @@ std::vector<std::string> expandedNodeReads(
         for (const auto& [name, deps] : derivedDeps) {
             if (!reads.count(name)) continue;
             const auto before = reads.size();
-            addNameSet(reads, deps);
+            for (const auto& dep : deps) {
+                if (!loopLocals.count(dep)) reads.insert(dep);
+            }
             changed = changed || reads.size() != before;
         }
     }
+    for (const auto& local : loopLocals) reads.erase(local);
     return {reads.begin(), reads.end()};
 }
 
@@ -406,6 +441,48 @@ std::string nestedComponentPlanKey(
         const RuntimePlanComponentBodyNode& node) {
     const auto* nested = findNestedComponentDefinition(definitions, owner, node);
     return nested ? componentUpdatePlanKey(*nested) : std::string();
+}
+
+bool hasNestedComponentAncestor(
+        const std::set<DefinitionKey>& definitionKeys,
+        const RuntimePlanComponentDefinition& definition,
+        size_t nodeIndex) {
+    if (nodeIndex >= definition.bodyPlan.size()) return false;
+    int parent = definition.bodyPlan[nodeIndex].parentIndex;
+    int guard = 0;
+    while (parent >= 0 &&
+           static_cast<size_t>(parent) < definition.bodyPlan.size() &&
+           guard++ < 1000) {
+        const auto& ancestor = definition.bodyPlan[static_cast<size_t>(parent)];
+        if (isKnownNestedComponent(definitionKeys, definition, ancestor)) {
+            return true;
+        }
+        parent = ancestor.parentIndex;
+    }
+    return false;
+}
+
+bool isRenderTreeNode(
+        const RuntimePlanComponentDefinition& definition,
+        size_t nodeIndex) {
+    if (nodeIndex >= definition.bodyPlan.size()) return false;
+    const auto& node = definition.bodyPlan[nodeIndex];
+    if (node.renderRoot) return true;
+    int parent = node.parentIndex;
+    int guard = 0;
+    while (parent >= 0 &&
+           static_cast<size_t>(parent) < definition.bodyPlan.size() &&
+           guard++ < 1000) {
+        const auto& ancestor = definition.bodyPlan[static_cast<size_t>(parent)];
+        if (ancestor.kind == "action" || ancestor.kind == "state" ||
+            ancestor.kind == "derived" || ancestor.kind == "assignment" ||
+            ancestor.kind == "call") {
+            return false;
+        }
+        if (ancestor.renderRoot) return true;
+        parent = ancestor.parentIndex;
+    }
+    return false;
 }
 
 std::string staticPatchOperationKind(
@@ -472,6 +549,8 @@ nlohmann::json compileStaticComponentUpdatePlan(
     for (size_t i = 0; i < definition.bodyPlan.size(); ++i) {
         const auto& node = definition.bodyPlan[i];
         if (node.kind != "template" || componentNodeHead(node) == "else") continue;
+        if (!isRenderTreeNode(definition, i)) continue;
+        if (hasNestedComponentAncestor(definitionKeys, definition, i)) continue;
         if (node.renderRoot) {
             const auto rootOperationKind = staticPatchOperationKind(
                 definitionKeys, definition, node);
@@ -989,9 +1068,10 @@ std::string directStaticTextPatchExpression(size_t nodeIndex,
     if (!isDirectJsExpressionPlan(plan)) return "";
     std::ostringstream out;
     out << "(function(){ "
-        << "const el = instance && instance.element ? "
-        << "instance.element.querySelector('[data-jtml-direct-body-node=\""
-        << nodeIndex << "\"]') : null; "
+        << "const el = h && h.directComponentElementForNode ? "
+        << "h.directComponentElementForNode(instance, " << nodeIndex << ") : "
+        << "(instance && instance.element ? instance.element.querySelector('[data-jtml-direct-body-node=\""
+        << nodeIndex << "\"]') : null); "
         << "if (!el) return false; "
         << "const value = " << jsExpressionPlanArgument(plan) << "(scope); "
         << "el.textContent = String(value == null ? '' : value); "
@@ -1010,9 +1090,10 @@ std::string directStaticButtonPatchExpression(size_t nodeIndex,
     }
     std::ostringstream out;
     out << "(function(){ "
-        << "const el = instance && instance.element ? "
-        << "instance.element.querySelector('[data-jtml-direct-body-node=\""
-        << nodeIndex << "\"]') : null; "
+        << "const el = h && h.directComponentElementForNode ? "
+        << "h.directComponentElementForNode(instance, " << nodeIndex << ") : "
+        << "(instance && instance.element ? instance.element.querySelector('[data-jtml-direct-body-node=\""
+        << nodeIndex << "\"]') : null); "
         << "if (!el || !el.tagName || el.tagName.toLowerCase() !== 'button') return false; "
         << "const labelValue = "
         << jsDirectExpressionCall(partsPlan.value("contentPlan", nlohmann::json::object()))
@@ -1059,9 +1140,10 @@ std::string directStaticElementPatchExpression(size_t nodeIndex,
     const auto resolvedTag = tag.empty() ? componentTagName(resolvedHead) : tag;
     std::ostringstream out;
     out << "(function(){ "
-        << "const el = instance && instance.element ? "
-        << "instance.element.querySelector('[data-jtml-direct-body-node=\""
-        << nodeIndex << "\"]') : null; "
+        << "const el = h && h.directComponentElementForNode ? "
+        << "h.directComponentElementForNode(instance, " << nodeIndex << ") : "
+        << "(instance && instance.element ? instance.element.querySelector('[data-jtml-direct-body-node=\""
+        << nodeIndex << "\"]') : null); "
         << "if (!el || !el.tagName || el.tagName.toLowerCase() !== "
         << jsStringLiteral(resolvedTag) << ".toLowerCase()) return false; ";
     if (patchContent) {
@@ -1158,10 +1240,20 @@ std::string directStaticElementCreateExpression(size_t nodeIndex,
     out << "(function(){ "
         << "const contentValue = " << jsDirectExpressionCall(planForContent) << "; ";
     appendDirectAttributeMapStatements(out, partsPlan, resolvedHead);
+    if (resolvedTag == "input" || resolvedTag == "textarea" || resolvedTag == "select") {
+        out << "if (Object.prototype.hasOwnProperty.call(next, 'data-jtml-direct-component-bind')) "
+            << "addAttr('data-jtml-direct-component-id', instance && instance.id || ''); ";
+    }
     out << "next['data-jtml-direct-body-node'] = " << jsStringLiteral(std::to_string(nodeIndex)) << "; "
         << "next['data-jtml-direct-managed-attrs'] = Object.keys(next).join(','); "
-        << "return '<" << resolvedTag << "' + jtml_static_attrs_to_string(next) + '>' + "
-        << "jtml_static_escape_html(contentValue) + '</" << resolvedTag << ">'; "
+        << "const attrs = jtml_static_attrs_to_string(next); ";
+    if (resolvedTag == "input" || resolvedTag == "img") {
+        out << "return '<" << resolvedTag << "' + attrs + '>'; ";
+    } else {
+        out << "return '<" << resolvedTag << "' + attrs + '>' + "
+            << "jtml_static_escape_html(contentValue) + '</" << resolvedTag << ">'; ";
+    }
+    out
         << "})()";
     return out.str();
 }
@@ -1329,10 +1421,11 @@ std::string directStaticSlotCreateExpression(size_t nodeIndex,
     out << "(function(){ "
         << "const slotName = " << jsStringLiteral(slotName) << "; "
         << "let html = ''; "
-        << "if (!slotName && instance && instance.slotHtml != null) html = String(instance.slotHtml); "
+        << "if (!slotName && instance && instance.slotHtml) html = String(instance.slotHtml); "
         << "else if (slotName && instance && instance.slotHtmlByName && "
         << "Object.prototype.hasOwnProperty.call(instance.slotHtmlByName, slotName)) "
         << "html = String(instance.slotHtmlByName[slotName]); "
+        << "else if (h && h.renderComponentSlot) html = String(h.renderComponentSlot(instance, scope, slotName) || ''); "
         << "return '<span data-jtml-direct-body-node=\""
         << nodeIndex
         << "\" data-jtml-direct-region=\"slot\" style=\"display:contents\">' + html + '</span>'; "
@@ -1586,6 +1679,13 @@ std::string directStaticCreateCall(
 std::string directStaticRegionPatchExpression(
         const nlohmann::json& componentPlan,
         size_t nodeIndex) {
+    const auto bodyPlan = componentPlan.value("bodyPlan", nlohmann::json::array());
+    const nlohmann::json* node = nullptr;
+    if (bodyPlan.is_array() && nodeIndex < bodyPlan.size() &&
+        bodyPlan[nodeIndex].is_object()) {
+        node = &bodyPlan[nodeIndex];
+    }
+    const auto head = node ? node->value("head", node->value("name", "")) : std::string();
     std::set<size_t> visiting;
     const auto directCreate =
         directStaticNodeCreateExpression(componentPlan, nodeIndex, visiting);
@@ -1594,12 +1694,24 @@ std::string directStaticRegionPatchExpression(
     std::ostringstream out;
     out << "(function(){ ";
     appendStaticEscapingHelpers(out);
-    out << "const el = instance && instance.element ? "
-        << "instance.element.querySelector('[data-jtml-direct-body-node=\""
-        << nodeIndex << "\"]') : null; "
+    const auto replaceReason = head == "if"
+        ? std::string("subtree-prune")
+        : std::string("body-node-html-replace");
+    out << "const el = h && h.directComponentElementForNode ? "
+        << "h.directComponentElementForNode(instance, " << nodeIndex << ") : "
+        << "(instance && instance.element ? instance.element.querySelector('[data-jtml-direct-body-node=\""
+        << nodeIndex << "\"]') : null); "
         << "if (!el) return false; "
+        << (head == "for"
+                ? std::string("const node = (definition && definition.bodyPlan || [])[") +
+                      std::to_string(nodeIndex) +
+                      "]; if (h && h.patchComponentForRegion && h.patchComponentForRegion(instance, definition, node, scope, el)) return true; "
+                : std::string())
         << "const html = " << directCreate << "; "
         << "if (typeof html !== 'string') return false; "
+        << "if (h && h.destroyDirectComponentInstancesUnderElement) "
+        << "h.destroyDirectComponentInstancesUnderElement(el, "
+        << jsStringLiteral(replaceReason) << "); "
         << "el.outerHTML = html; "
         << "return true; "
         << "})()";
@@ -1619,9 +1731,10 @@ std::string directStaticSlotPatchExpression(size_t nodeIndex,
     const auto directCreate = directStaticSlotCreateExpression(nodeIndex, node);
     std::ostringstream out;
     out << "(function(){ "
-        << "const el = instance && instance.element ? "
-        << "instance.element.querySelector('[data-jtml-direct-body-node=\""
-        << nodeIndex << "\"]') : null; "
+        << "const el = h && h.directComponentElementForNode ? "
+        << "h.directComponentElementForNode(instance, " << nodeIndex << ") : "
+        << "(instance && instance.element ? instance.element.querySelector('[data-jtml-direct-body-node=\""
+        << nodeIndex << "\"]') : null); "
         << "if (!el) return false; "
         << "const html = " << directCreate << "; "
         << "if (typeof html !== 'string' || !html.length) return false; "
@@ -1645,9 +1758,10 @@ std::string directStaticNestedPatchExpression(size_t nodeIndex,
         << "if (h && h.patchStaticComponentNestedParams && "
         << "h.patchStaticComponentNestedParams(instance, definition, "
         << nodeIndex << ", scope, " << jsStringLiteral(name) << ")) return true; "
-        << "const el = instance && instance.element ? "
-        << "instance.element.querySelector('[data-jtml-direct-body-node=\""
-        << nodeIndex << "\"]') : null; "
+        << "const el = h && h.directComponentElementForNode ? "
+        << "h.directComponentElementForNode(instance, " << nodeIndex << ") : "
+        << "(instance && instance.element ? instance.element.querySelector('[data-jtml-direct-body-node=\""
+        << nodeIndex << "\"]') : null); "
         << "if (!el) return false; "
         << "const html = " << directCreate << "; "
         << "if (typeof html !== 'string' || !html.length) return false; "

@@ -1295,7 +1295,7 @@ TEST(RuntimePlan, OwnsBrowserLocalRuntimeShapeBeforeManifestEmission) {
             return node.kind == "template" && node.name == "card" && node.renderRoot;
     });
     ASSERT_NE(cardIt, plan.componentDefinitions[0].bodyPlan.end());
-    EXPECT_GT(cardIt->sourceLine, 0);
+    EXPECT_EQ(cardIt->sourceLine, 18);
     EXPECT_GT(cardIt->sourceColumn, 0);
     const int cardIndex = static_cast<int>(
         std::distance(plan.componentDefinitions[0].bodyPlan.begin(), cardIt));
@@ -1324,7 +1324,7 @@ TEST(RuntimePlan, OwnsBrowserLocalRuntimeShapeBeforeManifestEmission) {
         plan.componentDefinitions[0].bodyPlan.end(),
         [](const auto& node) {
             return node.kind == "template" && node.name == "input" &&
-                   node.sourceLine > 0 &&
+                   node.sourceLine == 19 &&
                    node.sourceColumn > 0 &&
                    contains(node.writes, "draft");
         }));
@@ -1361,6 +1361,37 @@ TEST(RuntimePlan, ComponentInstancesCarryAuthoredSlotPlansAndSplitParams) {
     EXPECT_EQ(plan.componentInstances[0].slotPlan[0].kind, "template");
     EXPECT_EQ(plan.componentInstances[0].slotPlan[0].name, "text");
     EXPECT_EQ(plan.componentInstances[0].slotPlan[0].expression, "\"Ready\"");
+}
+
+TEST(RuntimePlan, CapitalizedComponentCallParamsAreReactiveReads) {
+    const std::string source =
+        "jtml 2\n"
+        "make Child selected\n"
+        "  text selected\n"
+        "make Host\n"
+        "  let selected = \"Alpha\"\n"
+        "  Child selected\n"
+        "page\n"
+        "  Host\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto plan = jtml::buildRuntimePlan(program, semantic);
+
+    auto host = std::find_if(
+        plan.componentDefinitions.begin(),
+        plan.componentDefinitions.end(),
+        [](const auto& definition) { return definition.name == "Host"; });
+    ASSERT_NE(host, plan.componentDefinitions.end());
+    EXPECT_TRUE(std::any_of(
+        host->bodyPlan.begin(),
+        host->bodyPlan.end(),
+        [](const auto& node) {
+            return node.kind == "template" &&
+                   node.name == "Child" &&
+                   node.expression == "selected" &&
+                   contains(node.reads, "selected");
+        }));
 }
 
 TEST(RuntimePlan, BodyPlanReadsComeFromParsedExpressionAst) {
@@ -1509,6 +1540,14 @@ TEST(RuntimePlan, CanonicalExpressionPlanCoversCompositeOperators) {
     const auto stringConcat = jtml::compileRuntimeExpressionPlan("\"Hello, \" + title");
     ASSERT_EQ(stringConcat["kind"], "binary") << stringConcat.dump(2);
     EXPECT_EQ(stringConcat["valueType"], "string") << stringConcat.dump(2);
+
+    const auto interpolated = jtml::compileRuntimeExpressionPlan("\"Count {count}\"");
+    ASSERT_EQ(interpolated["kind"], "binary") << interpolated.dump(2);
+    EXPECT_EQ(interpolated["producer"], "typed-ir") << interpolated.dump(2);
+    EXPECT_EQ(interpolated["valueType"], "string") << interpolated.dump(2);
+    EXPECT_EQ(interpolated["operator"], "+") << interpolated.dump(2);
+    EXPECT_EQ(interpolated["right"]["kind"], "path") << interpolated.dump(2);
+    EXPECT_EQ(interpolated["right"]["root"], "count") << interpolated.dump(2);
 
     const auto numericMath = jtml::compileRuntimeExpressionPlan("count + 1");
     ASSERT_EQ(numericMath["kind"], "binary") << numericMath.dump(2);

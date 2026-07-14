@@ -336,6 +336,7 @@ int cmdBuildBrowser(const Options& o) {
         throw std::runtime_error("Cannot write build output: " + outFile.string());
     }
     ofs << html;
+    ofs.close();
 
     std::cout << "Built " << input.string() << " -> " << outFile.string() << "\n";
 
@@ -346,7 +347,7 @@ int cmdBuildBrowser(const Options& o) {
     const auto componentModuleAsset =
         emitStaticComponentModuleAsset(runtimeProjectPlan);
     writeBuildAsset(runtimeFile,
-                    jtml::emitBrowserRuntimeScript(8080, true),
+                    jtml::emitBrowserRuntimeExternalAsset(8080, true),
                     "browser runtime output");
     writeBuildAsset(componentModuleFile,
                     componentModuleAsset,

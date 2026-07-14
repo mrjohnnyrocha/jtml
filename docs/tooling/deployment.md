@@ -175,6 +175,26 @@ Symlinks are skipped intentionally. Put deployable assets in `public/` or
 browser artifacts and previews, but production asset-mode flags are only
 supported by `jtml build --target browser`.
 
+## Browser Runtime Benchmarks
+
+`scripts/benchmark_runtime.sh` always runs static asset and
+compatibility-shape checks. It also calls
+`scripts/benchmark_browser_runtime.sh` when a Chrome/Chromium-family browser is
+discoverable. Headless browser runs can be blocked by local sandboxing, GUI
+permissions, or missing browser dependencies; in that case the browser portion
+may skip in local developer environments.
+
+For release CI or any environment where Chrome/Chromium is expected to work,
+make the browser benchmark mandatory:
+
+```sh
+JTML_REQUIRE_BROWSER_BENCH=1 scripts/benchmark_runtime.sh
+```
+
+Set `JTML_BENCH_BROWSER=/absolute/path/to/chrome` to choose a specific browser
+binary. A v0.2 release candidate should pass with
+`JTML_REQUIRE_BROWSER_BENCH=1` in at least one clean CI/browser environment.
+
 ## Production Notes
 
 - Put a reverse proxy such as nginx or Caddy in front of `jtml serve` for TLS.

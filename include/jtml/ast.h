@@ -277,8 +277,23 @@ struct SubscriptExpressionStatementNode : public ExpressionStatementNode {
  */
 
 // ------------------- Base AST Node (Statement-Level) -------------------
+struct SourceSpan {
+    int startLine = 0;
+    int startColumn = 0;
+    int endLine = 0;
+    int endColumn = 0;
+    int startOffset = 0;
+    int endOffset = 0;
+
+    bool valid() const {
+        return startLine > 0 && startColumn > 0;
+    }
+};
+
 struct ASTNode {
     virtual ~ASTNode() = default;
+    SourceSpan sourceSpan;
+
     virtual ASTNodeType getType() const = 0;
 
     virtual std::unique_ptr<ASTNode> clone() const = 0;

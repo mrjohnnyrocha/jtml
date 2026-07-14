@@ -428,6 +428,9 @@ std::vector<std::string> templateExpressionDependencies(
         const std::vector<std::string>& tokens) {
     std::vector<std::string> reads;
     std::vector<std::string> positional;
+    const bool likelyComponentCall = !tokens.empty() &&
+        !tokens[0].empty() &&
+        std::isupper(static_cast<unsigned char>(tokens[0].front())) != 0;
     for (size_t i = 1; i < tokens.size(); ++i) {
         const std::string& token = tokens[i];
         if (token == "into") {
@@ -437,6 +440,14 @@ std::vector<std::string> templateExpressionDependencies(
         if (token == "key") break;
         if (isBodyPlanEventName(token)) {
             ++i;
+            continue;
+        }
+        if (likelyComponentCall && !isQuotedToken(token)) {
+            positional.push_back(token);
+            continue;
+        }
+        if (isQuotedToken(token)) {
+            appendUnique(reads, expressionDependencies(token));
             continue;
         }
         if (isBodyPlanBooleanAttributeName(token)) continue;
@@ -462,6 +473,7 @@ std::vector<std::string> templateExpressionDependencies(
         if (!isBodyPlanAttributeName(token)) continue;
         const std::string& value = tokens[i + 1];
         if (isQuotedToken(value)) {
+            appendUnique(reads, expressionDependencies(value));
             continue;
         }
         if (!bodyPlanAttributeTakesValue(token) &&
@@ -592,6 +604,16 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
     return plan;
 }
 
+void absolutizeBodyPlanSourceLines(std::vector<RuntimePlanComponentBodyNode>& bodyPlan,
+                                   int ownerSourceLine) {
+    if (ownerSourceLine <= 0) return;
+    for (auto& node : bodyPlan) {
+        if (node.sourceLine > 0) {
+            node.sourceLine += ownerSourceLine;
+        }
+    }
+}
+
 } // namespace
 
 RuntimePlanComponentDefinition planComponentDefinition(
@@ -613,6 +635,7 @@ RuntimePlanComponentDefinition planComponentDefinition(
     planned.bodyHex = semantic.bodyHex;
     planned.bodySource = hexDecode(semantic.bodyHex);
     planned.bodyPlan = buildComponentBodyPlan(planned.bodySource);
+    absolutizeBodyPlanSourceLines(planned.bodyPlan, semantic.sourceLine);
     planned.hasSlot = semantic.hasSlot;
     planned.bodyNodeCount = semantic.bodyNodeCount;
     planned.rootTemplateNodeCount = semantic.rootTemplateNodeCount;
@@ -637,6 +660,7 @@ RuntimePlanComponentInstance planComponentInstance(
     planned.slotHex = semantic.slotHex;
     planned.slotSource = hexDecode(semantic.slotHex);
     planned.slotPlan = buildComponentBodyPlan(planned.slotSource);
+    absolutizeBodyPlanSourceLines(planned.slotPlan, semantic.sourceLine);
     planned.sourceLine = semantic.sourceLine;
     return planned;
 }

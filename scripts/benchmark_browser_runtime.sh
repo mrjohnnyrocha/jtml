@@ -52,7 +52,27 @@ echo "clicks per fixture: ${CLICK_COUNT}"
 echo "per-fixture budget: ${BUDGET_MS}ms"
 echo "browser launch timeout: ${BROWSER_TIMEOUT}s"
 
-fixtures=(static_counter keyed_list control_flow composition large_keyed_rows nested_component_update lifecycle_cleanup)
+SERVER_PORT="$(
+  python3 - <<'PY'
+import socket
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.bind(("127.0.0.1", 0))
+    print(sock.getsockname()[1])
+PY
+)"
+SERVER_LOG="${OUT_ROOT}/browser-benchmark-http.log"
+python3 -m http.server "${SERVER_PORT}" --bind 127.0.0.1 --directory "${OUT_ROOT}" >"${SERVER_LOG}" 2>&1 &
+SERVER_PID=$!
+cleanup_server() {
+  if kill -0 "${SERVER_PID}" >/dev/null 2>&1; then
+    kill "${SERVER_PID}" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup_server EXIT
+sleep 0.2
+echo "fixture server: http://127.0.0.1:${SERVER_PORT}/"
+
+fixtures=(static_counter keyed_list control_flow composition large_keyed_rows nested_component_update lifecycle_cleanup form_focus)
 for fixture in "${fixtures[@]}"; do
   fixture_dir="${OUT_ROOT}/${fixture}"
   index="${fixture_dir}/index.html"
@@ -87,12 +107,69 @@ harness = f"""
   }}
   function run() {{
     try {{
+      if (fixture === 'form_focus') {{
+        const input = document.querySelector('input');
+        if (!input) {{
+          finish({{ fixture, clicks: 0, durationMs: 0, error: 'no input for form focus fixture' }});
+          return;
+        }}
+        input.focus();
+        input.value = 'Ada';
+        input.setSelectionRange(2, 2);
+        const beforeInput = input;
+        const started = performance.now();
+        for (let i = 0; i < clickCount; i += 1) {{
+          input.value = 'Ada ' + i;
+          const pos = Math.min(3, input.value.length);
+          input.setSelectionRange(pos, pos);
+          input.dispatchEvent(new Event('input', {{ bubbles: true }}));
+        }}
+        const durationMs = performance.now() - started;
+        const jtml = window.jtml || {{}};
+        finish({{
+          fixture,
+          clicks: clickCount,
+          durationMs,
+          textSample: (document.body && document.body.innerText || '').slice(0, 1000),
+          loadedScripts: Array.prototype.slice.call(document.querySelectorAll('script[src]')).map(function(el) {{
+            return el.getAttribute('src') || '';
+          }}),
+          browserBuildMode: jtml.browserBuild && jtml.browserBuild.mode || '',
+          browserBuildCleanProduction: !!(jtml.browserBuild && jtml.browserBuild.cleanProduction),
+          browserBuildCompatibility: !!(jtml.browserBuild && jtml.browserBuild.compatibility),
+          browserBuildDebug: !!(jtml.browserBuild && jtml.browserBuild.debug),
+          formInputRetained: beforeInput === document.querySelector('input'),
+          formInputFocused: document.activeElement === beforeInput,
+          formSelectionStart: beforeInput.selectionStart,
+          formSelectionEnd: beforeInput.selectionEnd
+        }});
+        return;
+      }}
       const buttons = Array.prototype.slice.call(
         document.querySelectorAll('[data-jtml-direct-component-action]')
       );
       const target = buttons[0] || null;
       if (!target) {{
-        finish({{ fixture, clicks: 0, durationMs: 0, error: 'no direct component action button' }});
+        const jtml = window.jtml || {{}};
+        finish({{
+          fixture,
+          clicks: 0,
+          durationMs: 0,
+          error: 'no direct component action button',
+          loadedScripts: Array.prototype.slice.call(document.querySelectorAll('script[src]')).map(function(el) {{
+            return el.getAttribute('src') || '';
+          }}),
+          browserBuildMode: jtml.browserBuild && jtml.browserBuild.mode || '',
+          browserBuildCleanProduction: !!(jtml.browserBuild && jtml.browserBuild.cleanProduction),
+          browserBuildCompatibility: !!(jtml.browserBuild && jtml.browserBuild.compatibility),
+          browserBuildDebug: !!(jtml.browserBuild && jtml.browserBuild.debug),
+          directComponentExecution: !!jtml.directComponentExecution,
+          directComponentRenderCount: jtml.directComponentRenderCount || 0,
+          staticComponentModulesLoaded: !!window.__jtml_static_component_modules,
+          staticComponentPlanIndexLoaded: !!window.__jtml_static_component_plan_index,
+          directActionButtonCount: document.querySelectorAll('[data-jtml-direct-component-action]').length,
+          compatibilityButtonCount: document.querySelectorAll('[onclick]').length
+        }});
         return;
       }}
       const beforeNestedWrapper = document.querySelector('[data-jtml-nested-component="true"]');
@@ -112,7 +189,8 @@ harness = f"""
       }});
       const started = performance.now();
       for (let i = 0; i < clickCount; i += 1) {{
-        target.click();
+        const currentTarget = document.querySelector('[data-jtml-direct-component-action]') || target;
+        currentTarget.click();
       }}
       const durationMs = performance.now() - started;
       const jtml = window.jtml || {{}};
@@ -165,6 +243,12 @@ harness = f"""
         directComponentLastAction: !!jtml.directComponentLastAction,
         directNestedComponentParamPatch: !!jtml.directNestedComponentParamPatch,
         directNestedComponentParamPatchMode: jtml.directNestedComponentParamPatch && jtml.directNestedComponentParamPatch.mode || '',
+        directComponentCreateFallback: jtml.directComponentCreateFallback || null,
+        directComponentLastActionDetail: jtml.directComponentLastAction || null,
+        directComponentLastPatch: jtml.directComponentLastPatch || null,
+        directComponentPatchFallback: jtml.directComponentPatchFallback || null,
+        directComponentStaticUpdateError: jtml.directComponentStaticUpdateError || null,
+        directComponentKeyedListPatch: jtml.directComponentKeyedListPatch || null,
         directComponentListLifecycle: !!jtml.directComponentListLifecycle,
         directComponentCompiledUpdatePlan: !!jtml.directComponentCompiledUpdatePlan
       }});
@@ -195,11 +279,12 @@ PY
   log="${profile}/browser.log"
   dom_file="${profile}/dom.html"
   set +e
-  python3 - "${browser}" "${bench}" "${profile}" "${log}" "${dom_file}" "${BROWSER_TIMEOUT}" <<'PY'
+  bench_url="http://127.0.0.1:${SERVER_PORT}/${fixture}/index.bench.html"
+  python3 - "${browser}" "${bench_url}" "${profile}" "${log}" "${dom_file}" "${BROWSER_TIMEOUT}" <<'PY'
 import subprocess
 import sys
 
-browser, bench, profile, log_path, dom_path, timeout_s = sys.argv[1:]
+browser, bench_url, profile, log_path, dom_path, timeout_s = sys.argv[1:]
 
 def text(value):
     if value is None:
@@ -224,7 +309,7 @@ for headless_flag in ("--headless=new", "--headless"):
         "--run-all-compositor-stages-before-draw",
         "--virtual-time-budget=6000",
         "--dump-dom",
-        f"file://{bench}",
+        bench_url,
     ]
     try:
         completed = subprocess.run(
@@ -243,7 +328,9 @@ for headless_flag in ("--headless=new", "--headless"):
     except subprocess.TimeoutExpired as exc:
         logs.append(f"[{headless_flag}] browser benchmark timed out\n" + text(exc.stderr))
         last_stdout = text(exc.stdout)
-        last_status = 124
+        last_status = 0 if 'jtml-browser-benchmark-result' in last_stdout else 124
+        if last_status == 0:
+            break
 
 with open(log_path, "w", encoding="utf-8") as handle:
     handle.write("\n".join(logs))
@@ -356,6 +443,24 @@ if fixture == "lifecycle_cleanup":
         raise SystemExit("error: lifecycle_cleanup did not report component destroy lifecycle telemetry")
     if not (int(reasons.get("subtree-prune", 0)) > 0 or int(reasons.get("keyed-list-remove", 0)) > 0):
         raise SystemExit(f"error: lifecycle_cleanup did not report subtree/keyed cleanup reasons: {reasons!r}")
+    if int(destroy.get("registrySizeAfter", 999999)) >= int(result.get("nestedWrappersInitialCount", 0)) + len(keyed_texts) + 10:
+        raise SystemExit(f"error: lifecycle_cleanup reported suspicious registry size after cleanup: {destroy!r}")
+    if "lastHandlerCount" not in destroy:
+        raise SystemExit(f"error: lifecycle_cleanup destroy telemetry did not include handler cleanup context: {destroy!r}")
+    if int(destroy.get("handlerInstanceDestroyCount", 0)) <= 0 or int(destroy.get("handlerCountTotal", 0)) <= 0:
+        raise SystemExit(f"error: lifecycle_cleanup did not prove event-handler registry cleanup: {destroy!r}")
+if fixture == "form_focus":
+    if f"Ada {expected_clicks - 1}" not in text:
+        raise SystemExit(f"error: form_focus did not update text from input binding: {text!r}")
+    if not result.get("formInputRetained"):
+        raise SystemExit("error: form_focus replaced the input element during input binding updates")
+    if not result.get("formInputFocused"):
+        raise SystemExit("error: form_focus lost input focus during input binding updates")
+    if int(result.get("formSelectionStart", -1)) != 3 or int(result.get("formSelectionEnd", -1)) != 3:
+        raise SystemExit(
+            "error: form_focus did not preserve cursor selection "
+            f"start={result.get('formSelectionStart')} end={result.get('formSelectionEnd')}"
+        )
 if fixture == "composition" and not result.get("directNestedComponentParamPatch"):
     raise SystemExit("error: composition did not use in-place nested component parameter patch")
 if fixture == "nested_component_update" and not result.get("directNestedComponentParamPatch"):

@@ -76,6 +76,18 @@ std::string extractClientManifestText(const std::string& html) {
     return html.substr(start + open.size(), end - (start + open.size()));
 }
 
+std::string replaceClientManifestText(std::string html, const std::string& manifest) {
+    const std::string open = "<script type=\"application/json\" id=\"__jtml_client_manifest\">";
+    const std::string close = "</script>";
+    const auto start = html.find(open);
+    EXPECT_NE(start, std::string::npos) << html;
+    const auto bodyStart = start + open.size();
+    const auto end = html.find(close, bodyStart);
+    EXPECT_NE(end, std::string::npos) << html;
+    html.replace(bodyStart, end - bodyStart, manifest);
+    return html;
+}
+
 struct ScopedCurrentPath {
     std::filesystem::path previous = std::filesystem::current_path();
 
@@ -1069,9 +1081,25 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_NE(benchmarkFixtures.find("large_keyed_rows"), std::string::npos);
     EXPECT_NE(benchmarkFixtures.find("nested_component_update"), std::string::npos);
     EXPECT_NE(benchmarkFixtures.find("lifecycle_cleanup"), std::string::npos);
+    EXPECT_NE(benchmarkFixtures.find("form_focus"), std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["browserAssetBudgets"].get<std::string>().find("byte budgets"),
               std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["performanceTarget"]["dynamicGeneratedUpdateFunctions"].get<std::string>().find("removed from shipped runtime"),
+              std::string::npos);
+    ASSERT_TRUE(report["runtimeCapabilities"].contains("v02Closure"))
+        << report.dump(2);
+    EXPECT_EQ(report["runtimeCapabilities"]["v02Closure"]["status"], "closed");
+    EXPECT_EQ(report["runtimeCapabilities"]["v02Closure"]["readyForV03"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["v02Closure"]["remainingBlockers"].size(), 0);
+    EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["browserBuildSchema"].get<std::string>().find("parsed client-manifest"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["sourceSpanModel"].get<std::string>().find("semantic-wide span normalization remains a v0.3 target"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["lifecycleProof"].get<std::string>().find("event-handler cleanup telemetry"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["closureEvidence"].dump().find("JTML_REQUIRE_BROWSER_BENCH=1 scripts/benchmark_runtime.sh"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["v03CarryForward"].dump().find("TypeEnvironment-backed expression IR"),
               std::string::npos);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["productionRuntimeDynamicCompilation"], false);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["optimizedJsCompiler"], "planned");
@@ -1559,6 +1587,8 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
     const std::string runtimeAsset = readTextFile(outDir / "jtml-runtime.js");
     EXPECT_NE(runtimeAsset.find("const browserLocalRuntime = true;"), std::string::npos)
         << runtimeAsset;
+    EXPECT_EQ(runtimeAsset.find("<script"), std::string::npos) << runtimeAsset;
+    EXPECT_EQ(runtimeAsset.find("</script>"), std::string::npos) << runtimeAsset;
     EXPECT_NE(runtimeAsset.find("Browser-local runtime active"), std::string::npos)
         << runtimeAsset;
     EXPECT_EQ(runtimeAsset.find("new Function"), std::string::npos) << runtimeAsset;
@@ -1585,7 +1615,9 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
               std::string::npos) << runtimeAsset;
     EXPECT_NE(runtimeAsset.find("destroyRuntimeComponentInstance(id, 'keyed-list-remove')"),
               std::string::npos) << runtimeAsset;
-    EXPECT_NE(runtimeAsset.find("destroyDirectComponentInstancesUnderElement(el, 'body-node-html-replace')"),
+    EXPECT_NE(runtimeAsset.find("destroyDirectComponentInstancesUnderElement(el, reason || 'body-node-html-replace')"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("componentNodeHead(node)==='if'?'subtree-prune':'body-node-html-replace'"),
               std::string::npos) << runtimeAsset;
     EXPECT_NE(runtimeAsset.find("destroyDirectComponentInstancesUnderElement(wrapper, 'keyed-item-html-replace')"),
               std::string::npos) << runtimeAsset;
@@ -1718,6 +1750,38 @@ TEST(BrowserBuildSchema, RejectsProdLegacyReferencesAndDebugRequiresTelemetryCon
     EXPECT_THROW({
         jtml::cli::validateBrowserBuildOutputSchema(
             prodOut, jtml::cli::BrowserBuildMode::Production);
+    }, std::runtime_error);
+
+    const auto prodOutManifest = root / "dist-prod-manifest";
+    jtml::cli::Options prodManifest = prod;
+    prodManifest.outputFile = prodOutManifest.string();
+    const auto prodManifestResult = captureCommand([&] { return jtml::cli::cmdBuild(prodManifest); });
+    ASSERT_EQ(prodManifestResult.code, 0) << prodManifestResult.out << prodManifestResult.err;
+    const auto indexPath = prodOutManifest / "index.html";
+    std::string indexHtml = readTextFile(indexPath);
+    const auto manifestKey = indexHtml.find("\"componentDefinitions\"");
+    ASSERT_NE(manifestKey, std::string::npos) << indexHtml;
+    indexHtml.insert(manifestKey, "\"bodySource\":\"debug-only\",");
+    writeTempFile(indexPath, indexHtml);
+    EXPECT_THROW({
+        jtml::cli::validateBrowserBuildOutputSchema(
+            prodOutManifest, jtml::cli::BrowserBuildMode::Production);
+    }, std::runtime_error);
+
+    const auto prodOutBadShape = root / "dist-prod-bad-shape";
+    jtml::cli::Options prodBadShape = prod;
+    prodBadShape.outputFile = prodOutBadShape.string();
+    const auto prodBadShapeResult = captureCommand([&] { return jtml::cli::cmdBuild(prodBadShape); });
+    ASSERT_EQ(prodBadShapeResult.code, 0) << prodBadShapeResult.out << prodBadShapeResult.err;
+    const auto badShapeIndexPath = prodOutBadShape / "index.html";
+    auto badShapeHtml = readTextFile(badShapeIndexPath);
+    auto badShapeManifest = extractClientManifestJson(badShapeHtml);
+    badShapeManifest["componentDefinitions"] = nlohmann::json::object();
+    writeTempFile(badShapeIndexPath,
+                  replaceClientManifestText(badShapeHtml, badShapeManifest.dump()));
+    EXPECT_THROW({
+        jtml::cli::validateBrowserBuildOutputSchema(
+            prodOutBadShape, jtml::cli::BrowserBuildMode::Production);
     }, std::runtime_error);
 
     const auto debugOut = root / "dist-debug";
@@ -2262,7 +2326,7 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("return '<button' + jtml_static_attrs_to_string(next)"),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("return '<span' + jtml_static_attrs_to_string(next)"),
+    EXPECT_NE(componentModule.find("const attrs = jtml_static_attrs_to_string(next); return '<span' + attrs"),
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("return '<section' + jtml_static_attrs_to_string(next)"),
               std::string::npos) << componentModule;
@@ -2278,7 +2342,7 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("data-jtml-direct-list-key"),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("instance.slotHtml != null"),
+    EXPECT_NE(componentModule.find("instance && instance.slotHtml"),
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("instance.slotHtmlByName"),
               std::string::npos) << componentModule;
@@ -2407,7 +2471,7 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("return '<button' + jtml_static_attrs_to_string(next)"),
               std::string::npos) << updatePlans;
-    EXPECT_NE(updatePlans.find("return '<span' + jtml_static_attrs_to_string(next)"),
+    EXPECT_NE(updatePlans.find("const attrs = jtml_static_attrs_to_string(next); return '<span' + attrs"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("return '<section' + jtml_static_attrs_to_string(next)"),
               std::string::npos) << updatePlans;
@@ -2423,7 +2487,7 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("data-jtml-direct-list-key"),
               std::string::npos) << updatePlans;
-    EXPECT_NE(updatePlans.find("instance.slotHtml != null"),
+    EXPECT_NE(updatePlans.find("instance && instance.slotHtml"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("instance.slotHtmlByName"),
               std::string::npos) << updatePlans;

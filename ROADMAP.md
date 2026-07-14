@@ -213,10 +213,10 @@ The current focus is the semantic-core transition:
   classification, literal/reactive separation, source spans, and source-first
   diagnostics. ✅ First slice: `JtmlAttributeKind` now classifies
   literal/boolean/reactive/event/special/passthrough attributes before
-  transpiler/interpreter runtime binding. Source-line diagnostics currently
-  flow through runtime-plan/body-plan bridges, but the next required slice is a
-  parser/AST source span model carried end-to-end instead of line adjustment at
-  validation time.
+  transpiler/interpreter runtime binding. ✅ v0.2 source-span slice: parser/AST
+  statement spans now flow into runtime-plan body nodes, static compiler
+  metadata, browser fallback telemetry, and live diagnostic context. Full
+  semantic-wide span normalization is the v0.3 source-first diagnostics target.
 - P1 observable graph: make `jtml explain` consume a real semantic model rather
   than ad-hoc parser guesses. ✅ First slice: state/constants/derived/actions,
   fetches, routes, effects, stores, components, imports, attribute kinds, and
@@ -493,10 +493,12 @@ The current focus is the semantic-core transition:
   `large_keyed_rows` as the first larger-budget scaffold for 1k keyed row
   lifecycle behavior. `lifecycle_cleanup` now exercises conditional
   nested-component removal and keyed item cleanup, and the browser harness
-  asserts clean `window.jtml.browserBuild` mode plus absence of loaded legacy
-  update-plan scripts.
-  This path has an executable guardrail: 50 KB
-  for `index.html`, 260 KB for `jtml-runtime.js`, 180 KB for
+  asserts clean `window.jtml.browserBuild` mode, absence of loaded legacy
+  update-plan scripts, registry-size cleanup, and event-handler cleanup
+  telemetry. `form_focus` now asserts input binding preserves the input
+  element, focus, and cursor selection during repeated browser updates.
+  This path has an executable guardrail: 70 KB
+  for `index.html`, 265 KB for `jtml-runtime.js`, 180 KB for
   `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
   `jtml-update-plans.js` in compatibility/debug mode, to tighten as direct generated update modules keep
   replacing operation-record patch helpers.
@@ -537,9 +539,8 @@ The current focus is the semantic-core transition:
   Remaining parity work: broadening the supported
   body-plan subset until compatibility DOM is only an explicit fallback path or
   absent from production browser builds,
-  improving source spans beyond typed emitted-event diagnostics, stronger
-  keyed list lifecycle, richer path-assignment semantics, and broader
-  behavior parity checks.
+  semantic-wide source span normalization, stronger keyed list lifecycle,
+  richer path-assignment semantics, and broader behavior parity checks.
 - P3 semantic styling: ✅ First slice. `theme`, UI primitives, utility
   modifiers, generated stylesheet, semantic primitive/theme counts, the
   structured `jtml explain --json` `semantic.ui` contract, and raw CSS escape

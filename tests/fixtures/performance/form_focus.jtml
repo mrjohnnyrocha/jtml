@@ -1,0 +1,13 @@
+jtml 2
+
+make FormFocus
+  let name = ""
+  get greeting = name != "" ? "Hello {name}" : "Type a name"
+
+  panel title "Form focus"
+    field label "Name"
+      input placeholder "Name" into name
+    text greeting
+
+page
+  FormFocus

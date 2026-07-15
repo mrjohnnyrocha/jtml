@@ -104,6 +104,7 @@ struct SemanticComponentDefinition {
     std::vector<std::string> localActions;
     std::vector<std::string> localEffects;
     std::vector<std::string> eventBindings;
+    std::vector<std::string> localBindings;
     std::string bodyHex;
     bool hasSlot = false;
     int bodyNodeCount = 0;

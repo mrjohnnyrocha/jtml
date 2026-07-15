@@ -14,8 +14,9 @@ runtime parity, or remove monolithic/embedded implementation debt. `jtml
 doctor --json` reports the current stable/first-slice/experimental tiers and
 the verification gates expected before release work.
 
-Current v0.2 status: production browser compiler isolation is closed enough to
-start v0.3, while full enterprise readiness remains false. The build now has
+Current v0.2 status: production browser compiler isolation is scope-closed
+with known limitations and ready to feed v0.3, while full enterprise readiness
+remains false. The build now has
 separate browser-production, live-runtime, and legacy-runtime source/object
 ownership, plus a `jtml_browser_production` library and CTest link-check that
 proves the compiler slice can parse Friendly JTML, build a runtime plan, and
@@ -50,7 +51,13 @@ remediation text when a shape is unsupported. Directory builds copy only
 `public/`, `assets/`, and selected root web metadata files by default; symlinks
 are skipped intentionally until configurable asset include/exclude rules exist.
 `cli/browser_build_schema.cpp` now validates the emitted prod/compat/debug
-asset contract before `cmdBuildBrowser` returns success.
+asset contract before `cmdBuildBrowser` returns success, including a closed
+parsed client-manifest schema for public runtime-plan, project, route/fetch,
+action, component-definition, and component-instance keys. The production
+schema now also parses and validates body-plan node keys, loop plans, word
+plans, argument plans, and nested expression-plan keys so source-rich or
+future/debug runtime payloads cannot leak into the clean browser manifest
+unnoticed.
 
 ## 1. Semantic Styling And UI Primitives
 
@@ -190,7 +197,11 @@ create/update modules without relying on runtime `eval` / `new Function`.
 Supported root text, button, leaf element, direct-safe container nodes,
 safe `if`/keyed-`for` control-flow regions, and first-slice slot/nested
 component anchors now emit escaped HTML construction in `components/index.js`;
-unsupported shapes still use helper/fallback create paths. Static update
+slot create uses direct default/named slot HTML inputs instead of delegating to
+the generic runtime slot helper, and supported nested create calls the child
+static component module directly when the child module id/key is known.
+Unsupported shapes and remaining nested edge cases still use helper/fallback
+create paths. Static update
 functions also emit direct per-node patch cases for text, button, element,
 container-attribute, safe control-flow region, slot, and nested-component nodes
 before falling back to operation records.
@@ -204,7 +215,18 @@ string planner. Literal, boolean, number, null, dot-path, unary `!`,
 binary/comparison/logical, ternary, composite string, array/object literal,
 member/subscript, and call-shaped plans carry `producer: "typed-ir"` when the parser owns them; static
 component emission consumes that same API instead of maintaining a private
-expression parser. Those plans travel through text/element patch operations, element
+expression parser. A first-slice `ExpressionTypeEnvironment` now lets compiler
+callers annotate known root symbols and propagate simple number/string/boolean
+results through binary and conditional expression plans. Runtime/client JSON
+emission now builds a first semantic environment from top-level state, derived
+bindings, fetch objects, and component-local params/state/derived body-plan
+declarations, so binding, component body-plan, and action expression plans
+carry useful value types in real manifests. Static component/update-plan
+emission passes the same component-local environment into body-plan
+serialization, so production module generation and compatibility/debug plans do
+not drift back to unknown types for local action math; full TypeEnvironment
+construction from object shapes, nullability, named slot payloads, route
+params, and event payload contracts remains v0.3 work. Those plans travel through text/element patch operations, element
 content, attributes, modifiers, component action arguments, body-plan
 conditions, `for` collection and key expressions, nested component parameter
 evaluation, and browser-local body-plan action assignments/local declarations
@@ -244,13 +266,23 @@ wrapper DOM identity during actual browser clicks, and `keyed_list` asserts
 retained row identity across keyed reorder. `lifecycle_cleanup` now asserts the
 conditional/keyed destroy lifecycle path and clean-prod browser build mode/no
 legacy script loading, registry-size cleanup, and event-handler cleanup
-telemetry in the browser harness. `form_focus` asserts input binding preserves
-the input element, focus, and cursor selection. Current
+telemetry plus post-destroy action-dispatch rejection for destroyed instance
+IDs in the browser harness. `form_focus` asserts input binding preserves the
+input element, focus, and cursor selection. Direct component `into` writes
+now fail closed unless the target is a simple local `let` state name, with
+browser diagnostics for missing, param, derived, and member-path targets.
+Semantic usage/lint analysis now records component `into` targets and warns for
+non-writable bindings; full Friendly source-span validation before compatibility
+lowering and form TypeEnvironment/input semantics remain v0.3. Current
 guardrails:
-70 KB for `index.html`, 265 KB for `jtml-runtime.js`, 180 KB for
+70 KB for `index.html`, 268 KB for `jtml-runtime.js`, 180 KB for
 `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
 `jtml-update-plans.js`, all meant to tighten as direct generated update modules
-keep replacing operation-record patch helpers.
+keep replacing operation-record patch helpers. The 70 KB index budget is a
+temporary allowance for source-span/runtime-plan metadata that still ships in
+the client manifest and registry/generation cleanup proof telemetry that still
+ships in `jtml-runtime.js`; v0.3 should move debug/source-rich/proof metadata
+out of clean production and tighten these budgets again.
 
 Implementation slices:
 
@@ -422,8 +454,11 @@ Implementation slices:
 6. ✅ Browser runtime emitter/asset split: the generated browser/live runtime
    script now lives behind `jtml::emitBrowserRuntimeScript()`, and that emitter
    is a small parameterizing wrapper around owned runtime asset chunks in
-   `src/browser_runtime_assets.cpp`. `src/transpiler.cpp` stays focused on
-   HTML/manifest emission while the public `JtmlTranspiler` API remains stable.
+   `src/browser_runtime_assets.cpp`. Those chunks are now JavaScript-only:
+   inline transpile/live paths add `<script>` wrappers at the boundary, while
+   split `jtml-runtime.js` builds no longer depend on textual wrapper stripping.
+   `src/transpiler.cpp` stays focused on HTML/manifest emission while the public
+   `JtmlTranspiler` API remains stable.
 7. ✅ First client manifest emitter split: the browser-local manifest now lives
    behind `jtml::emitClientManifestScript()` in
    `src/client_manifest_emitter.cpp`, and shared expression serialization moved
@@ -748,34 +783,46 @@ Implementation slices:
    update functions beyond the current body-plan patch helpers, expand
    text/attribute/button patches into keyed region updates, emit full
    static JS runtime assets for production, keep expanding the benchmark
-   fixtures/budgets beyond the current `large_keyed_rows` and
-   `nested_component_update` scaffolds, and keep the current manifest interpreter
+   fixtures/budgets beyond the current `large_keyed_updates`,
+   `large_keyed_reorder`, and `nested_component_update` scaffolds, and keep the current manifest interpreter
    as a compatibility fallback without runtime string compilation in shipped
    browser assets.
 51. ✅ First browser build asset schemas per mode: clean prod, compat, and debug.
    `cmdBuildBrowser` now validates required assets, mode contract, debug
    telemetry flags, dynamic-compilation bans, prod legacy-asset absence,
    component-module debug-payload absence, and legacy update-plan presence for
-   compat/debug. It also parses the embedded client manifest and validates
-   required collections, component definitions, instances, and source-rich key
-   bans. Next: replace the remaining test-side string checks with reusable
-   artifact schema helpers and richer app/component-module schema validation.
+   compat/debug. It also parses the embedded client manifest and validates a
+   closed public runtime-plan/project schema, component definitions,
+   component instances, routes, fetches, actions, and source-rich key bans.
+   Body-plan node internals remain the evolving sub-contract. Next: replace
+   the remaining test-side string checks with reusable artifact schema helpers
+   and richer app/component-module schema validation.
 52. ✅ First parser/AST source-span model through runtime/compiler diagnostics:
    statement spans now flow into runtime-plan body nodes, static compiler
-   metadata, live diagnostic context, and browser fallback telemetry. Next:
-   normalize spans semantic-wide so every diagnostic owns file/line/column
-   without body-line adjustment.
-53. ✅ First lifecycle and clean-prod browser behavior proof: the browser
+   metadata, live diagnostic context, and browser fallback telemetry. Expression
+   spans now also flow into Expression IR/runtime expression plans for tooling,
+   and span columns count UTF-8 codepoints while byte offsets remain byte-based.
+   Clean client manifests and production component modules reject or strip that
+   source-rich metadata. Next: normalize spans semantic-wide so every diagnostic
+   owns file/line/column without body-line adjustment.
+53. ✅ First robust interpolation scanner in Expression IR: interpolated strings
+   now support escaped literal braces and scan quoted text / nested object
+   braces inside `{ expression }` instead of closing on the first `}`. Malformed
+   interpolation falls back to literal text instead of creating a broken
+   expression plan. Next: move interpolation source mapping through the
+   Friendly-original source map and TypeEnvironment.
+54. ✅ First lifecycle and clean-prod browser behavior proof: the browser
    harness now checks clean `window.jtml.browserBuild` mode, no loaded legacy
    update-plan script, retained nested/keyed identity, and a
    `lifecycle_cleanup` fixture for conditional nested removal plus keyed item
    cleanup. It also checks registry-size cleanup, event-handler cleanup
-   telemetry, and form input focus/cursor preservation via the `form_focus`
+   telemetry, post-destroy action-dispatch rejection for destroyed instance
+   IDs, and form input focus/cursor preservation via the `form_focus`
    fixture. Next: add deeper runtime-owned handler detachment
    assertions from runtime-owned handler registries.
-54. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
+55. Move larger Studio prose blocks out of `cli/studio_shell.cpp` using the
    same catalog endpoint pattern.
-55. Add contract-first JTL backend API design docs and prototypes only after
+56. Add contract-first JTL backend API design docs and prototypes only after
    runtime/module semantics are stable. Target governed internal operations:
    approval consoles, incident consoles, AI governance, cost controls, and
    deployment controls. Planned phases are contracts/types/errors, OpenAPI,

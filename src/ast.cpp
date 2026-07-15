@@ -234,6 +234,30 @@ std::string ConditionalExpressionStatementNode::toString() const {
            ")";
 }
 
+RangeExpressionStatementNode::RangeExpressionStatementNode(
+    std::unique_ptr<ExpressionStatementNode> startExpr,
+    std::unique_ptr<ExpressionStatementNode> endExpr)
+    : start(std::move(startExpr)),
+      end(std::move(endExpr)) {}
+
+ExpressionStatementNodeType RangeExpressionStatementNode::getExprType() const {
+    return ExpressionStatementNodeType::Range;
+}
+
+std::unique_ptr<ExpressionStatementNode> RangeExpressionStatementNode::clone() const {
+    return std::make_unique<RangeExpressionStatementNode>(
+        start ? start->clone() : nullptr,
+        end ? end->clone() : nullptr);
+}
+
+std::string RangeExpressionStatementNode::toString() const {
+    return "(" +
+           (start ? start->toString() : std::string()) +
+           ".." +
+           (end ? end->toString() : std::string()) +
+           ")";
+}
+
 ArrayLiteralExpressionStatementNode::ArrayLiteralExpressionStatementNode(std::vector<std::unique_ptr<ExpressionStatementNode>> elms)
     : elements(std::move(elms)) {}
 

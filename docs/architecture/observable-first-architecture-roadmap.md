@@ -40,8 +40,11 @@ The honest claim is:
 - Attribute classifier. First implementation is in place.
 - Literal vs reactive attribute separation. First implementation is in place
   for transpiler, interpreter, and `jtml explain`.
-- Better interpolation semantics.
-- Better source spans.
+- Better interpolation semantics. First expression-IR scanner now treats
+  escaped braces as literals and scans nested braces/quoted text inside
+  interpolation expressions.
+- Better source spans. First expression spans exist in parser AST and
+  expression IR; Friendly-original source-map ownership remains follow-up work.
 - Stable Friendly-to-IR lowering.
 - No runtime guessing of language meaning.
 
@@ -270,8 +273,8 @@ now prefers parsed JTML expression AST nodes through
 `Parser::parseStandaloneExpression()` and marks those plans with
 `producer: "typed-ir"` before falling back to the legacy string planner, so the
 bridge is moving toward a real typed expression IR instead of expanding
-source-string heuristics. Array/object literals, member access, subscripts, and
-call-shaped expressions now preserve structured plan metadata for browser/live
+source-string heuristics. Array/object literals, member access, subscripts,
+range expressions, and call-shaped expressions now preserve structured plan metadata for browser/live
 runtime parity and static module generation. Live body-plan JSON now exposes the same first-slice
 expression-plan surface for conditions, keys, rendered text words, loops, and
 component action calls, so browser/live parity checks can compare semantic
@@ -281,9 +284,10 @@ guardrails, rejects dynamic `new Function`/direct `eval` in production browser
 assets, and delegates to `scripts/benchmark_browser_runtime.sh` for real
 headless-browser click/runtime measurements and fixture-specific DOM result
 assertions when Chrome/Chromium is available. The fixture set now includes
-`large_keyed_rows` and `nested_component_update` so 1k keyed row lifecycle and
-nested component update behavior are represented in executable budgets, even
-before full framework-comparison benchmarks exist.
+`large_keyed_updates`, `large_keyed_reorder`, and `nested_component_update` so
+1k keyed row update/reorder lifecycle and nested component update behavior are
+represented in executable budgets, even before full framework-comparison
+benchmarks exist.
 
 Remaining architectural work: broaden the supported body-plan subset until the
 expanded compatibility DOM is needed only for explicit fallback cases or can be

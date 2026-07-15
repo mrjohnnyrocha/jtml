@@ -473,11 +473,17 @@ void Lexer::recoverFromError() {
 
 void Lexer::advance() {
     if (m_pos < m_input.size()) {
+        const unsigned char current = static_cast<unsigned char>(m_input[m_pos]);
         if (m_input[m_pos] == '\n') {
             ++m_line;
             m_column = 1;
-        } else {
+        } else if ((current & 0xC0) != 0x80) {
+            // Keep byte offsets in m_pos, but report source columns as
+            // human-visible UTF-8 codepoint columns. Continuation bytes do not
+            // advance the column.
             ++m_column;
+        } else {
+            // UTF-8 continuation byte: byte offset moves, source column does not.
         }
         ++m_pos;
     }

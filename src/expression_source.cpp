@@ -111,6 +111,11 @@ std::string expressionSource(const ExpressionStatementNode* expr) {
                    expressionSource(conditional->whenTrue.get()) + " : " +
                    expressionSource(conditional->whenFalse.get());
         }
+        case ExpressionStatementNodeType::Range: {
+            const auto* range = static_cast<const RangeExpressionStatementNode*>(expr);
+            return expressionSource(range->start.get()) + ".." +
+                   expressionSource(range->end.get());
+        }
         case ExpressionStatementNodeType::ObjectPropertyAccess: {
             const auto* access = static_cast<const ObjectPropertyAccessExpressionNode*>(expr);
             return expressionSource(access->base.get()) + "." + access->propertyName;

@@ -197,7 +197,13 @@ only when the target boundary owns a stable contract and regression coverage.
   `assets/`, and selected root web metadata files; symlinks are intentionally
   skipped until configurable asset include/exclude rules ship. ✅ Asset schema
   slice: `cli/browser_build_schema.cpp` validates the emitted prod/compat/debug
-  browser asset contract before `cmdBuildBrowser` returns success.
+  browser asset contract before `cmdBuildBrowser` returns success, including a
+  closed parsed client-manifest schema for public runtime-plan, project,
+  route/fetch/action/component-definition/component-instance keys. Production
+  body-plan node keys, loop plans, word plans, argument plans, and nested
+  expression-plan keys are now parsed and checked against the current public
+  runtime contract so source-rich/debug payloads fail the build instead of
+  slipping through string checks.
 - **Legacy runtime quarantine**: `environment.cpp`, `array.cpp`, `dict.cpp`,
   and `value.cpp` now live under `src/jtml/legacy_runtime/`. The public headers
   remain in `include/jtml/` for compatibility and are marked as legacy/live
@@ -215,8 +221,10 @@ The current focus is the semantic-core transition:
   literal/boolean/reactive/event/special/passthrough attributes before
   transpiler/interpreter runtime binding. ✅ v0.2 source-span slice: parser/AST
   statement spans now flow into runtime-plan body nodes, static compiler
-  metadata, browser fallback telemetry, and live diagnostic context. Full
-  semantic-wide span normalization is the v0.3 source-first diagnostics target.
+  metadata, browser fallback telemetry, and live diagnostic context. Lexer and
+  parser span columns now count UTF-8 codepoints while preserving byte offsets
+  for source slicing. Full semantic-wide span normalization is the v0.3
+  source-first diagnostics target.
 - P1 observable graph: make `jtml explain` consume a real semantic model rather
   than ad-hoc parser guesses. ✅ First slice: state/constants/derived/actions,
   fetches, routes, effects, stores, components, imports, attribute kinds, and
@@ -438,7 +446,10 @@ The current focus is the semantic-core transition:
   Supported root text, button, leaf element, direct-safe container nodes,
   safe `if`/keyed-`for` control-flow regions, and first-slice slot/nested
   component anchors now emit escaped HTML construction in `components/index.js`;
-  unsupported shapes still use helper/fallback create paths. Static update
+  slot create uses direct default/named slot HTML inputs instead of the generic
+  runtime slot helper, and supported nested create calls the child static
+  component module directly when the child module id/key is known. Unsupported
+  shapes and remaining nested edge cases still use helper/fallback create paths. Static update
   functions try direct per-node patch cases for text, button, element,
   container-attribute, safe control-flow region, slot, and nested-component
   nodes before falling back to operation records.
@@ -448,7 +459,19 @@ The current focus is the semantic-core transition:
   binary/comparison/logical, ternary, composite string, array/object literal,
   member/subscript, and call-shaped plans carry `producer: "typed-ir"` when the parser owns them; static
   component emission consumes that same API instead of maintaining a private
-  expression parser. Those plans flow through text/element patch operations,
+  expression parser. A first-slice `ExpressionTypeEnvironment` now lets compiler
+  callers annotate known root symbols and propagate simple number/string/boolean
+  results through binary and conditional expression plans. Runtime/client JSON
+  emission now builds a first semantic environment from top-level state,
+  derived bindings, fetch objects, and component-local params/state/derived
+  body-plan declarations, so binding, component body-plan, and action
+  expression plans carry useful value types in real manifests. Static
+  component/update-plan emission passes the same component-local environment
+  into body-plan serialization, so production module generation and
+  compatibility/debug plans do not drift back to unknown types for local action
+  math; full TypeEnvironment construction from object shapes, nullability,
+  named slot payloads, route params, and event payload contracts remains v0.3
+  work. Those plans flow through text/element patch operations,
   element content, attributes, modifiers, component action arguments,
   body-plan conditions, `for` collection/key expressions, nested component
   parameter evaluation, and browser-local body-plan action assignments/local
@@ -490,18 +513,30 @@ The current focus is the semantic-core transition:
   nested parameter/body patch telemetry and retained nested wrapper DOM identity
   in the browser runtime benchmark. The `keyed_list` fixture asserts retained
   row identity across keyed reorder, and the benchmark fixture set now includes
-  `large_keyed_rows` as the first larger-budget scaffold for 1k keyed row
-  lifecycle behavior. `lifecycle_cleanup` now exercises conditional
+  `large_keyed_updates` and `large_keyed_reorder` as larger-budget scaffolds
+  for 1k keyed row updates and true keyed row movement. `lifecycle_cleanup`
+  now exercises conditional
   nested-component removal and keyed item cleanup, and the browser harness
   asserts clean `window.jtml.browserBuild` mode, absence of loaded legacy
   update-plan scripts, registry-size cleanup, and event-handler cleanup
-  telemetry. `form_focus` now asserts input binding preserves the input
-  element, focus, and cursor selection during repeated browser updates.
+  telemetry, including a post-destroy action-dispatch rejection probe for
+  destroyed instance IDs. `form_focus` now asserts input binding preserves the input
+  element, focus, and cursor selection during repeated browser updates. Direct
+  component `into` writes now fail closed unless the target is a simple local
+  `let` state name, with browser diagnostics exposed for missing, param,
+  derived, and member-path targets. Semantic usage/lint analysis now also
+  records component `into` targets and warns for non-writable bindings; full
+  Friendly source-span validation before compatibility lowering and form
+  TypeEnvironment/input semantics remain v0.3.
   This path has an executable guardrail: 70 KB
-  for `index.html`, 265 KB for `jtml-runtime.js`, 180 KB for
+  for `index.html`, 268 KB for `jtml-runtime.js`, 180 KB for
   `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
   `jtml-update-plans.js` in compatibility/debug mode, to tighten as direct generated update modules keep
-  replacing operation-record patch helpers.
+  replacing operation-record patch helpers. The 70 KB index budget is a
+  temporary v0.2 allowance for source-span/runtime-plan metadata in the client
+  manifest and registry/generation cleanup proof telemetry in `jtml-runtime.js`;
+  v0.3 should move debug/source-rich/proof metadata out of clean production and
+  tighten these budgets again.
   Structured container elements
   with children can now patch their own compiled attributes in place without
   disturbing child DOM. `if` and `for` nodes now render stable body-plan region
@@ -602,6 +637,10 @@ hardened, or planned.
   owned runtime asset chunks in `src/browser_runtime_assets.cpp`. This is the
   first concrete step toward separating HTML emission, browser runtime assembly,
   runtime asset ownership, and runtime planning.
+- Browser runtime asset wrapper split. ✅ — runtime asset chunks are authored as
+  JavaScript-only sources. Inline transpile/live emission adds `<script>`
+  wrappers at the boundary; `jtml-runtime.js` is no longer produced by
+  generating HTML and stripping wrappers by string search.
 - Client manifest emitter split. ✅ — browser-local manifest generation moved
   behind `jtml::emitClientManifestScript()` in
   `src/client_manifest_emitter.cpp`, with shared expression serialization in

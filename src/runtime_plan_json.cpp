@@ -20,7 +20,23 @@ nlohmann::json moduleIdToJson(SemanticModuleId id) {
     return id == InvalidSemanticModuleId ? nlohmann::json(nullptr) : nlohmann::json(id);
 }
 
-nlohmann::json runtimePlanStatementsToJson(const std::vector<RuntimePlanStatement>& statements);
+nlohmann::json runtimePlanStatementsToJson(
+    const std::vector<RuntimePlanStatement>& statements,
+    const ExpressionTypeEnvironment& environment,
+    const RuntimePlanJsonOptions& options);
+
+nlohmann::json compileRuntimeExpressionPlanForOptions(
+    const std::string& expression,
+    const ExpressionTypeEnvironment& environment,
+    const RuntimePlanJsonOptions& options);
+
+ExpressionTypeEnvironment runtimePlanComponentTypeEnvironment(
+    const ExpressionTypeEnvironment& base,
+    const RuntimePlanComponentDefinition& definition);
+
+ExpressionTypeEnvironment runtimePlanInstanceSlotTypeEnvironment(
+    const ExpressionTypeEnvironment& base,
+    const RuntimePlanComponentInstance& instance);
 
 nlohmann::json runtimePlanBindingsObjectToJson(const std::vector<RuntimePlanBinding>& bindings) {
     nlohmann::json out = nlohmann::json::object();
@@ -28,20 +44,31 @@ nlohmann::json runtimePlanBindingsObjectToJson(const std::vector<RuntimePlanBind
     return out;
 }
 
-nlohmann::json runtimePlanBindingPlansObjectToJson(const std::vector<RuntimePlanBinding>& bindings) {
+nlohmann::json runtimePlanBindingPlansObjectToJson(
+        const std::vector<RuntimePlanBinding>& bindings,
+        const ExpressionTypeEnvironment& environment,
+        const RuntimePlanJsonOptions& options) {
     nlohmann::json out = nlohmann::json::object();
     for (const auto& binding : bindings) {
-        out[binding.name] = compileRuntimeExpressionPlan(binding.expr);
+        out[binding.name] = compileRuntimeExpressionPlanForOptions(
+            binding.expr, environment, options);
     }
     return out;
 }
 
-nlohmann::json runtimePlanActionsObjectToJson(const std::vector<RuntimePlanAction>& actions) {
+nlohmann::json runtimePlanActionsObjectToJson(
+        const std::vector<RuntimePlanAction>& actions,
+        const ExpressionTypeEnvironment& environment,
+        const RuntimePlanJsonOptions& options) {
     nlohmann::json out = nlohmann::json::object();
     for (const auto& action : actions) {
+        auto actionEnvironment = environment;
+        for (const auto& param : action.params) {
+            actionEnvironment.symbols.emplace(param, ExpressionValueType::Unknown);
+        }
         out[action.name] = {
             {"params", action.params},
-            {"body", runtimePlanStatementsToJson(action.body)},
+            {"body", runtimePlanStatementsToJson(action.body, actionEnvironment, options)},
         };
     }
     return out;
@@ -58,7 +85,10 @@ nlohmann::json runtimePlanBindingsToJson(const std::vector<RuntimePlanBinding>& 
     return out;
 }
 
-nlohmann::json runtimePlanStatementsToJson(const std::vector<RuntimePlanStatement>& statements) {
+nlohmann::json runtimePlanStatementsToJson(
+        const std::vector<RuntimePlanStatement>& statements,
+        const ExpressionTypeEnvironment& environment,
+        const RuntimePlanJsonOptions& options) {
     nlohmann::json out = nlohmann::json::array();
     for (const auto& statement : statements) {
         nlohmann::json item = {
@@ -67,30 +97,41 @@ nlohmann::json runtimePlanStatementsToJson(const std::vector<RuntimePlanStatemen
         if (!statement.lhs.empty()) item["lhs"] = statement.lhs;
         if (!statement.expr.empty()) {
             item["expr"] = statement.expr;
-            item["exprPlan"] = compileRuntimeExpressionPlan(statement.expr);
+            item["exprPlan"] = compileRuntimeExpressionPlanForOptions(
+                statement.expr, environment, options);
         }
         if (!statement.condition.empty()) {
             item["condition"] = statement.condition;
-            item["conditionPlan"] = compileRuntimeExpressionPlan(statement.condition);
+            item["conditionPlan"] = compileRuntimeExpressionPlanForOptions(
+                statement.condition, environment, options);
         }
         if (!statement.thenStatements.empty()) {
-            item["then"] = runtimePlanStatementsToJson(statement.thenStatements);
+            item["then"] = runtimePlanStatementsToJson(
+                statement.thenStatements, environment, options);
         }
         if (!statement.elseStatements.empty()) {
-            item["else"] = runtimePlanStatementsToJson(statement.elseStatements);
+            item["else"] = runtimePlanStatementsToJson(
+                statement.elseStatements, environment, options);
         }
         out.push_back(std::move(item));
     }
     return out;
 }
 
-nlohmann::json runtimePlanActionsToJson(const std::vector<RuntimePlanAction>& actions) {
+nlohmann::json runtimePlanActionsToJson(
+        const std::vector<RuntimePlanAction>& actions,
+        const ExpressionTypeEnvironment& environment,
+        const RuntimePlanJsonOptions& options) {
     nlohmann::json out = nlohmann::json::array();
     for (const auto& action : actions) {
+        auto actionEnvironment = environment;
+        for (const auto& param : action.params) {
+            actionEnvironment.symbols.emplace(param, ExpressionValueType::Unknown);
+        }
         out.push_back({
             {"name", action.name},
             {"params", action.params},
-            {"body", runtimePlanStatementsToJson(action.body)},
+            {"body", runtimePlanStatementsToJson(action.body, actionEnvironment, options)},
         });
     }
     return out;
@@ -137,9 +178,11 @@ nlohmann::json runtimePlanFetchesToJson(const std::vector<SemanticFetch>& fetche
 }
 
 nlohmann::json runtimePlanComponentDefinitionsToJson(
-        const std::vector<RuntimePlanComponentDefinition>& definitions) {
+        const std::vector<RuntimePlanComponentDefinition>& definitions,
+        const ExpressionTypeEnvironment& baseEnvironment) {
     nlohmann::json out = nlohmann::json::array();
     for (const auto& definition : definitions) {
+        const auto environment = runtimePlanComponentTypeEnvironment(baseEnvironment, definition);
         out.push_back({
             {"moduleId", moduleIdToJson(definition.moduleId)},
             {"name", definition.name},
@@ -155,7 +198,9 @@ nlohmann::json runtimePlanComponentDefinitionsToJson(
             {"eventBindings", definition.eventBindings},
             {"bodySource", definition.bodySource},
             {"bodyHex", definition.bodyHex},
-            {"bodyPlan", runtimePlanBodyPlanToJson(definition.bodyPlan)},
+            {"bodyPlan", runtimePlanBodyPlanToJson(
+                definition.bodyPlan,
+                RuntimePlanJsonOptions{true, &environment})},
             {"hasSlot", definition.hasSlot},
             {"bodyNodeCount", definition.bodyNodeCount},
             {"rootTemplateNodeCount", definition.rootTemplateNodeCount},
@@ -167,9 +212,11 @@ nlohmann::json runtimePlanComponentDefinitionsToJson(
 }
 
 nlohmann::json runtimePlanComponentInstancesToJson(
-        const std::vector<RuntimePlanComponentInstance>& instances) {
+        const std::vector<RuntimePlanComponentInstance>& instances,
+        const ExpressionTypeEnvironment& baseEnvironment) {
     nlohmann::json out = nlohmann::json::array();
     for (const auto& instance : instances) {
+        const auto environment = runtimePlanInstanceSlotTypeEnvironment(baseEnvironment, instance);
         out.push_back({
             {"moduleId", moduleIdToJson(instance.moduleId)},
             {"definitionModule", moduleIdToJson(instance.definitionModule)},
@@ -181,7 +228,9 @@ nlohmann::json runtimePlanComponentInstancesToJson(
             {"locals", semanticPropertiesToJson(instance.locals)},
             {"slotSource", instance.slotSource},
             {"slotHex", instance.slotHex},
-            {"slotPlan", runtimePlanBodyPlanToJson(instance.slotPlan)},
+            {"slotPlan", runtimePlanBodyPlanToJson(
+                instance.slotPlan,
+                RuntimePlanJsonOptions{true, &environment})},
             {"sourceLine", instance.sourceLine},
         });
     }
@@ -189,9 +238,11 @@ nlohmann::json runtimePlanComponentInstancesToJson(
 }
 
 nlohmann::json runtimePlanComponentDefinitionsToClientJson(
-        const std::vector<RuntimePlanComponentDefinition>& definitions) {
+        const std::vector<RuntimePlanComponentDefinition>& definitions,
+        const ExpressionTypeEnvironment& baseEnvironment) {
     nlohmann::json out = nlohmann::json::array();
     for (const auto& definition : definitions) {
+        const auto environment = runtimePlanComponentTypeEnvironment(baseEnvironment, definition);
         out.push_back({
             {"moduleId", moduleIdToJson(definition.moduleId)},
             {"name", definition.name},
@@ -205,7 +256,9 @@ nlohmann::json runtimePlanComponentDefinitionsToClientJson(
             {"localActions", definition.localActions},
             {"localEffects", definition.localEffects},
             {"eventBindings", definition.eventBindings},
-            {"bodyPlan", runtimePlanBodyPlanToJson(definition.bodyPlan)},
+            {"bodyPlan", runtimePlanBodyPlanToJson(
+                definition.bodyPlan,
+                RuntimePlanJsonOptions{false, &environment})},
             {"hasSlot", definition.hasSlot},
             {"bodyNodeCount", definition.bodyNodeCount},
             {"rootTemplateNodeCount", definition.rootTemplateNodeCount},
@@ -216,9 +269,11 @@ nlohmann::json runtimePlanComponentDefinitionsToClientJson(
 }
 
 nlohmann::json runtimePlanComponentInstancesToClientJson(
-        const std::vector<RuntimePlanComponentInstance>& instances) {
+        const std::vector<RuntimePlanComponentInstance>& instances,
+        const ExpressionTypeEnvironment& baseEnvironment) {
     nlohmann::json out = nlohmann::json::array();
     for (const auto& instance : instances) {
+        const auto environment = runtimePlanInstanceSlotTypeEnvironment(baseEnvironment, instance);
         out.push_back({
             {"moduleId", moduleIdToJson(instance.moduleId)},
             {"definitionModule", moduleIdToJson(instance.definitionModule)},
@@ -228,7 +283,9 @@ nlohmann::json runtimePlanComponentInstancesToClientJson(
             {"role", instance.role},
             {"params", semanticPropertiesToJson(instance.params)},
             {"locals", semanticPropertiesToJson(instance.locals)},
-            {"slotPlan", runtimePlanBodyPlanToJson(instance.slotPlan)},
+            {"slotPlan", runtimePlanBodyPlanToJson(
+                instance.slotPlan,
+                RuntimePlanJsonOptions{false, &environment})},
         });
     }
     return out;
@@ -250,6 +307,64 @@ nlohmann::json runtimePlanSemanticToJson(const SemanticProgram& semantic) {
         {"componentDefinitionCount", semantic.componentDefinitions.size()},
         {"componentInstanceCount", semantic.componentInstances.size()},
     };
+}
+
+ExpressionValueType inferExpressionType(const std::string& expression,
+                                        const ExpressionTypeEnvironment& environment) {
+    if (auto ir = parseExpressionIr(expression, environment)) {
+        return ir->valueType;
+    }
+    return ExpressionValueType::Unknown;
+}
+
+void addBindingsToTypeEnvironment(ExpressionTypeEnvironment& environment,
+                                  const std::vector<RuntimePlanBinding>& bindings) {
+    for (const auto& binding : bindings) {
+        if (binding.name.empty()) continue;
+        environment.symbols[binding.name] = inferExpressionType(binding.expr, environment);
+    }
+}
+
+ExpressionTypeEnvironment runtimePlanTypeEnvironment(const RuntimePlan& plan) {
+    ExpressionTypeEnvironment environment;
+    for (const auto& fetch : plan.fetches) {
+        if (!fetch.name.empty()) environment.symbols[fetch.name] = ExpressionValueType::Object;
+    }
+    addBindingsToTypeEnvironment(environment, plan.state);
+    addBindingsToTypeEnvironment(environment, plan.derived);
+    return environment;
+}
+
+ExpressionTypeEnvironment runtimePlanComponentTypeEnvironment(
+        const ExpressionTypeEnvironment& base,
+        const RuntimePlanComponentDefinition& definition) {
+    auto environment = base;
+    for (const auto& param : definition.params) {
+        if (!param.empty()) environment.symbols.emplace(param, ExpressionValueType::Unknown);
+    }
+    for (const auto& node : definition.bodyPlan) {
+        if ((node.kind == "state" || node.kind == "derived") && !node.name.empty()) {
+            environment.symbols[node.name] = inferExpressionType(node.expression, environment);
+        }
+    }
+    return environment;
+}
+
+ExpressionTypeEnvironment runtimePlanInstanceSlotTypeEnvironment(
+        const ExpressionTypeEnvironment& base,
+        const RuntimePlanComponentInstance& instance) {
+    auto environment = base;
+    for (const auto& property : instance.params) {
+        if (!property.name.empty()) {
+            environment.symbols[property.name] = inferExpressionType(property.value, environment);
+        }
+    }
+    for (const auto& property : instance.locals) {
+        if (!property.name.empty()) {
+            environment.symbols[property.name] = inferExpressionType(property.value, environment);
+        }
+    }
+    return environment;
 }
 
 std::vector<std::string> splitRuntimePlanWords(const std::string& source) {
@@ -504,17 +619,29 @@ int findTopLevelRuntimeOperator(const std::string& expr,
 } // namespace
 
 nlohmann::json compileRuntimeExpressionPlan(const ExpressionStatementNode* expression) {
-    if (auto ir = buildExpressionIr(expression)) {
+    return compileRuntimeExpressionPlan(expression, ExpressionTypeEnvironment{});
+}
+
+nlohmann::json compileRuntimeExpressionPlan(
+        const ExpressionStatementNode* expression,
+        const ExpressionTypeEnvironment& environment) {
+    if (auto ir = buildExpressionIr(expression, environment)) {
         return expressionIrToRuntimePlanJson(*ir);
     }
     return {{"kind", "empty"}, {"source", ""}, {"producer", "typed-ir"}};
 }
 
 nlohmann::json compileRuntimeExpressionPlan(const std::string& expression) {
-    if (auto ir = parseExpressionIr(expression)) {
+    return compileRuntimeExpressionPlan(expression, ExpressionTypeEnvironment{});
+}
+
+nlohmann::json compileRuntimeExpressionPlan(
+        const std::string& expression,
+        const ExpressionTypeEnvironment& environment) {
+    const auto expr = stripOuterRuntimeParens(expression);
+    if (auto ir = parseExpressionIr(expr, environment)) {
         return expressionIrToRuntimePlanJson(*ir);
     }
-    const auto expr = stripOuterRuntimeParens(expression);
     if (expr.empty()) return {{"kind", "empty"}, {"source", ""}};
     if (isQuotedRuntimePlanString(expr)) {
         return {
@@ -570,9 +697,9 @@ nlohmann::json compileRuntimeExpressionPlan(const std::string& expression) {
                 return {
                     {"kind", "conditional"},
                     {"source", expr},
-                    {"test", compileRuntimeExpressionPlan(test)},
-                    {"whenTrue", compileRuntimeExpressionPlan(truthy)},
-                    {"whenFalse", compileRuntimeExpressionPlan(falsey)}
+                    {"test", compileRuntimeExpressionPlan(test, environment)},
+                    {"whenTrue", compileRuntimeExpressionPlan(truthy, environment)},
+                    {"whenFalse", compileRuntimeExpressionPlan(falsey, environment)}
                 };
             }
         }
@@ -603,8 +730,8 @@ nlohmann::json compileRuntimeExpressionPlan(const std::string& expression) {
             {"kind", "binary"},
             {"source", expr},
             {"operator", op},
-            {"left", compileRuntimeExpressionPlan(left)},
-            {"right", compileRuntimeExpressionPlan(right)}
+            {"left", compileRuntimeExpressionPlan(left, environment)},
+            {"right", compileRuntimeExpressionPlan(right, environment)}
         };
     }
     if (expr.size() > 1 && expr.front() == '!') {
@@ -614,7 +741,7 @@ nlohmann::json compileRuntimeExpressionPlan(const std::string& expression) {
                 {"kind", "unary"},
                 {"source", expr},
                 {"operator", "!"},
-                {"argument", compileRuntimeExpressionPlan(arg)}
+                {"argument", compileRuntimeExpressionPlan(arg, environment)}
             };
         }
     }
@@ -623,15 +750,21 @@ nlohmann::json compileRuntimeExpressionPlan(const std::string& expression) {
 
 namespace {
 
-nlohmann::json compileRuntimeWordPlans(const std::string& text) {
+nlohmann::json compileRuntimeWordPlans(
+        const std::string& text,
+        const ExpressionTypeEnvironment& environment,
+        const RuntimePlanJsonOptions& options) {
     nlohmann::json out = nlohmann::json::array();
     for (const auto& word : splitRuntimePlanWords(text)) {
-        out.push_back(compileRuntimeExpressionPlan(word));
+        out.push_back(compileRuntimeExpressionPlanForOptions(word, environment, options));
     }
     return out;
 }
 
-nlohmann::json compileRuntimeArgumentPlans(const std::string& source) {
+nlohmann::json compileRuntimeArgumentPlans(
+        const std::string& source,
+        const ExpressionTypeEnvironment& environment,
+        const RuntimePlanJsonOptions& options) {
     nlohmann::json out = nlohmann::json::array();
     std::string current;
     int paren = 0;
@@ -662,18 +795,25 @@ nlohmann::json compileRuntimeArgumentPlans(const std::string& source) {
         else if (ch == '}') --brace;
         if (ch == ',' && paren == 0 && bracket == 0 && brace == 0) {
             const auto expr = trimRuntimePlanString(current);
-            if (!expr.empty()) out.push_back(compileRuntimeExpressionPlan(expr));
+            if (!expr.empty()) {
+                out.push_back(compileRuntimeExpressionPlanForOptions(expr, environment, options));
+            }
             current.clear();
             continue;
         }
         current += ch;
     }
     const auto expr = trimRuntimePlanString(current);
-    if (!expr.empty()) out.push_back(compileRuntimeExpressionPlan(expr));
+    if (!expr.empty()) {
+        out.push_back(compileRuntimeExpressionPlanForOptions(expr, environment, options));
+    }
     return out;
 }
 
-nlohmann::json compileRuntimeLoopPlan(const RuntimePlanComponentBodyNode& node) {
+nlohmann::json compileRuntimeLoopPlan(
+        const RuntimePlanComponentBodyNode& node,
+        const ExpressionTypeEnvironment& environment,
+        const RuntimePlanJsonOptions& options) {
     const auto raw = node.expression.empty()
         ? std::string()
         : trimRuntimePlanString(node.expression);
@@ -682,7 +822,7 @@ nlohmann::json compileRuntimeLoopPlan(const RuntimePlanComponentBodyNode& node) 
         return {
             {"item", ""},
             {"collectionExpression", raw},
-            {"collectionPlan", compileRuntimeExpressionPlan(raw)}
+            {"collectionPlan", compileRuntimeExpressionPlanForOptions(raw, environment, options)}
         };
     }
     const auto item = trimRuntimePlanString(raw.substr(0, inPos));
@@ -690,14 +830,71 @@ nlohmann::json compileRuntimeLoopPlan(const RuntimePlanComponentBodyNode& node) 
     return {
         {"item", item},
         {"collectionExpression", collection},
-        {"collectionPlan", compileRuntimeExpressionPlan(collection)}
+        {"collectionPlan", compileRuntimeExpressionPlanForOptions(
+            collection, environment, options)}
     };
+}
+
+bool isRuntimeLoopNode(const RuntimePlanComponentBodyNode& node) {
+    return node.head == "for" || node.name == "for";
+}
+
+std::pair<std::string, std::string> runtimeLoopItemAndCollection(
+        const RuntimePlanComponentBodyNode& node) {
+    if (!isRuntimeLoopNode(node)) return {"", ""};
+    const auto raw = node.expression.empty()
+        ? std::string()
+        : trimRuntimePlanString(node.expression);
+    const auto inPos = raw.find(" in ");
+    if (inPos == std::string::npos) return {"", raw};
+    return {
+        trimRuntimePlanString(raw.substr(0, inPos)),
+        trimRuntimePlanString(raw.substr(inPos + 4))
+    };
+}
+
+ExpressionValueType loopItemTypeForCollection(const std::string& collection,
+                                              const ExpressionTypeEnvironment& environment) {
+    if (collection.empty()) return ExpressionValueType::Unknown;
+    if (auto collectionPlan = parseExpressionIr(collection, environment)) {
+        if (collectionPlan->kind == ExpressionIrKind::Range) {
+            return ExpressionValueType::Number;
+        }
+    }
+    return ExpressionValueType::Unknown;
+}
+
+void addLoopLocalToEnvironment(ExpressionTypeEnvironment& environment,
+                               const RuntimePlanComponentBodyNode& node) {
+    const auto [item, collection] = runtimeLoopItemAndCollection(node);
+    if (item.empty()) return;
+    environment.symbols[item] = loopItemTypeForCollection(collection, environment);
+}
+
+ExpressionTypeEnvironment environmentForBodyNode(
+        const std::vector<RuntimePlanComponentBodyNode>& bodyPlan,
+        int nodeIndex,
+        const ExpressionTypeEnvironment& baseEnvironment) {
+    auto environment = baseEnvironment;
+    std::vector<int> chain;
+    int cursor = nodeIndex;
+    while (cursor >= 0 && static_cast<size_t>(cursor) < bodyPlan.size()) {
+        chain.push_back(cursor);
+        const int parent = bodyPlan[static_cast<size_t>(cursor)].parentIndex;
+        if (parent == cursor) break;
+        cursor = parent;
+    }
+    for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
+        addLoopLocalToEnvironment(environment, bodyPlan[static_cast<size_t>(*it)]);
+    }
+    return environment;
 }
 
 void stripExpressionCompilerHints(nlohmann::json& value) {
     if (value.is_object()) {
         value.erase("directJs");
         value.erase("jsExpression");
+        value.erase("sourceSpan");
         for (auto& item : value.items()) {
             stripExpressionCompilerHints(item.value());
         }
@@ -708,13 +905,33 @@ void stripExpressionCompilerHints(nlohmann::json& value) {
     }
 }
 
+nlohmann::json compileRuntimeExpressionPlanForOptions(
+        const std::string& expression,
+        const ExpressionTypeEnvironment& environment,
+        const RuntimePlanJsonOptions& options) {
+    auto plan = compileRuntimeExpressionPlan(expression, environment);
+    if (!options.includeExpressionCompilerHints) {
+        stripExpressionCompilerHints(plan);
+    }
+    return plan;
+}
+
 } // namespace
 
 nlohmann::json runtimePlanBodyPlanToJson(
         const std::vector<RuntimePlanComponentBodyNode>& bodyPlan,
         const RuntimePlanJsonOptions& options) {
+    const ExpressionTypeEnvironment emptyEnvironment;
+    const auto& environment = options.typeEnvironment
+        ? *options.typeEnvironment
+        : emptyEnvironment;
     nlohmann::json out = nlohmann::json::array();
-    for (const auto& node : bodyPlan) {
+    for (size_t nodeIndex = 0; nodeIndex < bodyPlan.size(); ++nodeIndex) {
+        const auto& node = bodyPlan[nodeIndex];
+        const auto nodeEnvironment = environmentForBodyNode(
+            bodyPlan,
+            static_cast<int>(nodeIndex),
+            environment);
         auto item = nlohmann::json({
             {"definitionModule", moduleIdToJson(node.definitionModule)},
             {"sourceLine", node.sourceLine},
@@ -728,22 +945,22 @@ nlohmann::json runtimePlanBodyPlanToJson(
             {"text", node.text},
             {"operator", node.operatorToken},
             {"expression", node.expression},
-            {"expressionPlan", compileRuntimeExpressionPlan(node.expression)},
+            {"expressionPlan", compileRuntimeExpressionPlanForOptions(
+                node.expression, nodeEnvironment, options)},
             {"keyExpression", node.keyExpression},
-            {"keyExpressionPlan", compileRuntimeExpressionPlan(node.keyExpression)},
-            {"wordPlans", compileRuntimeWordPlans(node.text)},
+            {"keyExpressionPlan", compileRuntimeExpressionPlanForOptions(
+                node.keyExpression, nodeEnvironment, options)},
+            {"wordPlans", compileRuntimeWordPlans(node.text, nodeEnvironment, options)},
             {"reads", node.reads},
             {"writes", node.writes},
             {"renderRoot", node.renderRoot},
         });
         if (node.head == "for" || node.name == "for") {
-            item["loopPlan"] = compileRuntimeLoopPlan(node);
+            item["loopPlan"] = compileRuntimeLoopPlan(node, environment, options);
         }
         if (node.kind == "call") {
-            item["argPlans"] = compileRuntimeArgumentPlans(node.expression);
-        }
-        if (!options.includeExpressionCompilerHints) {
-            stripExpressionCompilerHints(item);
+            item["argPlans"] = compileRuntimeArgumentPlans(
+                node.expression, nodeEnvironment, options);
         }
         out.push_back(std::move(item));
     }
@@ -751,16 +968,20 @@ nlohmann::json runtimePlanBodyPlanToJson(
 }
 
 nlohmann::json runtimePlanToExplainJson(const RuntimePlan& plan) {
+    const auto environment = runtimePlanTypeEnvironment(plan);
     return {
         {"sourceOfTruth", "typed AST + semantic IR"},
         {"semantic", runtimePlanSemanticToJson(plan.semantic)},
         {"state", runtimePlanBindingsToJson(plan.state)},
         {"derived", runtimePlanBindingsToJson(plan.derived)},
-        {"actions", runtimePlanActionsToJson(plan.actions)},
+        {"actions", runtimePlanActionsToJson(
+            plan.actions, environment, RuntimePlanJsonOptions{true, &environment})},
         {"routes", runtimePlanRoutesToJson(plan.routes)},
         {"fetches", runtimePlanFetchesToJson(plan.fetches)},
-        {"componentDefinitions", runtimePlanComponentDefinitionsToJson(plan.componentDefinitions)},
-        {"componentInstances", runtimePlanComponentInstancesToJson(plan.componentInstances)},
+        {"componentDefinitions",
+            runtimePlanComponentDefinitionsToJson(plan.componentDefinitions, environment)},
+        {"componentInstances",
+            runtimePlanComponentInstancesToJson(plan.componentInstances, environment)},
     };
 }
 
@@ -786,18 +1007,22 @@ nlohmann::json runtimeProjectPlanToExplainJson(const RuntimeProjectPlan& plan) {
 }
 
 nlohmann::json runtimePlanToClientJson(const RuntimePlan& plan) {
+    const auto environment = runtimePlanTypeEnvironment(plan);
     auto client = nlohmann::json({
         {"state", runtimePlanBindingsObjectToJson(plan.state)},
-        {"statePlans", runtimePlanBindingPlansObjectToJson(plan.state)},
+        {"statePlans", runtimePlanBindingPlansObjectToJson(
+            plan.state, environment, RuntimePlanJsonOptions{false, &environment})},
         {"derived", runtimePlanBindingsObjectToJson(plan.derived)},
-        {"derivedPlans", runtimePlanBindingPlansObjectToJson(plan.derived)},
-        {"actions", runtimePlanActionsObjectToJson(plan.actions)},
+        {"derivedPlans", runtimePlanBindingPlansObjectToJson(
+            plan.derived, environment, RuntimePlanJsonOptions{false, &environment})},
+        {"actions", runtimePlanActionsObjectToJson(
+            plan.actions, environment, RuntimePlanJsonOptions{false, &environment})},
         {"routes", runtimePlanRoutesToJson(plan.routes)},
         {"fetches", runtimePlanFetchesToJson(plan.fetches)},
         {"componentDefinitions",
-            runtimePlanComponentDefinitionsToClientJson(plan.componentDefinitions)},
+            runtimePlanComponentDefinitionsToClientJson(plan.componentDefinitions, environment)},
         {"componentInstances",
-            runtimePlanComponentInstancesToClientJson(plan.componentInstances)},
+            runtimePlanComponentInstancesToClientJson(plan.componentInstances, environment)},
     });
     stripExpressionCompilerHints(client);
     return client;

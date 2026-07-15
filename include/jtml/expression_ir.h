@@ -4,6 +4,7 @@
 #include "json.hpp"
 
 #include <memory>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,6 +20,7 @@ enum class ExpressionIrKind {
     Unary,
     Binary,
     Conditional,
+    Range,
     Array,
     Object,
     Call,
@@ -37,6 +39,10 @@ enum class ExpressionValueType {
     Function,
 };
 
+struct ExpressionTypeEnvironment {
+    std::map<std::string, ExpressionValueType> symbols;
+};
+
 struct ExpressionIrObjectEntry {
     std::string key;
     std::unique_ptr<struct ExpressionIr> value;
@@ -45,6 +51,7 @@ struct ExpressionIrObjectEntry {
 struct ExpressionIr {
     ExpressionIrKind kind = ExpressionIrKind::Empty;
     ExpressionValueType valueType = ExpressionValueType::Unknown;
+    SourceSpan sourceSpan;
     std::string source;
     std::string op;
     std::string name;
@@ -61,7 +68,13 @@ struct ExpressionIr {
 };
 
 std::unique_ptr<ExpressionIr> buildExpressionIr(const ExpressionStatementNode* expression);
+std::unique_ptr<ExpressionIr> buildExpressionIr(
+    const ExpressionStatementNode* expression,
+    const ExpressionTypeEnvironment& environment);
 std::unique_ptr<ExpressionIr> parseExpressionIr(const std::string& expression);
+std::unique_ptr<ExpressionIr> parseExpressionIr(
+    const std::string& expression,
+    const ExpressionTypeEnvironment& environment);
 
 std::vector<std::string> expressionIrDependencies(const ExpressionIr& ir);
 nlohmann::json expressionIrToRuntimePlanJson(const ExpressionIr& ir);

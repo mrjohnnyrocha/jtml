@@ -45,7 +45,7 @@ grep -q 'data-jtml-cond-expr=&quot;user.active&quot;' "$repo_root/dist/browser-l
   || { echo "browser-loop: loop-scoped nested condition missing" >&2; exit 1; }
 rm -f "$tmp_browser_loop"
 
-JTML_BIN="$build_dir/jtml" "$repo_root/scripts/benchmark_runtime.sh"
+JTML_REQUIRE_BROWSER_BENCH=1 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/benchmark_runtime.sh"
 
 tmp_pkg_root="$(mktemp -d "${TMPDIR:-/tmp}/jtml-package.XXXXXX")"
 mkdir -p "$tmp_pkg_root/shared" "$tmp_pkg_root/app"
@@ -826,6 +826,14 @@ runtime_smoke() {
           ready=1; break
         fi
         if ! kill -0 "$_srv_pid" 2>/dev/null; then
+          local exit_status=0
+          wait "$_srv_pid" 2>/dev/null || exit_status=$?
+          _srv_pid=""
+          if [ "$exit_status" -ge 128 ]; then
+            echo "runtime-smoke: server exited by signal while starting $example on port $port (status $exit_status)" >&2
+            cat "$log" >&2 || true
+            return 1
+          fi
           break
         fi
         sleep 0.1

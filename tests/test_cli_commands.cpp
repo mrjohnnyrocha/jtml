@@ -554,6 +554,30 @@ TEST(CliLint, ObservableWarningsCatchDeadStateUnusedDerivedAndUnboundAction) {
     EXPECT_NE(result.err.find("JTML_UNBOUND_ACTION"), std::string::npos) << result.err;
 }
 
+TEST(CliLint, ComponentIntoTargetWarningsAreVisible) {
+    const auto file = writeTempJtml(
+        "component-into-targets",
+        "jtml 2\n"
+        "make Form initial\n"
+        "  let email = \"\"\n"
+        "  get label = email\n"
+        "  input \"Email\" into email\n"
+        "  input \"Missing\" into missing\n"
+        "  input \"Derived\" into label\n"
+        "page\n"
+        "  Form \"seed\"\n");
+
+    jtml::cli::Options opts;
+    opts.inputFile = file.string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdLint(opts); });
+    EXPECT_EQ(result.code, 1);
+    EXPECT_NE(result.err.find("JTML_UNKNOWN_INTO_TARGET"), std::string::npos) << result.err;
+    EXPECT_NE(result.err.find("JTML_INTO_DERIVED_TARGET"), std::string::npos) << result.err;
+    EXPECT_EQ(result.err.find("into email"), std::string::npos) << result.err;
+}
+
 TEST(CliExplain, JsonProjectGraphPreservesPerFileImporterOwnership) {
     const auto root = makeTempDir("explain-module-graph");
     writeTempFile(root / "stores" / "app-state.jtml",
@@ -1035,6 +1059,8 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["keyedListBelowWrapperReconciliation"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["keyedListChildMarkerReconciliation"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["keyedListPrunesRemovedDynamicChildren"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["directIntoWritableStateValidation"], true);
+    EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["directIntoInvalidTargetDiagnostics"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["destroyLifecycleTelemetry"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["liveBodyPlanPatchTelemetry"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["directComponentExecution"]["liveBodyPlanExpressionPlans"], true);
@@ -1078,7 +1104,8 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["browserRuntimeDomAssertions"], true);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["browserRuntimeLargeFixtureBudgets"], true);
     const auto benchmarkFixtures = report["runtimeCapabilities"]["performanceTarget"]["benchmarkFixtures"].dump();
-    EXPECT_NE(benchmarkFixtures.find("large_keyed_rows"), std::string::npos);
+    EXPECT_NE(benchmarkFixtures.find("large_keyed_updates"), std::string::npos);
+    EXPECT_NE(benchmarkFixtures.find("large_keyed_reorder"), std::string::npos);
     EXPECT_NE(benchmarkFixtures.find("nested_component_update"), std::string::npos);
     EXPECT_NE(benchmarkFixtures.find("lifecycle_cleanup"), std::string::npos);
     EXPECT_NE(benchmarkFixtures.find("form_focus"), std::string::npos);
@@ -1088,18 +1115,23 @@ TEST(CliDoctor, JsonReportsReadinessTiersAndVerificationGates) {
               std::string::npos);
     ASSERT_TRUE(report["runtimeCapabilities"].contains("v02Closure"))
         << report.dump(2);
-    EXPECT_EQ(report["runtimeCapabilities"]["v02Closure"]["status"], "closed");
+    EXPECT_EQ(report["runtimeCapabilities"]["v02Closure"]["status"], "scope_closed_with_known_limitations");
     EXPECT_EQ(report["runtimeCapabilities"]["v02Closure"]["readyForV03"], true);
-    EXPECT_EQ(report["runtimeCapabilities"]["v02Closure"]["remainingBlockers"].size(), 0);
+    EXPECT_GT(report["runtimeCapabilities"]["v02Closure"]["remainingBlockers"].size(), 0);
+    EXPECT_GT(report["runtimeCapabilities"]["v02Closure"]["remainingKnownLimitations"].size(), 0);
     EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["browserBuildSchema"].get<std::string>().find("parsed client-manifest"),
               std::string::npos);
-    EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["sourceSpanModel"].get<std::string>().find("semantic-wide span normalization remains a v0.3 target"),
+    EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["sourceSpanModel"].get<std::string>().find("expression spans, Friendly-original source maps"),
               std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["lifecycleProof"].get<std::string>().find("event-handler cleanup telemetry"),
               std::string::npos);
     EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["closureEvidence"].dump().find("JTML_REQUIRE_BROWSER_BENCH=1 scripts/benchmark_runtime.sh"),
               std::string::npos);
-    EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["v03CarryForward"].dump().find("TypeEnvironment-backed expression IR"),
+    EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["remainingBlockers"].dump().find("full semantic TypeEnvironment construction"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["v03CarryForward"].dump().find("full TypeEnvironment-backed expression IR"),
+              std::string::npos);
+    EXPECT_NE(report["runtimeCapabilities"]["v02Closure"]["remainingKnownLimitations"].dump().find("`into` bindings now fail closed"),
               std::string::npos);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["productionRuntimeDynamicCompilation"], false);
     EXPECT_EQ(report["runtimeCapabilities"]["performanceTarget"]["optimizedJsCompiler"], "planned");
@@ -1601,6 +1633,36 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
               std::string::npos) << runtimeAsset;
     EXPECT_NE(runtimeAsset.find("function unregisterComponentInstance"),
               std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("function runtimeRegistrySnapshot"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("getRuntimeRegistrySnapshot: runtimeRegistrySnapshot"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("function componentBindTargetStatus(definition, name)"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("JTML_INTO_DERIVED_TARGET"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("JTML_UNKNOWN_INTO_TARGET"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("bodySourceColumn"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("nodeText"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("componentBindDiagnosticMessage"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("Declare `let "),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("dynamicComponentInstanceGenerations"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("entries"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("registryLeaks"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("handlerLeaks"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("dispatchLeaks"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("__jtml_destroy_probe__"),
+              std::string::npos) << runtimeAsset;
     EXPECT_NE(runtimeAsset.find("staticDestroyFunction"),
               std::string::npos) << runtimeAsset;
     EXPECT_NE(runtimeAsset.find("function runtimeValuesEqual"),
@@ -1728,8 +1790,14 @@ TEST(BrowserBuildSchema, RejectsProdLegacyReferencesAndDebugRequiresTelemetryCon
     const auto root = makeTempDir("browser-build-schema");
     writeTempFile(root / "index.jtml",
         "jtml 2\n"
+        "let users = fetch \"/api/users\" timeout 1200 retry 2 revalidate 30000\n"
+        "make Card title\n"
+        "  card\n"
+        "    text title\n"
+        "    for index in 1..3 key index\n"
+        "      text index\n"
         "page\n"
-        "  text \"Schema\"\n");
+        "  Card \"Schema\"\n");
 
     const auto prodOut = root / "dist-prod";
     jtml::cli::Options prod;
@@ -1782,6 +1850,129 @@ TEST(BrowserBuildSchema, RejectsProdLegacyReferencesAndDebugRequiresTelemetryCon
     EXPECT_THROW({
         jtml::cli::validateBrowserBuildOutputSchema(
             prodOutBadShape, jtml::cli::BrowserBuildMode::Production);
+    }, std::runtime_error);
+
+    const auto prodOutUnknownManifest = root / "dist-prod-unknown-manifest";
+    jtml::cli::Options prodUnknownManifest = prod;
+    prodUnknownManifest.outputFile = prodOutUnknownManifest.string();
+    const auto prodUnknownManifestResult =
+        captureCommand([&] { return jtml::cli::cmdBuild(prodUnknownManifest); });
+    ASSERT_EQ(prodUnknownManifestResult.code, 0)
+        << prodUnknownManifestResult.out << prodUnknownManifestResult.err;
+    const auto unknownManifestIndexPath = prodOutUnknownManifest / "index.html";
+    auto unknownManifestHtml = readTextFile(unknownManifestIndexPath);
+    auto unknownManifest = extractClientManifestJson(unknownManifestHtml);
+    unknownManifest["debugOnlyFutureField"] = true;
+    writeTempFile(unknownManifestIndexPath,
+                  replaceClientManifestText(unknownManifestHtml, unknownManifest.dump()));
+    EXPECT_THROW({
+        jtml::cli::validateBrowserBuildOutputSchema(
+            prodOutUnknownManifest, jtml::cli::BrowserBuildMode::Production);
+    }, std::runtime_error);
+
+    const auto prodOutUnknownDefinition = root / "dist-prod-unknown-definition";
+    jtml::cli::Options prodUnknownDefinition = prod;
+    prodUnknownDefinition.outputFile = prodOutUnknownDefinition.string();
+    const auto prodUnknownDefinitionResult =
+        captureCommand([&] { return jtml::cli::cmdBuild(prodUnknownDefinition); });
+    ASSERT_EQ(prodUnknownDefinitionResult.code, 0)
+        << prodUnknownDefinitionResult.out << prodUnknownDefinitionResult.err;
+    const auto unknownDefinitionIndexPath = prodOutUnknownDefinition / "index.html";
+    auto unknownDefinitionHtml = readTextFile(unknownDefinitionIndexPath);
+    auto unknownDefinitionManifest = extractClientManifestJson(unknownDefinitionHtml);
+    unknownDefinitionManifest["componentDefinitions"] =
+        nlohmann::json::array({{{"name", "Injected"}, {"futureField", true}}});
+    writeTempFile(unknownDefinitionIndexPath,
+                  replaceClientManifestText(unknownDefinitionHtml,
+                                            unknownDefinitionManifest.dump()));
+    EXPECT_THROW({
+        jtml::cli::validateBrowserBuildOutputSchema(
+            prodOutUnknownDefinition, jtml::cli::BrowserBuildMode::Production);
+    }, std::runtime_error);
+
+    const auto prodOutUnknownBodyPlan = root / "dist-prod-unknown-body-plan";
+    jtml::cli::Options prodUnknownBodyPlan = prod;
+    prodUnknownBodyPlan.outputFile = prodOutUnknownBodyPlan.string();
+    const auto prodUnknownBodyPlanResult =
+        captureCommand([&] { return jtml::cli::cmdBuild(prodUnknownBodyPlan); });
+    ASSERT_EQ(prodUnknownBodyPlanResult.code, 0)
+        << prodUnknownBodyPlanResult.out << prodUnknownBodyPlanResult.err;
+    const auto unknownBodyPlanIndexPath = prodOutUnknownBodyPlan / "index.html";
+    auto unknownBodyPlanHtml = readTextFile(unknownBodyPlanIndexPath);
+    auto unknownBodyPlanManifest = extractClientManifestJson(unknownBodyPlanHtml);
+    ASSERT_FALSE(unknownBodyPlanManifest["componentDefinitions"].empty())
+        << unknownBodyPlanManifest.dump(2);
+    ASSERT_FALSE(unknownBodyPlanManifest["componentDefinitions"][0]["bodyPlan"].empty())
+        << unknownBodyPlanManifest.dump(2);
+    unknownBodyPlanManifest["componentDefinitions"][0]["bodyPlan"][0]["futureNodeField"] = true;
+    writeTempFile(unknownBodyPlanIndexPath,
+                  replaceClientManifestText(unknownBodyPlanHtml,
+                                            unknownBodyPlanManifest.dump()));
+    EXPECT_THROW({
+        jtml::cli::validateBrowserBuildOutputSchema(
+            prodOutUnknownBodyPlan, jtml::cli::BrowserBuildMode::Production);
+    }, std::runtime_error);
+
+    const auto prodOutUnknownExpressionPlan = root / "dist-prod-unknown-expression-plan";
+    jtml::cli::Options prodUnknownExpressionPlan = prod;
+    prodUnknownExpressionPlan.outputFile = prodOutUnknownExpressionPlan.string();
+    const auto prodUnknownExpressionPlanResult =
+        captureCommand([&] { return jtml::cli::cmdBuild(prodUnknownExpressionPlan); });
+    ASSERT_EQ(prodUnknownExpressionPlanResult.code, 0)
+        << prodUnknownExpressionPlanResult.out << prodUnknownExpressionPlanResult.err;
+    const auto unknownExpressionPlanIndexPath = prodOutUnknownExpressionPlan / "index.html";
+    auto unknownExpressionPlanHtml = readTextFile(unknownExpressionPlanIndexPath);
+    auto unknownExpressionPlanManifest = extractClientManifestJson(unknownExpressionPlanHtml);
+    unknownExpressionPlanManifest["componentDefinitions"][0]["bodyPlan"][0]["expressionPlan"]["futureExpressionField"] = true;
+    writeTempFile(unknownExpressionPlanIndexPath,
+                  replaceClientManifestText(unknownExpressionPlanHtml,
+                                            unknownExpressionPlanManifest.dump()));
+    EXPECT_THROW({
+        jtml::cli::validateBrowserBuildOutputSchema(
+            prodOutUnknownExpressionPlan, jtml::cli::BrowserBuildMode::Production);
+    }, std::runtime_error);
+
+    const auto prodOutBadFetchShape = root / "dist-prod-bad-fetch-shape";
+    jtml::cli::Options prodBadFetchShape = prod;
+    prodBadFetchShape.outputFile = prodOutBadFetchShape.string();
+    const auto prodBadFetchShapeResult =
+        captureCommand([&] { return jtml::cli::cmdBuild(prodBadFetchShape); });
+    ASSERT_EQ(prodBadFetchShapeResult.code, 0)
+        << prodBadFetchShapeResult.out << prodBadFetchShapeResult.err;
+    const auto badFetchShapeIndexPath = prodOutBadFetchShape / "index.html";
+    auto badFetchShapeHtml = readTextFile(badFetchShapeIndexPath);
+    auto badFetchShapeManifest = extractClientManifestJson(badFetchShapeHtml);
+    ASSERT_FALSE(badFetchShapeManifest["fetches"].empty()) << badFetchShapeManifest.dump(2);
+    badFetchShapeManifest["fetches"][0]["timeoutMs"] = true;
+    writeTempFile(badFetchShapeIndexPath,
+                  replaceClientManifestText(badFetchShapeHtml,
+                                            badFetchShapeManifest.dump()));
+    EXPECT_THROW({
+        jtml::cli::validateBrowserBuildOutputSchema(
+            prodOutBadFetchShape, jtml::cli::BrowserBuildMode::Production);
+    }, std::runtime_error);
+
+    const auto prodOutSourceSpanLeak = root / "dist-prod-source-span-leak";
+    jtml::cli::Options prodSourceSpanLeak = prod;
+    prodSourceSpanLeak.outputFile = prodOutSourceSpanLeak.string();
+    const auto prodSourceSpanLeakResult =
+        captureCommand([&] { return jtml::cli::cmdBuild(prodSourceSpanLeak); });
+    ASSERT_EQ(prodSourceSpanLeakResult.code, 0)
+        << prodSourceSpanLeakResult.out << prodSourceSpanLeakResult.err;
+    const auto sourceSpanIndexPath = prodOutSourceSpanLeak / "index.html";
+    auto sourceSpanHtml = readTextFile(sourceSpanIndexPath);
+    auto sourceSpanManifest = extractClientManifestJson(sourceSpanHtml);
+    sourceSpanManifest["statePlans"]["fake"] = {
+        {"kind", "path"},
+        {"source", "count"},
+        {"sourceSpan", {{"startLine", 1}, {"startColumn", 1}}}
+    };
+    writeTempFile(sourceSpanIndexPath,
+                  replaceClientManifestText(sourceSpanHtml,
+                                            sourceSpanManifest.dump()));
+    EXPECT_THROW({
+        jtml::cli::validateBrowserBuildOutputSchema(
+            prodOutSourceSpanLeak, jtml::cli::BrowserBuildMode::Production);
     }, std::runtime_error);
 
     const auto debugOut = root / "dist-debug";
@@ -2350,7 +2541,11 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_EQ(componentModule.find("renderStaticComponentSlotNode"),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("renderStaticComponentNestedNode(instance, definition, scope"),
+    EXPECT_EQ(componentModule.find("renderComponentSlot(instance, scope"),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("staticModule.create(nestedInstance, nestedDefinition, nestedScope, helper)"),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("renderStaticComponentNestedNode(instance, definition, scope"),
               std::string::npos) << componentModule;
     EXPECT_EQ(componentModule.find("\"childComponentId\""),
               std::string::npos) << componentModule;
@@ -2495,7 +2690,11 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << updatePlans;
     EXPECT_EQ(updatePlans.find("renderStaticComponentSlotNode"),
               std::string::npos) << updatePlans;
-    EXPECT_NE(updatePlans.find("renderStaticComponentNestedNode(instance, definition, scope"),
+    EXPECT_EQ(updatePlans.find("renderComponentSlot(instance, scope"),
+              std::string::npos) << updatePlans;
+    EXPECT_NE(updatePlans.find("staticModule.create(nestedInstance, nestedDefinition, nestedScope, helper)"),
+              std::string::npos) << updatePlans;
+    EXPECT_EQ(updatePlans.find("renderStaticComponentNestedNode(instance, definition, scope"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("\"childComponentKey\""),
               std::string::npos) << updatePlans;

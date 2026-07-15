@@ -60,6 +60,24 @@ TEST(Parser, StandaloneExpressionParsesAndRejectsTrailingTokens) {
     EXPECT_FALSE(badParser.getErrors().empty());
 }
 
+TEST(Parser, StandaloneRangeExpressionParses) {
+    Lexer lex("start..end");
+    auto tokens = lex.tokenize();
+    ASSERT_TRUE(lex.getErrors().empty()) << "unexpected lex errors";
+    Parser parser(std::move(tokens));
+    auto expression = parser.parseStandaloneExpression();
+    ASSERT_TRUE(expression);
+    EXPECT_TRUE(parser.getErrors().empty()) << "unexpected parse errors";
+    ASSERT_EQ(expression->getExprType(), ExpressionStatementNodeType::Range);
+    const auto& range = static_cast<const RangeExpressionStatementNode&>(*expression);
+    ASSERT_TRUE(range.start);
+    ASSERT_TRUE(range.end);
+    EXPECT_EQ(range.start->getExprType(), ExpressionStatementNodeType::Variable);
+    EXPECT_EQ(range.end->getExprType(), ExpressionStatementNodeType::Variable);
+    EXPECT_EQ(expression->sourceSpan.startColumn, 1);
+    EXPECT_GT(expression->sourceSpan.endColumn, expression->sourceSpan.startColumn);
+}
+
 TEST(Parser, CompoundAssignmentParsesAsAssignment) {
     auto prog = parseOk(
         "define count = 1\\\\\n"
@@ -93,6 +111,50 @@ TEST(Parser, StatementsCarrySourceSpans) {
     EXPECT_TRUE(el.content[0]->sourceSpan.valid());
     EXPECT_EQ(el.content[0]->sourceSpan.startLine, 3);
     EXPECT_GT(el.content[0]->sourceSpan.startColumn, 1);
+}
+
+TEST(Parser, ExpressionsCarrySourceSpans) {
+    auto prog = parseOk(
+        "define count = 0\\\\\n"
+        "define label = count > 1 ? \"many\" : \"one\"\\\\\n"
+        "element main\\\\\n"
+        "    show label\\\\\n"
+        "#\n");
+    ASSERT_EQ(prog.size(), 3u);
+
+    ASSERT_EQ(prog[1]->getType(), ASTNodeType::DefineStatement);
+    const auto& def = static_cast<const DefineStatementNode&>(*prog[1]);
+    ASSERT_TRUE(def.expression);
+    EXPECT_TRUE(def.expression->sourceSpan.valid());
+    EXPECT_EQ(def.expression->sourceSpan.startLine, 2);
+    EXPECT_GT(def.expression->sourceSpan.startColumn, 1);
+    EXPECT_EQ(def.expression->sourceSpan.endLine, 2);
+    EXPECT_GT(def.expression->sourceSpan.endColumn,
+              def.expression->sourceSpan.startColumn);
+
+    ASSERT_EQ(prog[2]->getType(), ASTNodeType::JtmlElement);
+    const auto& el = static_cast<const JtmlElementNode&>(*prog[2]);
+    ASSERT_EQ(el.content.size(), 1u);
+    ASSERT_EQ(el.content[0]->getType(), ASTNodeType::ShowStatement);
+    const auto& show = static_cast<const ShowStatementNode&>(*el.content[0]);
+    ASSERT_TRUE(show.expr);
+    EXPECT_TRUE(show.expr->sourceSpan.valid());
+    EXPECT_EQ(show.expr->sourceSpan.startLine, 4);
+    EXPECT_GT(show.expr->sourceSpan.startColumn, 1);
+}
+
+TEST(Parser, SourceSpanColumnsCountUtf8CodepointsNotBytes) {
+    auto prog = parseOk(
+        "show \"Olá\" + label\\\\\n");
+    ASSERT_EQ(prog.size(), 1u);
+    ASSERT_EQ(prog[0]->getType(), ASTNodeType::ShowStatement);
+    const auto& show = static_cast<const ShowStatementNode&>(*prog[0]);
+    ASSERT_TRUE(show.expr);
+    EXPECT_TRUE(show.expr->sourceSpan.valid());
+    EXPECT_EQ(show.expr->sourceSpan.startLine, 1);
+    EXPECT_EQ(show.expr->sourceSpan.startColumn, 6);
+    EXPECT_EQ(show.expr->sourceSpan.endLine, 1);
+    EXPECT_EQ(show.expr->sourceSpan.endColumn, 19);
 }
 
 TEST(Parser, ElementWithChildrenParses) {

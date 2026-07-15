@@ -819,6 +819,12 @@ std::string JtmlFriendlyFormatter::formatExpr(
                " : " +
                (e.whenFalse ? formatExpr(*e.whenFalse) : std::string());
     }
+    case ExpressionStatementNodeType::Range: {
+        const auto& e = static_cast<const RangeExpressionStatementNode&>(expr);
+        return (e.start ? formatExpr(*e.start) : std::string()) +
+               ".." +
+               (e.end ? formatExpr(*e.end) : std::string());
+    }
     case ExpressionStatementNodeType::EmbeddedVariable:
     case ExpressionStatementNodeType::CompositeString:
         return expr.toString();

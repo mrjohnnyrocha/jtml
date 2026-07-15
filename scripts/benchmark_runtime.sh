@@ -7,7 +7,7 @@ FIXTURES="${ROOT}/tests/fixtures/performance"
 OUT_ROOT="${ROOT}/dist/runtime-benchmarks"
 
 INDEX_BUDGET_BYTES="${JTML_INDEX_BUDGET_BYTES:-70000}"
-RUNTIME_BUDGET_BYTES="${JTML_RUNTIME_BUDGET_BYTES:-265000}"
+RUNTIME_BUDGET_BYTES="${JTML_RUNTIME_BUDGET_BYTES:-268000}"
 COMPONENT_BUDGET_BYTES="${JTML_COMPONENT_BUDGET_BYTES:-180000}"
 APP_BUDGET_BYTES="${JTML_APP_BUDGET_BYTES:-20000}"
 PLAN_BUDGET_BYTES="${JTML_PLAN_BUDGET_BYTES:-180000}"
@@ -157,8 +157,16 @@ for fixture in "${FIXTURES}"/*.jtml; do
       echo "error: ${name} component module missing named slot HTML fast path" >&2
       exit 1
     fi
-    if ! grep -q 'renderStaticComponentNestedNode(instance, definition, scope' "${component_module}"; then
-      echo "error: ${name} component module missing direct nested component create contract" >&2
+    if grep -q 'renderComponentSlot(instance, scope' "${component_module}"; then
+      echo "error: ${name} component module still delegates slot creation to runtime slot helper" >&2
+      exit 1
+    fi
+    if ! grep -q 'staticModule.create(nestedInstance, nestedDefinition, nestedScope, helper)' "${component_module}"; then
+      echo "error: ${name} component module missing direct nested component module create contract" >&2
+      exit 1
+    fi
+    if grep -q 'renderStaticComponentNestedNode(instance, definition, scope' "${component_module}"; then
+      echo "error: ${name} component module still delegates nested creation to runtime nested helper" >&2
       exit 1
     fi
     if grep -q '"childComponentId"' "${component_module}"; then

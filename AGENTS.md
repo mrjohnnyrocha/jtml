@@ -98,10 +98,13 @@ precedence and public asset eligibility live in `cli/browser_build_policy.cpp`,
 while filesystem copying lives in `cli/browser_build_assets.cpp`; keep new
 policy decisions out of `cli/browser_build.cpp`. Mode-specific output schema
 validation lives in `cli/browser_build_schema.cpp` and runs before
-`cmdBuildBrowser` returns success. Directory browser builds copy only
-`public/`, `assets/`, and selected root web metadata files by default, and
-intentionally skip symlinks until configurable asset include/exclude rules
-exist.
+`cmdBuildBrowser` returns success. The client manifest schema is closed for
+public runtime-plan/project, route/fetch/action, component-definition, and
+component-instance keys; production body-plan nodes, loop plans, argument
+plans, word plans, and nested expression-plan keys are also parsed and checked
+against the current public runtime contract. Directory browser builds copy only `public/`, `assets/`, and
+selected root web metadata files by default, and intentionally skip symlinks
+until configurable asset include/exclude rules exist.
 The component module exposes:
 
 - `window.__jtml_static_component_plan_index`
@@ -121,7 +124,11 @@ paths.
 Current static component modules emit direct escaped HTML create functions for
 supported root text, button, leaf element, direct-safe container nodes,
 safe `if`/keyed-`for` control-flow regions, and first-slice slot/nested
-component anchors. Unsupported shapes still use helper/fallback create paths.
+component anchors. Slot create now consumes direct `slotHtml`/`slotHtmlByName`
+inputs and must not delegate to the generic runtime slot helper in production
+component modules. Supported nested create now calls the child static component
+module directly when the child module id/key is known; broader unsupported
+nested shapes still use explicit helper/fallback paths.
 Static update functions now try generated per-node patch cases that patch
 direct text, button, element, container-attribute, safe control-flow region,
 slot, and nested-component shapes before falling back to operation records. The older
@@ -137,6 +144,18 @@ text/element operations, element content, attributes, modifiers, component
 action arguments, body-plan conditions, `for` collection/key expressions,
 nested component parameters, and browser-local body-plan action
 assignments/local declarations.
+Compiler callers can now pass a first-slice `ExpressionTypeEnvironment` into
+Expression IR/runtime expression planning so known root symbols annotate path
+types and simple number/string/boolean results propagate through binary and
+conditional plans. Runtime/client JSON builds that environment from top-level
+state, derived bindings, fetch objects, and component-local
+params/state/derived body-plan declarations, so manifests carry useful
+expression `valueType` data. Static component/update-plan emission also passes
+the component-local environment into body-plan serialization, so production
+module generation and compatibility/debug plans do not drift back to unknown
+types for local action math. This is not full type checking yet; object shapes,
+nullability, named slot payloads, route params, and event payload contracts
+remain v0.3 work.
 Static modules also emit direct JS expression functions for simple and
 first-slice composite plans, generated text/button/leaf-element/container,
 safe control-flow, slot, and nested create functions that do not require runtime helper
@@ -155,6 +174,15 @@ value-taking attributes such as `title selected` as reads of `selected`, even
 when the value token is also a valid boolean attribute name. Continue with
 richer action-body expression precompilation, stronger keyed reconciliation,
 and broader direct DOM generation.
+Direct component `into` bindings now fail closed in the browser runtime unless
+the target is a simple local `let` state name on the owning component. Invalid
+targets such as derived values, params, missing names, or member paths are
+reported through `window.jtml.directComponentBindingDiagnostics`, and the
+semantic usage report/linter now warns for component `into` targets that are
+not simple local writable state. Full Friendly source-span validation before
+compatibility lowering, form TypeEnvironment binding validation,
+radio/select/file nuances, IME composition, validation, and reset/submit
+behavior remain v0.3 work.
 Clean browser production validation reports unsupported static component shapes
 with module path plus component-body-adjusted source line/column where
 available.
@@ -171,7 +199,9 @@ context.
 For `jtml build --target browser`, `jtml-runtime.js` is now the primary runtime
 asset. Inline browser runtime remains for `transpile --target browser`, live
 serve/studio paths, and compatibility while those flows get their own asset
-mode.
+mode. Browser runtime chunks are JavaScript-only; inline callers add
+`<script>` wrappers at the emission boundary, and production `jtml-runtime.js`
+must never be produced by stripping wrappers from an HTML script string.
 
 Remaining high-value runtime work:
 
@@ -204,13 +234,14 @@ verifies that the split browser assets are emitted without
 update-plan budget, rejects dynamic `new Function`/direct `eval` in browser
 assets, and fails if generated assets exceed the current size budgets. Defaults
 are intentionally conservative while the runtime is still being split: 70 KB
-for `index.html`, 265 KB for `jtml-runtime.js`, 180 KB for
+for `index.html`, 268 KB for `jtml-runtime.js`, 180 KB for
 `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
 `jtml-update-plans.js` in compatibility/debug outputs.
 Treat these budgets as
 guardrails, not final benchmarks; tighten runtime/component/index budgets as
-direct generated modules replace body-plan helpers and source-span metadata
-moves out of production manifests. The `control_flow` fixture also
+direct generated modules replace body-plan helpers, source-span metadata moves
+out of production manifests, and registry/generation cleanup proof telemetry
+moves out of clean production assets. The `control_flow` fixture also
 asserts that safe `if`/keyed-`for` regions, keyed list markers, and direct
 safe-region patching are present in `components/index.js`; the `composition`
 fixture asserts first-slice direct slot/nested component create/patch contracts,
@@ -220,18 +251,27 @@ when a local Chrome/Chromium is available; that headless-browser harness
 executes real button clicks against built fixtures and enforces runtime timing,
 fixture-specific DOM results, nested-param/keyed-list telemetry, retained
 nested wrapper identity, and retained keyed row identity for reorder fixtures.
-The fixture set includes small smoke cases plus `large_keyed_rows` and
-`nested_component_update` as first production-budget scaffolds for 1k keyed row
-lifecycle and nested component parameter updates. `lifecycle_cleanup` exercises
+The fixture set includes small smoke cases plus `large_keyed_updates`,
+`large_keyed_reorder`, and `nested_component_update` as first
+production-budget scaffolds for 1k keyed row updates, 1k keyed row reorder,
+and nested component parameter updates. `lifecycle_cleanup` exercises
 conditional nested-component removal and keyed item cleanup, and the browser
 harness asserts clean `window.jtml.browserBuild` mode plus absence of loaded
 legacy update-plan scripts, registry-size cleanup, and event-handler cleanup
-telemetry. `form_focus` exercises input binding without replacing the input
+telemetry, including post-destroy action-dispatch rejection for destroyed
+instance IDs. `form_focus` exercises input binding without replacing the input
 element, losing focus, or moving the cursor.
-Local browser runs may skip when Chrome/Chromium is missing or blocked by the
-desktop sandbox; release CI should run `JTML_REQUIRE_BROWSER_BENCH=1
-scripts/benchmark_runtime.sh` in an environment where Chrome/Chromium can
-launch.
+The browser harness prints `browserExit=clean` or
+`browserExit=terminated-after-result`; the latter means Chrome produced the
+benchmark result and the harness terminated the process after timeout, so it is
+not evidence of clean browser-process shutdown. Set
+`JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1` when validating an environment where
+Chrome/Chromium should exit normally after `--dump-dom`; the benchmark then
+fails on `terminated-after-result` instead of accepting result-only evidence.
+Local standalone browser benchmark runs may skip when Chrome/Chromium is
+missing or blocked by the desktop sandbox. The full `scripts/verify_all.sh`
+predeploy gate sets `JTML_REQUIRE_BROWSER_BENCH=1`, so release-equivalent runs
+must execute in an environment where Chrome/Chromium can launch.
 
 ## VS Code extension
 

@@ -39,20 +39,6 @@ std::string assembleRuntimeChunks() {
     return script;
 }
 
-std::string stripInlineScriptWrapper(std::string script) {
-    const std::string open = "<script>";
-    const std::string close = "</script>";
-    const auto openPos = script.find(open);
-    if (openPos != std::string::npos) {
-        script.erase(openPos, open.size());
-    }
-    const auto closePos = script.rfind(close);
-    if (closePos != std::string::npos) {
-        script.erase(closePos, close.size());
-    }
-    return script;
-}
-
 } // namespace
 
 std::string emitBrowserRuntimeScript(int webSocketPort,
@@ -60,16 +46,17 @@ std::string emitBrowserRuntimeScript(int webSocketPort,
     // The browser runtime is authored as owned asset chunks instead of one
     // giant emitter literal. Keep this function as the stable C++ API that
     // parameterizes the runtime for live WebSocket and browser-local modes.
-    return parameterizeRuntime(assembleRuntimeChunks(), webSocketPort, browserLocalRuntime);
+    return "<script>\n" +
+        parameterizeRuntime(assembleRuntimeChunks(), webSocketPort, browserLocalRuntime) +
+        "\n</script>";
 }
 
 std::string emitBrowserRuntimeExternalAsset(int webSocketPort,
                                             bool browserLocalRuntime) {
     // Split browser builds load jtml-runtime.js as a normal external script.
-    // The inline emitter intentionally keeps <script> wrappers for transpile
-    // and live serve paths; production assets must contain JavaScript only.
-    return stripInlineScriptWrapper(
-        parameterizeRuntime(assembleRuntimeChunks(), webSocketPort, browserLocalRuntime));
+    // Asset chunks are authored as JavaScript, while emitBrowserRuntimeScript()
+    // adds wrappers only for inline transpile/live paths.
+    return parameterizeRuntime(assembleRuntimeChunks(), webSocketPort, browserLocalRuntime);
 }
 
 } // namespace jtml

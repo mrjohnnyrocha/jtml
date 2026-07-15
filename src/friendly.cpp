@@ -20,6 +20,7 @@ struct Line {
     int indent = 0;
     std::string text;
     int number = 0;
+    int sourceColumn = 0;
 };
 
 struct OpenBlock {
@@ -500,7 +501,7 @@ std::vector<Line> collectLines(const std::string& source) {
                 break;
             }
         }
-        lines.push_back({indent, text, lineNumber});
+        lines.push_back({indent, text, lineNumber, indent + 1});
     }
     return lines;
 }
@@ -2028,7 +2029,8 @@ std::string serializedStringListMap(const std::map<std::string, std::vector<std:
 std::string serializedComponentBodyHex(const ComponentDef& def) {
     std::ostringstream body;
     for (const auto& line : def.body) {
-        body << line.indent << ":" << line.text << "\n";
+        body << line.number << ":" << line.sourceColumn << ":"
+             << line.indent << ":" << line.text << "\n";
     }
     return hexEncode(body.str());
 }
@@ -2036,7 +2038,8 @@ std::string serializedComponentBodyHex(const ComponentDef& def) {
 std::string serializedLinesHex(const std::vector<Line>& lines) {
     std::ostringstream body;
     for (const auto& line : lines) {
-        body << line.indent << ":" << line.text << "\n";
+        body << line.number << ":" << line.sourceColumn << ":"
+             << line.indent << ":" << line.text << "\n";
     }
     return hexEncode(body.str());
 }

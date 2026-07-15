@@ -41,7 +41,9 @@ production authoring surface includes
 event shorthands, and `input ... into name` bindings. Expressions support
 interpolated strings (`"Hello {name}"`), ternaries (`condition ? a : b`),
 arrays, dictionaries, dotted reads, index reads, function calls, and compound
-assignment.
+assignment. Inside strings, interpolation braces are expression-aware: braces
+inside quoted subexpressions or object literals do not close the interpolation.
+Write `\{` or `\}` for literal braces.
 
 For core-language experiments without web UI, start with `jtl 1`:
 
@@ -461,8 +463,11 @@ as ordinary HTML attributes when written in Friendly element syntax.
 
 File inputs are also available. `file` lowers to `<input type="file">`, and
 `dropzone` lowers to a multiple file input with a `data-jtml-dropzone` marker.
-Both work with `into`; the browser runtime stores selected files as objects
-with `name`, `type`, `size`, `lastModified`, `preview`, and `url`.
+Both work with `into`; the target should be a simple writable `let` state name
+owned by the current component/page. The linter and browser runtime diagnose
+derived values, component params, missing names, and member paths as
+non-writable `into` targets. The browser runtime stores selected files as
+objects with `name`, `type`, `size`, `lastModified`, `preview`, and `url`.
 
 ```jtml
 jtml 2

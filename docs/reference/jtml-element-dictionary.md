@@ -118,9 +118,10 @@ To keep JTML clean and friendly, elements support standardized shorthands for th
    - *JTML*: `input "Username"`
    - *HTML*: `<input placeholder="Username" />`
 
-2. **State Binding (`into`)**: Binds an input element's value to a variable, and auto-generates the `change`/`input` listener.
+2. **State Binding (`into`)**: Binds an input element's value to a simple writable `let` state variable, and auto-generates the `change`/`input` listener.
    - *JTML*: `input "Email" into emailState`
    - *Meaning*: the browser runtime keeps `emailState` synchronized with the input value.
+   - *Current rule*: avoid `into getValue`, `into propName`, or `into user.name`; those are diagnosed rather than silently written.
 
 3. **Event Binding**: Lowercase event names directly bind to variables or expressions.
    - *JTML*: `button "Submit" click submitForm`

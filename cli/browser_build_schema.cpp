@@ -2,6 +2,7 @@
 
 #include "json.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <iterator>
 #include <sstream>
@@ -99,8 +100,421 @@ void rejectJsonKeyRecursive(const nlohmann::json& value,
     }
 }
 
-void validateClientManifestSchema(const nlohmann::json& manifest,
+bool isAllowedKey(const std::vector<std::string>& allowed, const std::string& key) {
+    return std::find(allowed.begin(), allowed.end(), key) != allowed.end();
+}
+
+void rejectUnknownKeys(const nlohmann::json& value,
+                       const std::vector<std::string>& allowed,
+                       const std::string& path,
+                       std::vector<std::string>& issues) {
+    if (!value.is_object()) return;
+    for (auto it = value.begin(); it != value.end(); ++it) {
+        if (!isAllowedKey(allowed, it.key())) {
+            issues.push_back(path + " contains unsupported key `" + it.key() + "`");
+        }
+    }
+}
+
+bool requireObjectAt(const nlohmann::json& value,
+                     const std::string& path,
+                     std::vector<std::string>& issues) {
+    if (!value.is_object()) {
+        issues.push_back(path + " must be an object");
+        return false;
+    }
+    return true;
+}
+
+bool requireArrayAt(const nlohmann::json& value,
+                    const std::string& path,
+                    std::vector<std::string>& issues) {
+    if (!value.is_array()) {
+        issues.push_back(path + " must be an array");
+        return false;
+    }
+    return true;
+}
+
+void requireOptionalArray(const nlohmann::json& value,
+                          const std::string& key,
+                          const std::string& path,
+                          std::vector<std::string>& issues) {
+    if (value.contains(key) && !value.at(key).is_array()) {
+        issues.push_back(path + "." + key + " must be an array when present");
+    }
+}
+
+void requireOptionalObject(const nlohmann::json& value,
+                           const std::string& key,
+                           const std::string& path,
+                           std::vector<std::string>& issues) {
+    if (value.contains(key) && !value.at(key).is_object()) {
+        issues.push_back(path + "." + key + " must be an object when present");
+    }
+}
+
+void requireOptionalString(const nlohmann::json& value,
+                           const std::string& key,
+                           const std::string& path,
+                           std::vector<std::string>& issues) {
+    if (value.contains(key) && !value.at(key).is_string()) {
+        issues.push_back(path + "." + key + " must be a string when present");
+    }
+}
+
+void requireOptionalBool(const nlohmann::json& value,
+                         const std::string& key,
+                         const std::string& path,
+                         std::vector<std::string>& issues) {
+    if (value.contains(key) && !value.at(key).is_boolean()) {
+        issues.push_back(path + "." + key + " must be a boolean when present");
+    }
+}
+
+void requireOptionalNumber(const nlohmann::json& value,
+                           const std::string& key,
+                           const std::string& path,
+                           std::vector<std::string>& issues) {
+    if (value.contains(key) && !value.at(key).is_number_integer()) {
+        issues.push_back(path + "." + key + " must be an integer when present");
+    }
+}
+
+void requireOptionalModuleId(const nlohmann::json& value,
+                             const std::string& key,
+                             const std::string& path,
+                             std::vector<std::string>& issues) {
+    if (!value.contains(key)) return;
+    const auto& candidate = value.at(key);
+    if (!(candidate.is_null() || candidate.is_number_integer())) {
+        issues.push_back(path + "." + key + " must be an integer module id or null");
+    }
+}
+
+void validateClientRuntimePlanSchema(const nlohmann::json& manifest,
+                                     const std::string& path,
+                                     bool allowProject,
+                                     std::vector<std::string>& issues);
+
+void validateClientExpressionPlan(const nlohmann::json& value,
+                                  const std::string& path,
+                                  std::vector<std::string>& issues);
+
+void validateClientExpressionPlanArray(const nlohmann::json& value,
+                                       const std::string& path,
+                                       std::vector<std::string>& issues) {
+    if (!requireArrayAt(value, path, issues)) return;
+    for (size_t i = 0; i < value.size(); ++i) {
+        validateClientExpressionPlan(value[i], path + "[" + std::to_string(i) + "]", issues);
+    }
+}
+
+void validateClientExpressionPlan(const nlohmann::json& value,
+                                  const std::string& path,
                                   std::vector<std::string>& issues) {
+    if (!requireObjectAt(value, path, issues)) return;
+    static const std::vector<std::string> allowedExpressionKeys = {
+        "kind", "source", "producer", "valueType", "astKind", "value",
+        "root", "segments", "property", "base", "index", "operator",
+        "argument", "left", "right", "test", "whenTrue", "whenFalse",
+        "elements", "entries", "key", "callee", "arguments", "method",
+        "start", "end"
+    };
+    rejectUnknownKeys(value, allowedExpressionKeys, path, issues);
+    requireOptionalString(value, "kind", path, issues);
+    requireOptionalString(value, "source", path, issues);
+    requireOptionalString(value, "producer", path, issues);
+    requireOptionalString(value, "valueType", path, issues);
+    requireOptionalNumber(value, "astKind", path, issues);
+    requireOptionalString(value, "root", path, issues);
+    requireOptionalString(value, "property", path, issues);
+    requireOptionalString(value, "operator", path, issues);
+    requireOptionalString(value, "key", path, issues);
+    requireOptionalString(value, "callee", path, issues);
+    requireOptionalString(value, "method", path, issues);
+    requireOptionalArray(value, "segments", path, issues);
+    if (value.contains("base")) {
+        validateClientExpressionPlan(value.at("base"), path + ".base", issues);
+    }
+    if (value.contains("index")) {
+        validateClientExpressionPlan(value.at("index"), path + ".index", issues);
+    }
+    if (value.contains("argument")) {
+        validateClientExpressionPlan(value.at("argument"), path + ".argument", issues);
+    }
+    if (value.contains("left")) {
+        validateClientExpressionPlan(value.at("left"), path + ".left", issues);
+    }
+    if (value.contains("right")) {
+        validateClientExpressionPlan(value.at("right"), path + ".right", issues);
+    }
+    if (value.contains("test")) {
+        validateClientExpressionPlan(value.at("test"), path + ".test", issues);
+    }
+    if (value.contains("whenTrue")) {
+        validateClientExpressionPlan(value.at("whenTrue"), path + ".whenTrue", issues);
+    }
+    if (value.contains("whenFalse")) {
+        validateClientExpressionPlan(value.at("whenFalse"), path + ".whenFalse", issues);
+    }
+    if (value.contains("start")) {
+        validateClientExpressionPlan(value.at("start"), path + ".start", issues);
+    }
+    if (value.contains("end")) {
+        validateClientExpressionPlan(value.at("end"), path + ".end", issues);
+    }
+    if (value.contains("elements")) {
+        validateClientExpressionPlanArray(value.at("elements"), path + ".elements", issues);
+    }
+    if (value.contains("arguments")) {
+        validateClientExpressionPlanArray(value.at("arguments"), path + ".arguments", issues);
+    }
+    if (value.contains("entries")) {
+        if (requireArrayAt(value.at("entries"), path + ".entries", issues)) {
+            const auto& entries = value.at("entries");
+            for (size_t i = 0; i < entries.size(); ++i) {
+                const std::string entryPath = path + ".entries[" + std::to_string(i) + "]";
+                if (!requireObjectAt(entries[i], entryPath, issues)) continue;
+                rejectUnknownKeys(entries[i], {"key", "value"}, entryPath, issues);
+                requireOptionalString(entries[i], "key", entryPath, issues);
+                if (entries[i].contains("value")) {
+                    validateClientExpressionPlan(entries[i].at("value"),
+                                                 entryPath + ".value",
+                                                 issues);
+                } else {
+                    issues.push_back(entryPath + " missing `value`");
+                }
+            }
+        }
+    }
+}
+
+void validateClientLoopPlan(const nlohmann::json& value,
+                            const std::string& path,
+                            std::vector<std::string>& issues) {
+    if (!requireObjectAt(value, path, issues)) return;
+    rejectUnknownKeys(value, {"item", "collectionExpression", "collectionPlan"},
+                      path, issues);
+    requireOptionalString(value, "item", path, issues);
+    requireOptionalString(value, "collectionExpression", path, issues);
+    if (value.contains("collectionPlan")) {
+        validateClientExpressionPlan(value.at("collectionPlan"),
+                                     path + ".collectionPlan",
+                                     issues);
+    } else {
+        issues.push_back(path + " missing `collectionPlan`");
+    }
+}
+
+void validateClientBodyPlanArray(const nlohmann::json& value,
+                                 const std::string& path,
+                                 std::vector<std::string>& issues) {
+    if (!requireArrayAt(value, path, issues)) return;
+    static const std::vector<std::string> allowedBodyNodeKeys = {
+        "definitionModule", "sourceLine", "sourceColumn", "indent", "parentIndex",
+        "childIndices", "kind", "head", "name", "text", "operator", "expression",
+        "expressionPlan", "keyExpression", "keyExpressionPlan", "wordPlans",
+        "reads", "writes", "renderRoot", "loopPlan", "argPlans"
+    };
+    for (size_t i = 0; i < value.size(); ++i) {
+        const std::string itemPath = path + "[" + std::to_string(i) + "]";
+        const auto& node = value[i];
+        if (!requireObjectAt(node, itemPath, issues)) continue;
+        rejectUnknownKeys(node, allowedBodyNodeKeys, itemPath, issues);
+        requireOptionalModuleId(node, "definitionModule", itemPath, issues);
+        requireOptionalNumber(node, "sourceLine", itemPath, issues);
+        requireOptionalNumber(node, "sourceColumn", itemPath, issues);
+        requireOptionalNumber(node, "indent", itemPath, issues);
+        requireOptionalNumber(node, "parentIndex", itemPath, issues);
+        requireOptionalArray(node, "childIndices", itemPath, issues);
+        requireOptionalString(node, "kind", itemPath, issues);
+        requireOptionalString(node, "head", itemPath, issues);
+        requireOptionalString(node, "name", itemPath, issues);
+        requireOptionalString(node, "text", itemPath, issues);
+        requireOptionalString(node, "operator", itemPath, issues);
+        requireOptionalString(node, "expression", itemPath, issues);
+        requireOptionalString(node, "keyExpression", itemPath, issues);
+        requireOptionalArray(node, "wordPlans", itemPath, issues);
+        requireOptionalArray(node, "reads", itemPath, issues);
+        requireOptionalArray(node, "writes", itemPath, issues);
+        requireOptionalBool(node, "renderRoot", itemPath, issues);
+        if (node.contains("expressionPlan")) {
+            validateClientExpressionPlan(node.at("expressionPlan"),
+                                         itemPath + ".expressionPlan",
+                                         issues);
+        }
+        if (node.contains("keyExpressionPlan")) {
+            validateClientExpressionPlan(node.at("keyExpressionPlan"),
+                                         itemPath + ".keyExpressionPlan",
+                                         issues);
+        }
+        if (node.contains("wordPlans")) {
+            validateClientExpressionPlanArray(node.at("wordPlans"),
+                                              itemPath + ".wordPlans",
+                                              issues);
+        }
+        if (node.contains("loopPlan")) {
+            validateClientLoopPlan(node.at("loopPlan"),
+                                   itemPath + ".loopPlan",
+                                   issues);
+        }
+        if (node.contains("argPlans")) {
+            validateClientExpressionPlanArray(node.at("argPlans"),
+                                              itemPath + ".argPlans",
+                                              issues);
+        }
+    }
+}
+
+void validateClientRoutes(const nlohmann::json& routes,
+                          const std::string& path,
+                          std::vector<std::string>& issues) {
+    if (!requireArrayAt(routes, path, issues)) return;
+    for (size_t i = 0; i < routes.size(); ++i) {
+        const std::string itemPath = path + "[" + std::to_string(i) + "]";
+        if (!requireObjectAt(routes[i], itemPath, issues)) continue;
+        rejectUnknownKeys(routes[i], {"path", "name", "component", "params", "load", "loads"},
+                          itemPath, issues);
+        requireOptionalString(routes[i], "path", itemPath, issues);
+        requireOptionalString(routes[i], "name", itemPath, issues);
+        requireOptionalString(routes[i], "component", itemPath, issues);
+        requireOptionalArray(routes[i], "params", itemPath, issues);
+        requireOptionalArray(routes[i], "load", itemPath, issues);
+        requireOptionalArray(routes[i], "loads", itemPath, issues);
+    }
+}
+
+void validateClientFetches(const nlohmann::json& fetches,
+                           const std::string& path,
+                           std::vector<std::string>& issues) {
+    if (!requireArrayAt(fetches, path, issues)) return;
+    for (size_t i = 0; i < fetches.size(); ++i) {
+        const std::string itemPath = path + "[" + std::to_string(i) + "]";
+        if (!requireObjectAt(fetches[i], itemPath, issues)) continue;
+        rejectUnknownKeys(fetches[i], {"name", "url", "method", "bodyExpr", "refreshAction",
+                                       "cache", "credentials", "timeoutMs", "retryCount",
+                                       "stalePolicy", "group", "cacheKeyExpr", "revalidateMs",
+                                       "dedupe", "background", "lazy"},
+                          itemPath, issues);
+        for (const auto& key : {"name", "url", "method", "bodyExpr", "refreshAction", "cache",
+                                "credentials", "timeoutMs", "retryCount", "stalePolicy",
+                                "group", "cacheKeyExpr", "revalidateMs"}) {
+            requireOptionalString(fetches[i], key, itemPath, issues);
+        }
+        requireOptionalBool(fetches[i], "dedupe", itemPath, issues);
+        requireOptionalBool(fetches[i], "background", itemPath, issues);
+        requireOptionalBool(fetches[i], "lazy", itemPath, issues);
+    }
+}
+
+void validateClientActions(const nlohmann::json& actions,
+                           const std::string& path,
+                           std::vector<std::string>& issues) {
+    if (!requireObjectAt(actions, path, issues)) return;
+    for (auto it = actions.begin(); it != actions.end(); ++it) {
+        const std::string itemPath = path + "." + it.key();
+        if (!requireObjectAt(it.value(), itemPath, issues)) continue;
+        rejectUnknownKeys(it.value(), {"params", "body"}, itemPath, issues);
+        requireOptionalArray(it.value(), "params", itemPath, issues);
+        requireOptionalArray(it.value(), "body", itemPath, issues);
+    }
+}
+
+void validateClientComponentDefinitions(const nlohmann::json& definitions,
+                                        const std::string& path,
+                                        std::vector<std::string>& issues) {
+    if (!requireArrayAt(definitions, path, issues)) return;
+    for (size_t i = 0; i < definitions.size(); ++i) {
+        const std::string itemPath = path + "[" + std::to_string(i) + "]";
+        const auto& definition = definitions[i];
+        if (!requireObjectAt(definition, itemPath, issues)) continue;
+        rejectUnknownKeys(definition, {"moduleId", "name", "params", "emits", "emitArity",
+                                       "emitPayloads", "emitPayloadTypes", "localState",
+                                       "localDerived", "localActions", "localEffects",
+                                       "eventBindings", "bodyPlan", "hasSlot", "bodyNodeCount",
+                                       "rootTemplateNodeCount", "slotCount"},
+                          itemPath, issues);
+        requireOptionalModuleId(definition, "moduleId", itemPath, issues);
+        if (!definition.contains("name") || !definition.at("name").is_string()) {
+            issues.push_back(itemPath + ".name must be a string");
+        }
+        for (const auto& key : {"params", "emits", "localState", "localDerived", "localActions",
+                                "localEffects", "eventBindings"}) {
+            requireOptionalArray(definition, key, itemPath, issues);
+        }
+        requireOptionalObject(definition, "emitArity", itemPath, issues);
+        requireOptionalObject(definition, "emitPayloads", itemPath, issues);
+        requireOptionalObject(definition, "emitPayloadTypes", itemPath, issues);
+        if (definition.contains("bodyPlan")) {
+            validateClientBodyPlanArray(definition.at("bodyPlan"), itemPath + ".bodyPlan", issues);
+        }
+        requireOptionalBool(definition, "hasSlot", itemPath, issues);
+        requireOptionalNumber(definition, "bodyNodeCount", itemPath, issues);
+        requireOptionalNumber(definition, "rootTemplateNodeCount", itemPath, issues);
+        requireOptionalNumber(definition, "slotCount", itemPath, issues);
+    }
+}
+
+void validateClientComponentInstances(const nlohmann::json& instances,
+                                      const std::string& path,
+                                      std::vector<std::string>& issues) {
+    if (!requireArrayAt(instances, path, issues)) return;
+    for (size_t i = 0; i < instances.size(); ++i) {
+        const std::string itemPath = path + "[" + std::to_string(i) + "]";
+        const auto& instance = instances[i];
+        if (!requireObjectAt(instance, itemPath, issues)) continue;
+        rejectUnknownKeys(instance, {"moduleId", "definitionModule", "id", "component",
+                                     "instanceId", "role", "params", "locals", "slotPlan"},
+                          itemPath, issues);
+        requireOptionalModuleId(instance, "moduleId", itemPath, issues);
+        requireOptionalModuleId(instance, "definitionModule", itemPath, issues);
+        requireOptionalString(instance, "id", itemPath, issues);
+        if (!instance.contains("component") || !instance.at("component").is_string()) {
+            issues.push_back(itemPath + ".component must be a string");
+        }
+        requireOptionalNumber(instance, "instanceId", itemPath, issues);
+        requireOptionalString(instance, "role", itemPath, issues);
+        requireOptionalObject(instance, "params", itemPath, issues);
+        requireOptionalObject(instance, "locals", itemPath, issues);
+        if (instance.contains("slotPlan")) {
+            validateClientBodyPlanArray(instance.at("slotPlan"), itemPath + ".slotPlan", issues);
+        }
+    }
+}
+
+void validateClientProjectSchema(const nlohmann::json& project,
+                                 const std::string& path,
+                                 std::vector<std::string>& issues) {
+    if (!requireObjectAt(project, path, issues)) return;
+    rejectUnknownKeys(project, {"sourceOfTruth", "entry", "linkedPlan", "modules"},
+                      path, issues);
+    requireOptionalString(project, "sourceOfTruth", path, issues);
+    requireOptionalModuleId(project, "entry", path, issues);
+    if (project.contains("linkedPlan")) {
+        validateClientRuntimePlanSchema(project.at("linkedPlan"), path + ".linkedPlan", false, issues);
+    }
+    if (project.contains("modules")) {
+        if (requireArrayAt(project.at("modules"), path + ".modules", issues)) {
+            const auto& modules = project.at("modules");
+            for (size_t i = 0; i < modules.size(); ++i) {
+                const std::string itemPath = path + ".modules[" + std::to_string(i) + "]";
+                if (!requireObjectAt(modules[i], itemPath, issues)) continue;
+                rejectUnknownKeys(modules[i], {"id", "executable", "plan"}, itemPath, issues);
+                requireOptionalModuleId(modules[i], "id", itemPath, issues);
+                requireOptionalBool(modules[i], "executable", itemPath, issues);
+                if (modules[i].contains("plan")) {
+                    validateClientRuntimePlanSchema(modules[i].at("plan"), itemPath + ".plan", false, issues);
+                }
+            }
+        }
+    }
+}
+
+void validateClientRuntimePlanSchema(const nlohmann::json& manifest,
+                                     const std::string& path,
+                                     bool allowProject,
+                                     std::vector<std::string>& issues) {
     static const std::vector<std::string> forbiddenKeys = {
         "bodySource",
         "bodyHex",
@@ -108,80 +522,68 @@ void validateClientManifestSchema(const nlohmann::json& manifest,
         "semanticSummary",
         "semantic",
         "sourcePath",
+        "sourceSpan",
     };
     if (!manifest.is_object()) {
-        issues.push_back("client manifest must be a JSON object");
+        issues.push_back(path + " must be a JSON object");
         return;
     }
+    auto allowedTopLevel = std::vector<std::string>{
+        "state", "statePlans", "derived", "derivedPlans", "actions", "routes", "fetches",
+        "componentDefinitions", "componentInstances"
+    };
+    if (allowProject) allowedTopLevel.push_back("project");
+    rejectUnknownKeys(manifest, allowedTopLevel, path, issues);
     for (const auto& required : {"state", "derived", "actions", "routes", "fetches",
                                 "componentDefinitions", "componentInstances"}) {
         if (!manifest.contains(required)) {
-            issues.push_back(std::string("client manifest missing `") + required + "`");
+            issues.push_back(path + " missing `" + required + "`");
         }
     }
     auto requireObject = [&](const char* key) {
         if (manifest.contains(key) && !manifest.at(key).is_object()) {
-            issues.push_back(std::string("client manifest `") + key + "` must be an object");
+            issues.push_back(path + "." + key + " must be an object");
         }
     };
     auto requireArray = [&](const char* key) {
         if (manifest.contains(key) && !manifest.at(key).is_array()) {
-            issues.push_back(std::string("client manifest `") + key + "` must be an array");
+            issues.push_back(path + "." + key + " must be an array");
         }
     };
     requireObject("state");
+    requireObject("statePlans");
     requireObject("derived");
+    requireObject("derivedPlans");
     requireObject("actions");
-    requireArray("routes");
-    requireArray("fetches");
-    requireArray("componentDefinitions");
-    requireArray("componentInstances");
 
-    if (manifest.contains("componentDefinitions") &&
-        manifest.at("componentDefinitions").is_array()) {
-        size_t index = 0;
-        for (const auto& definition : manifest.at("componentDefinitions")) {
-            const std::string path = "$.componentDefinitions[" + std::to_string(index) + "]";
-            if (!definition.is_object()) {
-                issues.push_back(path + " must be an object");
-            } else {
-                if (!definition.contains("name") || !definition.at("name").is_string()) {
-                    issues.push_back(path + ".name must be a string");
-                }
-                if (definition.contains("bodyPlan") && !definition.at("bodyPlan").is_array()) {
-                    issues.push_back(path + ".bodyPlan must be an array when present");
-                }
-                if (definition.contains("params") && !definition.at("params").is_array()) {
-                    issues.push_back(path + ".params must be an array when present");
-                }
-            }
-            ++index;
-        }
+    if (manifest.contains("routes")) validateClientRoutes(manifest.at("routes"), path + ".routes", issues);
+    if (manifest.contains("fetches")) validateClientFetches(manifest.at("fetches"), path + ".fetches", issues);
+    if (manifest.contains("actions")) validateClientActions(manifest.at("actions"), path + ".actions", issues);
+    if (manifest.contains("componentDefinitions")) {
+        validateClientComponentDefinitions(manifest.at("componentDefinitions"),
+                                           path + ".componentDefinitions",
+                                           issues);
     }
-    if (manifest.contains("componentInstances") &&
-        manifest.at("componentInstances").is_array()) {
-        size_t index = 0;
-        for (const auto& instance : manifest.at("componentInstances")) {
-            const std::string path = "$.componentInstances[" + std::to_string(index) + "]";
-            if (!instance.is_object()) {
-                issues.push_back(path + " must be an object");
-            } else {
-                if (!instance.contains("component") || !instance.at("component").is_string()) {
-                    issues.push_back(path + ".component must be a string");
-                }
-                if (instance.contains("params") && !instance.at("params").is_object()) {
-                    issues.push_back(path + ".params must be an object when present");
-                }
-                if (instance.contains("slotPlan") && !instance.at("slotPlan").is_array()) {
-                    issues.push_back(path + ".slotPlan must be an array when present");
-                }
-            }
-            ++index;
+    if (manifest.contains("componentInstances")) {
+        validateClientComponentInstances(manifest.at("componentInstances"),
+                                         path + ".componentInstances",
+                                         issues);
+    }
+    if (manifest.contains("project")) {
+        if (allowProject) {
+            validateClientProjectSchema(manifest.at("project"), path + ".project", issues);
+        } else {
+            issues.push_back(path + " must not contain nested `project`");
         }
     }
     for (const auto& key : forbiddenKeys) {
-        rejectJsonKeyRecursive(manifest, key, "$", issues);
+        rejectJsonKeyRecursive(manifest, key, path, issues);
     }
+}
+
+void validateClientManifestSchema(const nlohmann::json& manifest,
+                                  std::vector<std::string>& issues) {
+    validateClientRuntimePlanSchema(manifest, "$", true, issues);
 }
 
 } // namespace

@@ -150,9 +150,10 @@ tools; new integrations should read `window.jtml.browserBuild.mode`.
 
 Every browser build validates its emitted asset schema before returning
 success. Production validates the absence of legacy update-plan references and
-source-rich component debug payloads. Compat/debug validate the explicit legacy
-asset and mode flags. All modes reject shipped browser assets containing
-runtime dynamic compilation (`new Function` / direct `eval`).
+source-rich component debug payloads, and the embedded client manifest is parsed
+against a closed public runtime-plan/project schema. Compat/debug validate the
+explicit legacy asset and mode flags. All modes reject shipped browser assets
+containing runtime dynamic compilation (`new Function` / direct `eval`).
 
 ## Browser Assets
 
@@ -194,6 +195,16 @@ JTML_REQUIRE_BROWSER_BENCH=1 scripts/benchmark_runtime.sh
 Set `JTML_BENCH_BROWSER=/absolute/path/to/chrome` to choose a specific browser
 binary. A v0.2 release candidate should pass with
 `JTML_REQUIRE_BROWSER_BENCH=1` in at least one clean CI/browser environment.
+`scripts/verify_all.sh` sets that flag itself, so the full predeploy gate fails
+instead of silently skipping browser behavior when Chrome/Chromium is missing or
+blocked.
+The browser benchmark reports `browserExit=clean` when Chrome exits normally
+and `browserExit=terminated-after-result` when the result was written but the
+harness had to terminate Chrome after timeout. The latter is acceptable for
+the current desktop harness, but it is tracked separately and is not a clean
+browser-shutdown proof. Set `JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1` in CI
+environments that should support normal Chrome/Chromium `--dump-dom`
+termination; with that flag, `terminated-after-result` is fatal.
 
 ## Production Notes
 

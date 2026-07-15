@@ -1,0 +1,16 @@
+jtml 2
+
+make LargeKeyedReorder
+  let rotated = false
+
+  when rotateRows
+    rotated = !rotated
+
+  panel title "Large keyed reorder"
+    button "Rotate rows" click rotateRows
+    for index in 1..1000 key (rotated ? (index == 1 ? 1000 : index - 1) : index)
+      card title "Row {rotated ? (index == 1 ? 1000 : index - 1) : index}" tone neutral
+        text "Row {rotated ? (index == 1 ? 1000 : index - 1) : index}"
+
+page
+  LargeKeyedReorder

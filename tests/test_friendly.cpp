@@ -1,4 +1,5 @@
 #include "jtml/browser_runtime_assets.h"
+#include "jtml/browser_runtime_emitter.h"
 #include "jtml/friendly.h"
 #include "jtml/environment.h"
 #include "jtml/interpreter.h"
@@ -889,7 +890,8 @@ TEST(FriendlySyntax, BrowserRuntimeAssetsExposeOwnedChunks) {
     EXPECT_STREQ(chunks[1].name, "components");
     EXPECT_STREQ(chunks[2].name, "data-platform");
     EXPECT_STREQ(chunks[3].name, "boot-transport");
-    EXPECT_NE(std::string(chunks[0].source).find("<script>"), std::string::npos);
+    EXPECT_EQ(std::string(chunks[0].source).find("<script"), std::string::npos);
+    EXPECT_EQ(std::string(chunks[3].source).find("</script>"), std::string::npos);
     EXPECT_NE(std::string(chunks[1].source).find("function renderDirectComponent"),
               std::string::npos);
     EXPECT_NE(std::string(chunks[1].source).find("function fnv1a64Hex(value)"),
@@ -902,6 +904,16 @@ TEST(FriendlySyntax, BrowserRuntimeAssetsExposeOwnedChunks) {
               std::string::npos);
     EXPECT_NE(std::string(chunks[3].source).find("window.addEventListener('hashchange'"),
               std::string::npos);
+
+    const auto inlineRuntime = jtml::emitBrowserRuntimeScript(8080, true);
+    EXPECT_NE(inlineRuntime.find("<script>"), std::string::npos) << inlineRuntime;
+    EXPECT_NE(inlineRuntime.find("</script>"), std::string::npos) << inlineRuntime;
+
+    const auto externalRuntime = jtml::emitBrowserRuntimeExternalAsset(8080, true);
+    EXPECT_EQ(externalRuntime.find("<script"), std::string::npos) << externalRuntime;
+    EXPECT_EQ(externalRuntime.find("</script>"), std::string::npos) << externalRuntime;
+    EXPECT_NE(externalRuntime.find("const browserLocalRuntime = true;"),
+              std::string::npos) << externalRuntime;
 }
 
 TEST(FriendlySyntax, EffectLowersToSubscriptionFunction) {
@@ -2433,6 +2445,10 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("loopPlan.collectionPlan || compileComponentExpressionPlan(collectionExpr)"),
               std::string::npos) << html;
+    EXPECT_NE(html.find("plan.kind === 'range'"),
+              std::string::npos) << html;
+    EXPECT_EQ(html.find("match(/^(\\d+)\\.\\.(\\d+)$/)"),
+              std::string::npos) << html;
     EXPECT_NE(html.find("scope[loopItemName] = values[itemIndex];"),
               std::string::npos) << html;
     EXPECT_NE(html.find("runComponentPlanStatements(definition, scope, componentNodeChildren(definition, elseNode), instance, changes, actionContext)"),
@@ -2456,6 +2472,18 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
     EXPECT_NE(html.find("function componentRenderedReadSet(definition)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("function componentWritesAffectRender(definition, writes)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("function componentBindTargetStatus(definition, name)"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("JTML_INTO_DERIVED_TARGET"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("JTML_INTO_PARAM_TARGET"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("JTML_UNKNOWN_INTO_TARGET"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("directComponentBindingDiagnostics"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("state.indexOf(target) !== -1"),
               std::string::npos) << html;
     EXPECT_NE(html.find("function componentNodeReadSet(definition, node)"),
               std::string::npos) << html;

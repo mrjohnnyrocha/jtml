@@ -288,6 +288,8 @@ std::string JtmlLinter::inferExprType(const ExpressionStatementNode& expr) const
         return "bool";
     case ExpressionStatementNodeType::ArrayLiteral:
         return "array";
+    case ExpressionStatementNodeType::Range:
+        return "array";
     case ExpressionStatementNodeType::DictionaryLiteral:
         return "object";
     case ExpressionStatementNodeType::Variable: {
@@ -687,6 +689,12 @@ void JtmlLinter::visitExpr(const ExpressionStatementNode& expr) {
         if (e.condition) visitExpr(*e.condition);
         if (e.whenTrue)  visitExpr(*e.whenTrue);
         if (e.whenFalse) visitExpr(*e.whenFalse);
+        return;
+    }
+    case ExpressionStatementNodeType::Range: {
+        const auto& e = static_cast<const RangeExpressionStatementNode&>(expr);
+        if (e.start) visitExpr(*e.start);
+        if (e.end) visitExpr(*e.end);
         return;
     }
     case ExpressionStatementNodeType::ObjectPropertyAccess: {

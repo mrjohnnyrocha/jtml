@@ -7,7 +7,6 @@ namespace {
 
 const char* browserRuntimePreludeChunk() {
     return R"JTR0(
-  <script>
     (function () {
       const wsPort = @JTML_WS_PORT@;
       const browserLocalRuntime = @JTML_BROWSER_LOCAL_RUNTIME@;
@@ -38,6 +37,7 @@ const char* browserRuntimePreludeChunk() {
       let componentDefinitions = [];
       const componentScopes = {};
       const dynamicComponentInstances = {};
+      const dynamicComponentInstanceGenerations = {};
       const componentRenderPath = [];
       const dynamicComponentRenderStack = [];
       const componentBodyPlanFallbacks = [];
@@ -426,6 +426,54 @@ const char* browserRuntimePreludeChunk() {
         return false;
       }
 
+      const directComponentBindingDiags = [];
+
+      function componentBindTargetStatus(definition, name) {
+        const target = String(name || '').trim(), state = Array.isArray(definition && definition.localState) ? definition.localState : [];
+        if (!target || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(target)) return { ok: false, code: 'JTML_INVALID_INTO_TARGET' };
+        if (state.indexOf(target) !== -1) return { ok: true };
+        if ((Array.isArray(definition && definition.localDerived) ? definition.localDerived : []).indexOf(target) !== -1) return { ok: false, code: 'JTML_INTO_DERIVED_TARGET' };
+        if ((Array.isArray(definition && definition.params) ? definition.params : []).indexOf(target) !== -1) return { ok: false, code: 'JTML_INTO_PARAM_TARGET' };
+        return { ok: false, code: 'JTML_UNKNOWN_INTO_TARGET' };
+      }
+
+      function componentBindDiagnosticMessage(code, name) {
+        const target = String(name || '');
+        if (code === 'JTML_INVALID_INTO_TARGET') {
+          return '`into ' + target + '` must name a simple writable local let state variable.';
+        }
+        if (code === 'JTML_INTO_DERIVED_TARGET') {
+          return '`into ' + target + '` points at a derived get value; bind into local let state instead.';
+        }
+        if (code === 'JTML_INTO_PARAM_TARGET') {
+          return '`into ' + target + '` points at a component parameter; copy it into local let state before binding.';
+        }
+        return '`into ' + target + '` does not match any local let state in this component.';
+      }
+
+      function recordDirectComponentBindingDiagnostic(instance, definition, el, name, status) {
+        const nodeIndex = el && el.getAttribute ? Number(el.getAttribute('data-jtml-direct-body-node') || -1) : -1;
+        const node = nodeIndex >= 0 && definition && Array.isArray(definition.bodyPlan) ? definition.bodyPlan[nodeIndex] : null;
+        const code = status && status.code || 'JTML_INVALID_INTO_TARGET';
+        const diagnostic = {
+          code: code,
+          componentId: instance && instance.id || '',
+          component: instance && instance.component || definition && definition.name || '',
+          moduleId: definition && definition.moduleId != null ? definition.moduleId : null,
+          componentSourceLine: definition && definition.sourceLine || 0,
+          bodyNodeIndex: nodeIndex,
+          bodySourceLine: node && node.sourceLine || 0,
+          bodySourceColumn: node && node.sourceColumn || 0,
+          nodeText: node && node.text || '',
+          target: String(name || ''),
+          message: componentBindDiagnosticMessage(code, name),
+          remediation: 'Declare `let ' + String(name || 'value') + ' = ""` inside the component, or bind the input to an existing local `let` state.'
+        };
+        directComponentBindingDiags.push(diagnostic);
+        window.jtml = Object.assign(window.jtml || {}, { directComponentBindingDiagnostics: directComponentBindingDiags });
+        return false;
+      }
+
       function componentDefinitionForInstance(instance) {
         if (!instance) return null;
         const name = instance.component || '';
@@ -474,6 +522,7 @@ const char* browserRuntimePreludeChunk() {
         }
         const existing = dynamicComponentInstances[instance.id];
         if (existing) {
+          existing.__jtmlGeneration = existing.__jtmlGeneration || dynamicComponentInstanceGenerations[instance.id] || 1;
           existing.moduleId = instance.moduleId;
           existing.definitionModule = instance.definitionModule;
           existing.component = instance.component;
@@ -485,9 +534,19 @@ const char* browserRuntimePreludeChunk() {
           existing.element = componentElementFor(instance.id) || existing.element || null;
           return existing;
         }
+        dynamicComponentInstanceGenerations[instance.id] =
+          (dynamicComponentInstanceGenerations[instance.id] || 0) + 1;
+        instance.__jtmlGeneration = dynamicComponentInstanceGenerations[instance.id];
         instance.element = componentElementFor(instance.id) || null;
         dynamicComponentInstances[instance.id] = instance;
         return instance;
+      }
+
+      function runtimeRegistrySnapshot() {
+        const h = [], g = {};
+        Object.keys(dynamicComponentInstances).sort().forEach(function (id) { const i = dynamicComponentInstances[id] || {}; g[id] = Number(i.__jtmlGeneration || dynamicComponentInstanceGenerations[id] || 0); if (Object.keys(i.eventHandlers || {}).length > 0) h.push(id); });
+        componentInstances.forEach(function (i) { if (i && i.id && Object.keys(i.eventHandlers || {}).length > 0) h.push(i.id); });
+        return { handlerOwnerIds: h.sort(), dynamicGenerations: g };
       }
 
       function unregisterComponentInstance(instance, definition) {
@@ -524,11 +583,14 @@ const char* browserRuntimePreludeChunk() {
           : instanceOrId;
         if (!instance || !instance.id) return false;
         if (instance.__jtmlDestroying) return false;
+        const id = instance.id;
         instance.__jtmlDestroying = true;
         const definition = componentDefinitionForInstance(instance) ||
           componentDefinitionForName(instance.component || '', instance.definitionModule, instance.moduleId) ||
           {};
         const handlerCount = Object.keys(instance.eventHandlers || {}).length;
+        const registrySizeBefore = Object.keys(dynamicComponentInstances).length;
+        const destroyedGeneration = Number(instance.__jtmlGeneration || 0);
         let handled = false;
         try {
           const plan = definition && definition.name ? compileComponentUpdatePlan(definition) : null;
@@ -557,12 +619,22 @@ const char* browserRuntimePreludeChunk() {
         const destroyReason = reason || 'unknown';
         destroyInfo.count += 1;
         destroyInfo.lastReason = destroyReason;
-        destroyInfo.lastDestroyedId = instance.id;
+        destroyInfo.lastDestroyedId = id;
+        destroyInfo.destroyedIds = Array.isArray(destroyInfo.destroyedIds) ? destroyInfo.destroyedIds : [];
+        destroyInfo.destroyedIds.push(id);
         destroyInfo.lastHandlerCount = handlerCount;
         destroyInfo.handlerCountTotal = (destroyInfo.handlerCountTotal || 0) + handlerCount;
         destroyInfo.handlerInstanceDestroyCount =
           (destroyInfo.handlerInstanceDestroyCount || 0) + (handlerCount > 0 ? 1 : 0);
-        destroyInfo.registrySizeAfter = Object.keys(dynamicComponentInstances).length;
+        destroyInfo.destroyedHandlerIds = Array.isArray(destroyInfo.destroyedHandlerIds) ? destroyInfo.destroyedHandlerIds : [];
+        if (handlerCount > 0) destroyInfo.destroyedHandlerIds.push(id);
+        const afterInstance = findRuntimeComponentInstance(id), removed = !afterInstance, scopeRemoved = !Object.prototype.hasOwnProperty.call(componentScopes, id), handlerRemoved = !afterInstance || Object.keys(afterInstance.eventHandlers || {}).length === 0;
+        const dispatchRejected = runDirectComponentAction(id, '__jtml_destroy_probe__', []) === false;
+        destroyInfo.registryDeltaTotal = (destroyInfo.registryDeltaTotal || 0) + Math.max(0, registrySizeBefore - Object.keys(dynamicComponentInstances).length);
+        const destroyEntry = { id: id, g: destroyedGeneration, h: handlerCount, r: removed, s: scopeRemoved, e: handlerRemoved, d: dispatchRejected };
+        destroyInfo.entries = Array.isArray(destroyInfo.entries) ? destroyInfo.entries : [];
+        destroyInfo.entries.push(destroyEntry);
+        [['registryLeaks', !removed], ['scopeLeaks', !scopeRemoved], ['handlerLeaks', handlerCount > 0 && !handlerRemoved], ['dispatchLeaks', !dispatchRejected]].forEach(function (leak) { destroyInfo[leak[0]] = Array.isArray(destroyInfo[leak[0]]) ? destroyInfo[leak[0]] : []; if (leak[1]) destroyInfo[leak[0]].push(id); });
         destroyInfo.reasons[destroyReason] = (destroyInfo.reasons[destroyReason] || 0) + 1;
         window.jtml.directComponentDestroyLifecycle = destroyInfo;
         delete instance.__jtmlDestroying;
@@ -1120,6 +1192,24 @@ const char* browserRuntimePreludeChunk() {
           }
           return { found: true, value: value };
         }
+        if (plan.kind === 'range') {
+          const start = evaluateCompiledComponentExpressionResult(plan.start, '', scope);
+          const end = evaluateCompiledComponentExpressionResult(plan.end, '', scope);
+          if (!start.found || !end.found) {
+            return evaluateClientExpression(plan.source || fallbackExpr || '', scope);
+          }
+          const first = Number(start.value);
+          const last = Number(end.value);
+          if (!Number.isFinite(first) || !Number.isFinite(last)) {
+            return { found: true, value: [] };
+          }
+          const step = first <= last ? 1 : -1;
+          const values = [];
+          for (let value = first; step > 0 ? value <= last : value >= last; value += step) {
+            values.push(value);
+          }
+          return { found: true, value: values };
+        }
         if (plan.kind === 'unary' && plan.operator === '!') {
           const argument = evaluateCompiledComponentExpressionResult(plan.argument, '', scope);
           return argument.found
@@ -1582,14 +1672,12 @@ const char* browserRuntimeComponentChunk() {
         const loopItemName = loopPlan.item || (match ? match[1] : '');
         const collectionExpr = loopPlan.collectionExpression || (match ? match[2] : raw);
         if (!loopItemName) return [];
-        let values=null,m=String(collectionExpr||'').match(/^(\d+)\.\.(\d+)$/);if(m){let a=+m[1],b=+m[2],s=a<=b?1:-1;values=[];for(let v=a;s>0?v<=b:v>=b;v+=s)values.push(v);}else {
-          const result = evaluateCompiledComponentExpressionResult(
-            loopPlan.collectionPlan || compileComponentExpressionPlan(collectionExpr),
-            collectionExpr,
-            scope);
-          if (!result.found) return [];
-          values = result.value;
-        }
+        const result = evaluateCompiledComponentExpressionResult(
+          loopPlan.collectionPlan || compileComponentExpressionPlan(collectionExpr),
+          collectionExpr,
+          scope);
+        if (!result.found) return [];
+        let values = result.value;
         if (values == null) values = [];
         if (!Array.isArray(values)) {
           if (typeof values === 'string') values = values.split('');
@@ -2036,9 +2124,28 @@ const char* browserRuntimeComponentChunk() {
       function staticComponentUpdatePlanFromCandidate(c, key) { c=c||{}; key=key||c.key||''; if(!key)return null; const sm=(window.__jtml_static_component_modules||{})[key]||{},sf=(window.__jtml_static_update_functions||{})[key]; return {key:key,component:c.name||'',moduleId:c.moduleId==null?null:c.moduleId,entries:Array.isArray(c.entries)?c.entries:[],entriesByRead:c.entriesByRead||{},unsafeEntries:Array.isArray(c.unsafeEntries)?c.unsafeEntries:[],staticSource:true,staticCreateFunction:typeof sm.create==='function'?sm.create:null,staticUpdateFunction:typeof sf==='function'?sf:null,staticDestroyFunction:typeof sm.destroy==='function'?sm.destroy:null,staticPatchCoverage:c.staticPatchCoverage||'unknown'}; }
 
       function staticComponentUpdatePlanForDefinition(definition, key) {
-        const a=window.__jtml_static_component_plan_index||window.__jtml_static_update_plans,cs=a&&Array.isArray(a.components)?a.components:[]; let n=null;
-        for(let i=0;i<cs.length;i+=1){const c=cs[i]||{};if(c.key===key)return staticComponentUpdatePlanFromCandidate(c,key);if(!definition||c.name!==definition.name)continue;if((c.moduleId==null&&definition.moduleId==null)||(c.moduleId!=null&&definition.moduleId!=null&&Number(c.moduleId)===Number(definition.moduleId)))return staticComponentUpdatePlanFromCandidate(c,c.key);if(!n)n=c;}
-        return n?staticComponentUpdatePlanFromCandidate(n,n.key):null;
+        const a=window.__jtml_static_component_plan_index||window.__jtml_static_update_plans,cs=a&&Array.isArray(a.components)?a.components:[];
+        if (key) {
+          for(let i=0;i<cs.length;i+=1){const c=cs[i]||{};if(c.key===key)return staticComponentUpdatePlanFromCandidate(c,key);}
+        }
+        if (!definition || !definition.name) return null;
+        const matches=[];
+        for(let i=0;i<cs.length;i+=1){
+          const c=cs[i]||{};
+          if(c.name!==definition.name)continue;
+          if((c.moduleId==null&&definition.moduleId==null)||(c.moduleId!=null&&definition.moduleId!=null&&Number(c.moduleId)===Number(definition.moduleId)))return staticComponentUpdatePlanFromCandidate(c,c.key);
+          matches.push(c);
+        }
+        if(matches.length===1 && definition.moduleId==null)return staticComponentUpdatePlanFromCandidate(matches[0],matches[0].key);
+        if(matches.length>1){
+          window.jtml=window.jtml||{};
+          window.jtml.staticComponentPlanAmbiguity={
+            component:definition.name,
+            moduleId:definition.moduleId==null?null:definition.moduleId,
+            candidates:matches.map(function(c){return {key:c.key||'',moduleId:c.moduleId==null?null:c.moduleId};})
+          };
+        }
+        return null;
       }
 
       function compileComponentUpdatePlan(definition) {
@@ -2238,6 +2345,9 @@ const char* browserRuntimeComponentChunk() {
           destroyDirectComponentChildren: destroyDirectComponentChildren,
           destroyDirectComponentInstancesUnderElement: destroyDirectComponentInstancesUnderElement,
           unregisterComponentInstance: unregisterComponentInstance,
+          createNestedComponentInstance: nestedComponentInstanceForNode,
+          componentScopeFor,
+          applyComponentDerived,
           patchStaticComponentButtonNode: patchStaticComponentButtonNode,
           patchStaticComponentElementNode: patchStaticComponentElementNode,
           renderStaticComponentButtonNode: renderStaticComponentButtonNode,
@@ -3179,6 +3289,11 @@ const char* browserRuntimeComponentChunk() {
           if (!instance) return;
           const definition = componentDefinitionForInstance(instance);
           if (!definition) return;
+          const targetStatus = componentBindTargetStatus(definition, name);
+          if (!targetStatus.ok) {
+            recordDirectComponentBindingDiagnostic(instance, definition, el, name, targetStatus);
+            return;
+          }
           const scope = componentScopeFor(instance, definition);
           scope[name] = el.type === 'checkbox' ? !!el.checked : el.value;
           instance.scope = scope;
@@ -3332,6 +3447,7 @@ const char* browserRuntimeComponentChunk() {
           componentDefinitions: componentDefinitions,
           getComponentInstances: function () { return componentInstances.slice(); },
           getComponentDefinitions: function () { return componentDefinitions.slice(); },
+          getRuntimeRegistrySnapshot: runtimeRegistrySnapshot,
           findComponentInstance: function (id) {
             return componentInstances.find(function (item) { return item.id === id; }) || null;
           },
@@ -5764,7 +5880,6 @@ const char* browserRuntimeBootTransportChunk() {
 
       window.addEventListener('hashchange', applyRoutes);
     })();
-  </script>
 )JTR3";
 }
 

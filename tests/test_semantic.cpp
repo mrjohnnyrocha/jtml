@@ -5,6 +5,7 @@
 #include "jtml/parser.h"
 #include "jtml/runtime_plan.h"
 #include "jtml/runtime_plan_json.h"
+#include "jtml/runtime/static_update_plan_emitter.h"
 #include "jtml/semantic.h"
 #include "jtml/semantic/module_graph.h"
 #include "jtml/transpiler.h"
@@ -13,6 +14,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -42,6 +44,17 @@ std::string hexEncode(const std::string& value) {
 
 bool contains(const std::vector<std::string>& values, const std::string& value) {
     return std::find(values.begin(), values.end(), value) != values.end();
+}
+
+int lineContaining(const std::string& source, const std::string& needle) {
+    std::istringstream input(source);
+    std::string line;
+    int lineNumber = 0;
+    while (std::getline(input, line)) {
+        ++lineNumber;
+        if (line.find(needle) != std::string::npos) return lineNumber;
+    }
+    return 0;
 }
 
 bool hasEdge(const jtml::SemanticProgram& semantic,
@@ -541,6 +554,76 @@ TEST(SemanticProgram, WarnsOnUnlabeledFieldControl) {
     EXPECT_TRUE(std::any_of(usage.warnings.begin(), usage.warnings.end(), [](const auto& warning) {
         return warning.code == "JTML_UI_FIELD_UNLABELED";
     }));
+}
+
+TEST(SemanticProgram, WarnsOnInvalidComponentIntoTargets) {
+    const std::string source =
+        "jtml 2\n"
+        "make Form initial\n"
+        "  let email = \"\"\n"
+        "  get label = email\n"
+        "  field\n"
+        "    input \"Email\" into email\n"
+        "    input \"Missing\" into missing\n"
+        "    input \"Derived\" into label\n"
+        "page\n"
+        "  Form \"seed\"\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto* form = findComponentDefinition(semantic, "Form");
+    ASSERT_NE(form, nullptr);
+    EXPECT_TRUE(contains(form->localBindings, "email"));
+    EXPECT_TRUE(contains(form->localBindings, "missing"));
+    EXPECT_TRUE(contains(form->localBindings, "label"));
+
+    const auto usage = jtml::analyzeSemanticUsage(semantic);
+    auto hasWarning = [&](const std::string& code) {
+        return std::any_of(usage.warnings.begin(), usage.warnings.end(), [&](const auto& warning) {
+            return warning.code == code;
+        });
+    };
+    EXPECT_FALSE(std::any_of(usage.warnings.begin(), usage.warnings.end(), [](const auto& warning) {
+        return warning.message.find("into email") != std::string::npos;
+    })) << "valid local let binding should stay clean";
+    EXPECT_TRUE(hasWarning("JTML_UNKNOWN_INTO_TARGET"));
+    EXPECT_TRUE(hasWarning("JTML_INTO_DERIVED_TARGET"));
+}
+
+TEST(SemanticProgram, WarnsOnSemanticIntoTargetsThatCannotBeWritten) {
+    jtml::SemanticProgram semantic;
+    semantic.componentDefinitions.push_back({
+        "Form",
+        {"initial"},
+        {},
+        {},
+        {},
+        {},
+        {"email"},
+        {"label"},
+        {},
+        {},
+        {},
+        {"email", "missing", "label", "initial", "user.name"},
+        "",
+        false,
+        0,
+        0,
+        0,
+        1
+    });
+
+    const auto usage = jtml::analyzeSemanticUsage(semantic);
+    auto hasWarning = [&](const std::string& code) {
+        return std::any_of(usage.warnings.begin(), usage.warnings.end(), [&](const auto& warning) {
+            return warning.code == code;
+        });
+    };
+
+    EXPECT_TRUE(hasWarning("JTML_UNKNOWN_INTO_TARGET"));
+    EXPECT_TRUE(hasWarning("JTML_INTO_DERIVED_TARGET"));
+    EXPECT_TRUE(hasWarning("JTML_INTO_PARAM_TARGET"));
+    EXPECT_TRUE(hasWarning("JTML_INVALID_INTO_TARGET"));
 }
 
 TEST(SemanticProgram, CapturesRawHtmlEscapeHatches) {
@@ -1363,6 +1446,97 @@ TEST(RuntimePlan, ComponentInstancesCarryAuthoredSlotPlansAndSplitParams) {
     EXPECT_EQ(plan.componentInstances[0].slotPlan[0].expression, "\"Ready\"");
 }
 
+TEST(RuntimePlan, ComponentBodySourceLinesSurviveBlankLinesCommentsAndSlots) {
+    const std::string source =
+        "jtml 2\n"
+        "\n"
+        "// first component starts after a blank line\n"
+        "make Card title\n"
+        "  let localTitle = title\n"
+        "\n"
+        "  panel title localTitle\n"
+        "    // nested body comment should not become a node\n"
+        "    text localTitle\n"
+        "    slot\n"
+        "\n"
+        "make Host\n"
+        "  Card \"Welcome\"\n"
+        "    text \"Slotted\"\n"
+        "\n"
+        "page\n"
+        "  Host\n";
+
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto plan = jtml::buildRuntimePlan(program, semantic);
+
+    auto findDefinition = [&](const std::string& name) {
+        return std::find_if(
+            plan.componentDefinitions.begin(),
+            plan.componentDefinitions.end(),
+            [&](const auto& definition) { return definition.name == name; });
+    };
+
+    auto card = findDefinition("Card");
+    ASSERT_NE(card, plan.componentDefinitions.end());
+    auto cardNode = [&](const std::string& kind, const std::string& name) {
+        return std::find_if(card->bodyPlan.begin(), card->bodyPlan.end(),
+                            [&](const auto& node) {
+                                return node.kind == kind && node.name == name;
+                            });
+    };
+    const auto localTitle = cardNode("state", "localTitle");
+    ASSERT_NE(localTitle, card->bodyPlan.end());
+    EXPECT_EQ(localTitle->sourceLine, lineContaining(source, "let localTitle = title"));
+    EXPECT_EQ(localTitle->sourceColumn, 3);
+
+    const auto panel = cardNode("template", "panel");
+    ASSERT_NE(panel, card->bodyPlan.end());
+    EXPECT_EQ(panel->sourceLine, lineContaining(source, "panel title localTitle"));
+    EXPECT_EQ(panel->sourceColumn, 3);
+    const int panelIndex =
+        static_cast<int>(std::distance(card->bodyPlan.begin(), panel));
+
+    const auto text = cardNode("template", "text");
+    ASSERT_NE(text, card->bodyPlan.end());
+    EXPECT_EQ(text->sourceLine, lineContaining(source, "text localTitle"));
+    EXPECT_EQ(text->sourceColumn, 5);
+    EXPECT_EQ(text->parentIndex, panelIndex);
+
+    const auto slot = std::find_if(card->bodyPlan.begin(), card->bodyPlan.end(),
+                                   [](const auto& node) {
+                                       return node.kind == "slot" &&
+                                              node.head == "slot";
+                                   });
+    ASSERT_NE(slot, card->bodyPlan.end());
+    EXPECT_EQ(slot->sourceLine, lineContaining(source, "slot"));
+    EXPECT_EQ(slot->sourceColumn, 5);
+    EXPECT_EQ(slot->parentIndex, panelIndex);
+
+    auto host = findDefinition("Host");
+    ASSERT_NE(host, plan.componentDefinitions.end());
+    auto hostCard = std::find_if(host->bodyPlan.begin(), host->bodyPlan.end(),
+                                 [](const auto& node) {
+                                     return node.kind == "template" &&
+                                            node.name == "Card";
+                                 });
+    ASSERT_NE(hostCard, host->bodyPlan.end());
+    EXPECT_EQ(hostCard->sourceLine, lineContaining(source, "Card \"Welcome\""));
+    EXPECT_EQ(hostCard->sourceColumn, 3);
+
+    const auto cardInstance = std::find_if(
+        plan.componentInstances.begin(),
+        plan.componentInstances.end(),
+        [](const auto& instance) {
+            return instance.component == "Card" && !instance.slotPlan.empty();
+        });
+    ASSERT_NE(cardInstance, plan.componentInstances.end());
+    ASSERT_EQ(cardInstance->slotPlan.size(), 1u);
+    EXPECT_EQ(cardInstance->slotPlan[0].sourceLine,
+              lineContaining(source, "text \"Slotted\""));
+    EXPECT_EQ(cardInstance->slotPlan[0].sourceColumn, 5);
+}
+
 TEST(RuntimePlan, CapitalizedComponentCallParamsAreReactiveReads) {
     const std::string source =
         "jtml 2\n"
@@ -1476,10 +1650,16 @@ TEST(RuntimePlan, CanonicalExpressionPlanCoversCompositeOperators) {
     ASSERT_EQ(directExpression["kind"], "member") << directExpression.dump(2);
     EXPECT_EQ(directExpression["producer"], "typed-ir") << directExpression.dump(2);
     EXPECT_EQ(directExpression["base"]["kind"], "subscript") << directExpression.dump(2);
+    ASSERT_TRUE(directExpression.contains("sourceSpan")) << directExpression.dump(2);
+    EXPECT_EQ(directExpression["sourceSpan"]["startLine"], 1) << directExpression.dump(2);
+    EXPECT_EQ(directExpression["sourceSpan"]["startColumn"], 1) << directExpression.dump(2);
+    EXPECT_GT(directExpression["sourceSpan"]["endColumn"].get<int>(),
+              directExpression["sourceSpan"]["startColumn"].get<int>()) << directExpression.dump(2);
 
     const auto partial = jtml::compileRuntimeExpressionPlan("users.data extra");
     EXPECT_EQ(partial["kind"], "source") << partial.dump(2);
     EXPECT_FALSE(partial.contains("producer")) << partial.dump(2);
+    EXPECT_FALSE(partial.contains("sourceSpan")) << partial.dump(2);
 
     const auto plan = jtml::compileRuntimeExpressionPlan(
         "(visible && title != \"Hidden\") ? items : empty");
@@ -1549,13 +1729,327 @@ TEST(RuntimePlan, CanonicalExpressionPlanCoversCompositeOperators) {
     EXPECT_EQ(interpolated["right"]["kind"], "path") << interpolated.dump(2);
     EXPECT_EQ(interpolated["right"]["root"], "count") << interpolated.dump(2);
 
+    const auto escapedBraces = jtml::compileRuntimeExpressionPlan("\"Use \\{ and \\}\"");
+    ASSERT_EQ(escapedBraces["kind"], "literal") << escapedBraces.dump(2);
+    EXPECT_EQ(escapedBraces["value"], "Use { and }") << escapedBraces.dump(2);
+
+    const auto quotedBrace = jtml::compileRuntimeExpressionPlan("\"Key {labels[\\\"}\\\"]}\"");
+    ASSERT_EQ(quotedBrace["kind"], "binary") << quotedBrace.dump(2);
+    EXPECT_EQ(quotedBrace["right"]["kind"], "subscript") << quotedBrace.dump(2);
+    EXPECT_EQ(quotedBrace["right"]["index"]["kind"], "literal") << quotedBrace.dump(2);
+    EXPECT_EQ(quotedBrace["right"]["index"]["value"], "}") << quotedBrace.dump(2);
+
+    const auto objectInterpolation = jtml::compileRuntimeExpressionPlan(
+        "\"Payload {{ \\\"name\\\": title }}\"");
+    ASSERT_EQ(objectInterpolation["kind"], "binary") << objectInterpolation.dump(2);
+    EXPECT_EQ(objectInterpolation["right"]["kind"], "object") << objectInterpolation.dump(2);
+    ASSERT_EQ(objectInterpolation["right"]["entries"].size(), 1u)
+        << objectInterpolation.dump(2);
+    EXPECT_EQ(objectInterpolation["right"]["entries"][0]["key"], "name")
+        << objectInterpolation.dump(2);
+
+    const auto malformedInterpolation = jtml::compileRuntimeExpressionPlan("\"Keep {count + }\"");
+    ASSERT_EQ(malformedInterpolation["kind"], "literal") << malformedInterpolation.dump(2);
+    EXPECT_EQ(malformedInterpolation["value"], "Keep {count + }")
+        << malformedInterpolation.dump(2);
+
     const auto numericMath = jtml::compileRuntimeExpressionPlan("count + 1");
     ASSERT_EQ(numericMath["kind"], "binary") << numericMath.dump(2);
     EXPECT_EQ(numericMath["valueType"], "unknown") << numericMath.dump(2);
 
+    jtml::ExpressionTypeEnvironment environment;
+    environment.symbols["count"] = jtml::ExpressionValueType::Number;
+    environment.symbols["title"] = jtml::ExpressionValueType::String;
+    environment.symbols["visible"] = jtml::ExpressionValueType::Boolean;
+
+    const auto typedNumericMath = jtml::compileRuntimeExpressionPlan("count + 1", environment);
+    ASSERT_EQ(typedNumericMath["kind"], "binary") << typedNumericMath.dump(2);
+    EXPECT_EQ(typedNumericMath["producer"], "typed-ir") << typedNumericMath.dump(2);
+    EXPECT_EQ(typedNumericMath["valueType"], "number") << typedNumericMath.dump(2);
+    EXPECT_EQ(typedNumericMath["left"]["valueType"], "number") << typedNumericMath.dump(2);
+    EXPECT_EQ(typedNumericMath["right"]["valueType"], "number") << typedNumericMath.dump(2);
+
+    const auto typedStringConcat = jtml::compileRuntimeExpressionPlan("title + count", environment);
+    ASSERT_EQ(typedStringConcat["kind"], "binary") << typedStringConcat.dump(2);
+    EXPECT_EQ(typedStringConcat["valueType"], "string") << typedStringConcat.dump(2);
+
+    const auto typedConditional = jtml::compileRuntimeExpressionPlan(
+        "visible ? title : \"Hidden\"", environment);
+    ASSERT_EQ(typedConditional["kind"], "conditional") << typedConditional.dump(2);
+    EXPECT_EQ(typedConditional["test"]["valueType"], "boolean") << typedConditional.dump(2);
+    EXPECT_EQ(typedConditional["valueType"], "string") << typedConditional.dump(2);
+
     const auto comparison = jtml::compileRuntimeExpressionPlan("count > 3");
     ASSERT_EQ(comparison["kind"], "binary") << comparison.dump(2);
     EXPECT_EQ(comparison["valueType"], "boolean") << comparison.dump(2);
+
+    const auto range = jtml::compileRuntimeExpressionPlan("1..1000");
+    ASSERT_EQ(range["kind"], "range") << range.dump(2);
+    EXPECT_EQ(range["producer"], "typed-ir") << range.dump(2);
+    EXPECT_EQ(range["valueType"], "array") << range.dump(2);
+    EXPECT_EQ(range["start"]["kind"], "literal") << range.dump(2);
+    EXPECT_EQ(range["end"]["kind"], "literal") << range.dump(2);
+    EXPECT_EQ(range["directJs"], true) << range.dump(2);
+    const auto rangeJs = range["jsExpression"].get<std::string>();
+    EXPECT_NE(rangeJs.find("Number.isFinite"), std::string::npos) << rangeJs;
+    EXPECT_EQ(rangeJs.find("new Function"), std::string::npos) << rangeJs;
+    EXPECT_EQ(rangeJs.find("eval("), std::string::npos) << rangeJs;
+
+    jtml::ExpressionTypeEnvironment rangeEnvironment;
+    rangeEnvironment.symbols["start"] = jtml::ExpressionValueType::Number;
+    rangeEnvironment.symbols["end"] = jtml::ExpressionValueType::Number;
+    const auto dynamicRange = jtml::compileRuntimeExpressionPlan("start..end", rangeEnvironment);
+    ASSERT_EQ(dynamicRange["kind"], "range") << dynamicRange.dump(2);
+    EXPECT_EQ(dynamicRange["producer"], "typed-ir") << dynamicRange.dump(2);
+    EXPECT_EQ(dynamicRange["valueType"], "array") << dynamicRange.dump(2);
+    EXPECT_EQ(dynamicRange["start"]["kind"], "path") << dynamicRange.dump(2);
+    EXPECT_EQ(dynamicRange["end"]["kind"], "path") << dynamicRange.dump(2);
+    EXPECT_EQ(dynamicRange["directJs"], true) << dynamicRange.dump(2);
+    EXPECT_NE(dynamicRange["jsExpression"].get<std::string>().find("scope[\"start\"]"),
+              std::string::npos) << dynamicRange.dump(2);
+}
+
+TEST(RuntimePlan, TypeEnvironmentAnnotatesClientExpressionPlansFromBindings) {
+    const std::string source =
+        "jtml 2\n"
+        "let count = 0\n"
+        "let title = \"Count\"\n"
+        "get label = title + count\n"
+        "when inc\n"
+        "  count = count + 1\n"
+        "page\n"
+        "  text label\n"
+        "  button \"Inc\" click inc\n";
+
+    auto program = parseFriendly(source);
+    const auto plan = jtml::buildRuntimePlan(program);
+    const auto client = jtml::runtimePlanToClientJson(plan);
+
+    ASSERT_TRUE(client.contains("statePlans")) << client.dump(2);
+    EXPECT_EQ(client["statePlans"]["count"]["valueType"], "number") << client.dump(2);
+    EXPECT_EQ(client["statePlans"]["title"]["valueType"], "string") << client.dump(2);
+
+    ASSERT_TRUE(client.contains("derivedPlans")) << client.dump(2);
+    EXPECT_EQ(client["derivedPlans"]["label"]["valueType"], "string") << client.dump(2);
+    EXPECT_EQ(client["derivedPlans"]["label"]["left"]["valueType"], "string")
+        << client.dump(2);
+    EXPECT_EQ(client["derivedPlans"]["label"]["right"]["valueType"], "number")
+        << client.dump(2);
+
+    ASSERT_TRUE(client.contains("actions")) << client.dump(2);
+    ASSERT_TRUE(client["actions"].contains("inc")) << client.dump(2);
+    ASSERT_FALSE(client["actions"]["inc"]["body"].empty()) << client.dump(2);
+    const auto& assignment = client["actions"]["inc"]["body"][0];
+    ASSERT_EQ(assignment["kind"], "assign") << client.dump(2);
+    ASSERT_TRUE(assignment.contains("exprPlan")) << client.dump(2);
+    EXPECT_EQ(assignment["exprPlan"]["valueType"], "number") << assignment.dump(2);
+    EXPECT_EQ(assignment["exprPlan"]["left"]["valueType"], "number") << assignment.dump(2);
+}
+
+TEST(RuntimePlan, ClientExpressionPlansOmitCompilerHintsButExplainKeepsThem) {
+    const std::string source =
+        "jtml 2\n"
+        "let count = 0\n"
+        "when inc\n"
+        "  count = count + 1\n"
+        "make Counter\n"
+        "  let local = count + 1\n"
+        "  text local\n"
+        "page\n"
+        "  Counter\n";
+
+    auto program = parseFriendly(source);
+    const auto plan = jtml::buildRuntimePlan(program);
+    const auto client = jtml::runtimePlanToClientJson(plan);
+    const auto explain = jtml::runtimePlanToExplainJson(plan);
+
+    const auto clientDump = client.dump();
+    EXPECT_EQ(clientDump.find("\"sourceSpan\""), std::string::npos) << client.dump(2);
+    EXPECT_EQ(clientDump.find("\"directJs\""), std::string::npos) << client.dump(2);
+    EXPECT_EQ(clientDump.find("\"jsExpression\""), std::string::npos) << client.dump(2);
+
+    ASSERT_TRUE(explain.contains("componentDefinitions")) << explain.dump(2);
+    const auto explainDump = explain.dump();
+    EXPECT_NE(explainDump.find("\"sourceSpan\""), std::string::npos)
+        << explain.dump(2);
+    EXPECT_NE(explainDump.find("\"directJs\""), std::string::npos)
+        << explain.dump(2);
+    EXPECT_NE(explainDump.find("\"jsExpression\""), std::string::npos)
+        << explain.dump(2);
+}
+
+TEST(RuntimePlan, TypeEnvironmentAnnotatesComponentBodyPlansFromLocalState) {
+    const std::string source =
+        "jtml 2\n"
+        "make Counter title\n"
+        "  let count = 0\n"
+        "  get label = title + count\n"
+        "  when inc\n"
+        "    count = count + 1\n"
+        "  card\n"
+        "    text label\n"
+        "    button \"Inc\" click inc\n"
+        "page\n"
+        "  Counter \"Clicks\"\n";
+
+    auto program = parseFriendly(source);
+    const auto plan = jtml::buildRuntimePlan(program);
+    const auto client = jtml::runtimePlanToClientJson(plan);
+
+    ASSERT_TRUE(client.contains("componentDefinitions")) << client.dump(2);
+    ASSERT_FALSE(client["componentDefinitions"].empty()) << client.dump(2);
+    const auto& definition = client["componentDefinitions"][0];
+    ASSERT_EQ(definition["name"], "Counter") << definition.dump(2);
+    ASSERT_TRUE(definition.contains("bodyPlan")) << definition.dump(2);
+
+    const nlohmann::json* stateNode = nullptr;
+    const nlohmann::json* derivedNode = nullptr;
+    const nlohmann::json* assignmentNode = nullptr;
+    const nlohmann::json* textNode = nullptr;
+    for (const auto& node : definition["bodyPlan"]) {
+        const auto kind = node.value("kind", "");
+        const auto name = node.value("name", "");
+        if (kind == "state" && name == "count") stateNode = &node;
+        if (kind == "derived" && name == "label") derivedNode = &node;
+        if (kind == "assignment" && name == "count") assignmentNode = &node;
+        if (kind == "template" && name == "text") textNode = &node;
+    }
+
+    ASSERT_NE(stateNode, nullptr) << definition.dump(2);
+    EXPECT_EQ((*stateNode)["expressionPlan"]["valueType"], "number") << stateNode->dump(2);
+
+    ASSERT_NE(derivedNode, nullptr) << definition.dump(2);
+    EXPECT_EQ((*derivedNode)["expressionPlan"]["valueType"], "unknown") << derivedNode->dump(2);
+    EXPECT_EQ((*derivedNode)["expressionPlan"]["right"]["valueType"], "number")
+        << derivedNode->dump(2);
+
+    ASSERT_NE(assignmentNode, nullptr) << definition.dump(2);
+    EXPECT_EQ((*assignmentNode)["expressionPlan"]["valueType"], "number")
+        << assignmentNode->dump(2);
+    EXPECT_EQ((*assignmentNode)["expressionPlan"]["left"]["valueType"], "number")
+        << assignmentNode->dump(2);
+
+    ASSERT_NE(textNode, nullptr) << definition.dump(2);
+    ASSERT_FALSE((*textNode)["wordPlans"].empty()) << textNode->dump(2);
+    EXPECT_NE(textNode->dump().find("\"root\":\"label\""), std::string::npos)
+        << textNode->dump(2);
+}
+
+TEST(RuntimePlan, TypeEnvironmentAnnotatesRangeLoopLocalsInBodyPlans) {
+    const std::string source =
+        "jtml 2\n"
+        "make RangeList\n"
+        "  for index in 1..3 key index\n"
+        "    show index + 1\n"
+        "page\n"
+        "  RangeList\n";
+
+    auto program = parseFriendly(source);
+    const auto plan = jtml::buildRuntimePlan(program);
+    const auto client = jtml::runtimePlanToClientJson(plan);
+
+    ASSERT_TRUE(client.contains("componentDefinitions")) << client.dump(2);
+    ASSERT_FALSE(client["componentDefinitions"].empty()) << client.dump(2);
+    const auto& definition = client["componentDefinitions"][0];
+    ASSERT_EQ(definition["name"], "RangeList") << definition.dump(2);
+
+    const nlohmann::json* loopNode = nullptr;
+    const nlohmann::json* renderedNode = nullptr;
+    for (const auto& node : definition["bodyPlan"]) {
+        if (node.value("head", "") == "for" || node.value("name", "") == "for") {
+            loopNode = &node;
+        }
+        if (node.value("expression", "") == "index + 1") {
+            renderedNode = &node;
+        }
+    }
+
+    ASSERT_NE(loopNode, nullptr) << definition.dump(2);
+    ASSERT_TRUE(loopNode->contains("loopPlan")) << loopNode->dump(2);
+    EXPECT_EQ((*loopNode)["loopPlan"]["item"], "index") << loopNode->dump(2);
+    EXPECT_EQ((*loopNode)["loopPlan"]["collectionPlan"]["kind"], "range")
+        << loopNode->dump(2);
+    EXPECT_EQ((*loopNode)["keyExpressionPlan"]["kind"], "path")
+        << loopNode->dump(2);
+    EXPECT_EQ((*loopNode)["keyExpressionPlan"]["valueType"], "number")
+        << loopNode->dump(2);
+
+    ASSERT_NE(renderedNode, nullptr) << definition.dump(2);
+    ASSERT_TRUE(renderedNode->contains("expressionPlan")) << renderedNode->dump(2);
+    EXPECT_EQ((*renderedNode)["expressionPlan"]["kind"], "binary")
+        << renderedNode->dump(2);
+    EXPECT_EQ((*renderedNode)["expressionPlan"]["valueType"], "number")
+        << renderedNode->dump(2);
+    EXPECT_EQ((*renderedNode)["expressionPlan"]["left"]["root"], "index")
+        << renderedNode->dump(2);
+    EXPECT_EQ((*renderedNode)["expressionPlan"]["left"]["valueType"], "number")
+        << renderedNode->dump(2);
+}
+
+TEST(RuntimePlan, StaticUpdatePlanAssetUsesRangeLoopLocalTypeEnvironment) {
+    const std::string source =
+        "jtml 2\n"
+        "make RangeList\n"
+        "  let offset = 0\n"
+        "  when bump\n"
+        "    offset = offset + 1\n"
+        "  for index in 1..3 key index\n"
+        "    show index + offset\n"
+        "  button \"Bump\" click bump\n"
+        "page\n"
+        "  RangeList\n";
+
+    auto program = parseFriendly(source);
+    const auto plan = jtml::buildRuntimePlan(program);
+    jtml::RuntimeProjectPlan project;
+    project.linkedPlan = plan;
+
+    const auto asset = jtml::emitStaticUpdatePlanAsset(project);
+    const auto sourcePos = asset.find("\"expression\":\"index + offset\"");
+    ASSERT_NE(sourcePos, std::string::npos) << asset;
+    const auto slice = asset.substr(sourcePos, 900);
+    EXPECT_NE(slice.find("\"valueType\":\"number\""), std::string::npos)
+        << slice;
+    EXPECT_NE(slice.find("\"root\":\"index\""), std::string::npos)
+        << slice;
+    EXPECT_NE(slice.find("\"root\":\"offset\""), std::string::npos)
+        << slice;
+}
+
+TEST(RuntimePlan, StaticUpdatePlanAssetUsesComponentTypeEnvironment) {
+    const std::string source =
+        "jtml 2\n"
+        "make Counter title\n"
+        "  let count = 0\n"
+        "  get label = title + count\n"
+        "  when inc\n"
+        "    count = count + 1\n"
+        "  card\n"
+        "    text label\n"
+        "    show count + 2\n"
+        "    button \"Inc\" click inc\n"
+        "page\n"
+        "  Counter \"Clicks\"\n";
+
+    auto program = parseFriendly(source);
+    const auto plan = jtml::buildRuntimePlan(program);
+    jtml::RuntimeProjectPlan project;
+    project.linkedPlan = plan;
+
+    const auto asset = jtml::emitStaticUpdatePlanAsset(project);
+    const auto sourcePos = asset.find("\"expression\":\"count + 1\"");
+    ASSERT_NE(sourcePos, std::string::npos) << asset;
+    const auto assignmentSlice = asset.substr(sourcePos, 600);
+    EXPECT_NE(assignmentSlice.find("\"valueType\":\"number\""), std::string::npos)
+        << assignmentSlice;
+    EXPECT_NE(assignmentSlice.find("\"root\":\"count\""), std::string::npos)
+        << assignmentSlice;
+
+    const auto renderedExpressionPos = asset.find("\"expression\":\"count + 2\"");
+    ASSERT_NE(renderedExpressionPos, std::string::npos) << asset;
+    const auto renderedExpressionSlice = asset.substr(renderedExpressionPos, 600);
+    EXPECT_NE(renderedExpressionSlice.find("\"valueType\":\"number\""), std::string::npos)
+        << renderedExpressionSlice;
 }
 
 TEST(RuntimePlan, TypedExpressionIrOwnsDependenciesJsonAndJsCodegen) {
@@ -1737,7 +2231,7 @@ TEST(RuntimePlan, ProjectPlanKeepsDuplicateComponentNamesModuleScoped) {
     homeSemantic.importRecords.push_back(
         {"../components/primary-card.jtml", "use", {"Card"}, false, 2, 1});
     homeSemantic.componentDefinitions.push_back(
-        {"Home", {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, hexEncode("0: page\n2: Card \"Nested\"\n"),
+        {"Home", {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, hexEncode("0: page\n2: Card \"Nested\"\n"),
          false, 2, 1, 0, 3});
     homeSemantic.exportRecords.push_back({"Home", "make", "", false, 3});
     homeSemantic.componentInstances.push_back(
@@ -1745,12 +2239,12 @@ TEST(RuntimePlan, ProjectPlanKeepsDuplicateComponentNamesModuleScoped) {
 
     jtml::SemanticProgram primarySemantic;
     primarySemantic.componentDefinitions.push_back(
-        {"Card", {"title"}, {}, {}, {}, {}, {}, {}, {}, {}, {}, "", false, 1, 1, 0, 2});
+        {"Card", {"title"}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, "", false, 1, 1, 0, 2});
     primarySemantic.exportRecords.push_back({"Card", "make", "", false, 2});
 
     jtml::SemanticProgram secondarySemantic;
     secondarySemantic.componentDefinitions.push_back(
-        {"Card", {"title"}, {}, {}, {}, {}, {}, {}, {}, {}, {}, "", false, 1, 1, 0, 2});
+        {"Card", {"title"}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, "", false, 1, 1, 0, 2});
     secondarySemantic.exportRecords.push_back({"Card", "make", "", false, 2});
 
     std::vector<jtml::SemanticModuleSource> modules = {

@@ -219,6 +219,7 @@ struct ComponentBodySummary {
     std::set<std::string> localActions;
     std::set<std::string> localEffects;
     std::set<std::string> eventBindings;
+    std::set<std::string> localBindings;
     bool hasSlot = false;
     int bodyNodeCount = 0;
     int rootTemplateNodeCount = 0;
@@ -236,12 +237,30 @@ const std::set<std::string>& friendlyEventNames() {
 
 std::string componentBodyLineText(const std::string& encodedLine) {
     const auto colon = encodedLine.find(':');
-    return trimCopy(colon == std::string::npos ? encodedLine : encodedLine.substr(colon + 1));
+    if (colon == std::string::npos) return trimCopy(encodedLine);
+    const auto secondColon = encodedLine.find(':', colon + 1);
+    if (secondColon != std::string::npos) {
+        const auto thirdColon = encodedLine.find(':', secondColon + 1);
+        if (thirdColon != std::string::npos) {
+            return trimCopy(encodedLine.substr(thirdColon + 1));
+        }
+        return trimCopy(encodedLine.substr(secondColon + 1));
+    }
+    return trimCopy(encodedLine.substr(colon + 1));
 }
 
 int componentBodyLineIndent(const std::string& encodedLine) {
     const auto colon = encodedLine.find(':');
     if (colon == std::string::npos) return 0;
+    const auto secondColon = encodedLine.find(':', colon + 1);
+    if (secondColon != std::string::npos) {
+        const auto thirdColon = encodedLine.find(':', secondColon + 1);
+        if (thirdColon != std::string::npos) {
+            return parseIntLiteral(encodedLine.substr(secondColon + 1,
+                                                      thirdColon - secondColon - 1));
+        }
+        return parseIntLiteral(encodedLine.substr(colon + 1, secondColon - colon - 1));
+    }
     return parseIntLiteral(encodedLine.substr(0, colon));
 }
 
@@ -278,6 +297,11 @@ ComponentBodySummary summarizeComponentBody(const std::string& bodyHex) {
         }
 
         for (size_t i = 0; i + 1 < tokens.size(); ++i) {
+            if (tokens[i] == "into") {
+                summary.localBindings.insert(cleanIdentifier(tokens[i + 1]));
+                ++i;
+                continue;
+            }
             if (friendlyEventNames().count(tokens[i])) {
                 summary.eventBindings.insert(cleanIdentifier(tokens[i + 1]));
             }
@@ -373,6 +397,12 @@ void collectExpressionRefs(const ExpressionStatementNode* expr, std::set<std::st
             collectExpressionRefs(e->whenFalse.get(), refs);
             break;
         }
+        case ExpressionStatementNodeType::Range: {
+            const auto* e = static_cast<const RangeExpressionStatementNode*>(expr);
+            collectExpressionRefs(e->start.get(), refs);
+            collectExpressionRefs(e->end.get(), refs);
+            break;
+        }
         case ExpressionStatementNodeType::ObjectPropertyAccess: {
             const auto* e = static_cast<const ObjectPropertyAccessExpressionNode*>(expr);
             collectExpressionRefs(e->base.get(), refs);
@@ -434,7 +464,7 @@ struct SemanticSets {
     std::set<std::string> components;
     std::set<std::tuple<std::string, std::string, std::string, std::string, std::string,
                         std::string, std::string, std::string, std::string, std::string,
-                        std::string, std::string, bool, int, int, int, int>> componentDefinitions;
+                        std::string, std::string, std::string, bool, int, int, int, int>> componentDefinitions;
     std::set<std::tuple<std::string, std::string, int, std::string, std::string, std::string, std::string, int>> componentInstances;
     std::set<std::string> routes;
     std::set<std::tuple<std::string, std::string, std::string, std::string>> routeRecords;
@@ -808,6 +838,7 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
             joinValues(toVector(summary.localActions)),
             joinValues(toVector(summary.localEffects)),
             joinValues(toVector(summary.eventBindings)),
+            joinValues(toVector(summary.localBindings)),
             bodyHex,
             summary.hasSlot,
             summary.bodyNodeCount,
@@ -1294,7 +1325,7 @@ std::vector<SemanticExport> exportsToVector(
 std::vector<SemanticComponentDefinition> componentDefinitionsToVector(
     const std::set<std::tuple<std::string, std::string, std::string, std::string, std::string,
                               std::string, std::string, std::string, std::string, std::string,
-                              std::string, std::string, bool, int, int, int, int>>& values) {
+                              std::string, std::string, std::string, bool, int, int, int, int>>& values) {
     std::vector<SemanticComponentDefinition> definitions;
     for (const auto& definition : values) {
         definitions.push_back({
@@ -1309,12 +1340,13 @@ std::vector<SemanticComponentDefinition> componentDefinitionsToVector(
             splitCommaList(std::get<8>(definition)),
             splitCommaList(std::get<9>(definition)),
             splitCommaList(std::get<10>(definition)),
-            std::get<11>(definition),
+            splitCommaList(std::get<11>(definition)),
             std::get<12>(definition),
             std::get<13>(definition),
             std::get<14>(definition),
             std::get<15>(definition),
             std::get<16>(definition),
+            std::get<17>(definition),
         });
     }
     return definitions;
@@ -1385,6 +1417,19 @@ namespace {
 
 bool containsValue(const std::vector<std::string>& values, const std::string& value) {
     return std::find(values.begin(), values.end(), value) != values.end();
+}
+
+bool isSimpleSemanticIdentifier(const std::string& value) {
+    if (value.empty()) return false;
+    for (size_t i = 0; i < value.size(); ++i) {
+        const unsigned char ch = static_cast<unsigned char>(value[i]);
+        if (i == 0) {
+            if (!(std::isalpha(ch) || value[i] == '_')) return false;
+        } else if (!(std::isalnum(ch) || value[i] == '_')) {
+            return false;
+        }
+    }
+    return true;
 }
 
 std::string rootName(std::string value) {
@@ -1641,6 +1686,41 @@ SemanticUsageReport analyzeSemanticUsage(const SemanticProgram& semantic) {
             "JTML_UNBOUND_ACTION",
             "action \"" + action + "\" is defined but never triggered from the UI; add a click, input, or other event"
         });
+    }
+    for (const auto& definition : semantic.componentDefinitions) {
+        for (const auto& target : definition.localBindings) {
+            if (!isSimpleSemanticIdentifier(target)) {
+                report.warnings.push_back({
+                    "JTML_INVALID_INTO_TARGET",
+                    "component " + definition.name + " uses `into " + target +
+                        "`; `into` currently supports simple local `let` state names only"
+                });
+                continue;
+            }
+            if (containsValue(definition.localDerived, target)) {
+                report.warnings.push_back({
+                    "JTML_INTO_DERIVED_TARGET",
+                    "component " + definition.name + " binds `into " + target +
+                        "`, but " + target + " is a derived `get`; bind to local `let` state instead"
+                });
+                continue;
+            }
+            if (containsValue(definition.params, target)) {
+                report.warnings.push_back({
+                    "JTML_INTO_PARAM_TARGET",
+                    "component " + definition.name + " binds `into " + target +
+                        "`, but " + target + " is a component parameter; copy it into local `let` state before binding"
+                });
+                continue;
+            }
+            if (!containsValue(definition.localState, target)) {
+                report.warnings.push_back({
+                    "JTML_UNKNOWN_INTO_TARGET",
+                    "component " + definition.name + " binds `into " + target +
+                        "`, but no local `let " + target + "` state exists"
+                });
+            }
+        }
     }
     if (semantic.semanticPrimitiveRawStyleCount > 0) {
         report.warnings.push_back({

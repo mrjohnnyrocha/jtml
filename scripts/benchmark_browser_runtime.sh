@@ -6,6 +6,7 @@ OUT_ROOT="${1:-"${ROOT}/dist/runtime-benchmarks"}"
 CLICK_COUNT="${JTML_BROWSER_BENCH_CLICKS:-200}"
 BUDGET_MS="${JTML_BROWSER_BENCH_BUDGET_MS:-3000}"
 BROWSER_TIMEOUT="${JTML_BROWSER_BENCH_TIMEOUT:-15}"
+REQUIRE_CLEAN_EXIT="${JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT:-0}"
 
 find_browser() {
   if [[ -n "${JTML_BENCH_BROWSER:-}" && -x "${JTML_BENCH_BROWSER}" ]]; then
@@ -51,6 +52,7 @@ echo "browser: ${browser}"
 echo "clicks per fixture: ${CLICK_COUNT}"
 echo "per-fixture budget: ${BUDGET_MS}ms"
 echo "browser launch timeout: ${BROWSER_TIMEOUT}s"
+echo "require clean browser exit: ${REQUIRE_CLEAN_EXIT}"
 
 SERVER_PORT="$(
   python3 - <<'PY'
@@ -72,7 +74,7 @@ trap cleanup_server EXIT
 sleep 0.2
 echo "fixture server: http://127.0.0.1:${SERVER_PORT}/"
 
-fixtures=(static_counter keyed_list control_flow composition large_keyed_rows nested_component_update lifecycle_cleanup form_focus)
+fixtures=(static_counter keyed_list control_flow composition large_keyed_updates large_keyed_reorder nested_component_update lifecycle_cleanup form_focus)
 for fixture in "${fixtures[@]}"; do
   fixture_dir="${OUT_ROOT}/${fixture}"
   index="${fixture_dir}/index.html"
@@ -98,6 +100,8 @@ harness = f"""
 (function() {{
   const fixture = {json.dumps(fixture)};
   const clickCount = {clicks};
+  const fixtureClickCount =
+    (fixture === 'large_keyed_updates' || fixture === 'large_keyed_reorder') ? clickCount + 1 : clickCount;
   function finish(result) {{
     const pre = document.createElement('pre');
     pre.id = 'jtml-browser-benchmark-result';
@@ -118,7 +122,7 @@ harness = f"""
         input.setSelectionRange(2, 2);
         const beforeInput = input;
         const started = performance.now();
-        for (let i = 0; i < clickCount; i += 1) {{
+        for (let i = 0; i < fixtureClickCount; i += 1) {{
           input.value = 'Ada ' + i;
           const pos = Math.min(3, input.value.length);
           input.setSelectionRange(pos, pos);
@@ -128,7 +132,7 @@ harness = f"""
         const jtml = window.jtml || {{}};
         finish({{
           fixture,
-          clicks: clickCount,
+          clicks: fixtureClickCount,
           durationMs,
           textSample: (document.body && document.body.innerText || '').slice(0, 1000),
           loadedScripts: Array.prototype.slice.call(document.querySelectorAll('script[src]')).map(function(el) {{
@@ -188,7 +192,7 @@ harness = f"""
         if (key && !beforeKeyedByKey.has(key)) beforeKeyedByKey.set(key, el);
       }});
       const started = performance.now();
-      for (let i = 0; i < clickCount; i += 1) {{
+      for (let i = 0; i < fixtureClickCount; i += 1) {{
         const currentTarget = document.querySelector('[data-jtml-direct-component-action]') || target;
         currentTarget.click();
       }}
@@ -221,7 +225,7 @@ harness = f"""
       }});
       finish({{
         fixture,
-        clicks: clickCount,
+        clicks: fixtureClickCount,
         durationMs,
         textSample: bodyText.slice(0, 1000),
         loadedScripts: Array.prototype.slice.call(document.querySelectorAll('script[src]')).map(function(el) {{
@@ -239,6 +243,7 @@ harness = f"""
         nestedWrappersRetainedCount,
         nestedWrappersInitialCount: beforeNestedWrappersById.size,
         directComponentDestroyLifecycle: jtml.directComponentDestroyLifecycle || null,
+        runtimeRegistrySnapshot: jtml.getRuntimeRegistrySnapshot ? jtml.getRuntimeRegistrySnapshot() : null,
         directComponentExecution: !!jtml.directComponentExecution,
         directComponentLastAction: !!jtml.directComponentLastAction,
         directNestedComponentParamPatch: !!jtml.directNestedComponentParamPatch,
@@ -278,13 +283,14 @@ PY
   profile="$(mktemp -d "${TMPDIR:-/tmp}/jtml-browser-bench.XXXXXX")"
   log="${profile}/browser.log"
   dom_file="${profile}/dom.html"
+  exit_mode_file="${profile}/exit-mode.txt"
   set +e
   bench_url="http://127.0.0.1:${SERVER_PORT}/${fixture}/index.bench.html"
-  python3 - "${browser}" "${bench_url}" "${profile}" "${log}" "${dom_file}" "${BROWSER_TIMEOUT}" <<'PY'
+  python3 - "${browser}" "${bench_url}" "${profile}" "${log}" "${dom_file}" "${exit_mode_file}" "${BROWSER_TIMEOUT}" "${REQUIRE_CLEAN_EXIT}" <<'PY'
 import subprocess
 import sys
 
-browser, bench_url, profile, log_path, dom_path, timeout_s = sys.argv[1:]
+browser, bench_url, profile, log_path, dom_path, exit_mode_path, timeout_s, require_clean_exit = sys.argv[1:]
 
 def text(value):
     if value is None:
@@ -296,6 +302,7 @@ def text(value):
 logs = []
 last_stdout = ""
 last_status = 1
+exit_mode = "failed"
 for headless_flag in ("--headless=new", "--headless"):
     args = [
         browser,
@@ -324,23 +331,34 @@ for headless_flag in ("--headless=new", "--headless"):
         last_stdout = completed.stdout or ""
         last_status = completed.returncode
         if completed.returncode == 0:
+            exit_mode = "clean"
             break
     except subprocess.TimeoutExpired as exc:
         logs.append(f"[{headless_flag}] browser benchmark timed out\n" + text(exc.stderr))
         last_stdout = text(exc.stdout)
-        last_status = 0 if 'jtml-browser-benchmark-result' in last_stdout else 124
-        if last_status == 0:
+        if 'jtml-browser-benchmark-result' in last_stdout:
+            logs.append(f"[{headless_flag}] benchmark result was produced before timeout; browser did not exit cleanly")
+            last_status = 125 if require_clean_exit == "1" else 0
+            exit_mode = "terminated-after-result"
             break
+        last_status = 124
+        exit_mode = "timeout-before-result"
 
 with open(log_path, "w", encoding="utf-8") as handle:
     handle.write("\n".join(logs))
 with open(dom_path, "w", encoding="utf-8") as handle:
     handle.write(last_stdout)
+with open(exit_mode_path, "w", encoding="utf-8") as handle:
+    handle.write(exit_mode)
 raise SystemExit(last_status)
 PY
   status=$?
   set -e
   if [[ ${status} -ne 0 ]]; then
+    if [[ ${status} -eq 125 ]]; then
+      echo "error: browser benchmark produced a result for ${fixture} but Chrome/Chromium did not exit cleanly; see ${log}" >&2
+      exit 1
+    fi
     if [[ "${JTML_REQUIRE_BROWSER_BENCH:-0}" == "1" ]]; then
       echo "error: browser benchmark failed for ${fixture}; see ${log}" >&2
       exit 1
@@ -370,7 +388,8 @@ PY
     exit 1
   }
 
-  python3 - "${result}" "${fixture}" "${CLICK_COUNT}" "${BUDGET_MS}" <<'PY'
+  exit_mode="$(cat "${exit_mode_file}" 2>/dev/null || printf 'unknown')"
+  python3 - "${result}" "${fixture}" "${CLICK_COUNT}" "${BUDGET_MS}" "${exit_mode}" <<'PY'
 import json
 import math
 import sys
@@ -378,7 +397,10 @@ import sys
 result = json.loads(sys.argv[1])
 fixture = sys.argv[2]
 expected_clicks = int(sys.argv[3])
+if fixture in ("large_keyed_updates", "large_keyed_reorder"):
+    expected_clicks += 1
 budget_ms = float(sys.argv[4])
+exit_mode = sys.argv[5]
 
 if result.get("error"):
     raise SystemExit(f"error: {fixture} browser runtime error: {result['error']}")
@@ -417,21 +439,36 @@ if fixture == "keyed_list":
             "error: keyed_list recreated keyed rows instead of retaining/moving them "
             f"(retained={result.get('keyedRetainedCount')}, final={result.get('keyedFinalCount')})"
         )
-if fixture == "large_keyed_rows":
+if fixture == "large_keyed_updates":
     keys = [str(item.get("key", "")) for item in keyed_texts]
     if len(keys) < 1000:
-        raise SystemExit(f"error: large_keyed_rows rendered only {len(keys)} keyed rows")
-    if expected_clicks % 2 == 0 and keys[:3] != ["1", "2", "3"]:
-        raise SystemExit(f"error: large_keyed_rows did not restore first keys after even rotations: {keys[:5]!r}")
+        raise SystemExit(f"error: large_keyed_updates rendered only {len(keys)} keyed rows")
+    if keys[:3] != ["1", "2", "3"]:
+        raise SystemExit(f"error: large_keyed_updates should keep stable key order during content updates: {keys[:5]!r}")
+    if "Row 101" not in text:
+        raise SystemExit(f"error: large_keyed_updates did not leave the updated content visible after odd toggle: {text!r}")
     if not result.get("directComponentListLifecycle"):
-        raise SystemExit("error: large_keyed_rows did not report keyed list lifecycle telemetry")
-    if expected_clicks % 2 == 0:
-        retained = int(result.get("keyedRetainedCount", 0))
-        if retained < 1000:
-            raise SystemExit(
-                "error: large_keyed_rows recreated keyed row wrappers instead of retaining them "
-                f"(retained={retained}, final={result.get('keyedFinalCount')})"
-            )
+        raise SystemExit("error: large_keyed_updates did not report keyed list lifecycle telemetry")
+    retained = int(result.get("keyedRetainedCount", 0))
+    if retained < 1000:
+        raise SystemExit(
+            "error: large_keyed_updates recreated keyed row wrappers instead of retaining them "
+            f"(retained={retained}, final={result.get('keyedFinalCount')})"
+        )
+if fixture == "large_keyed_reorder":
+    keys = [str(item.get("key", "")) for item in keyed_texts]
+    if len(keys) < 1000:
+        raise SystemExit(f"error: large_keyed_reorder rendered only {len(keys)} keyed rows")
+    if keys[:5] != ["1000", "1", "2", "3", "4"]:
+        raise SystemExit(f"error: large_keyed_reorder did not leave the rotated keyed order visible: {keys[:8]!r}")
+    if not result.get("directComponentListLifecycle"):
+        raise SystemExit("error: large_keyed_reorder did not report keyed list lifecycle telemetry")
+    retained = int(result.get("keyedRetainedCount", 0))
+    if retained < 1000:
+        raise SystemExit(
+            "error: large_keyed_reorder recreated keyed row wrappers instead of moving them "
+            f"(retained={retained}, final={result.get('keyedFinalCount')})"
+        )
 if fixture == "nested_component_update" and f"Value {expected_clicks}" not in text:
     raise SystemExit(f"error: nested_component_update did not update nested component text: {text!r}")
 if fixture == "lifecycle_cleanup":
@@ -443,12 +480,60 @@ if fixture == "lifecycle_cleanup":
         raise SystemExit("error: lifecycle_cleanup did not report component destroy lifecycle telemetry")
     if not (int(reasons.get("subtree-prune", 0)) > 0 or int(reasons.get("keyed-list-remove", 0)) > 0):
         raise SystemExit(f"error: lifecycle_cleanup did not report subtree/keyed cleanup reasons: {reasons!r}")
-    if int(destroy.get("registrySizeAfter", 999999)) >= int(result.get("nestedWrappersInitialCount", 0)) + len(keyed_texts) + 10:
-        raise SystemExit(f"error: lifecycle_cleanup reported suspicious registry size after cleanup: {destroy!r}")
+    destroyed_ids = destroy.get("destroyedIds") or []
+    destroyed_handler_ids = destroy.get("destroyedHandlerIds") or []
+    destroyed_entries = destroy.get("entries") or []
+    if not destroyed_ids:
+        raise SystemExit(f"error: lifecycle_cleanup did not report concrete destroyed instance ids: {destroy!r}")
+    if not destroyed_entries:
+        raise SystemExit(f"error: lifecycle_cleanup did not report generation-aware destroyed entries: {destroy!r}")
+    if int(destroy.get("registryDeltaTotal", 0)) <= 0:
+        raise SystemExit(f"error: lifecycle_cleanup did not prove registry size decreased during cleanup: {destroy!r}")
     if "lastHandlerCount" not in destroy:
         raise SystemExit(f"error: lifecycle_cleanup destroy telemetry did not include handler cleanup context: {destroy!r}")
     if int(destroy.get("handlerInstanceDestroyCount", 0)) <= 0 or int(destroy.get("handlerCountTotal", 0)) <= 0:
         raise SystemExit(f"error: lifecycle_cleanup did not prove event-handler registry cleanup: {destroy!r}")
+    if not destroyed_handler_ids:
+        raise SystemExit(f"error: lifecycle_cleanup did not report handler-owning destroyed instance ids: {destroy!r}")
+    if destroy.get("registryLeaks"):
+        raise SystemExit(f"error: lifecycle_cleanup left destroyed ids registered at destroy time: {destroy!r}")
+    if destroy.get("scopeLeaks"):
+        raise SystemExit(f"error: lifecycle_cleanup left destroyed scopes registered at destroy time: {destroy!r}")
+    if destroy.get("handlerLeaks"):
+        raise SystemExit(f"error: lifecycle_cleanup left destroyed handler owners registered at destroy time: {destroy!r}")
+    if destroy.get("dispatchLeaks"):
+        raise SystemExit(f"error: lifecycle_cleanup allowed action dispatch to destroyed ids: {destroy!r}")
+    registry = result.get("runtimeRegistrySnapshot") or {}
+    current_generations = registry.get("dynamicGenerations") or {}
+    handler_owner_ids = set(str(item) for item in registry.get("handlerOwnerIds") or [])
+    for entry in destroyed_entries:
+        entry_id = str(entry.get("id", ""))
+        if not entry_id:
+            raise SystemExit(f"error: lifecycle_cleanup reported a destroy entry without id: {destroy!r}")
+        if not entry.get("r"):
+            raise SystemExit(f"error: lifecycle_cleanup destroy entry did not prove registry removal: {entry!r}")
+        if not entry.get("s"):
+            raise SystemExit(f"error: lifecycle_cleanup destroy entry did not prove scope removal: {entry!r}")
+        if int(entry.get("h", 0)) > 0 and not entry.get("e"):
+            raise SystemExit(f"error: lifecycle_cleanup destroy entry did not prove handler removal: {entry!r}")
+        if not entry.get("d"):
+            raise SystemExit(f"error: lifecycle_cleanup destroy entry did not prove dispatch rejection: {entry!r}")
+        if entry_id in current_generations:
+            current_generation = int(current_generations.get(entry_id, 0))
+            destroyed_generation = int(entry.get("g", 0))
+            if current_generation <= destroyed_generation:
+                raise SystemExit(
+                    "error: lifecycle_cleanup remounted a destroyed id without a newer generation: "
+                    f"id={entry_id!r} destroyed={destroyed_generation} current={current_generation} registry={registry!r}"
+                )
+        if int(entry.get("h", 0)) > 0 and entry_id in handler_owner_ids:
+            current_generation = int(current_generations.get(entry_id, 0))
+            destroyed_generation = int(entry.get("g", 0))
+            if current_generation <= destroyed_generation:
+                raise SystemExit(
+                    "error: lifecycle_cleanup destroyed handler owner is still registered without remount generation: "
+                    f"id={entry_id!r} entry={entry!r} registry={registry!r}"
+                )
 if fixture == "form_focus":
     if f"Ada {expected_clicks - 1}" not in text:
         raise SystemExit(f"error: form_focus did not update text from input binding: {text!r}")
@@ -484,7 +569,8 @@ print(
     "OK: browser-runtime "
     f"{fixture} clicks={expected_clicks} duration={duration:.2f}ms "
     f"nestedParamPatch={str(bool(result.get('directNestedComponentParamPatch'))).lower()} "
-    f"keyedLifecycle={str(bool(result.get('directComponentListLifecycle'))).lower()}"
+    f"keyedLifecycle={str(bool(result.get('directComponentListLifecycle'))).lower()} "
+    f"browserExit={exit_mode}"
 )
 PY
 done

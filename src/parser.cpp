@@ -64,6 +64,14 @@ bool isVoidElementName(const std::string& tagName) {
     return voidElements.find(lower) != voidElements.end();
 }
 
+int utf8ColumnWidth(const std::string& text) {
+    int width = 0;
+    for (unsigned char ch : text) {
+        if ((ch & 0xC0) != 0x80) ++width;
+    }
+    return width;
+}
+
 bool isAssignmentOperator(TokenType type) {
     switch (type) {
         case TokenType::ASSIGN:
@@ -297,8 +305,11 @@ std::unique_ptr<ASTNode> Parser::parseExpressionStatement(std::unique_ptr<Expres
 
 // Parses an expression and returns an ExpressionStatementNode
 std::unique_ptr<ExpressionStatementNode> Parser::parseExpression() {
+    const size_t expressionStart = m_pos;
     ExpressionParser ep(m_tokens, m_pos, *this); // Pass the parent Parser instance
-    return ep.parseExpression();
+    auto expression = ep.parseExpression();
+    if (expression) attachExpressionSpan(*expression, expressionStart, m_pos);
+    return expression;
 }
 
 // Parses an assignment statement (e.g., 'a = 10\\')
@@ -1067,7 +1078,7 @@ SourceSpan Parser::spanFromTokenRange(size_t begin, size_t endExclusive) const {
     span.startColumn = first.column;
     span.startOffset = first.position;
     span.endLine = last.line;
-    span.endColumn = last.column + static_cast<int>(last.text.size());
+    span.endColumn = last.column + utf8ColumnWidth(last.text);
     span.endOffset = last.position + static_cast<int>(last.text.size());
     return span;
 }
@@ -1075,6 +1086,12 @@ SourceSpan Parser::spanFromTokenRange(size_t begin, size_t endExclusive) const {
 void Parser::attachStatementSpan(ASTNode& node,
                                  size_t begin,
                                  size_t endExclusive) const {
+    node.sourceSpan = spanFromTokenRange(begin, endExclusive);
+}
+
+void Parser::attachExpressionSpan(ExpressionStatementNode& node,
+                                  size_t begin,
+                                  size_t endExclusive) const {
     node.sourceSpan = spanFromTokenRange(begin, endExclusive);
 }
 
@@ -1127,7 +1144,24 @@ void Parser::synchronize() {
 
 // Parses an expression and returns an ExpressionStatementNode
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseExpression() {
-    return parseConditional();
+    const size_t expressionStart = m_posRef;
+    auto expression = parseRange();
+    if (expression) {
+        m_parentParser.attachExpressionSpan(*expression, expressionStart, m_posRef);
+    }
+    return expression;
+}
+
+std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseRange() {
+    auto start = parseConditional();
+    if (!match(TokenType::DOTS)) {
+        return start;
+    }
+
+    auto end = parseConditional();
+    return std::make_unique<RangeExpressionStatementNode>(
+        std::move(start),
+        std::move(end));
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseConditional() {

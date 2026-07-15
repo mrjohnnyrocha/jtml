@@ -48,6 +48,19 @@ enum class ASTNodeType {
     // Add more as needed
 };
 
+struct SourceSpan {
+    int startLine = 0;
+    int startColumn = 0;
+    int endLine = 0;
+    int endColumn = 0;
+    int startOffset = 0;
+    int endOffset = 0;
+
+    bool valid() const {
+        return startLine > 0 && startColumn > 0;
+    }
+};
+
 /**
  * For expression parsing, we define a separate ExpressionStatementNode hierarchy
  * (Binary, Unary, Variable, etc.). This is not part of ASTNodeType
@@ -68,6 +81,7 @@ enum class ExpressionStatementNodeType {
     Subscript,
     FunctionCall,
     Conditional,
+    Range,
     ObjectPropertyAccess,
     ObjectMethodCall,
     // Add more as needed (e.g., BooleanLiteral)
@@ -76,6 +90,8 @@ enum class ExpressionStatementNodeType {
 // ------------------- Expression Nodes -------------------
 struct ExpressionStatementNode {
     virtual ~ExpressionStatementNode() = default;
+    SourceSpan sourceSpan;
+
     virtual ExpressionStatementNodeType getExprType() const = 0;
 
     virtual std::unique_ptr<ExpressionStatementNode> clone() const = 0;
@@ -223,6 +239,20 @@ struct ConditionalExpressionStatementNode : public ExpressionStatementNode {
     std::string toString() const override;
 };
 
+struct RangeExpressionStatementNode : public ExpressionStatementNode {
+    std::unique_ptr<ExpressionStatementNode> start;
+    std::unique_ptr<ExpressionStatementNode> end;
+
+    RangeExpressionStatementNode(std::unique_ptr<ExpressionStatementNode> startExpr,
+                                 std::unique_ptr<ExpressionStatementNode> endExpr);
+
+    ExpressionStatementNodeType getExprType() const override;
+
+    std::unique_ptr<ExpressionStatementNode> clone() const override;
+
+    std::string toString() const override;
+};
+
 // 1) ArrayLiteralExpressionStatementNode
 struct ArrayLiteralExpressionStatementNode : public ExpressionStatementNode {
     std::vector<std::unique_ptr<ExpressionStatementNode>> elements;
@@ -277,19 +307,6 @@ struct SubscriptExpressionStatementNode : public ExpressionStatementNode {
  */
 
 // ------------------- Base AST Node (Statement-Level) -------------------
-struct SourceSpan {
-    int startLine = 0;
-    int startColumn = 0;
-    int endLine = 0;
-    int endColumn = 0;
-    int startOffset = 0;
-    int endOffset = 0;
-
-    bool valid() const {
-        return startLine > 0 && startColumn > 0;
-    }
-};
-
 struct ASTNode {
     virtual ~ASTNode() = default;
     SourceSpan sourceSpan;

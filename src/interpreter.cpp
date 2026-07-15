@@ -4745,6 +4745,28 @@ std::shared_ptr<JTML::VarValue> Interpreter::evaluateExpression(const Expression
             return std::make_shared<JTML::VarValue>(array);
         }
 
+        case ExpressionStatementNodeType::Range: {
+            const auto* rangeNode = static_cast<const RangeExpressionStatementNode*>(exprNode);
+            auto startValue = evaluateExpression(rangeNode->start.get(), env);
+            auto endValue = evaluateExpression(rangeNode->end.get(), env);
+            const double start = startValue && startValue->isNumber()
+                ? startValue->getNumber()
+                : std::stod(startValue ? startValue->toString() : "0");
+            const double end = endValue && endValue->isNumber()
+                ? endValue->getNumber()
+                : std::stod(endValue ? endValue->toString() : "0");
+
+            JTML::CompositeKey tempKey = {env->instanceID, "__temp__range_" + std::to_string(uniqueArrayVarID++)};
+            auto array = std::make_shared<JTML::ReactiveArray>(env, tempKey);
+            const int first = static_cast<int>(start);
+            const int last = static_cast<int>(end);
+            const int step = first <= last ? 1 : -1;
+            for (int value = first; step > 0 ? value <= last : value >= last; value += step) {
+                array->push(std::make_shared<JTML::VarValue>(static_cast<double>(value)));
+            }
+            return std::make_shared<JTML::VarValue>(array);
+        }
+
         case ExpressionStatementNodeType::DictionaryLiteral: {
             const auto* dictNode = static_cast<const DictionaryLiteralExpressionStatementNode*>(exprNode);
 
@@ -5104,6 +5126,13 @@ void Interpreter::gatherDeps(
             }
 
             // Keys are usually static (strings/identifiers) and don't add to dependencies
+            break;
+        }
+
+        case ExpressionStatementNodeType::Range: {
+            const auto* rangeNode = static_cast<const RangeExpressionStatementNode*>(exprNode);
+            gatherDeps(rangeNode->start.get(), out, env);
+            gatherDeps(rangeNode->end.get(), out, env);
             break;
         }
 

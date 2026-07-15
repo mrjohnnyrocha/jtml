@@ -124,6 +124,9 @@ private:
     const Token& peek() const;
     SourceSpan spanFromTokenRange(size_t begin, size_t endExclusive) const;
     void attachStatementSpan(ASTNode& node, size_t begin, size_t endExclusive) const;
+    void attachExpressionSpan(ExpressionStatementNode& node,
+                              size_t begin,
+                              size_t endExclusive) const;
 
     bool matchNumberLiteral();
 
@@ -145,6 +148,7 @@ private:
         size_t& m_posRef;
         Parser& m_parentParser;
 
+        std::unique_ptr<ExpressionStatementNode> parseRange();
         std::unique_ptr<ExpressionStatementNode> parseConditional();
         std::unique_ptr<ExpressionStatementNode> parseLogicalOr();
         std::unique_ptr<ExpressionStatementNode> parseLogicalAnd();

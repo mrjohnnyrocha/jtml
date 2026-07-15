@@ -381,6 +381,12 @@ std::string JtmlFormatter::formatExpr(const ExpressionStatementNode& expr) const
         std::string f = e.whenFalse ? formatExpr(*e.whenFalse) : "";
         return c + " ? " + t + " : " + f;
     }
+    case ExpressionStatementNodeType::Range: {
+        const auto& e = static_cast<const RangeExpressionStatementNode&>(expr);
+        return (e.start ? formatExpr(*e.start) : std::string()) +
+               ".." +
+               (e.end ? formatExpr(*e.end) : std::string());
+    }
     case ExpressionStatementNodeType::ObjectPropertyAccess: {
         const auto& e = static_cast<const ObjectPropertyAccessExpressionNode&>(expr);
         return (e.base ? formatExpr(*e.base) : std::string()) + "." + e.propertyName;

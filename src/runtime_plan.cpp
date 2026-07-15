@@ -139,6 +139,28 @@ std::string rootDependencyName(const std::string& name) {
 int parseBodyIndent(const std::string& encodedLine) {
     const auto colon = encodedLine.find(':');
     if (colon == std::string::npos) return 0;
+    const auto secondColon = encodedLine.find(':', colon + 1);
+    const auto thirdColon = secondColon == std::string::npos
+        ? std::string::npos
+        : encodedLine.find(':', secondColon + 1);
+    const auto start = thirdColon != std::string::npos
+        ? secondColon + 1
+        : (secondColon == std::string::npos ? 0 : colon + 1);
+    const auto count = thirdColon != std::string::npos
+        ? thirdColon - secondColon - 1
+        : (secondColon == std::string::npos ? colon : secondColon - colon - 1);
+    try {
+        return std::stoi(encodedLine.substr(start, count));
+    } catch (...) {
+        return 0;
+    }
+}
+
+int parseBodySourceLine(const std::string& encodedLine) {
+    const auto colon = encodedLine.find(':');
+    if (colon == std::string::npos) return 0;
+    const auto secondColon = encodedLine.find(':', colon + 1);
+    if (secondColon == std::string::npos) return 0;
     try {
         return std::stoi(encodedLine.substr(0, colon));
     } catch (...) {
@@ -146,9 +168,32 @@ int parseBodyIndent(const std::string& encodedLine) {
     }
 }
 
+int parseBodySourceColumn(const std::string& encodedLine) {
+    const auto colon = encodedLine.find(':');
+    if (colon == std::string::npos) return 0;
+    const auto secondColon = encodedLine.find(':', colon + 1);
+    if (secondColon == std::string::npos) return 0;
+    const auto thirdColon = encodedLine.find(':', secondColon + 1);
+    if (thirdColon == std::string::npos) return 0;
+    try {
+        return std::stoi(encodedLine.substr(colon + 1, secondColon - colon - 1));
+    } catch (...) {
+        return 0;
+    }
+}
+
 std::string parseBodyText(const std::string& encodedLine) {
     const auto colon = encodedLine.find(':');
-    return trimCopy(colon == std::string::npos ? encodedLine : encodedLine.substr(colon + 1));
+    if (colon == std::string::npos) return trimCopy(encodedLine);
+    const auto secondColon = encodedLine.find(':', colon + 1);
+    if (secondColon != std::string::npos) {
+        const auto thirdColon = encodedLine.find(':', secondColon + 1);
+        if (thirdColon != std::string::npos) {
+            return trimCopy(encodedLine.substr(thirdColon + 1));
+        }
+        return trimCopy(encodedLine.substr(secondColon + 1));
+    }
+    return trimCopy(encodedLine.substr(colon + 1));
 }
 
 std::string componentBodyNodeKind(const std::string& head) {
@@ -370,6 +415,12 @@ void collectExpressionDependencies(
         collectExpressionDependencies(node.whenFalse.get(), out);
         return;
     }
+    case ExpressionStatementNodeType::Range: {
+        const auto& node = static_cast<const RangeExpressionStatementNode&>(*expr);
+        collectExpressionDependencies(node.start.get(), out);
+        collectExpressionDependencies(node.end.get(), out);
+        return;
+    }
     case ExpressionStatementNodeType::ObjectPropertyAccess: {
         const auto& node = static_cast<const ObjectPropertyAccessExpressionNode&>(*expr);
         const std::string path = expressionDependencyPath(expr);
@@ -523,6 +574,8 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
         if (tokens.empty()) continue;
         RuntimePlanComponentBodyNode node;
         node.indent = parseBodyIndent(raw);
+        const int explicitSourceLine = parseBodySourceLine(raw);
+        const int explicitSourceColumn = parseBodySourceColumn(raw);
         while (!openAncestors.empty() &&
                plan[openAncestors.back()].indent >= node.indent) {
             openAncestors.pop_back();
@@ -531,8 +584,9 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
             ? -1
             : static_cast<int>(openAncestors.back());
         node.text = text;
-        node.sourceLine = bodyLine;
-        node.sourceColumn = node.indent + 1;
+        node.sourceLine = explicitSourceLine > 0 ? explicitSourceLine : bodyLine;
+        node.sourceLineAbsolute = explicitSourceLine > 0;
+        node.sourceColumn = explicitSourceColumn > 0 ? explicitSourceColumn : node.indent + 1;
         node.head = tokens[0];
         const bool postfixAssignment = isPostfixAssignmentBodyLine(tokens);
         node.kind = (isAssignmentBodyLine(tokens) || postfixAssignment) ? "assignment" :
@@ -609,7 +663,7 @@ void absolutizeBodyPlanSourceLines(std::vector<RuntimePlanComponentBodyNode>& bo
     if (ownerSourceLine <= 0) return;
     for (auto& node : bodyPlan) {
         if (node.sourceLine > 0) {
-            node.sourceLine += ownerSourceLine;
+            if (!node.sourceLineAbsolute) node.sourceLine += ownerSourceLine;
         }
     }
 }

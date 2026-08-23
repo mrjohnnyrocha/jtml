@@ -1,17 +1,21 @@
 jtml 2
 
-use appState from "../../stores/app-state.jtml"
-use AppHeader from "../ui/app-header.jtml"
-use AppSidebar from "../ui/app-sidebar.jtml"
-use AlertBar from "../ui/common.jtml"
+use "../stores/app-state.jtml"
+use "./app-header.jtml"
+use "./app-sidebar.jtml"
+use "./common.jtml"
 
-export make Shell title
-  page class "ops-app"
-    box class "ops-shell"
-      AppSidebar
-      box class "ops-content"
-        AppHeader title
-        main class "ops-main"
-          if appState.alertMessage != ""
-            AlertBar appState.alertMessage
-          slot
+make Shell title appName
+  page class "{appState.themeClass}"
+    AppHeader title appName
+    table width "100%" cellpadding "0" cellspacing "0" bgcolor "#f4f7fb"
+      tr
+        td width "230" valign "top" bgcolor "#f8fafc"
+          AppSidebar
+        td valign "top"
+          table width "100%" cellpadding "24" cellspacing "0"
+            tr
+              td valign "top"
+                if appState.hasAlert
+                  AlertBar appState.alertMessage
+                slot

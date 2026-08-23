@@ -4,6 +4,21 @@ Status: design authority for how JTML and the planned JTL core language should
 evolve together. Keep implementation checklists in `docs/roadmaps/`; keep this
 file focused on durable language shape.
 
+## JTL Status
+
+```text
+JTL STATUS: DESIGN / EXPERIMENTAL
+```
+
+`jtl 1` is currently a tiny experimental header that lowers through the same
+Friendly pipeline as `jtml 2`. It exists so core-language ideas can share the
+AST, Expression IR, Semantic IR, and observable-graph direction with JTML.
+
+There is currently no mature standalone JTL parser, JTL type system, JTL
+standard library, JTL backend runtime, or contract-first backend/API system.
+Do not implement full JTL before JTML's compiler/runtime path is boringly
+reliable, diagnosable, and production-buildable.
+
 ## Thesis
 
 JTML should not become "another frontend framework." It should be the web/app

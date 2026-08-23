@@ -234,7 +234,7 @@ verifies that the split browser assets are emitted without
 update-plan budget, rejects dynamic `new Function`/direct `eval` in browser
 assets, and fails if generated assets exceed the current size budgets. Defaults
 are intentionally conservative while the runtime is still being split: 70 KB
-for `index.html`, 268 KB for `jtml-runtime.js`, 180 KB for
+for `index.html`, 272 KB for `jtml-runtime.js`, 180 KB for
 `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
 `jtml-update-plans.js` in compatibility/debug outputs.
 Treat these budgets as

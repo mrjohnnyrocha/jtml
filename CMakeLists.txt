@@ -159,6 +159,7 @@ set(JTML_CLI_COMMON_SOURCES
 
 add_library(jtml_cli_common STATIC ${JTML_CLI_COMMON_SOURCES})
 jtml_configure_core_target(jtml_cli_common)
+jtml_apply_version_defs(jtml_cli_common)
 
 add_library(jtml_browser_build_lib STATIC
     cli/browser_build.cpp

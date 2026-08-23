@@ -275,7 +275,7 @@ Semantic usage/lint analysis now records component `into` targets and warns for
 non-writable bindings; full Friendly source-span validation before compatibility
 lowering and form TypeEnvironment/input semantics remain v0.3. Current
 guardrails:
-70 KB for `index.html`, 268 KB for `jtml-runtime.js`, 180 KB for
+70 KB for `index.html`, 272 KB for `jtml-runtime.js`, 180 KB for
 `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
 `jtml-update-plans.js`, all meant to tighten as direct generated update modules
 keep replacing operation-record patch helpers. The 70 KB index budget is a

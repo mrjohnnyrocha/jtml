@@ -529,7 +529,7 @@ The current focus is the semantic-core transition:
   Friendly source-span validation before compatibility lowering and form
   TypeEnvironment/input semantics remain v0.3.
   This path has an executable guardrail: 70 KB
-  for `index.html`, 268 KB for `jtml-runtime.js`, 180 KB for
+  for `index.html`, 272 KB for `jtml-runtime.js`, 180 KB for
   `components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
   `jtml-update-plans.js` in compatibility/debug mode, to tighten as direct generated update modules keep
   replacing operation-record patch helpers. The 70 KB index budget is a

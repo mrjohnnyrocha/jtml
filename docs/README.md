@@ -7,6 +7,10 @@ start here, then follow the section folders.
 
 | Document | Use it for |
 | --- | --- |
+| [`../CURRENT_STATE.md`](../CURRENT_STATE.md) | Authoritative hibernation snapshot: implemented, partial, experimental, planned, canonical examples, and verification status. |
+| [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | Compact explanation of why the runtime/compiler layers currently coexist. |
+| [`../RESTART.md`](../RESTART.md) | Safe restart sequence for returning after a long pause. |
+| [`../NEXT.md`](../NEXT.md) | Short actionable restart backlog, not a broad roadmap. |
 | [`../README.md`](../README.md) | Project overview, build/run commands, and the fastest path into Studio. |
 | [`../ROADMAP.md`](../ROADMAP.md) | Current product direction and phase-level status. |
 | [`architecture/observable-first-architecture-roadmap.md`](architecture/observable-first-architecture-roadmap.md) | Architecture thesis: Friendly source, typed AST, semantic IR, observable graph, and multiple backends. |
@@ -105,13 +109,13 @@ prose blocks.
 - **Experimental** means the feature may appear in demos, tooling contracts, or
   internal roadmap work, but is not yet a production compatibility promise.
 
-JTML is enterprise-relevant but not enterprise-ready yet. The enterprise lane
-is tracked through `ROADMAP.md`, `roadmaps/next-priorities.md`, and
-`jtml doctor --json`; the priority is reducing compatibility bridges and
-monolithic implementation debt while strengthening semantic IR ownership. The
-current component lane has first-slice browser-local body-plan execution; full
-component parity is still planned before expanded compatibility output can be
-treated as optional.
+JTML is enterprise-relevant but not enterprise-ready yet. The hibernation state
+is tracked in `../CURRENT_STATE.md`; the enterprise lane is tracked through
+`../ROADMAP.md`, `roadmaps/next-priorities.md`, and `jtml doctor --json`. The
+priority is reducing compatibility bridges and monolithic implementation debt
+while strengthening semantic IR ownership. The current component lane has
+first-slice browser-local body-plan execution; full component parity is still
+planned before expanded compatibility output can be treated as optional.
 
 ## Authoring Policy
 

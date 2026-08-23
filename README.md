@@ -1,6 +1,15 @@
 # JTML
 
-JTML is a small C++ runtime and transpiler for a reactive HTML-oriented language.
+JTML is a C++17 language/toolchain for Friendly JTML 2, a semantic,
+observable-first UI language for apps that read like documents but behave like
+reactive software.
+
+Current repository status: **hibernated research state**. JTML is
+enterprise-relevant but not enterprise-ready. It has meaningful compiler,
+runtime, Studio, CLI, and tooling slices, but it still contains compatibility
+bridges and unfinished production-hardening work. Start with
+[`CURRENT_STATE.md`](CURRENT_STATE.md), [`ARCHITECTURE.md`](ARCHITECTURE.md),
+and [`RESTART.md`](RESTART.md) before resuming development after a long pause.
 
 Longer term, **JTL** is the planned core language and **JTML** is its web/app
 dialect. The current implementation accepts experimental `jtl 1` files through
@@ -59,8 +68,10 @@ when add amount
 ```
 
 This is an early compatibility slice: `jtl 1` currently lowers through the
-Friendly pipeline. A dedicated core runtime, `fn` functions, tests, standard
-library, and Python/JS/native interop are planned in
+Friendly pipeline. There is no mature standalone JTL parser, type system,
+standard library, backend runtime, or contract-first API system yet. A
+dedicated core runtime, `fn` functions, tests, standard library, and
+Python/JS/native interop are design/future work in
 `docs/architecture/language-family-design.md`.
 
 Hyphenated attributes such as `data-page` and `aria-label` are supported.
@@ -356,7 +367,14 @@ exposes renderer/fallback state and lets host renderers publish updates through
 `spec.update(...)`. Richer charts, 3D adapters, and media processing are tracked
 in `docs/roadmaps/media-graphics-roadmap.md` and `docs/roadmaps/3d-custom-interfaces-roadmap.md`.
 
-The roadmap lives in `ROADMAP.md`, and the docs index lives in
+The freeze/restart documents are:
+
+- [`CURRENT_STATE.md`](CURRENT_STATE.md) - authoritative hibernation snapshot.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) - compact architecture and invariants.
+- [`RESTART.md`](RESTART.md) - how to resume safely after a long pause.
+- [`NEXT.md`](NEXT.md) - short actionable restart backlog.
+
+The larger roadmap lives in `ROADMAP.md`, and the docs index lives in
 `docs/README.md`. The current product lane is production hardening:
 Friendly-first app semantics, Studio as the main hub, zero-config tooling,
 modular apps, interop, media/graphics, and AI-native authoring.

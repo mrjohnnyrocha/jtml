@@ -118,6 +118,34 @@ production must remain CSP-safe: no runtime `eval`, no `new Function`, no
 implicit compatibility asset, and no source-rich debug payloads in public
 client manifests.
 
+## Browser Contract Ownership
+
+Browser mode precedence and public asset eligibility live in
+`cli/browser_build_policy.cpp`; copying is owned by `browser_build_assets.cpp`.
+`browser_build_schema.cpp` validates mode-specific output and closed public
+manifest schemas before build success. `app.js` exposes the formal
+`window.jtml.browserBuild` mode/asset/diagnostics contract.
+
+Production component modules expose `__jtml_static_component_plan_index`,
+`__jtml_static_update_functions`, and `__jtml_static_component_modules`.
+The legacy `__jtml_static_update_plans` global and source-rich body-plan metadata
+belong to explicit compatibility/debug assets. Clean modules must not carry
+operation-record fallback metadata or delegate patches to those generic helpers;
+`scripts/benchmark_runtime.sh` pins these boundaries and asset budgets.
+
+Direct slot creation consumes default/named slot HTML; supported nested creation
+calls the child static module. Nested parameter updates should retain wrappers,
+keyed updates should retain row identity, and input updates should retain focus
+and selection. Browser benchmarks exercise these contracts plus registry/event
+cleanup. Component `into` bindings currently accept only simple component-local
+writable `let` targets; broader form/type validation remains incomplete.
+
+Runtime chunks contain JavaScript only. Inline transpile/live callers add script
+wrappers at the emission boundary; the external production runtime is not
+extracted from an HTML script string. For the incremental implementation history,
+see `docs/architecture/observable-first-architecture-roadmap.md`; older milestones
+there describe transitional behavior, not permission to relax clean production.
+
 ## Live Mode
 
 Live mode is for Studio, tutorial, `serve`, internal/server-owned UI, and

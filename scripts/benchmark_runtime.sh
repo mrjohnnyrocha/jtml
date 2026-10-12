@@ -206,7 +206,7 @@ for fixture in "${FIXTURES}"/*.jtml; do
   echo "OK: ${name} index=${index_bytes}B runtime=${runtime_bytes}B components=${component_bytes}B app=${app_bytes}B updatePlans=${plan_bytes}B"
 done
 
-if [[ "${JTML_BROWSER_BENCHMARK:-1}" != "0" ]]; then
+if [[ "${JTML_BROWSER_BENCHMARK:-1}" != "0" || "${JTML_REQUIRE_BROWSER_BENCH:-0}" == "1" ]]; then
   "${ROOT}/scripts/benchmark_browser_runtime.sh" "${OUT_ROOT}"
 fi
 

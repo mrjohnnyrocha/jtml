@@ -21,20 +21,32 @@ option(JTML_BUILD_TESTS  "Build the unit test suite"                         OFF
 # ---------------------------------------------------------------------------
 # External dependencies
 # ---------------------------------------------------------------------------
+include(FetchContent)
+
 find_package(Threads REQUIRED)
-find_package(Boost   REQUIRED COMPONENTS system)
+
+FetchContent_Populate(websocketpp
+    URL https://github.com/zaphoyd/websocketpp/archive/refs/tags/0.8.2.tar.gz
+    URL_HASH SHA256=6ce889d85ecdc2d8fa07408d6787e7352510750daa66b5ad44aacb47bea76755
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_Populate(asio
+    URL https://downloads.sourceforge.net/project/asio/asio/1.30.2%20%28Stable%29/asio-1.30.2.tar.bz2
+    URL_HASH SHA256=9f12cef05c0477eace9c68ccabd19f9e3a04b875d4768c323714cbd3a5fa3c2b
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
 
 # ---------------------------------------------------------------------------
-# Third-party headers vendored under third_party/ (nlohmann/json + cpp-httplib).
-# WebSocket++ is provided by the system package manager.
+# Header-only dependencies. WebSocket++ 0.8.2 uses standalone Asio 1.30.2 so
+# current Boost.Asio removals cannot change the live runtime build.
 # ---------------------------------------------------------------------------
 add_library(jtml_third_party INTERFACE)
 target_include_directories(jtml_third_party INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party
+    ${websocketpp_SOURCE_DIR}
+    ${asio_SOURCE_DIR}/include
 )
-if(EXISTS /opt/homebrew/include)
-    target_include_directories(jtml_third_party INTERFACE /opt/homebrew/include)
-endif()
+target_compile_definitions(jtml_third_party INTERFACE ASIO_STANDALONE)
 
 # ---------------------------------------------------------------------------
 # Core library ownership groups. v0.2 production hardening keeps jtml_core as
@@ -110,7 +122,6 @@ function(jtml_configure_core_target target_name)
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
     target_link_libraries(${target_name} PUBLIC
-        Boost::system
         Threads::Threads
         jtml_third_party
     )

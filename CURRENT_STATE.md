@@ -1,11 +1,10 @@
 # JTML Current State
 
-Status: HIBERNATED / RESEARCH
+Status: v0.3 DEVELOPMENT BASELINE / RESEARCH
 
-Development is intentionally paused at a restartable research state. The
-project is not abandoned, but future work should begin by reading this snapshot
-instead of reconstructing the architecture from commit history or scattered
-roadmaps.
+The repository is being prepared for disciplined v0.3 development. Read this
+snapshot before selecting a scoped change; this baseline does not add language
+features or declare production readiness.
 
 ## Project Status
 
@@ -146,36 +145,105 @@ Friendly source -> AST / Expression IR -> Semantic IR -> Runtime Plan ->
 static/browser component execution
 ```
 
-Do not try to resolve this migration during freeze maintenance. Future work
+Do not try to resolve this migration during baseline maintenance. Future work
 should continue moving common production paths toward static/browser execution
 and leave compatibility/live paths as explicit backends.
 
-## Build/Test Status
+## Verified Development Baseline — 2026-10-12
 
-Last freeze verification: 2026-08-23.
+Starting commit: `5e0761925fcdd748268d3049d613fb767e1dbd45` (clean checkout).
+This supersedes the 2026-08-23 freeze results. No compiler/runtime behavior or
+performance budgets were changed for this baseline.
 
-Results:
+Environment: macOS 14.4.1 (23E224), arm64, Apple Clang 15.0.0, CMake 3.31.3,
+Unix Makefiles, Release, Homebrew Boost 1.85.0 and WebSocket++ 0.8.2, Python 3.12.3,
+Node 22.23.3, Google Chrome 154.0.8037.98. The existing build/dependency cache
+was reused; this is not evidence of a fresh network dependency installation.
+For an empty build directory, add `-DCMAKE_BUILD_TYPE=Release` to reproduce
+this configuration. CI uses Ninja on Ubuntu/macOS; those hosted environments
+need their own run.
 
-```text
-cmake configure: passed
-cmake build: passed
-ctest: passed, 332/332 tests
-scripts/verify_all.sh: passed
-browser runtime benchmark: passed with local Google Chrome
-doctor: ok, version 0.1.0-dev, enterpriseReady false
-```
-
-Required commands:
+Commands executed from the repository root:
 
 ```sh
 cmake -S . -B build -DJTML_BUILD_TESTS=ON -DJTML_BUILD_PYTHON=OFF
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
-scripts/verify_all.sh
+ctest --test-dir build --output-on-failure --parallel
 ./build/jtml doctor --json
+JTML_REQUIRE_BROWSER_BENCH=1 scripts/benchmark_runtime.sh
+JTML_REQUIRE_BROWSER_BENCH=1 scripts/benchmark_browser_runtime.sh
+JTML_REQUIRE_BROWSER_BENCH=1 JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1 scripts/benchmark_browser_runtime.sh
+scripts/verify_all.sh
+JTML_BROWSER_BENCHMARK=0 scripts/verify_all.sh
 ```
 
-Update this section after every release-equivalent freeze check.
+The initial sandboxed browser/full-gate attempts failed at localhost socket
+binding (`PermissionError: [Errno 1] Operation not permitted`). Browser and
+live-runtime checks require execution outside that sandbox; do not describe
+those initial attempts as passes or disable browser checks to obtain success.
+
+### Results
+
+| Check | Verified result |
+| --- | --- |
+| Configure/build | Exit 0; Release CLI, C API, tests, and architecture link checks built |
+| Sequential CTest after rebuild | 332/332 passed, 0 failed; 2.77 seconds |
+| Parallel CTest (CI-style) | 332/332 passed, 0 failed; 1.62 seconds |
+| `doctor --json` | Exit 0; `ok: true`, `version: 0.1.0-dev`, `enterpriseReady: false` |
+| Example smoke | 41/41 examples passed |
+| Asset benchmark | All 9 fixtures passed clean/compat asset contracts and unchanged budgets; runtime 269338 bytes against 272000-byte budget |
+| Required browser benchmark outside sandbox | Exit 0; 9/9 fixtures passed; 200 interactions each, 201 for each large keyed fixture; all `terminated-after-result` |
+| Full predeploy gate outside sandbox | `JTML_BROWSER_BENCHMARK=0 scripts/verify_all.sh` exits 0: required 9-fixture browser coverage still runs, package/refactor/source-map/LSP/editor checks and site/package artifacts pass, live runtime smoke 8/8 passes; no skip messages |
+| Strict clean-exit benchmark | Exit 1 on `static_counter`: result produced but Chrome did not exit cleanly |
+| CI lint shell block | Exit 0 for 37 examples; same 4 exclusions retained |
+| CI formatter shell block | Exit 0 for all 41 examples, including relative imports |
+| Shell syntax / whitespace | Both extracted workflow shell blocks and benchmark scripts pass `bash -n`; `git diff --check` passes |
+| Missing-browser gate probe | With browser discovery stubbed unavailable in a temporary script copy: optional mode exits 0 with SKIP; required mode exits 1 |
+
+The CI shell blocks were extracted verbatim from `.github/workflows/ci.yml` and
+executed with Bash from the repository root. Raw local logs are in
+`/tmp/jtml-baseline/` (ephemeral); normal gate artifacts are under ignored `dist/`.
+An early pre-rebuild CTest discovery cache listed 334 tests; the rebuilt binary
+and regenerated discovery consistently report 332. Use post-build counts.
+
+### Reproducibility repairs
+
+- CI's multiline shell `case` patterns did not parse (`bash -n` exit 2). Added
+  line continuations, preserving all four existing lint exclusions.
+- CI formatter pass two used `/tmp`, losing relative imports (first failure:
+  `friendly_advanced_form.jtml` -> `./imported_keywords.jtml`). Unique temporary
+  files now stay beside examples and are removed by a trap. Errors remain visible.
+- Required browser benchmarks previously returned success when no browser was
+  installed, and `JTML_BROWSER_BENCHMARK=0` could bypass them. Required mode now
+  fails for a missing browser and takes precedence over that optional skip flag.
+- `AGENTS.md` now describes actual CI coverage and durable rules. Removed stale
+  source-group line numbers, repetitive implementation history, and contradictory
+  production fallback instructions. Browser ownership details live in
+  `ARCHITECTURE.md`; historical milestones remain in the architecture roadmap.
+
+### Known limitations and architectural risks
+
+- CI is present but is not the full predeploy gate: it omits browser benchmarks,
+  standalone doctor, and the full LSP/live runtime checks. Its four lint exclusions
+  are unchanged; cross-file resolution exists, so the former blanket explanation
+  for those exclusions was misleading. Audit coverage separately.
+- The browser harness uses virtual time and reported `duration=0.00ms`; its DOM,
+  identity, cleanup, and asset assertions are useful proof, but these measurements
+  do not establish real wall-clock performance. No timing budgets were raised.
+- Chrome can return benchmark DOM without exiting within the 15-second timeout.
+  `browserExit=terminated-after-result` is not a clean-process-exit pass. Require
+  `JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1` when validating that stronger contract.
+- The full script conditionally skips some Python/Node checks when tools are
+  absent. Record installed tools and actual coverage, not just exit status.
+- Multiple execution/dependency models, lowering-derived body-plan structure,
+  incomplete source spans/types, form semantics, and browser/live parity remain
+  the architecture risks described above. This task does not resolve them.
+- Python bindings, sanitizers, coverage, and a fresh Linux build were not tested.
+  `doctor` readiness is self-reported metadata, not proof of enterprise readiness.
+
+Update these results when the baseline is reproduced; keep failures and skipped
+checks visible rather than treating historical success as current evidence.
 
 ## Canonical Examples
 
@@ -193,8 +261,9 @@ Focused examples:
 
 Do not currently treat these as canonical production evidence:
 
-- `demos/opspulse/` - active uncommitted demo work at freeze time. It contains
-  substantial edits and should be resolved or quarantined before being used as
-  a stable modular-app reference.
+- `demos/opspulse/` - tracked modular demo (20 files at this baseline), covered
+  by the local gate. The historical uncommitted-work warning no longer describes
+  this clean starting checkout; passing smoke checks does not establish full
+  browser/live parity or production readiness.
 - Older Classic examples - useful for compatibility regression, not public
   authoring guidance.

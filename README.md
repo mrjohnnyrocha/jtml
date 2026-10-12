@@ -184,7 +184,7 @@ cmake -S . -B build -DJTML_BUILD_PYTHON=OFF
 cmake --build build --target jtml_cli
 ```
 
-The runtime currently expects WebSocket++ and Boost.System to be available. On this machine those headers/libraries are provided by Homebrew under `/opt/homebrew`; see `third_party/` for vendored single-header deps (`nlohmann/json.hpp`, `cpp-httplib`).
+The build fetches pinned WebSocket++ 0.8.2 and standalone Asio 1.30.2 sources with verified hashes. See `third_party/` for vendored single-header deps (`json.hpp`, `cpp-httplib`).
 
 ## Repository Layout
 

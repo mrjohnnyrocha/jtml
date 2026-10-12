@@ -2,7 +2,7 @@
 
 #include "jtml/semantic/module_graph.h"
 
-#include "nlohmann/json.hpp"
+#include "json.hpp"
 
 namespace jtml {
 

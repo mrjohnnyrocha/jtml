@@ -319,6 +319,7 @@ PY
   python3 - "${browser}" "${bench_url}" "${profile}" "${log}" "${dom_file}" "${exit_mode_file}" "${BROWSER_TIMEOUT}" "${REQUIRE_CLEAN_EXIT}" <<'PY'
 import subprocess
 import sys
+from pathlib import Path
 
 browser, bench_url, profile, log_path, dom_path, exit_mode_path, timeout_s, require_clean_exit = sys.argv[1:]
 
@@ -349,23 +350,24 @@ for headless_flag in ("--headless=new", "--headless"):
         bench_url,
     ]
     try:
-        completed = subprocess.run(
-            args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            timeout=float(timeout_s),
-            check=False,
-        )
+        with open(dom_path, "w", encoding="utf-8") as dom_handle:
+            completed = subprocess.run(
+                args,
+                stdout=dom_handle,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=float(timeout_s),
+                check=False,
+            )
         logs.append(f"[{headless_flag}] exit={completed.returncode}\n" + (completed.stderr or ""))
-        last_stdout = completed.stdout or ""
+        last_stdout = Path(dom_path).read_text(encoding="utf-8")
         last_status = completed.returncode
         if completed.returncode == 0:
             exit_mode = "clean"
             break
     except subprocess.TimeoutExpired as exc:
         logs.append(f"[{headless_flag}] browser benchmark timed out\n" + text(exc.stderr))
-        last_stdout = text(exc.stdout)
+        last_stdout = Path(dom_path).read_text(encoding="utf-8")
         if 'jtml-browser-benchmark-result' in last_stdout:
             logs.append(f"[{headless_flag}] benchmark result was produced before timeout; browser did not exit cleanly")
             last_status = 125 if require_clean_exit == "1" else 0
@@ -376,8 +378,6 @@ for headless_flag in ("--headless=new", "--headless"):
 
 with open(log_path, "w", encoding="utf-8") as handle:
     handle.write("\n".join(logs))
-with open(dom_path, "w", encoding="utf-8") as handle:
-    handle.write(last_stdout)
 with open(exit_mode_path, "w", encoding="utf-8") as handle:
     handle.write(exit_mode)
 raise SystemExit(last_status)
@@ -390,6 +390,7 @@ PY
       exit 1
     fi
     if [[ "${JTML_REQUIRE_BROWSER_BENCH:-0}" == "1" ]]; then
+      cat "${log}" >&2
       echo "error: browser benchmark failed for ${fixture}; see ${log}" >&2
       exit 1
     fi

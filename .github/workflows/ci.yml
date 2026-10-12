@@ -28,21 +28,20 @@ jobs:
       # --------------------------------------------------------------
       # System dependencies
       #
-      # Boost.System and WebSocket++ are required from the OS. httplib.h and
-      # nlohmann/json are vendored under `third_party/`, and GoogleTest is
-      # fetched at configure time.
+      # WebSocket++, standalone Asio, and GoogleTest are pinned and fetched by
+      # CMake. httplib.h and nlohmann/json are vendored under `third_party/`.
       # --------------------------------------------------------------
       - name: Install deps (Ubuntu)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build libboost-system-dev libwebsocketpp-dev
+          sudo apt-get install -y cmake ninja-build
 
       - name: Install deps (macOS)
         if: runner.os == 'macOS'
         run: |
           brew update
-          brew install cmake ninja boost websocketpp
+          brew install cmake ninja
 
       # --------------------------------------------------------------
       # Configure, build, test

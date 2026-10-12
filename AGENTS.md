@@ -47,11 +47,10 @@ Do not treat research milestones or `doctor` success as production readiness.
 
 ## Build and verification
 
-C++17; CMake plus system Boost.System and WebSocket++ are required. On macOS use
-Homebrew (`boost`, `websocketpp`); on Ubuntu use `libboost-system-dev` and
-`libwebsocketpp-dev`. JSON and httplib headers are vendored in `third_party/`.
-GoogleTest is fetched during configure (network or a populated dependency cache
-is needed). Python bindings are optional and disabled in the baseline below.
+C++17 and CMake are required. CMake fetches pinned WebSocket++ 0.8.2,
+standalone Asio 1.30.2, and GoogleTest during configure, so network access or a
+populated dependency cache is needed. JSON and httplib headers are vendored in
+`third_party/`. Python bindings are optional and disabled in the baseline below.
 
 ```sh
 cmake -S . -B build -DJTML_BUILD_TESTS=ON -DJTML_BUILD_PYTHON=OFF

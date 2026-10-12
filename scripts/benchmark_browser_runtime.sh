@@ -339,6 +339,8 @@ for headless_flag in ("--headless=new", "--headless"):
         browser,
         headless_flag,
         "--disable-gpu",
+        "--no-sandbox",
+        "--disable-breakpad",
         "--no-first-run",
         "--no-default-browser-check",
         "--disable-background-networking",

@@ -2,9 +2,9 @@
 
 If you are returning to JTML after months or years, do not start coding immediately.
 
-The repository is intentionally paused in a research state. First rebuild the
-mental model, then reproduce the current health, then choose one small
-architecture task.
+The repository remains a research toolchain with a verified development baseline
+in `CURRENT_STATE.md`. First rebuild the mental model, reproduce current health,
+then choose one small task.
 
 ## Read First
 
@@ -89,8 +89,8 @@ scripts/verify_all.sh
 - Fallback/helper paths are migration bridges, not automatically the desired
   architecture.
 - Some docs and examples can drift; verify with code, tests, and `doctor`.
-- `demos/opspulse/` had substantial uncommitted edits at freeze time and should
-  be resolved before using it as canonical modular-app evidence.
+- `demos/opspulse/` is tracked and covered by the local gate; historical freeze
+  warnings about uncommitted work are not current evidence of demo health.
 - Versioning must remain consistent across CMake, CLI, C API, docs, and
   `doctor`.
 

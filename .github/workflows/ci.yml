@@ -82,13 +82,13 @@ jobs:
           set -e
           fail=0
           for f in examples/*.jtml; do
-            # The current linter intentionally does not resolve cross-file
-            # `use` / `import` dependencies, so bundled import-heavy examples
-            # are excluded from this gate until dependency tracking lands.
+            # Keep the existing exclusions explicit; this gate does not cover
+            # every example. Cross-file semantic resolution exists, but these
+            # fixtures need a separate audit before changing gate coverage.
             case "$f" in
-              examples/keywords.jtml|
-              examples/jtml_studio.jtml|
-              examples/friendly_import_page.jtml|
+              examples/keywords.jtml|\
+              examples/jtml_studio.jtml|\
+              examples/friendly_import_page.jtml|\
               examples/friendly_advanced_form.jtml) continue ;;
             esac
             if ! ./build/jtml lint "$f"; then
@@ -101,12 +101,17 @@ jobs:
       - name: Formatter idempotence on all examples
         run: |
           set -e
+          # Keep relative imports resolvable on the second pass. Unique hidden
+          # files avoid collisions and are not included in the *.jtml loop.
+          pass1="$(mktemp "$PWD/examples/.fmt-pass1.XXXXXX")"
+          pass2="$(mktemp "$PWD/examples/.fmt-pass2.XXXXXX")"
+          trap 'rm -f "$pass1" "$pass2"' EXIT
           for f in examples/*.jtml; do
-            ./build/jtml fmt "$f" 2>/dev/null > /tmp/pass1.jtml
-            ./build/jtml fmt /tmp/pass1.jtml 2>/dev/null > /tmp/pass2.jtml
-            if ! diff -q /tmp/pass1.jtml /tmp/pass2.jtml > /dev/null; then
+            ./build/jtml fmt "$f" > "$pass1"
+            ./build/jtml fmt "$pass1" > "$pass2"
+            if ! diff -q "$pass1" "$pass2" > /dev/null; then
               echo "::error file=$f::formatter not idempotent"
-              diff /tmp/pass1.jtml /tmp/pass2.jtml || true
+              diff "$pass1" "$pass2" || true
               exit 1
             fi
           done

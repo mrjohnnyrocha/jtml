@@ -37,6 +37,10 @@ find_browser() {
 
 browser="$(find_browser || true)"
 if [[ -z "${browser}" ]]; then
+  if [[ "${JTML_REQUIRE_BROWSER_BENCH:-0}" == "1" ]]; then
+    echo "error: required browser runtime benchmark needs Chrome/Chromium; set JTML_BENCH_BROWSER." >&2
+    exit 1
+  fi
   echo "SKIP: browser runtime benchmark requires Chrome/Chromium; set JTML_BENCH_BROWSER to enable."
   exit 0
 fi

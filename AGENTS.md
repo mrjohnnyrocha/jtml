@@ -1,291 +1,105 @@
 # AGENTS.md — JTML repository
 
-## Build & test
+## Start here
+
+Read `CURRENT_STATE.md` for verified health and blockers, `ARCHITECTURE.md` for
+ownership and invariants, and `RESTART.md` for the restart checklist. Detailed
+implementation history belongs in `docs/architecture/`, not this instruction file.
+Do not treat research milestones or `doctor` success as production readiness.
+
+## Architectural rules
+
+- Friendly JTML 2 is canonical. Classic remains compatibility, migration,
+  lowering, embedding/C API, and regression infrastructure. JTL is experimental.
+- Preserve compiler ownership: Friendly -> AST / Expression IR -> Semantic IR /
+  observable graph -> Runtime Plan -> backends. Prefer `SemanticProject` and
+  `RuntimePlan` over new CLI source scanners for semantic questions.
+- Prioritize observable/runtime-plan correctness and browser-local execution;
+  live/WebSocket and legacy `Environment` are supported backends, not the public
+  production architecture. Do not remove them without backend regression proof.
+- Never ship runtime `eval` or `new Function`. Keep compatibility explicit and
+  unsupported production shapes fail-closed with source-first remediation.
+- Preserve original source file/line/column and component context in diagnostics.
+  TypeEnvironment and source-span propagation remain incomplete.
+
+## Browser contract
+
+`jtml build <source> --target browser --out dist` defaults to clean production:
+`index.html`, `jtml-runtime.js`, `components/index.js`, and `app.js`.
+
+- Clean output must omit `jtml-update-plans.js`, compatibility asset references,
+  synthetic imported-component stubs, legacy update-plan globals, source-rich
+  debug payloads, and operation-record fallback metadata in component modules.
+- `--compat` explicitly enables migration assets; `--debug` adds diagnostics and
+  legacy assets, not an implicit production fallback. `window.jtml.browserBuild`
+  is the formal mode/asset contract; `productionMode` is a compatibility alias.
+- Prefer generated static component create/update paths. Preserve direct slot
+  rendering, retained nested-component updates, keyed identity/lifecycle cleanup,
+  and input focus/cursor behavior. Component `into` targets must be simple local
+  writable `let` names; invalid bindings fail closed.
+- Browser policy belongs in `cli/browser_build_policy.cpp`, copying in
+  `cli/browser_build_assets.cpp`, and closed public schema validation in
+  `cli/browser_build_schema.cpp`; do not accumulate policy in `browser_build.cpp`.
+- Runtime chunks are JavaScript-only. Inline callers add script wrappers at the
+  emission boundary; never derive production JS by stripping HTML wrappers.
+- Directory builds copy `public/`, `assets/`, and selected root web metadata;
+  symlinks are intentionally skipped.
+
+## Build and verification
+
+C++17; CMake plus system Boost.System and WebSocket++ are required. On macOS use
+Homebrew (`boost`, `websocketpp`); on Ubuntu use `libboost-system-dev` and
+`libwebsocketpp-dev`. JSON and httplib headers are vendored in `third_party/`.
+GoogleTest is fetched during configure (network or a populated dependency cache
+is needed). Python bindings are optional and disabled in the baseline below.
 
 ```sh
 cmake -S . -B build -DJTML_BUILD_TESTS=ON -DJTML_BUILD_PYTHON=OFF
 cmake --build build --parallel
-ctest --test-dir build --output-on-failure   # GoogleTest, auto-discovered
+ctest --test-dir build --output-on-failure
+./build/jtml doctor --json
+scripts/verify_all.sh
 ```
 
-`scripts/verify_all.sh` is the full predeploy gate (cmake+build+tests+CLI smoke+LSP+package).
+- `scripts/verify_all.sh` is the full local predeploy gate: build, CTest, doctor,
+  examples/demos, browser asset and execution benchmarks, package/refactor/LSP
+  checks, editor validation, site/package artifacts, and live runtime smoke.
+  Run it before claiming a slice complete when build/runtime/CLI/examples/demo/
+  packaging/smoke behavior changes. Report skipped checks and failures explicitly.
+- Full coverage needs Python 3, Node.js, curl, Chrome/Chromium, and permission to
+  launch browsers and bind local ports. Some script sections skip missing tools;
+  a zero exit alone does not prove all checks executed.
+- `scripts/benchmark_runtime.sh` checks asset budgets and generated contracts,
+  then invokes `scripts/benchmark_browser_runtime.sh` against built fixtures.
+  Standalone browser runs may skip; `JTML_REQUIRE_BROWSER_BENCH=1` makes browser
+  execution mandatory (set by the full gate). `JTML_BENCH_BROWSER` selects a
+  browser. Do not weaken assertions or silently raise budgets.
+- `browserExit=terminated-after-result` proves results, not clean shutdown. Use
+  `JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1` to require clean browser exit.
+- CTest auto-discovers GoogleTest cases in `jtml_tests`; use `ctest --test-dir
+  build -R <filter> --output-on-failure` for focused runs. Fixtures live in
+  `tests/fixtures/`; `JTML_SOURCE_DIR` provides the repo root to C++ tests.
 
-Dependencies: WebSocket++ and Boost.System via Homebrew (`/opt/homebrew`). Vendored single-header deps under `third_party/` (nlohmann/json, cpp-httplib).
+## CI
 
-## CLI commands
+`.github/workflows/ci.yml` runs on pushes and PRs to `main`: Ubuntu and macOS,
+Release, Ninja, Python bindings off. It builds, runs parallel CTest and `jtml test`,
+creates site/package artifacts, lints examples with four explicit exclusions,
+and checks formatter idempotence. It does **not** run `verify_all.sh`, browser
+benchmarks, the standalone doctor check, or the full LSP/live smoke gate. Local
+verification and a green CI run are distinct evidence; do not claim equivalence.
 
-Binary: `build/jtml`. Key subcommands: `check`, `fix`, `fmt`, `lint`, `transpile`, `build`, `export`, `serve`, `studio`, `tutorial`, `demo`, `test`, `explain`, `refactor`, `doctor`, `lsp`, `new`, `add`, `install`, `dev`. Use `--json` flag for machine-readable output. `explain --json` is the main semantic introspection endpoint.
+## Code navigation and conventions
 
-## Repo structure
-
-```
-include/jtml/   public headers (mirror src/ layout)
-src/            implementation
-cli/            jtml binary, one .cpp per command group
-tests/          CTest/GoogleTest suite
-examples/       runnable .jtml files
-tutorial/       lesson content for jtml tutorial
-studio/         externalized content (samples/, reference/, sidebar/)
-docs/           language + tooling docs
-third_party/    vendored headers (nlohmann/json, cpp-httplib)
-cmake/          CMake helpers (JtmlVersion)
-editors/vscode/ VS Code extension
-```
-
-## Code conventions
-
-- C++17, public headers in `include/jtml/`, `.cpp` files in `src/` — snake_case names matching headers.
-- Friendly JTML 2 is the canonical source dialect; Classic (`define`, `\\`) is compatibility/lowering only.
-- CMake source groups by ownership: `JTML_SYNTAX_SOURCES`, `JTML_SEMANTIC_SOURCES`, `JTML_RUNTIME_SOURCES`, `JTML_TOOLING_SOURCES` in `CMakeLists.txt:43-88`.
-- CLI: `cli/main.cpp` parses args + dispatches; each subcommand handler in `cli/cmd_*.cpp`.
-- Module ownership boundaries: `include/jtml/runtime/`, `include/jtml/semantic/`, `include/jtml/syntax/`, `include/jtml/emit/`, `include/jtml/tooling/`, `include/jtml/interop/` exist for incremental modularization.
-
-## Architecture direction
-
-The durable pipeline is:
-
-```text
-Friendly JTML -> typed AST -> semantic IR -> observable graph -> runtime plan -> backends
-```
-
-Current priority order:
-
-1. Observable graph and runtime-plan correctness.
-2. Browser-local production runtime without WebSocket dependency.
-3. Direct body-plan component execution.
-4. Static browser component create/update modules.
-5. Live runtime parity over the same body-plan contract.
-6. Compatibility DOM as explicit fallback only.
-7. Interop/export/JTL backend API work after the frontend architecture is stable.
-
-Do not make Classic the public design center. Classic remains required for
-compatibility, migration, C API behavior, and regression tests, but new
-architecture should flow from Friendly/semantic/runtime-plan ownership.
-
-Do not add new CLI-level source scanners for semantic questions. Prefer typed
-AST, semantic IR, `SemanticProject`, or `RuntimePlan`.
-
-Do not introduce runtime `eval` / `new Function` in shipped browser assets.
-Generated production code must live in CSP-safe external assets such as
-`components/index.js`, `app.js`, and the legacy compatibility alias
-`jtml-update-plans.js`; the browser runtime must refuse dynamic compilation.
-
-## Current runtime compiler bridge
-
-`jtml build --target browser --out dist` emits:
-
-```text
-dist/index.html
-dist/jtml-runtime.js
-dist/components/index.js
-dist/app.js
-```
-
-`components/index.js` is the current compiler-first component bridge and now
-owns the production component plan index. `jtml-update-plans.js` remains a
-legacy compatibility/debug asset for older tooling while the runtime split is
-completed. Clean `jtml build --target browser` output is the default and must
-omit it, must not advertise `compatibilityUpdatePlans` from `app.js`, must
-disable synthetic imported-component stubs, and must fail with source-first
-remediation text if the component module still needs compatibility/update-plan
-fallback. `--compat` opts into the legacy asset explicitly for migration paths.
-`--debug` also emits the legacy asset, but its contract is source-rich
-diagnostics/fallback telemetry, not production behavior. `dist/app.js` exposes
-the formal `window.jtml.browserBuild` object (`version`, `mode`,
-`cleanProduction`, `compatibility`, `debug`, `assets`, `diagnostics`);
-`window.jtml.productionMode` is only a compatibility alias. Browser mode
-precedence and public asset eligibility live in `cli/browser_build_policy.cpp`,
-while filesystem copying lives in `cli/browser_build_assets.cpp`; keep new
-policy decisions out of `cli/browser_build.cpp`. Mode-specific output schema
-validation lives in `cli/browser_build_schema.cpp` and runs before
-`cmdBuildBrowser` returns success. The client manifest schema is closed for
-public runtime-plan/project, route/fetch/action, component-definition, and
-component-instance keys; production body-plan nodes, loop plans, argument
-plans, word plans, and nested expression-plan keys are also parsed and checked
-against the current public runtime contract. Directory browser builds copy only `public/`, `assets/`, and
-selected root web metadata files by default, and intentionally skip symlinks
-until configurable asset include/exclude rules exist.
-The component module exposes:
-
-- `window.__jtml_static_component_plan_index`
-- `window.__jtml_static_update_functions`
-- `window.__jtml_static_component_modules`
-
-The legacy update-plan asset still exposes `window.__jtml_static_update_plans`
-and keeps source-rich `bodyPlan` metadata. The production component module must
-not publish the legacy update-plan global or carry source-rich body-plan debug
-payloads.
-
-The runtime should prefer static component create/update modules first, then
-interpreted static plans, then runtime plan compilation without dynamic code
-execution. Compatibility DOM is only for unsupported shapes and migration
-paths.
-
-Current static component modules emit direct escaped HTML create functions for
-supported root text, button, leaf element, direct-safe container nodes,
-safe `if`/keyed-`for` control-flow regions, and first-slice slot/nested
-component anchors. Slot create now consumes direct `slotHtml`/`slotHtmlByName`
-inputs and must not delegate to the generic runtime slot helper in production
-component modules. Supported nested create now calls the child static component
-module directly when the child module id/key is known; broader unsupported
-nested shapes still use explicit helper/fallback paths.
-Static update functions now try generated per-node patch cases that patch
-direct text, button, element, container-attribute, safe control-flow region,
-slot, and nested-component shapes before falling back to operation records. The older
-`rootCreateOperations` and per-entry operation payloads remain as fallback/debug
-metadata while the compiler path expands. The
-runtime-plan layer now owns the canonical expression-plan producer and now
-prefers parsed JTML expression AST nodes through `Parser::parseStandaloneExpression()`
-before falling back to the legacy string planner. Literal, boolean, number, null, dot-path, unary `!`,
-binary/comparison/logical, ternary, composite string, array/object literal,
-member/subscript, and call-shaped plans carry `producer: "typed-ir"` when the parser owns them. Static component
-emission consumes that same API, so expression plans flow consistently through
-text/element operations, element content, attributes, modifiers, component
-action arguments, body-plan conditions, `for` collection/key expressions,
-nested component parameters, and browser-local body-plan action
-assignments/local declarations.
-Compiler callers can now pass a first-slice `ExpressionTypeEnvironment` into
-Expression IR/runtime expression planning so known root symbols annotate path
-types and simple number/string/boolean results propagate through binary and
-conditional plans. Runtime/client JSON builds that environment from top-level
-state, derived bindings, fetch objects, and component-local
-params/state/derived body-plan declarations, so manifests carry useful
-expression `valueType` data. Static component/update-plan emission also passes
-the component-local environment into body-plan serialization, so production
-module generation and compatibility/debug plans do not drift back to unknown
-types for local action math. This is not full type checking yet; object shapes,
-nullability, named slot payloads, route params, and event payload contracts
-remain v0.3 work.
-Static modules also emit direct JS expression functions for simple and
-first-slice composite plans, generated text/button/leaf-element/container,
-safe control-flow, slot, and nested create functions that do not require runtime helper
-availability unless they hit a fallback shape, plus generated text, element
-attribute/content, button label/action-arg, safe region, slot, and nested
-patches update DOM directly without a generic region-helper requirement.
-Slot create functions now render default/named slot HTML directly, including
-empty marked slot regions when content is absent, and slot patch functions
-replace their own marked DOM regions before falling back to generic runtime
-renderers. Nested component patches now first try true
-parameter/body updates inside the retained nested wrapper and only replace the
-wrapper when identity or shape checks fail.
-Static create fallbacks record source-first component/plan context in
-`window.jtml.directComponentCreateFallback`. Runtime-plan read analysis also treats
-value-taking attributes such as `title selected` as reads of `selected`, even
-when the value token is also a valid boolean attribute name. Continue with
-richer action-body expression precompilation, stronger keyed reconciliation,
-and broader direct DOM generation.
-Direct component `into` bindings now fail closed in the browser runtime unless
-the target is a simple local `let` state name on the owning component. Invalid
-targets such as derived values, params, missing names, or member paths are
-reported through `window.jtml.directComponentBindingDiagnostics`, and the
-semantic usage report/linter now warns for component `into` targets that are
-not simple local writable state. Full Friendly source-span validation before
-compatibility lowering, form TypeEnvironment binding validation,
-radio/select/file nuances, IME composition, validation, and reset/submit
-behavior remain v0.3 work.
-Clean browser production validation reports unsupported static component shapes
-with module path plus component-body-adjusted source line/column where
-available.
-Live body-plan JSON mirrors the first-slice browser manifest expression surface
-for node expressions, key expressions, rendered word plans, loop collection
-plans, and component-action call arguments. Live `/api/event` and
-`/api/component-action` failures include structured diagnostics plus
-`diagnosticContext` so body-plan fallback/errors stay source-first instead of
-leaking only generated DOM or binding names. Body-plan nodes also carry
-`sourceLine` and `sourceColumn` through runtime plans, live state, static
-component/update-plan metadata, browser fallback telemetry, and HTTP diagnostic
-context.
-
-For `jtml build --target browser`, `jtml-runtime.js` is now the primary runtime
-asset. Inline browser runtime remains for `transpile --target browser`, live
-serve/studio paths, and compatibility while those flows get their own asset
-mode. Browser runtime chunks are JavaScript-only; inline callers add
-`<script>` wrappers at the emission boundary, and production `jtml-runtime.js`
-must never be produced by stripping wrappers from an HTML script string.
-
-Remaining high-value runtime work:
-
-- Broaden static component modules into fuller generated update JS with fewer
-  operation-record fallbacks.
-- Precompile richer action bodies. AST-owned literal/simple-path and first-slice
-  composite expression plans already cover component module `expressionPlan`,
-  `contentPlan`, `exprPlan`, `argPlans`, body-plan conditions, loop
-  collection/key plans, nested params, and matching live body-plan JSON.
-- Strengthen keyed list lifecycle and diagnostics.
-- Add browser/live parity checks for slots, events, routes, fetch, media, and
-  keyed lists.
-- Remove embedded runtime duplication once `jtml-runtime.js` is the primary
-  production runtime asset.
-- Add benchmark fixtures and enforce tighter performance budgets.
-
-## Test quirks
-
-- Single `jtml_tests` binary (links `jtml_c`, `jtml_cli_lib`, GTest). FetchContent downloads GTest at configure time.
-- Test fixtures in `tests/fixtures/`.
-- `JTML_SOURCE_DIR` compile definition available for tests needing repo root paths.
-- `gtest_discover_tests` auto-enumerates test cases; use `ctest -R <filter>` for focused runs.
-
-## Performance checks
-
-Use `scripts/benchmark_runtime.sh` for first-slice runtime/compiler budgets.
-It builds clean production browser targets from `tests/fixtures/performance/`,
-verifies that the split browser assets are emitted without
-`jtml-update-plans.js`, builds explicit `--compat` outputs for the legacy
-update-plan budget, rejects dynamic `new Function`/direct `eval` in browser
-assets, and fails if generated assets exceed the current size budgets. Defaults
-are intentionally conservative while the runtime is still being split: 70 KB
-for `index.html`, 272 KB for `jtml-runtime.js`, 180 KB for
-`components/index.js`, 20 KB for `app.js`, and 180 KB for the legacy
-`jtml-update-plans.js` in compatibility/debug outputs.
-Treat these budgets as
-guardrails, not final benchmarks; tighten runtime/component/index budgets as
-direct generated modules replace body-plan helpers, source-span metadata moves
-out of production manifests, and registry/generation cleanup proof telemetry
-moves out of clean production assets. The `control_flow` fixture also
-asserts that safe `if`/keyed-`for` regions, keyed list markers, and direct
-safe-region patching are present in `components/index.js`; the `composition`
-fixture asserts first-slice direct slot/nested component create/patch contracts,
-in-place nested parameter patching, and source-first static create fallback
-telemetry. The smoke script also calls `scripts/benchmark_browser_runtime.sh`
-when a local Chrome/Chromium is available; that headless-browser harness
-executes real button clicks against built fixtures and enforces runtime timing,
-fixture-specific DOM results, nested-param/keyed-list telemetry, retained
-nested wrapper identity, and retained keyed row identity for reorder fixtures.
-The fixture set includes small smoke cases plus `large_keyed_updates`,
-`large_keyed_reorder`, and `nested_component_update` as first
-production-budget scaffolds for 1k keyed row updates, 1k keyed row reorder,
-and nested component parameter updates. `lifecycle_cleanup` exercises
-conditional nested-component removal and keyed item cleanup, and the browser
-harness asserts clean `window.jtml.browserBuild` mode plus absence of loaded
-legacy update-plan scripts, registry-size cleanup, and event-handler cleanup
-telemetry, including post-destroy action-dispatch rejection for destroyed
-instance IDs. `form_focus` exercises input binding without replacing the input
-element, losing focus, or moving the cursor.
-The browser harness prints `browserExit=clean` or
-`browserExit=terminated-after-result`; the latter means Chrome produced the
-benchmark result and the harness terminated the process after timeout, so it is
-not evidence of clean browser-process shutdown. Set
-`JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1` when validating an environment where
-Chrome/Chromium should exit normally after `--dump-dom`; the benchmark then
-fails on `terminated-after-result` instead of accepting result-only evidence.
-Local standalone browser benchmark runs may skip when Chrome/Chromium is
-missing or blocked by the desktop sandbox. The full `scripts/verify_all.sh`
-predeploy gate sets `JTML_REQUIRE_BROWSER_BENCH=1`, so release-equivalent runs
-must execute in an environment where Chrome/Chromium can launch.
-
-## VS Code extension
-
-`editors/vscode/` ships syntax highlighting, LSP client, and CLI fallback. Config keys: `jtml.executablePath`, `jtml.diagnostics.enabled`, `jtml.languageServer.enabled`. Prefers native `jtml lsp` when available.
-
-## Important notes
-
-- `jtml fix` only applies safe repairs (missing header, tabs, trailing whitespace, final newline). `jtml fmt` is idempotent source-preserving.
-- `jtml lint` exits non-zero on errors (undefined vars, unreachable code, type mismatches, action arity).
-- `jtml build --target browser --out dist` for static deployment; `jtml serve --watch` for live dev loop.
-- `jtml doctor --json` is the machine-readable readiness contract.
-- `scripts/verify_all.sh` is the full local predeploy gate. Run it before
-  claiming a roadmap slice complete when CMake, runtime assets, CLI behavior,
-  examples, demos, packaging, or smoke behavior changed.
-- No CI workflows checked in yet; `.github/` may be absent.
-- `.claude/worktrees/` in gitignore — local tooling caches.
-- `jtml test` smoke-tests every bundled example (parse + lint + transpile).
+- Headers: `include/jtml/`; implementation: `src/` and `src/jtml/`; use matching
+  snake_case filenames and existing ownership boundaries.
+- `CMakeLists.txt` groups syntax, semantic, browser production, live runtime,
+  legacy runtime, and tooling sources. Keep additions in their owning group.
+- `cli/main.cpp` dispatches to `cli/cmd_*.cpp`; reuse compiler services.
+- Examples: `examples/`; lessons: `tutorial/`; Studio content: `studio/`;
+  language/tooling docs: `docs/`; VS Code extension: `editors/vscode/`.
+- `build/jtml explain <source> --json` provides semantic introspection;
+  `doctor --json` provides machine-readable readiness. Use supported `--json`
+  modes for tooling. `jtml test` smoke-tests bundled examples.
+- `jtml fix` applies safe repairs; `jtml fmt` must remain source-preserving and
+  idempotent. `jtml lint` exits nonzero on errors.

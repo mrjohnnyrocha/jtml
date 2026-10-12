@@ -61,6 +61,9 @@ jobs:
         working-directory: build
         run: ctest --output-on-failure --parallel
 
+      - name: Production reference application (browser required)
+        run: scripts/test_production_reference.sh
+
       - name: JTML smoke tests
         run: ./build/jtml test
 

@@ -1,0 +1,12 @@
+jtml 2
+
+make Home
+  text "Task route"
+  link "About" to "/about"
+
+make About
+  text "About route"
+  link "Tasks" to "/"
+
+route "/" as Home
+route "/about" as About

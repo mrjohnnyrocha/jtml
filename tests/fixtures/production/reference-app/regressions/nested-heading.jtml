@@ -1,0 +1,15 @@
+jtml 2
+
+make Summary title
+  panel title title
+    h2 title
+
+make Board
+  let heading = "Before"
+  when rename
+    heading = "After"
+  Summary heading
+  button "Rename" click rename
+
+page
+  Board

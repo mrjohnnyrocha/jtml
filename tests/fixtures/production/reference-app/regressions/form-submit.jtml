@@ -1,0 +1,13 @@
+jtml 2
+
+make Editor
+  let draft = ""
+  let saved = "Not saved"
+  when save
+    saved = draft
+  form submit save
+    input into draft
+  text saved
+
+page
+  Editor

@@ -79,6 +79,10 @@ sleep 0.2
 echo "fixture server: http://127.0.0.1:${SERVER_PORT}/"
 
 fixtures=(static_counter keyed_list control_flow composition large_keyed_updates large_keyed_reorder nested_component_update lifecycle_cleanup form_focus)
+if (( $# > 1 )); then
+  shift
+  fixtures=("$@")
+fi
 for fixture in "${fixtures[@]}"; do
   fixture_dir="${OUT_ROOT}/${fixture}"
   index="${fixture_dir}/index.html"
@@ -88,9 +92,10 @@ for fixture in "${fixtures[@]}"; do
     exit 1
   fi
 
-  python3 - "${index}" "${bench}" "${fixture}" "${CLICK_COUNT}" <<'PY'
+  python3 - "${index}" "${bench}" "${fixture}" "${CLICK_COUNT}" "${ROOT}" <<'PY'
 import json
 import pathlib
+import os
 import sys
 
 source = pathlib.Path(sys.argv[1])
@@ -99,12 +104,17 @@ fixture = sys.argv[3]
 clicks = int(sys.argv[4])
 
 html = source.read_text(encoding="utf-8")
+if fixture == "reference-app":
+    scenario = pathlib.Path(sys.argv[5]) / "tests/fixtures/production/reference-app/browser.js"
+    # Install network guards before any application script executes.
+    html = html.replace("<head>", "<head><script>window.jtmlReferenceRegression = " + json.dumps(os.environ.get("JTML_REFERENCE_REGRESSION", "")) + ";" + scenario.read_text(encoding="utf-8") + "</script>", 1)
 harness = f"""
 <script id="jtml-browser-benchmark-harness">
 (function() {{
   const fixture = {json.dumps(fixture)};
   const clickCount = {clicks};
   const fixtureClickCount =
+    fixture === 'reference-app' ? 4 :
     (fixture === 'large_keyed_updates' || fixture === 'large_keyed_reorder') ? clickCount + 1 : clickCount;
   function finish(result) {{
     const pre = document.createElement('pre');
@@ -113,8 +123,24 @@ harness = f"""
     document.body.appendChild(pre);
     document.body.setAttribute('data-jtml-browser-benchmark', pre.textContent);
   }}
-  function run() {{
+  async function run() {{
     try {{
+      if (fixture === 'reference-app') {{
+        const started = performance.now();
+        const scenario = await window.runReferenceAppChecks();
+        const build = window.jtml && window.jtml.browserBuild || {{}};
+        finish({{
+          fixture, clicks: scenario.clicks, durationMs: performance.now() - started,
+          referenceChecks: scenario.checks,
+          regression: window.jtmlReferenceRegression,
+          browserBuildMode: build.mode,
+          browserBuildCleanProduction: build.cleanProduction,
+          browserBuildCompatibility: build.compatibility,
+          browserBuildDebug: build.debug,
+          loadedScripts: Array.from(document.scripts).map(el => el.src)
+        }});
+        return;
+      }}
       if (fixture === 'form_focus') {{
         const input = document.querySelector('input');
         if (!input) {{
@@ -401,6 +427,8 @@ import sys
 result = json.loads(sys.argv[1])
 fixture = sys.argv[2]
 expected_clicks = int(sys.argv[3])
+if fixture == "reference-app":
+    expected_clicks = {"": 4, "form-submit": 0, "keyed-local-actions": 1, "routing": 2, "nested-heading": 1}[result.get("regression", "")]
 if fixture in ("large_keyed_updates", "large_keyed_reorder"):
     expected_clicks += 1
 budget_ms = float(sys.argv[4])
@@ -415,6 +443,13 @@ if not math.isfinite(duration):
     raise SystemExit(f"error: {fixture} duration is not finite")
 if duration > budget_ms:
     raise SystemExit(f"error: {fixture} browser runtime {duration:.2f}ms exceeds budget {budget_ms:.2f}ms")
+if fixture == "reference-app":
+  checks = result.get("referenceChecks", [])
+  regression = result.get("regression", "")
+  expected_checks = {"": 14, "form-submit": 2, "keyed-local-actions": 2, "routing": 5, "nested-heading": 2}[regression]
+  if len(checks) != expected_checks:
+    raise SystemExit(f"error: reference-app did not complete its interaction checks: {checks!r}")
+  print("Reference app checks: " + "; ".join(checks))
 text = str(result.get("textSample", ""))
 keyed_texts = result.get("keyedTexts", [])
 loaded_scripts = [str(item) for item in result.get("loadedScripts", [])]

@@ -67,7 +67,46 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
 PY
 )"
 SERVER_LOG="${OUT_ROOT}/browser-benchmark-http.log"
-python3 -m http.server "${SERVER_PORT}" --bind 127.0.0.1 --directory "${OUT_ROOT}" >"${SERVER_LOG}" 2>&1 &
+RESULT_ROOT="${OUT_ROOT}/.browser-benchmark-results"
+rm -rf "${RESULT_ROOT}"
+mkdir -p "${RESULT_ROOT}"
+python3 - "${SERVER_PORT}" "${OUT_ROOT}" "${RESULT_ROOT}" >"${SERVER_LOG}" 2>&1 <<'PY' &
+import functools
+import http.server
+import json
+import pathlib
+import re
+import sys
+import urllib.parse
+
+port = int(sys.argv[1])
+out_root = sys.argv[2]
+result_root = pathlib.Path(sys.argv[3])
+
+class BenchmarkHandler(http.server.SimpleHTTPRequestHandler):
+  def do_POST(self):
+    parsed = urllib.parse.urlparse(self.path)
+    fixture = urllib.parse.parse_qs(parsed.query).get("fixture", [""])[0]
+    if parsed.path != "/__jtml_browser_benchmark_result" or not re.fullmatch(r"[A-Za-z0-9_-]+", fixture):
+      self.send_error(404)
+      return
+    length = int(self.headers.get("Content-Length", "0"))
+    if length <= 0 or length > 1024 * 1024:
+      self.send_error(400)
+      return
+    payload = self.rfile.read(length)
+    try:
+      json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+      self.send_error(400)
+      return
+    (result_root / f"{fixture}.json").write_bytes(payload)
+    self.send_response(204)
+    self.end_headers()
+
+handler = functools.partial(BenchmarkHandler, directory=out_root)
+http.server.ThreadingHTTPServer(("127.0.0.1", port), handler).serve_forever()
+PY
 SERVER_PID=$!
 cleanup_server() {
   if kill -0 "${SERVER_PID}" >/dev/null 2>&1; then
@@ -122,6 +161,11 @@ harness = f"""
     pre.textContent = JSON.stringify(result);
     document.body.appendChild(pre);
     document.body.setAttribute('data-jtml-browser-benchmark', pre.textContent);
+    const endpoint = '/__jtml_browser_benchmark_result?fixture=' + encodeURIComponent(fixture);
+    const payload = new Blob([pre.textContent], {{ type: 'application/json' }});
+    if (!navigator.sendBeacon(endpoint, payload)) {{
+      fetch(endpoint, {{ method: 'POST', body: pre.textContent, keepalive: true }}).catch(function() {{}});
+    }}
   }}
   async function run() {{
     try {{
@@ -296,9 +340,14 @@ harness = f"""
       }});
     }}
   }}
-  window.addEventListener('load', function() {{
+  function scheduleRun() {{
     setTimeout(run, 50);
-  }});
+  }}
+  if (document.readyState === 'loading') {{
+    window.addEventListener('DOMContentLoaded', scheduleRun, {{ once: true }});
+  }} else {{
+    scheduleRun();
+  }}
 }})();
 </script>
 """
@@ -314,14 +363,16 @@ PY
   log="${profile}/browser.log"
   dom_file="${profile}/dom.html"
   exit_mode_file="${profile}/exit-mode.txt"
+  result_file="${RESULT_ROOT}/${fixture}.json"
+  rm -f "${result_file}"
   set +e
   bench_url="http://127.0.0.1:${SERVER_PORT}/${fixture}/index.bench.html"
-  python3 - "${browser}" "${bench_url}" "${profile}" "${log}" "${dom_file}" "${exit_mode_file}" "${BROWSER_TIMEOUT}" "${REQUIRE_CLEAN_EXIT}" <<'PY'
+  python3 - "${browser}" "${bench_url}" "${profile}" "${log}" "${dom_file}" "${exit_mode_file}" "${result_file}" "${BROWSER_TIMEOUT}" "${REQUIRE_CLEAN_EXIT}" <<'PY'
 import subprocess
 import sys
 from pathlib import Path
 
-browser, bench_url, profile, log_path, dom_path, exit_mode_path, timeout_s, require_clean_exit = sys.argv[1:]
+browser, bench_url, profile, log_path, dom_path, exit_mode_path, result_path, timeout_s, require_clean_exit = sys.argv[1:]
 
 def text(value):
     if value is None:
@@ -370,7 +421,7 @@ for headless_flag in ("--headless=new", "--headless"):
     except subprocess.TimeoutExpired as exc:
         logs.append(f"[{headless_flag}] browser benchmark timed out\n" + text(exc.stderr))
         last_stdout = Path(dom_path).read_text(encoding="utf-8")
-        if 'jtml-browser-benchmark-result' in last_stdout:
+        if Path(result_path).is_file() or 'jtml-browser-benchmark-result' in last_stdout:
             logs.append(f"[{headless_flag}] benchmark result was produced before timeout; browser did not exit cleanly")
             last_status = 125 if require_clean_exit == "1" else 0
             exit_mode = "terminated-after-result"
@@ -400,8 +451,21 @@ PY
     exit 0
   fi
 
-  result="$(
-    python3 - "${dom_file}" <<'PY'
+  if [[ -f "${result_file}" ]]; then
+    result="$(
+      python3 - "${result_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    payload = handle.read()
+json.loads(payload)
+print(payload)
+PY
+    )"
+  else
+    result="$(
+      python3 - "${dom_file}" <<'PY'
 import html
 import json
 import re
@@ -416,7 +480,8 @@ payload = html.unescape(match.group(1))
 json.loads(payload)
 print(payload)
 PY
-  )" || {
+    )"
+  fi || {
     echo "error: browser benchmark did not produce a runtime result for ${fixture}" >&2
     exit 1
   }

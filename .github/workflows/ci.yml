@@ -43,6 +43,13 @@ jobs:
           brew update
           brew install cmake ninja
 
+      - name: Install Chromium for browser checks (macOS)
+        if: runner.os == 'macOS'
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@48483d551c22a1fe6154c6a195ccc6d5773dc8c4
+        with:
+          chrome-version: latest
+
       # --------------------------------------------------------------
       # Configure, build, test
       # --------------------------------------------------------------
@@ -62,6 +69,8 @@ jobs:
         run: ctest --output-on-failure --parallel
 
       - name: Production reference application (browser required)
+        env:
+          JTML_BENCH_BROWSER: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: scripts/test_production_reference.sh
 
       - name: JTML smoke tests

@@ -43,12 +43,30 @@ jobs:
           brew update
           brew install cmake ninja
 
-      - name: Install Chromium for browser checks (macOS)
+      - name: Install Chrome headless shell (macOS)
         if: runner.os == 'macOS'
-        id: setup-chrome
-        uses: browser-actions/setup-chrome@48483d551c22a1fe6154c6a195ccc6d5773dc8c4
-        with:
-          chrome-version: latest
+        run: |
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import platform
+          import urllib.request
+          import zipfile
+
+          version = "155.0.8059.39"
+          architecture = {"arm64": "mac-arm64", "x86_64": "mac-x64"}[platform.machine()]
+          root = pathlib.Path(os.environ["RUNNER_TEMP"]) / "chrome-headless-shell"
+          archive = root.with_suffix(".zip")
+          url = f"https://storage.googleapis.com/chrome-for-testing-public/{version}/{architecture}/chrome-headless-shell-{architecture}.zip"
+          urllib.request.urlretrieve(url, archive)
+          with zipfile.ZipFile(archive) as package:
+              package.extractall(root)
+          browser = next(root.rglob("chrome-headless-shell"))
+          browser.chmod(0o755)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+              environment.write(f"JTML_BENCH_BROWSER={browser}\n")
+          print(f"Installed Chrome headless shell {version}: {browser}")
+          PY
 
       # --------------------------------------------------------------
       # Configure, build, test
@@ -69,8 +87,6 @@ jobs:
         run: ctest --output-on-failure --parallel
 
       - name: Production reference application (browser required)
-        env:
-          JTML_BENCH_BROWSER: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: scripts/test_production_reference.sh
 
       - name: JTML smoke tests

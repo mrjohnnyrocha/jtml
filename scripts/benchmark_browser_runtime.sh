@@ -372,11 +372,11 @@ PY
   set +e
   bench_url="http://127.0.0.1:${SERVER_PORT}/${fixture}/index.bench.html"
   if [[ -n "${JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT:-}" ]]; then
-    node - "${JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT}" "${browser}" "${bench_url}" "${log}" "${dom_file}" "${exit_mode_file}" "${BROWSER_TIMEOUT}" <<'JS'
+    node - "${JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT}" "${browser}" "${bench}" "${bench_url}" "${log}" "${dom_file}" "${exit_mode_file}" "${BROWSER_TIMEOUT}" <<'JS'
 const fs = require('node:fs');
 const path = require('node:path');
 
-const [, , playwrightRoot, executablePath, benchUrl, logPath, domPath, exitModePath, timeoutSeconds] = process.argv;
+  const [, , playwrightRoot, executablePath, benchPath, benchUrl, logPath, domPath, exitModePath, timeoutSeconds] = process.argv;
 const { chromium } = require(path.join(playwrightRoot, 'node_modules', 'playwright'));
 
 (async () => {
@@ -392,7 +392,63 @@ const { chromium } = require(path.join(playwrightRoot, 'node_modules', 'playwrig
     page.on('console', message => logs.push('[console] ' + message.type() + ': ' + message.text()));
     page.on('pageerror', error => logs.push('[pageerror] ' + error.message));
     const timeout = Number(timeoutSeconds) * 1000;
-    await page.goto(benchUrl, { waitUntil: 'commit', timeout });
+    const html = fs.readFileSync(benchPath, 'utf8');
+    const parsed = await page.evaluate(({ source, baseUrl }) => {
+      const document = new DOMParser().parseFromString(source, 'text/html');
+      const base = document.createElement('base');
+      base.href = baseUrl;
+      document.head.prepend(base);
+      const scripts = [];
+      for (const script of document.querySelectorAll('script')) {
+        if (script.type === 'application/json') continue;
+        scripts.push({
+          src: script.getAttribute('src') || '',
+          source: script.textContent || '',
+          defer: script.hasAttribute('defer')
+        });
+        if (script.src) {
+          const marker = document.createElement('script');
+          marker.type = 'application/x-jtml-loaded';
+          marker.setAttribute('src', script.getAttribute('src'));
+          script.replaceWith(marker);
+        } else {
+          script.remove();
+        }
+      }
+      return { html: '<!doctype html>\n' + document.documentElement.outerHTML, scripts };
+    }, { source: html, baseUrl: benchUrl });
+    const client = await page.context().newCDPSession(page);
+    const frameTree = await client.send('Page.getFrameTree');
+    await client.send('Page.setDocumentContent', {
+      frameId: frameTree.frameTree.frame.id,
+      html: parsed.html
+    });
+    const evaluateScript = async script => {
+      const source = script.src
+        ? fs.readFileSync(path.resolve(path.dirname(benchPath), script.src), 'utf8')
+        : script.source;
+      const result = await client.send('Runtime.evaluate', {
+        expression: source,
+        awaitPromise: true
+      });
+      if (result.exceptionDetails) {
+        const exception = result.exceptionDetails.exception;
+        logs.push('[pageerror] ' + (exception && exception.description
+          ? exception.description
+          : result.exceptionDetails.text || 'browser script evaluation failed'));
+        await page.evaluate(message => {
+          window.dispatchEvent(new ErrorEvent('error', { message }));
+        }, exception && exception.description
+          ? exception.description
+          : result.exceptionDetails.text || 'browser script evaluation failed');
+      }
+    };
+    for (const script of parsed.scripts.filter(script => !script.defer)) {
+      await evaluateScript(script);
+    }
+    for (const script of parsed.scripts.filter(script => script.defer)) {
+      await evaluateScript(script);
+    }
     await page.waitForFunction(
       () => typeof window.runJtmlBrowserBenchmark === 'function' && !!window.jtml,
       undefined,

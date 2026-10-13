@@ -638,7 +638,16 @@ nlohmann::json staticPatchOperation(
             ? compileStaticActionInvocation(*std::next(it), environment)
             : nlohmann::json({{"name", ""}, {"argExpressions", nlohmann::json::array()}});
     } else if (kind == "element" || kind == "container-attrs") {
-        out["partsPlan"] = compileStaticElementParts(words, 1, environment);
+        const auto head = componentNodeHead(node);
+        out["partsPlan"] = compileStaticElementParts(
+            words, 1, environment, head == "form" ? std::set<std::string>{"submit"}
+                                                   : std::set<std::string>{});
+        if (head == "form") {
+            const auto submit = std::find(words.begin(), words.end(), "submit");
+            out["submitInvocation"] = submit != words.end() && std::next(submit) != words.end()
+                ? compileStaticActionInvocation(*std::next(submit), environment)
+                : nlohmann::json({{"name", ""}, {"argExpressions", nlohmann::json::array()}});
+        }
     } else if (kind == "nested-component" && !childComponentKey.empty()) {
         out["childComponentKey"] = childComponentKey;
     }
@@ -1153,7 +1162,9 @@ void appendDirectAttributeMapStatements(std::ostringstream& out,
             << "); ";
     }
 
-    if (head == "checkbox") {
+    if (head == "button") {
+        out << "if (!Object.prototype.hasOwnProperty.call(next, 'type')) addAttr('type', 'button'); ";
+    } else if (head == "checkbox") {
         out << "if (!Object.prototype.hasOwnProperty.call(next, 'type')) addAttr('type', 'checkbox'); ";
     } else if (head == "file" || head == "dropzone") {
         out << "if (!Object.prototype.hasOwnProperty.call(next, 'type')) addAttr('type', 'file'); ";
@@ -1603,6 +1614,16 @@ std::string directStaticContainerCreateExpression(const nlohmann::json& componen
                                                   const std::string& tag,
                                                   const nlohmann::json& partsPlan) {
     if (!staticElementPartsAreDirect(partsPlan, false)) return "";
+    const auto words = splitStaticComponentWords(node.value("text", ""));
+    auto submitInvocation = nlohmann::json({
+        {"name", ""}, {"argExpressions", nlohmann::json::array()}});
+    if (head == "form") {
+        const auto submit = std::find(words.begin(), words.end(), "submit");
+        if (submit != words.end() && std::next(submit) != words.end()) {
+            submitInvocation = compileStaticActionInvocation(*std::next(submit));
+        }
+        if (!staticActionInvocationIsDirect(submitInvocation)) return "";
+    }
     std::set<size_t> visiting;
     visiting.insert(nodeIndex);
     auto childExpressions =
@@ -1617,8 +1638,22 @@ std::string directStaticContainerCreateExpression(const nlohmann::json& componen
     appendDirectAttributeMapStatements(out, partsPlan, resolvedHead);
     out << "next['data-jtml-direct-body-node'] = "
         << jsStringLiteral(std::to_string(nodeIndex)) << "; "
-        << "next['data-jtml-direct-managed-attrs'] = Object.keys(next).join(','); "
-        << "const children = [];";
+        << "next['data-jtml-direct-managed-attrs'] = Object.keys(next).join(','); ";
+    const auto actionName = submitInvocation.value("name", "");
+    if (!actionName.empty()) {
+        out << "const submitArgs = [";
+        const auto argPlans = submitInvocation.value("argPlans", nlohmann::json::array());
+        for (size_t i = 0; i < argPlans.size(); ++i) {
+            if (i > 0) out << ",";
+            out << jsDirectExpressionCall(argPlans[i]);
+        }
+        out << "]; "
+            << "next['data-jtml-direct-component-id'] = instance && instance.id || ''; "
+            << "next['data-jtml-direct-component-submit'] = "
+            << jsStringLiteral(actionName) << "; "
+            << "next['data-jtml-direct-component-args'] = JSON.stringify(submitArgs); ";
+    }
+    out << "const children = [];";
     appendDirectRenderedChildrenStatements(out, childExpressions, "children");
     out << " return '<" << resolvedTag << "' + jtml_static_attrs_to_string(next) + '>' + "
         << "children.join('') + '</" << resolvedTag << ">'; "
@@ -1683,7 +1718,10 @@ std::string directStaticNodeCreateExpression(const nlohmann::json& componentPlan
             nodeIndex, resolvedHead, partsPlan, clickInvocation);
     }
 
-    auto partsPlan = compileStaticElementParts(words, 1);
+    auto partsPlan = compileStaticElementParts(
+        words, 1, ExpressionTypeEnvironment{},
+        resolvedHead == "form" ? std::set<std::string>{"submit"}
+                               : std::set<std::string>{});
     const auto tag = componentTagName(resolvedHead);
     const auto children = node.value("childIndices", nlohmann::json::array());
     if (children.is_array() && !children.empty()) {
@@ -1772,6 +1810,7 @@ std::string directStaticCreateCall(
                 << ", "
                 << jsStringLiteral(operation.value("expression", "")) << ", "
                 << jsExpressionPlanArgument(operation.value("expressionPlan", nlohmann::json::object()))
+                << ", " << operation.value("submitInvocation", nlohmann::json::object()).dump()
                 << ") : null);\n";
         }
     } else if (kind == "region") {

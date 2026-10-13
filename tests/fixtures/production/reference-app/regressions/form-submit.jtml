@@ -7,6 +7,7 @@ make Editor
     saved = draft
   form submit save
     input into draft
+    button "Save note" type "submit"
   text saved
 
 page

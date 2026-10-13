@@ -61,9 +61,18 @@ if [[ -z "${JTML_REFERENCE_REGRESSION:-}" ]]; then
   rm -f "${log}"
   echo "PASS: keyed-local-actions — component-local actions survive keyed reorder and cleanup"
 
-  for regression in form-submit routing nested-heading; do
+  log="$(mktemp "${TMPDIR:-/tmp}/jtml-reference-form-submit.XXXXXX")"
+  if ! JTML_REFERENCE_REGRESSION=form-submit "$0" >"${log}" 2>&1; then
+    cat "${log}" >&2
+    rm -f "${log}"
+    echo "error: form-submit browser regression failed" >&2
+    exit 1
+  fi
+  rm -f "${log}"
+  echo "PASS: form-submit — native submission dispatches component-local actions without navigation"
+
+  for regression in routing nested-heading; do
     case "${regression}" in
-      form-submit) expected_failure="form-submit saves input in visible DOM" ;;
       routing) expected_failure="routing starts without initialization errors" ;;
       nested-heading) expected_failure="nested heading updates when parameter is named title" ;;
     esac

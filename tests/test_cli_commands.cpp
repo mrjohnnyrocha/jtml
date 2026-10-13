@@ -2742,6 +2742,53 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
         << updatePlans;
 }
 
+TEST(CliBuild, BrowserTargetCompilesComponentLocalFormSubmitActions) {
+    const auto root = makeTempDir("browser-component-form-submit");
+    writeTempFile(root / "index.jtml",
+        "jtml 2\n"
+        "make Editor\n"
+        "  let draft = \"\"\n"
+        "  let saved = \"Not saved\"\n"
+        "  when save\n"
+        "    saved = draft\n"
+        "  form submit save\n"
+        "    input into draft\n"
+        "    button \"Save note\" type \"submit\"\n"
+        "  text saved\n"
+        "page\n"
+        "  Editor\n");
+    const auto outDir = std::filesystem::temp_directory_path() /
+                        ("jtml-browser-component-form-submit-" +
+                         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+
+    jtml::cli::Options opts;
+    opts.inputFile = (root / "index.jtml").string();
+    opts.outputFile = outDir.string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.target = "browser";
+    opts.prod = true;
+
+    const auto result = captureCommand([&] { return jtml::cli::cmdBuild(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+
+    const std::string runtimeAsset = readTextFile(outDir / "jtml-runtime.js");
+    EXPECT_NE(runtimeAsset.find("document.addEventListener('submit', async function (event)"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("event.target.closest('[data-jtml-direct-component-submit]')"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("event.preventDefault();"), std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("runDirectComponentAction(componentId, actionName, args)"),
+              std::string::npos) << runtimeAsset;
+
+    const std::string componentModule = readTextFile(outDir / "components" / "index.js");
+    EXPECT_NE(componentModule.find("renderStaticComponentElementNode(instance, definition, scope, 4, 'form', 'form'"),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("{\"argExpressions\":[],\"argPlans\":[],\"name\":\"save\"}"),
+              std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("new Function"), std::string::npos) << componentModule;
+    EXPECT_EQ(componentModule.find("eval("), std::string::npos) << componentModule;
+}
+
 TEST(CliBuild, BrowserClientManifestEscapesScriptBreakingTextAndOmitsExplainFields) {
     const auto file = writeTempJtml(
         "manifest-script-safety",

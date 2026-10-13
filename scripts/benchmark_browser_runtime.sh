@@ -347,10 +347,12 @@ harness = f"""
     setTimeout(run, 50);
   }}
   window.runJtmlBrowserBenchmark = run;
-  if (document.readyState === 'loading') {{
-    window.addEventListener('DOMContentLoaded', scheduleRun, {{ once: true }});
-  }} else {{
-    scheduleRun();
+  if (!window.jtmlManualScriptLoading) {{
+    if (document.readyState === 'loading') {{
+      window.addEventListener('DOMContentLoaded', scheduleRun, {{ once: true }});
+    }} else {{
+      scheduleRun();
+    }}
   }}
 }})();
 </script>
@@ -389,6 +391,7 @@ const { chromium } = require(path.join(playwrightRoot, 'node_modules', 'playwrig
       args: ['--disable-gpu', '--no-sandbox', '--disable-breakpad', '--disable-background-networking']
     });
     const page = await browser.newPage();
+    await page.exposeFunction('jtmlPressEnter', () => page.keyboard.press('Enter'));
     page.on('console', message => logs.push('[console] ' + message.type() + ': ' + message.text()));
     page.on('pageerror', error => logs.push('[pageerror] ' + error.message));
     const timeout = Number(timeoutSeconds) * 1000;
@@ -423,6 +426,9 @@ const { chromium } = require(path.join(playwrightRoot, 'node_modules', 'playwrig
       frameId: frameTree.frameTree.frame.id,
       html: parsed.html
     });
+    await page.evaluate(manual => {
+      window.jtmlManualScriptLoading = manual;
+    }, path.basename(path.dirname(benchPath)) === 'reference-app');
     const evaluateScript = async script => {
       const source = script.src
         ? fs.readFileSync(path.resolve(path.dirname(benchPath), script.src), 'utf8')
@@ -454,7 +460,10 @@ const { chromium } = require(path.join(playwrightRoot, 'node_modules', 'playwrig
       undefined,
       { timeout }
     );
-    await page.evaluate(() => window.runJtmlBrowserBenchmark());
+    await page.evaluate(() => {
+      window.jtmlManualScriptLoading = false;
+      return window.runJtmlBrowserBenchmark();
+    });
     await page.waitForSelector('#jtml-browser-benchmark-result', { timeout });
     fs.writeFileSync(domPath, await page.content(), 'utf8');
     await browser.close();
@@ -602,7 +611,7 @@ result = json.loads(sys.argv[1])
 fixture = sys.argv[2]
 expected_clicks = int(sys.argv[3])
 if fixture == "reference-app":
-  expected_clicks = {"": 4, "form-submit": 0, "keyed-local-actions": 4, "routing": 2, "nested-heading": 1}[result.get("regression", "")]
+  expected_clicks = {"": 4, "form-submit": 1, "keyed-local-actions": 4, "routing": 2, "nested-heading": 1}[result.get("regression", "")]
 if fixture in ("large_keyed_updates", "large_keyed_reorder"):
     expected_clicks += 1
 budget_ms = float(sys.argv[4])
@@ -620,7 +629,7 @@ if duration > budget_ms:
 if fixture == "reference-app":
   checks = result.get("referenceChecks", [])
   regression = result.get("regression", "")
-  expected_checks = {"": 14, "form-submit": 2, "keyed-local-actions": 8, "routing": 5, "nested-heading": 2}[regression]
+  expected_checks = {"": 14, "form-submit": 7, "keyed-local-actions": 8, "routing": 5, "nested-heading": 2}[regression]
   if len(checks) != expected_checks:
     raise SystemExit(f"error: reference-app did not complete its interaction checks: {checks!r}")
   print("Reference app checks: " + "; ".join(checks))

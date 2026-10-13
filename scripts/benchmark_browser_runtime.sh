@@ -152,6 +152,7 @@ harness = f"""
 (function() {{
   const fixture = {json.dumps(fixture)};
   const clickCount = {clicks};
+  let running = false;
   const fixtureClickCount =
     fixture === 'reference-app' ? 4 :
     (fixture === 'large_keyed_updates' || fixture === 'large_keyed_reorder') ? clickCount + 1 : clickCount;
@@ -168,6 +169,8 @@ harness = f"""
     }}
   }}
   async function run() {{
+    if (running) return;
+    running = true;
     try {{
       if (fixture === 'reference-app') {{
         const started = performance.now();
@@ -343,6 +346,7 @@ harness = f"""
   function scheduleRun() {{
     setTimeout(run, 50);
   }}
+  window.runJtmlBrowserBenchmark = run;
   if (document.readyState === 'loading') {{
     window.addEventListener('DOMContentLoaded', scheduleRun, {{ once: true }});
   }} else {{
@@ -388,7 +392,13 @@ const { chromium } = require(path.join(playwrightRoot, 'node_modules', 'playwrig
     page.on('console', message => logs.push('[console] ' + message.type() + ': ' + message.text()));
     page.on('pageerror', error => logs.push('[pageerror] ' + error.message));
     const timeout = Number(timeoutSeconds) * 1000;
-    await page.goto(benchUrl, { waitUntil: 'domcontentloaded', timeout });
+    await page.goto(benchUrl, { waitUntil: 'commit', timeout });
+    await page.waitForFunction(
+      () => typeof window.runJtmlBrowserBenchmark === 'function' && !!window.jtml,
+      undefined,
+      { timeout }
+    );
+    await page.evaluate(() => window.runJtmlBrowserBenchmark());
     await page.waitForSelector('#jtml-browser-benchmark-result', { timeout });
     fs.writeFileSync(domPath, await page.content(), 'utf8');
     await browser.close();

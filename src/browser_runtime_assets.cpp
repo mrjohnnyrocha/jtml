@@ -2817,7 +2817,10 @@ const char* browserRuntimeComponentChunk() {
       }
 
       function patchDirectComponentFromWrites(instance, definition, writes) {
-        if (!instance || !instance.element || !definition) return false;
+        if (!instance || !definition) return false;
+        const mountedElement = componentElementFor(instance.id);
+        if (mountedElement) instance.element = mountedElement;
+        if (!instance.element || !instance.element.isConnected) return false;
         const changed = Object.keys(writes || {});
         if (!changed.length) return false;
         const scope = componentScopeFor(instance, definition);

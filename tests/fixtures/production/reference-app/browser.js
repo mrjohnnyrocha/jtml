@@ -50,6 +50,48 @@
         click('Rename');
         await settle();
         assert(document.querySelector('h2').textContent === 'After', 'nested heading updates when parameter is named title');
+      } else if (regression === 'keyed-local-actions') {
+        const initial = cards();
+        const [audit, ship] = initial;
+        const auditWrapper = audit && audit.closest('[data-jtml-direct-instance]');
+        const shipWrapper = ship && ship.closest('[data-jtml-direct-instance]');
+        const auditId = auditWrapper && auditWrapper.getAttribute('data-jtml-direct-instance');
+        assert(initial.length === 2 && audit.textContent.includes('Audit') && ship.textContent.includes('Ship'),
+          'two keyed component instances start with independent state');
+        const auditInput = audit.querySelector('input');
+        auditInput.value = 'Audit note';
+        auditInput.dispatchEvent(new Event('input', { bubbles: true }));
+        click('Save note', audit);
+        await settle();
+        assert(audit.textContent.includes('Audit note'), 'input binding and named local action update visible DOM');
+        assert(ship.textContent.includes('Not saved') && !ship.textContent.includes('Audit note'),
+          'local component state does not leak to keyed siblings');
+        click('Reorder');
+        await settle();
+        const reordered = cards();
+        assert(reordered[0] === ship && reordered[1] === audit &&
+          ship.closest('[data-jtml-direct-instance]') === shipWrapper &&
+          audit.closest('[data-jtml-direct-instance]') === auditWrapper &&
+          audit.textContent.includes('Audit note'),
+          'keyed reorder preserves component state and DOM identity');
+        const shipInput = ship.querySelector('input');
+        shipInput.value = 'Ship note';
+        shipInput.dispatchEvent(new Event('input', { bubbles: true }));
+        click('Save note', ship);
+        await settle();
+        assert(ship.textContent.includes('Ship note') && audit.textContent.includes('Audit note'),
+          'local action updates the correct component after reorder');
+        click('Remove audit');
+        await settle();
+        const remaining = cards();
+        assert(remaining.length === 1 && remaining[0] === ship && !auditWrapper.isConnected,
+          'keyed removal retains the remaining component and removes the deleted DOM');
+        const lifecycle = window.jtml.directComponentDestroyLifecycle || {};
+        const entry = (lifecycle.entries || []).find(item => item.id === auditId);
+        const registry = window.jtml.getRuntimeRegistrySnapshot();
+        assert(entry && entry.r && entry.s && entry.e && entry.d &&
+          !Object.prototype.hasOwnProperty.call(registry.dynamicGenerations, auditId),
+          'keyed removal cleans component state, handlers and registry ownership');
       } else {
         const input = document.querySelector('input');
         input.value = 'Saved note';

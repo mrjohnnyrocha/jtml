@@ -13,6 +13,12 @@ make Editor label
 
 make Board
   let tasks = ["Audit", "Ship"]
+  when reorder
+    tasks = ["Ship", "Audit"]
+  when removeAudit
+    tasks = ["Ship"]
+  button "Reorder" click reorder
+  button "Remove audit" click removeAudit
   for task in tasks key task
     Editor task
 

@@ -2554,6 +2554,16 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("data-jtml-direct-list-key"),
               std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("generated-retained-row-patch"),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("generatedItemPatches: wrappers.length"),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("physicalMoves: physicalMoves"),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("htmlRendering: 0"),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("h.patchComponentForRegion(instance, definition, node, scope, el)"),
+              std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("instance && instance.slotHtml"),
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("instance.slotHtmlByName"),
@@ -2702,6 +2712,8 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
     EXPECT_NE(updatePlans.find("childScope['item'] = values[itemIndex]"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("data-jtml-direct-list-key"),
+              std::string::npos) << updatePlans;
+    EXPECT_EQ(updatePlans.find("generated-retained-row-patch"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("instance && instance.slotHtml"),
               std::string::npos) << updatePlans;

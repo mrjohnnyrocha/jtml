@@ -752,6 +752,16 @@ if fixture == "large_keyed_updates":
             "error: large_keyed_updates recreated keyed row wrappers instead of retaining them "
             f"(retained={retained}, final={result.get('keyedFinalCount')})"
         )
+    patch = result.get("directComponentKeyedListPatch") or {}
+    timings = patch.get("stageTimingsMs") or {}
+    if patch.get("reconciliation") != "generated-retained-row-patch":
+      raise SystemExit(f"error: large_keyed_updates did not use generated retained-row patches: {patch!r}")
+    if int(patch.get("generatedItemPatches", 0)) != 1000 or int(patch.get("physicalMoves", -1)) != 0:
+      raise SystemExit(f"error: large_keyed_updates did not patch 1000 stable wrappers in place: {patch!r}")
+    if int(patch.get("itemHtmlReplacements", -1)) != 0:
+      raise SystemExit(f"error: large_keyed_updates replaced retained row HTML: {patch!r}")
+    if any(float(timings.get(stage, -1)) != 0 for stage in ("htmlRendering", "htmlParsing", "replacement")):
+      raise SystemExit(f"error: large_keyed_updates rendered, parsed, or replaced retained row HTML: {timings!r}")
 if fixture == "large_keyed_reorder":
     keys = [str(item.get("key", "")) for item in keyed_texts]
     if len(keys) < 1000:
@@ -766,6 +776,16 @@ if fixture == "large_keyed_reorder":
             "error: large_keyed_reorder recreated keyed row wrappers instead of moving them "
             f"(retained={retained}, final={result.get('keyedFinalCount')})"
         )
+    patch = result.get("directComponentKeyedListPatch") or {}
+    timings = patch.get("stageTimingsMs") or {}
+    if patch.get("reconciliation") != "generated-retained-row-patch":
+      raise SystemExit(f"error: large_keyed_reorder did not use generated retained-row patches: {patch!r}")
+    if int(patch.get("generatedItemPatches", 0)) != 1000 or int(patch.get("physicalMoves", -1)) != 1:
+      raise SystemExit(f"error: large_keyed_reorder did not retain all wrappers and move only the rotated row: {patch!r}")
+    if int(patch.get("itemHtmlReplacements", -1)) != 0:
+      raise SystemExit(f"error: large_keyed_reorder replaced retained row HTML: {patch!r}")
+    if any(float(timings.get(stage, -1)) != 0 for stage in ("htmlRendering", "htmlParsing", "replacement")):
+      raise SystemExit(f"error: large_keyed_reorder rendered, parsed, or replaced retained row HTML: {timings!r}")
 if fixture == "nested_component_update" and f"Value {expected_clicks}" not in text:
     raise SystemExit(f"error: nested_component_update did not update nested component text: {text!r}")
 if fixture == "lifecycle_cleanup":

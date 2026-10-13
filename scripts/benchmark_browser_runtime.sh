@@ -50,9 +50,19 @@ if [[ ! -d "${OUT_ROOT}" ]]; then
   exit 1
 fi
 OUT_ROOT="$(cd "${OUT_ROOT}" && pwd)"
+browser_version="$("${browser}" --version 2>/dev/null || printf 'unknown')"
+playwright_version="disabled"
+if [[ -n "${JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT:-}" ]]; then
+  playwright_version="$(
+    node -p "require(process.argv[1] + '/node_modules/playwright/package.json').version" \
+      "${JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT}" 2>/dev/null || printf 'unavailable'
+  )"
+fi
 
 echo "JTML browser runtime benchmark"
 echo "browser: ${browser}"
+echo "browser version: ${browser_version}"
+echo "playwright version: ${playwright_version}"
 echo "clicks per fixture: ${CLICK_COUNT}"
 echo "per-fixture budget: ${BUDGET_MS}ms"
 echo "browser launch timeout: ${BROWSER_TIMEOUT}s"
@@ -152,11 +162,47 @@ harness = f"""
 (function() {{
   const fixture = {json.dumps(fixture)};
   const clickCount = {clicks};
-  let running = false;
+  const harnessStartedAt = performance.now();
+  let runPromise = null;
+  let runCount = 0;
+  let initializationMs = 0;
+  let interactionEndedAt = 0;
+  let finished = false;
   const fixtureClickCount =
     fixture === 'reference-app' ? 4 :
     (fixture === 'large_keyed_updates' || fixture === 'large_keyed_reorder') ? clickCount + 1 : clickCount;
+  function fixtureTargetReady() {{
+    if (fixture === 'reference-app') return typeof window.runReferenceAppChecks === 'function';
+    if (fixture === 'form_focus') return !!document.querySelector('input');
+    return !!document.querySelector('[data-jtml-direct-component-action]');
+  }}
+  function applicationReady() {{
+    const jtml = window.jtml || {{}};
+    return !!(jtml.browserBuild &&
+      jtml.directComponentExecution &&
+      window.__jtml_static_component_modules &&
+      window.__jtml_static_component_plan_index &&
+      fixtureTargetReady());
+  }}
+  async function waitForApplication() {{
+    const deadline = performance.now() + 5000;
+    while (!applicationReady() && performance.now() < deadline) {{
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }}
+    if (!applicationReady()) throw new Error('generated application assets did not initialize before benchmark');
+    initializationMs = performance.now() - harnessStartedAt;
+  }}
   function finish(result) {{
+    if (finished) throw new Error('browser benchmark attempted to finish more than once');
+    finished = true;
+    result.runCount = runCount;
+    result.initializationMs = initializationMs;
+    result.interactionMs = result.durationMs;
+    result.averageInteractionMs = result.clicks ? result.durationMs / result.clicks : 0;
+    result.verificationMs = interactionEndedAt ? performance.now() - interactionEndedAt : 0;
+    result.applicationReady = applicationReady();
+    result.staticComponentModulesLoaded = !!window.__jtml_static_component_modules;
+    result.staticComponentPlanIndexLoaded = !!window.__jtml_static_component_plan_index;
     const pre = document.createElement('pre');
     pre.id = 'jtml-browser-benchmark-result';
     pre.textContent = JSON.stringify(result);
@@ -168,16 +214,18 @@ harness = f"""
       fetch(endpoint, {{ method: 'POST', body: pre.textContent, keepalive: true }}).catch(function() {{}});
     }}
   }}
-  async function run() {{
-    if (running) return;
-    running = true;
+  async function execute() {{
+    runCount += 1;
     try {{
+      await waitForApplication();
       if (fixture === 'reference-app') {{
         const started = performance.now();
         const scenario = await window.runReferenceAppChecks();
+        const durationMs = performance.now() - started;
+        interactionEndedAt = performance.now();
         const build = window.jtml && window.jtml.browserBuild || {{}};
         finish({{
-          fixture, clicks: scenario.clicks, durationMs: performance.now() - started,
+          fixture, clicks: scenario.clicks, interactionsExecuted: scenario.clicks, durationMs,
           referenceChecks: scenario.checks,
           regression: window.jtmlReferenceRegression,
           browserBuildMode: build.mode,
@@ -199,17 +247,23 @@ harness = f"""
         input.setSelectionRange(2, 2);
         const beforeInput = input;
         const started = performance.now();
+        let slowestInteractionMs = 0;
         for (let i = 0; i < fixtureClickCount; i += 1) {{
+          const interactionStartedAt = performance.now();
           input.value = 'Ada ' + i;
           const pos = Math.min(3, input.value.length);
           input.setSelectionRange(pos, pos);
           input.dispatchEvent(new Event('input', {{ bubbles: true }}));
+          slowestInteractionMs = Math.max(slowestInteractionMs, performance.now() - interactionStartedAt);
         }}
         const durationMs = performance.now() - started;
+        interactionEndedAt = performance.now();
         const jtml = window.jtml || {{}};
         finish({{
           fixture,
           clicks: fixtureClickCount,
+          interactionsExecuted: fixtureClickCount,
+          slowestInteractionMs,
           durationMs,
           textSample: (document.body && document.body.innerText || '').slice(0, 1000),
           loadedScripts: Array.prototype.slice.call(document.querySelectorAll('script[src]')).map(function(el) {{
@@ -269,11 +323,19 @@ harness = f"""
         if (key && !beforeKeyedByKey.has(key)) beforeKeyedByKey.set(key, el);
       }});
       const started = performance.now();
+      let interactionsExecuted = 0;
+      let slowestInteractionMs = 0;
       for (let i = 0; i < fixtureClickCount; i += 1) {{
         const currentTarget = document.querySelector('[data-jtml-direct-component-action]') || target;
+        const previousAction = window.jtml && window.jtml.directComponentLastAction;
+        const interactionStartedAt = performance.now();
         currentTarget.click();
+        slowestInteractionMs = Math.max(slowestInteractionMs, performance.now() - interactionStartedAt);
+        const currentAction = window.jtml && window.jtml.directComponentLastAction;
+        if (currentAction && currentAction !== previousAction) interactionsExecuted += 1;
       }}
       const durationMs = performance.now() - started;
+      interactionEndedAt = performance.now();
       const jtml = window.jtml || {{}};
       const bodyText = document.body && document.body.innerText || '';
       const keyedTexts = Array.prototype.slice.call(
@@ -303,6 +365,8 @@ harness = f"""
       finish({{
         fixture,
         clicks: fixtureClickCount,
+        interactionsExecuted,
+        slowestInteractionMs,
         durationMs,
         textSample: bodyText.slice(0, 1000),
         loadedScripts: Array.prototype.slice.call(document.querySelectorAll('script[src]')).map(function(el) {{
@@ -343,16 +407,13 @@ harness = f"""
       }});
     }}
   }}
-  function scheduleRun() {{
-    setTimeout(run, 50);
+  function run() {{
+    if (!runPromise) runPromise = execute();
+    return runPromise;
   }}
   window.runJtmlBrowserBenchmark = run;
   if (!window.jtmlManualScriptLoading) {{
-    if (document.readyState === 'loading') {{
-      window.addEventListener('DOMContentLoaded', scheduleRun, {{ once: true }});
-    }} else {{
-      scheduleRun();
-    }}
+    run();
   }}
 }})();
 </script>
@@ -426,9 +487,7 @@ const { chromium } = require(path.join(playwrightRoot, 'node_modules', 'playwrig
       frameId: frameTree.frameTree.frame.id,
       html: parsed.html
     });
-    await page.evaluate(manual => {
-      window.jtmlManualScriptLoading = manual;
-    }, path.basename(path.dirname(benchPath)) === 'reference-app');
+    await page.evaluate(() => { window.jtmlManualScriptLoading = true; });
     const evaluateScript = async script => {
       const source = script.src
         ? fs.readFileSync(path.resolve(path.dirname(benchPath), script.src), 'utf8')
@@ -512,7 +571,7 @@ for headless_flag in ("--headless=new", "--headless"):
         "--allow-file-access-from-files",
         f"--user-data-dir={profile}-{headless_flag.replace('=', '-')}",
         "--run-all-compositor-stages-before-draw",
-        "--virtual-time-budget=6000",
+        f"--virtual-time-budget={int(float(timeout_s) * 1000)}",
         "--dump-dom",
         bench_url,
     ]
@@ -619,13 +678,29 @@ exit_mode = sys.argv[5]
 
 if result.get("error"):
     raise SystemExit(f"error: {fixture} browser runtime error: {result['error']}")
+if int(result.get("runCount", 0)) != 1:
+  raise SystemExit(f"error: {fixture} benchmark executed {result.get('runCount')} times instead of exactly once")
+if not result.get("applicationReady"):
+  raise SystemExit(f"error: {fixture} benchmark started before generated application initialization")
+if not result.get("staticComponentModulesLoaded") or not result.get("staticComponentPlanIndexLoaded"):
+  raise SystemExit(f"error: {fixture} benchmark ran without generated component modules and plan index")
 if int(result.get("clicks", 0)) != expected_clicks:
     raise SystemExit(f"error: {fixture} only ran {result.get('clicks')} of {expected_clicks} clicks")
+if int(result.get("interactionsExecuted", 0)) != expected_clicks:
+  raise SystemExit(
+    f"error: {fixture} only observed {result.get('interactionsExecuted')} of {expected_clicks} interactions"
+  )
 duration = float(result.get("durationMs", math.inf))
 if not math.isfinite(duration):
     raise SystemExit(f"error: {fixture} duration is not finite")
-if duration > budget_ms:
-    raise SystemExit(f"error: {fixture} browser runtime {duration:.2f}ms exceeds budget {budget_ms:.2f}ms")
+if duration <= 0:
+  raise SystemExit(f"error: {fixture} reported non-positive interaction time {duration!r}ms")
+initialization = float(result.get("initializationMs", math.inf))
+verification = float(result.get("verificationMs", math.inf))
+if not math.isfinite(initialization) or initialization < 0:
+  raise SystemExit(f"error: {fixture} initialization time is invalid: {initialization!r}ms")
+if not math.isfinite(verification) or verification < 0:
+  raise SystemExit(f"error: {fixture} verification time is invalid: {verification!r}ms")
 if fixture == "reference-app":
   checks = result.get("referenceChecks", [])
   regression = result.get("regression", "")
@@ -787,9 +862,23 @@ if fixture in ("composition", "nested_component_update"):
         )
 if fixture == "keyed_list" and not result.get("directComponentListLifecycle"):
     raise SystemExit("error: keyed_list did not report keyed list lifecycle telemetry")
+average = float(result.get("averageInteractionMs", math.inf))
+slowest = float(result.get("slowestInteractionMs", 0))
+if not math.isfinite(average) or average < 0 or not math.isfinite(slowest) or slowest < 0:
+  raise SystemExit(
+    f"error: {fixture} interaction distribution is invalid: average={average!r} slowest={slowest!r}"
+  )
+if duration > budget_ms:
+  raise SystemExit(
+    f"error: {fixture} correctness passed but interaction time {duration:.2f}ms exceeds budget {budget_ms:.2f}ms "
+    f"(initialization={initialization:.2f}ms average={average:.2f}ms slowest={slowest:.2f}ms "
+    f"verification={verification:.2f}ms)"
+  )
 print(
     "OK: browser-runtime "
-    f"{fixture} clicks={expected_clicks} duration={duration:.2f}ms "
+  f"{fixture} clicks={expected_clicks} initialization={initialization:.2f}ms "
+  f"interaction={duration:.2f}ms average={average:.2f}ms slowest={slowest:.2f}ms "
+  f"verification={verification:.2f}ms "
     f"nestedParamPatch={str(bool(result.get('directNestedComponentParamPatch'))).lower()} "
     f"keyedLifecycle={str(bool(result.get('directComponentListLifecycle'))).lower()} "
     f"browserExit={exit_mode}"

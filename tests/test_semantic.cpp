@@ -2052,6 +2052,27 @@ TEST(RuntimePlan, StaticUpdatePlanAssetUsesComponentTypeEnvironment) {
         << renderedExpressionSlice;
 }
 
+TEST(RuntimePlan, StaticUpdatePlanAssetLowersRouteLinkAttributes) {
+    const std::string source =
+        "jtml 2\n"
+        "make Home\n"
+        "  link \"About\" to \"/about\" active-class \"active\"\n"
+        "page\n"
+        "  Home\n";
+
+    auto program = parseFriendly(source);
+    const auto plan = jtml::buildRuntimePlan(program);
+    jtml::RuntimeProjectPlan project;
+    project.linkedPlan = plan;
+
+    const auto asset = jtml::emitStaticUpdatePlanAsset(project);
+    EXPECT_NE(asset.find("delete next.to"), std::string::npos) << asset;
+    EXPECT_NE(asset.find("addAttr('href', 'javascript:void(0)')"), std::string::npos) << asset;
+    EXPECT_NE(asset.find("addAttr('data-jtml-href'"), std::string::npos) << asset;
+    EXPECT_NE(asset.find("addAttr('data-jtml-link', 'true')"), std::string::npos) << asset;
+    EXPECT_NE(asset.find("addAttr('data-jtml-active-class'"), std::string::npos) << asset;
+}
+
 TEST(RuntimePlan, TypedExpressionIrOwnsDependenciesJsonAndJsCodegen) {
     auto ir = jtml::parseExpressionIr(
         "(visible && users.data[index].active) ? [title, count + 1] : { \"fallback\": empty }");

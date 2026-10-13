@@ -1162,6 +1162,17 @@ void appendDirectAttributeMapStatements(std::ostringstream& out,
             << "); ";
     }
 
+    if (head == "link" || head == "navlink") {
+        out << "if (Object.prototype.hasOwnProperty.call(next, 'to')) { "
+            << "const target = String(next.to || '/'); delete next.to; "
+            << "addAttr('href', 'javascript:void(0)'); "
+            << "addAttr('data-jtml-href', target[0] === '#' ? target : '#' + (target[0] === '/' ? target : '/' + target)); "
+            << "addAttr('data-jtml-link', 'true'); } "
+            << "if (Object.prototype.hasOwnProperty.call(next, 'active-class')) { "
+            << "const activeClass = next['active-class']; delete next['active-class']; "
+            << "addAttr('data-jtml-active-class', activeClass); } ";
+    }
+
     if (head == "button") {
         out << "if (!Object.prototype.hasOwnProperty.call(next, 'type')) addAttr('type', 'button'); ";
     } else if (head == "checkbox") {

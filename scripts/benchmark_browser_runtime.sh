@@ -670,7 +670,7 @@ result = json.loads(sys.argv[1])
 fixture = sys.argv[2]
 expected_clicks = int(sys.argv[3])
 if fixture == "reference-app":
-  expected_clicks = {"": 4, "form-submit": 1, "keyed-local-actions": 4, "routing": 2, "nested-heading": 1}[result.get("regression", "")]
+  expected_clicks = {"": 4, "form-submit": 1, "keyed-local-actions": 4, "routing": 4, "nested-heading": 1}[result.get("regression", "")]
 if fixture in ("large_keyed_updates", "large_keyed_reorder"):
     expected_clicks += 1
 budget_ms = float(sys.argv[4])
@@ -704,7 +704,7 @@ if not math.isfinite(verification) or verification < 0:
 if fixture == "reference-app":
   checks = result.get("referenceChecks", [])
   regression = result.get("regression", "")
-  expected_checks = {"": 14, "form-submit": 7, "keyed-local-actions": 8, "routing": 5, "nested-heading": 2}[regression]
+  expected_checks = {"": 14, "form-submit": 7, "keyed-local-actions": 8, "routing": 20, "nested-heading": 2}[regression]
   if len(checks) != expected_checks:
     raise SystemExit(f"error: reference-app did not complete its interaction checks: {checks!r}")
   print("Reference app checks: " + "; ".join(checks))

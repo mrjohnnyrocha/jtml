@@ -902,6 +902,25 @@ TEST(FriendlySyntax, BrowserRuntimeAssetsExposeOwnedChunks) {
               std::string::npos);
     EXPECT_NE(std::string(chunks[2].source).find("function startFetchBindings"),
               std::string::npos);
+    EXPECT_NE(std::string(chunks[2].source).find("const __jtml_guards = []"),
+              std::string::npos);
+    EXPECT_NE(std::string(chunks[2].source).find("let __jtml_router_ready = false"),
+              std::string::npos);
+    EXPECT_NE(std::string(chunks[2].source).find("if (__jtml_router_ready) applyRoutes()"),
+              std::string::npos);
+    EXPECT_NE(std::string(chunks[0].source).find("delete rendered.to"),
+              std::string::npos);
+    EXPECT_NE(std::string(chunks[0].source).find("rendered['data-jtml-href']"),
+              std::string::npos);
+    EXPECT_NE(std::string(chunks[0].source).find("rendered['data-jtml-active-class']"),
+              std::string::npos);
+    EXPECT_EQ(std::string(chunks[3].source).find("const __jtml_guards = []"),
+              std::string::npos);
+    const auto routerReady = std::string(chunks[3].source).find("__jtml_router_ready = true");
+    const auto initialRoute = std::string(chunks[3].source).find("applyRoutes();");
+    ASSERT_NE(routerReady, std::string::npos);
+    ASSERT_NE(initialRoute, std::string::npos);
+    EXPECT_LT(routerReady, initialRoute);
     EXPECT_NE(std::string(chunks[3].source).find("window.addEventListener('hashchange'"),
               std::string::npos);
 

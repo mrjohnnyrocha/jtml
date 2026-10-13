@@ -46,27 +46,12 @@ jobs:
       - name: Install Chrome headless shell (macOS)
         if: runner.os == 'macOS'
         run: |
-          python3 - <<'PY'
-          import os
-          import pathlib
-          import platform
-          import urllib.request
-          import zipfile
-
-          version = "155.0.8059.39"
-          architecture = {"arm64": "mac-arm64", "x86_64": "mac-x64"}[platform.machine()]
-          root = pathlib.Path(os.environ["RUNNER_TEMP"]) / "chrome-headless-shell"
-          archive = root.with_suffix(".zip")
-          url = f"https://storage.googleapis.com/chrome-for-testing-public/{version}/{architecture}/chrome-headless-shell-{architecture}.zip"
-          urllib.request.urlretrieve(url, archive)
-          with zipfile.ZipFile(archive) as package:
-              package.extractall(root)
-          browser = next(root.rglob("chrome-headless-shell"))
-          browser.chmod(0o755)
-          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
-              environment.write(f"JTML_BENCH_BROWSER={browser}\n")
-          print(f"Installed Chrome headless shell {version}: {browser}")
-          PY
+          export PLAYWRIGHT_BROWSERS_PATH="${RUNNER_TEMP}/ms-playwright"
+          npx --yes playwright@1.63.0 install chromium-headless-shell
+          browser="$(find "${PLAYWRIGHT_BROWSERS_PATH}" -type f -name chrome-headless-shell -perm +111 -print -quit)"
+          test -n "${browser}"
+          echo "JTML_BENCH_BROWSER=${browser}" >> "${GITHUB_ENV}"
+          "${browser}" --version
 
       # --------------------------------------------------------------
       # Configure, build, test

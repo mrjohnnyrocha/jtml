@@ -1320,6 +1320,27 @@ TEST(BuildOwnership, BrowserProductionSourcesAreSeparatedFromLiveAndLegacyRuntim
     }
 }
 
+TEST(BenchmarkHarness, BrowserRuntimeWaitsForGeneratedApplicationAndRunsOnce) {
+    const auto script = readTextFile(
+        std::filesystem::path(JTML_SOURCE_DIR) / "scripts" / "benchmark_browser_runtime.sh");
+
+    EXPECT_NE(script.find("let runPromise = null;"), std::string::npos) << script;
+    EXPECT_NE(script.find("async function waitForApplication()"), std::string::npos) << script;
+    EXPECT_NE(script.find("window.__jtml_static_component_modules"), std::string::npos) << script;
+    EXPECT_NE(script.find("window.__jtml_static_component_plan_index"), std::string::npos) << script;
+    EXPECT_NE(script.find("jtml.directComponentExecution"), std::string::npos) << script;
+    EXPECT_NE(script.find("window.jtmlManualScriptLoading = true"), std::string::npos) << script;
+    EXPECT_NE(script.find("if (!runPromise) runPromise = execute();"), std::string::npos) << script;
+    EXPECT_NE(script.find("browser version: ${browser_version}"), std::string::npos) << script;
+    EXPECT_NE(script.find("playwright version: ${playwright_version}"), std::string::npos) << script;
+    EXPECT_NE(script.find("benchmark executed {result.get('runCount')} times instead of exactly once"),
+              std::string::npos) << script;
+    EXPECT_NE(script.find("reported non-positive interaction time"), std::string::npos) << script;
+    EXPECT_EQ(script.find("setTimeout(run, 50)"), std::string::npos) << script;
+    EXPECT_EQ(script.find("path.basename(path.dirname(benchPath)) === 'reference-app'"),
+              std::string::npos) << script;
+}
+
 TEST(CliTranspile, BrowserTargetUsesBrowserBuildServiceRuntimePlan) {
     const auto file = writeTempJtml(
         "browser-transpile",

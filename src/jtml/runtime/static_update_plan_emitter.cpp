@@ -1190,16 +1190,30 @@ void appendDirectAttributePatchStatements(std::ostringstream& out,
         << "el.setAttribute('data-jtml-direct-managed-attrs', Object.keys(next).join(',')); ";
 }
 
-std::string directStaticTextPatchExpression(size_t nodeIndex,
-                                            const nlohmann::json& plan) {
-    if (!isDirectJsExpressionPlan(plan)) return "";
-    std::ostringstream out;
-    out << "(function(){ "
-        << "const el = h && h.directComponentElementForNode ? "
+void appendDirectPatchElementLookup(std::ostringstream& out,
+                                    size_t nodeIndex,
+                                    const std::string& rootExpression) {
+    out << "const el = ";
+    if (!rootExpression.empty()) {
+        out << rootExpression << " && " << rootExpression << ".querySelector ? "
+            << rootExpression << ".querySelector('[data-jtml-direct-body-node=\""
+            << nodeIndex << "\"]') : null; ";
+        return;
+    }
+    out << "h && h.directComponentElementForNode ? "
         << "h.directComponentElementForNode(instance, " << nodeIndex << ") : "
         << "(instance && instance.element ? instance.element.querySelector('[data-jtml-direct-body-node=\""
-        << nodeIndex << "\"]') : null); "
-        << "if (!el) return false; "
+        << nodeIndex << "\"]') : null); ";
+}
+
+std::string directStaticTextPatchExpression(size_t nodeIndex,
+                                            const nlohmann::json& plan,
+                                            const std::string& rootExpression = "") {
+    if (!isDirectJsExpressionPlan(plan)) return "";
+    std::ostringstream out;
+    out << "(function(){ ";
+    appendDirectPatchElementLookup(out, nodeIndex, rootExpression);
+    out << "if (!el) return false; "
         << "const value = " << jsExpressionPlanArgument(plan) << "(scope); "
         << "el.textContent = String(value == null ? '' : value); "
         << "return true; "
@@ -1210,18 +1224,16 @@ std::string directStaticTextPatchExpression(size_t nodeIndex,
 std::string directStaticButtonPatchExpression(size_t nodeIndex,
                                               const std::string& head,
                                               const nlohmann::json& partsPlan,
-                                              const nlohmann::json& clickInvocation) {
+                                              const nlohmann::json& clickInvocation,
+                                              const std::string& rootExpression = "") {
     if (!staticElementPartsAreDirect(partsPlan, true) ||
         !staticActionInvocationIsDirect(clickInvocation)) {
         return "";
     }
     std::ostringstream out;
-    out << "(function(){ "
-        << "const el = h && h.directComponentElementForNode ? "
-        << "h.directComponentElementForNode(instance, " << nodeIndex << ") : "
-        << "(instance && instance.element ? instance.element.querySelector('[data-jtml-direct-body-node=\""
-        << nodeIndex << "\"]') : null); "
-        << "if (!el || !el.tagName || el.tagName.toLowerCase() !== 'button') return false; "
+    out << "(function(){ ";
+    appendDirectPatchElementLookup(out, nodeIndex, rootExpression);
+    out << "if (!el || !el.tagName || el.tagName.toLowerCase() !== 'button') return false; "
         << "const labelValue = "
         << jsDirectExpressionCall(partsPlan.value("contentPlan", nlohmann::json::object()))
         << "; "
@@ -1255,7 +1267,8 @@ std::string directStaticElementPatchExpression(size_t nodeIndex,
                                                const std::string& tag,
                                                const nlohmann::json& partsPlan,
                                                bool patchContent,
-                                               const nlohmann::json& expressionPlan) {
+                                               const nlohmann::json& expressionPlan,
+                                               const std::string& rootExpression = "") {
     const auto contentPlan = partsPlan.value("contentPlan", nlohmann::json::object());
     const bool usesPartsContent = !partsPlan.value("content", "").empty();
     const auto& planForContent = usesPartsContent ? contentPlan : expressionPlan;
@@ -1266,12 +1279,9 @@ std::string directStaticElementPatchExpression(size_t nodeIndex,
     const auto resolvedHead = head.empty() ? std::string("box") : head;
     const auto resolvedTag = tag.empty() ? componentTagName(resolvedHead) : tag;
     std::ostringstream out;
-    out << "(function(){ "
-        << "const el = h && h.directComponentElementForNode ? "
-        << "h.directComponentElementForNode(instance, " << nodeIndex << ") : "
-        << "(instance && instance.element ? instance.element.querySelector('[data-jtml-direct-body-node=\""
-        << nodeIndex << "\"]') : null); "
-        << "if (!el || !el.tagName || el.tagName.toLowerCase() !== "
+    out << "(function(){ ";
+    appendDirectPatchElementLookup(out, nodeIndex, rootExpression);
+    out << "if (!el || !el.tagName || el.tagName.toLowerCase() !== "
         << jsStringLiteral(resolvedTag) << ".toLowerCase()) return false; ";
     if (patchContent) {
         out << "const contentValue = " << jsDirectExpressionCall(planForContent) << "; "
@@ -1854,7 +1864,8 @@ std::string directStaticCreateCall(
 
 std::string directStaticRegionPatchExpression(
         const nlohmann::json& componentPlan,
-        size_t nodeIndex) {
+    size_t nodeIndex,
+    bool enableGeneratedKeyedPatch) {
     const auto bodyPlan = componentPlan.value("bodyPlan", nlohmann::json::array());
     const nlohmann::json* node = nullptr;
     if (bodyPlan.is_array() && nodeIndex < bodyPlan.size() &&
@@ -1867,6 +1878,74 @@ std::string directStaticRegionPatchExpression(
         directStaticNodeCreateExpression(componentPlan, nodeIndex, visiting);
     if (directCreate.empty()) return "";
 
+    std::string retainedItemPatch;
+    if (enableGeneratedKeyedPatch && head == "for" && bodyPlan.is_array()) {
+        std::ostringstream patch;
+        size_t emitted = 0;
+        const auto entries = componentPlan.value("entries", nlohmann::json::array());
+        for (const auto& entry : entries) {
+            if (!entry.is_object() || !entry.contains("index") ||
+                !entry.contains("operation")) {
+                continue;
+            }
+            const int entryIndex = entry.value("index", -1);
+            if (entryIndex < 0 || static_cast<size_t>(entryIndex) >= bodyPlan.size()) continue;
+            int parentIndex = bodyPlan[entryIndex].value("parentIndex", -1);
+            bool descendant = false;
+            size_t guard = 0;
+            while (parentIndex >= 0 && guard++ < bodyPlan.size()) {
+                if (static_cast<size_t>(parentIndex) == nodeIndex) {
+                    descendant = true;
+                    break;
+                }
+                if (static_cast<size_t>(parentIndex) >= bodyPlan.size()) break;
+                parentIndex = bodyPlan[parentIndex].value("parentIndex", -1);
+            }
+            if (!descendant) continue;
+
+            const auto operation = entry["operation"];
+            const auto kind = operation.value("operation", "");
+            const auto childIndex = static_cast<size_t>(entryIndex);
+            std::string expression;
+            if (kind == "text") {
+                expression = directStaticTextPatchExpression(
+                    childIndex,
+                    operation.value("expressionPlan", nlohmann::json::object()),
+                    "wrapper");
+            } else if (kind == "button") {
+                expression = directStaticButtonPatchExpression(
+                    childIndex,
+                    operation.value("head", "button"),
+                    operation.value("partsPlan", nlohmann::json::object()),
+                    operation.value("clickInvocation", nlohmann::json::object()),
+                    "wrapper");
+            } else if (kind == "element" || kind == "container-attrs") {
+                expression = directStaticElementPatchExpression(
+                    childIndex,
+                    operation.value("head", "box"),
+                    operation.value("tag", "div"),
+                    operation.value("partsPlan", nlohmann::json::object()),
+                    kind == "element",
+                    operation.value("expressionPlan", nlohmann::json::object()),
+                    "wrapper");
+            } else {
+                retainedItemPatch.clear();
+                emitted = 0;
+                break;
+            }
+            if (expression.empty()) {
+                retainedItemPatch.clear();
+                emitted = 0;
+                break;
+            }
+            patch << "if (!(" << expression << ")) return false; ";
+            emitted += 1;
+        }
+        if (emitted > 0) {
+            retainedItemPatch = "function(wrapper, scope){ " + patch.str() + "return true; }";
+        }
+    }
+
     std::ostringstream out;
     out << "(function(){ ";
     appendStaticEscapingHelpers(out);
@@ -1877,13 +1956,92 @@ std::string directStaticRegionPatchExpression(
         << "h.directComponentElementForNode(instance, " << nodeIndex << ") : "
         << "(instance && instance.element ? instance.element.querySelector('[data-jtml-direct-body-node=\""
         << nodeIndex << "\"]') : null); "
-        << "if (!el) return false; "
-        << (head == "for"
-                ? std::string("const node = (definition && definition.bodyPlan || [])[") +
-                      std::to_string(nodeIndex) +
-                      "]; if (h && h.patchComponentForRegion && h.patchComponentForRegion(instance, definition, node, scope, el)) return true; "
-                : std::string())
-        << "const html = " << directCreate << "; "
+        << "if (!el) return false; ";
+    if (head == "for") {
+        out << "const node = (definition && definition.bodyPlan || [])["
+            << nodeIndex << "]; ";
+        const auto loopPlan = node->value("loopPlan", nlohmann::json::object());
+        const auto itemName = loopPlan.value("item", "");
+        const auto collectionPlan = loopPlan.value("collectionPlan", nlohmann::json::object());
+        const auto keyExpression = node->value("keyExpression", "");
+        const auto keyPlan = node->value("keyExpressionPlan", nlohmann::json::object());
+        if (!retainedItemPatch.empty() && !itemName.empty() &&
+            isDirectJsExpressionPlan(collectionPlan) &&
+            (keyExpression.empty() || isDirectJsExpressionPlan(keyPlan))) {
+            out << "if ((function(){ "
+                << "const expressionStarted = performance.now(); "
+                << "let values = " << jsDirectExpressionCall(collectionPlan) << "; "
+                << "if (values == null) values = []; "
+                << "else if (!Array.isArray(values)) { "
+                << "if (typeof values === 'string') values = values.split(''); "
+                << "else if (typeof values === 'object') values = Object.values(values); "
+                << "else values = [values]; } "
+                << "const items = []; const keys = []; const seen = {}; "
+                << "for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1) { "
+                << "const childScope = Object.assign({}, scope); childScope["
+                << jsStringLiteral(itemName) << "] = values[itemIndex]; "
+                << "let keyValue = ";
+            if (keyExpression.empty()) {
+                out << "itemIndex";
+            } else {
+                out << "(function(scope){ return " << jsDirectExpressionCall(keyPlan)
+                    << "; })(childScope)";
+            }
+            out << "; if (keyValue == null || keyValue === '') keyValue = itemIndex; "
+                << "const key = String(keyValue).replace(/[^A-Za-z0-9_.:-]/g, '_'); "
+                << "if (seen[key]) return false; seen[key] = true; "
+                << "keys.push(key); items.push({ key: key, index: itemIndex, scope: childScope }); } "
+                << "const expressionEvaluationMs = performance.now() - expressionStarted; "
+                << "const existing = Array.prototype.slice.call(el.children || []).filter(function(child){ "
+                << "return child && child.getAttribute && child.getAttribute('data-jtml-direct-list-item') === "
+                << jsStringLiteral(std::to_string(nodeIndex)) << "; }); "
+                << "if (existing.length !== items.length) return false; "
+                << "const existingByKey = {}; const previousKeys = []; "
+                << "for (let index = 0; index < existing.length; index += 1) { "
+                << "const key = String(existing[index].getAttribute('data-jtml-direct-list-key') || ''); "
+                << "if (Object.prototype.hasOwnProperty.call(existingByKey, key)) return false; "
+                << "existingByKey[key] = existing[index]; previousKeys.push(key); } "
+                << "for (let index = 0; index < keys.length; index += 1) { "
+                << "if (!Object.prototype.hasOwnProperty.call(existingByKey, keys[index])) return false; } "
+                << "const previousIndex = {}; previousKeys.forEach(function(key, index){ previousIndex[key] = index; }); "
+                << "const movedKeys = keys.filter(function(key, index){ return previousIndex[key] !== index; }); "
+                << "const patchItem = " << retainedItemPatch << "; const wrappers = []; "
+                << "const patchStarted = performance.now(); "
+                << "for (let index = 0; index < items.length; index += 1) { "
+                << "const item = items[index]; const wrapper = existingByKey[item.key]; "
+                << "wrapper.setAttribute('data-jtml-direct-list-index', String(index)); "
+                << "if (!patchItem(wrapper, item.scope)) return false; wrappers.push(wrapper); } "
+                << "const domPatchingMs = performance.now() - patchStarted; "
+                << "const movementStarted = performance.now(); let physicalMoves = 0; let cursor = el.firstElementChild; "
+                << "for (let index = 0; index < wrappers.length; index += 1) { "
+                << "const wrapper = wrappers[index]; if (wrapper === cursor) cursor = cursor.nextElementSibling; "
+                << "else { el.insertBefore(wrapper, cursor); physicalMoves += 1; } } "
+                << "const movementMs = performance.now() - movementStarted; "
+                << "const lifecycleStarted = performance.now(); "
+                << "const stageTimingsMs = { expressionEvaluation: expressionEvaluationMs, htmlRendering: 0, "
+                << "htmlParsing: 0, domPatching: domPatchingMs, movement: movementMs, replacement: 0, lifecycleBookkeeping: 0 }; "
+                << "window.jtml = Object.assign(window.jtml || {}, { "
+                << "directComponentListLifecycle: { componentId: instance && instance.id || '', "
+                << "component: instance && instance.component || definition && definition.name || '', "
+                << "moduleId: instance && instance.moduleId == null ? null : instance && instance.moduleId, "
+                << "bodyNodeIndex: " << nodeIndex << ", bodySourceLine: node && node.sourceLine || 0, "
+                << "bodySourceColumn: node && node.sourceColumn || 0, previousKeys: previousKeys, currentKeys: keys.slice(), "
+                << "insertedKeys: [], removedKeys: [], movedKeys: movedKeys, inserted: 0, removed: 0, moved: movedKeys.length, "
+                << "mode: 'keyed-list-markers' }, "
+                << "directComponentKeyedListPatch: { componentId: instance && instance.id || '', "
+                << "component: instance && instance.component || definition && definition.name || '', bodyNodeIndex: "
+                << nodeIndex << ", previousKeys: previousKeys, keys: keys, retainedKeys: keys.slice(), insertedKeys: [], "
+                << "removedKeys: [], movedKeys: movedKeys, reused: wrappers.length, created: 0, removed: 0, "
+                << "prunedDynamicInstances: 0, generatedItemPatches: wrappers.length, itemElementPatches: 0, "
+                << "itemTextPatches: 0, itemHtmlReplacements: 0, physicalMoves: physicalMoves, "
+                << "reordered: movedKeys.length > 0, mode: 'keyed-for-region-patch', "
+                << "reconciliation: 'generated-retained-row-patch', stageTimingsMs: stageTimingsMs } }); "
+                << "stageTimingsMs.lifecycleBookkeeping = performance.now() - lifecycleStarted; return true; })()) return true; ";
+        }
+        out << "if (h && h.patchComponentForRegion && "
+            << "h.patchComponentForRegion(instance, definition, node, scope, el)) return true; ";
+    }
+    out << "const html = " << directCreate << "; "
         << "if (typeof html !== 'string') return false; "
         << "if (h && h.destroyDirectComponentInstancesUnderElement) "
         << "h.destroyDirectComponentInstancesUnderElement(el, "
@@ -1948,7 +2106,8 @@ std::string directStaticNestedPatchExpression(size_t nodeIndex,
 }
 
 std::string directStaticPatchExpression(const nlohmann::json& componentPlan,
-                                        const nlohmann::json& operation) {
+                                        const nlohmann::json& operation,
+                                        bool enableGeneratedKeyedPatch) {
     if (!operation.is_object() || !operation.contains("operation") ||
         !operation.contains("nodeIndex")) {
         return "";
@@ -2015,7 +2174,9 @@ std::string directStaticPatchExpression(const nlohmann::json& componentPlan,
                 static_cast<size_t>(nodeIndex), operation);
         } else {
             directPatch = directStaticRegionPatchExpression(
-                componentPlan, static_cast<size_t>(nodeIndex));
+                componentPlan,
+                static_cast<size_t>(nodeIndex),
+                enableGeneratedKeyedPatch);
         }
         if (!directPatch.empty()) {
             out << directPatch;
@@ -2041,13 +2202,15 @@ std::string directStaticPatchExpression(const nlohmann::json& componentPlan,
 }
 
 std::string directStaticPatchCase(const nlohmann::json& componentPlan,
-                                  const nlohmann::json& entry) {
+                                  const nlohmann::json& entry,
+                                  bool enableGeneratedKeyedPatch) {
     if (!entry.is_object() || !entry.contains("index") ||
         !entry.contains("operation")) {
         return "";
     }
     const auto operation = entry["operation"];
-    const auto patchExpression = directStaticPatchExpression(componentPlan, operation);
+    const auto patchExpression = directStaticPatchExpression(
+        componentPlan, operation, enableGeneratedKeyedPatch);
     if (patchExpression.empty()) return "";
     const auto index = entry.value("index", 0);
     std::ostringstream out;
@@ -2144,7 +2307,8 @@ std::string staticCreateFallbackFunctionBody(size_t componentIndex) {
 }
 
 std::string staticUpdateFunctionBody(size_t componentIndex,
-                                     const nlohmann::json& componentPlan) {
+                                     const nlohmann::json& componentPlan,
+                                     bool enableGeneratedKeyedPatch) {
     std::ostringstream out;
     out << "  function jtml_static_component_create_" << componentIndex
         << "(instance, definition, scope, h) {\n"
@@ -2193,7 +2357,8 @@ std::string staticUpdateFunctionBody(size_t componentIndex,
     size_t emittedPatchCases = 0;
     const auto entries = componentPlan.value("entries", nlohmann::json::array());
     for (const auto& entry : entries) {
-        const auto patchCase = directStaticPatchCase(componentPlan, entry);
+        const auto patchCase = directStaticPatchCase(
+            componentPlan, entry, enableGeneratedKeyedPatch);
         if (patchCase.empty()) continue;
         out << patchCase;
         emittedPatchCases += 1;
@@ -2277,7 +2442,7 @@ std::string emitStaticComponentAsset(const RuntimeProjectPlan& plan,
     out << "  const modules = {};\n";
     out << "  const modulesById = {};\n";
     for (size_t i = 0; i < components.size(); ++i) {
-        out << staticUpdateFunctionBody(i, fullComponents[i])
+        out << staticUpdateFunctionBody(i, fullComponents[i], componentModule)
             << "  if (plans.components[" << i << "] && plans.components[" << i << "].key) {\n"
             << "    functions[plans.components[" << i << "].key] = jtml_static_component_update_" << i << ";\n"
             << "    modules[plans.components[" << i << "].key] = {\n"

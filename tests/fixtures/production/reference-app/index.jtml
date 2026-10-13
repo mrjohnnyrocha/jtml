@@ -1,0 +1,56 @@
+jtml 2
+
+make TaskCard taskTitle
+  let draft = ""
+  let note = "No note saved"
+  let done = false
+  get status = done ? "Complete" : "Open"
+
+  when toggle
+    done = !done
+
+  when save
+    note = draft
+
+  card class "task-card"
+    h2 taskTitle
+    text status
+    form submit save
+      field label "Task note"
+        input placeholder "Write a task note" into draft
+      button "Save note" click save type "button"
+    text note
+    button "Toggle complete" click toggle
+
+make BoardSummary heading count
+  panel class "board-summary" title heading
+    h2 heading
+    text "Tasks: {count}"
+
+make TaskBoard
+  let title = "Release checklist"
+  let tasks = ["Audit runtime", "Test production", "Ship documentation"]
+  let help = false
+  get count = tasks.length
+
+  when rotate
+    tasks = ["Ship documentation", "Audit runtime", "Test production"]
+
+  when showHelp
+    help = true
+
+  page class "reference-app"
+    h1 "JTML task board"
+    BoardSummary title count
+    button "Prioritize documentation" click rotate
+    button "Help" click showHelp
+    if help
+      text "Save a note, complete a task, and prioritize the release."
+    for task in tasks key task
+      text task
+
+page
+  TaskBoard
+  TaskCard "Audit runtime"
+  TaskCard "Test production"
+  TaskCard "Ship documentation"

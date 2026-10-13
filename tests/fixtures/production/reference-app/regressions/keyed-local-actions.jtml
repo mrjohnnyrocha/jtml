@@ -1,0 +1,20 @@
+jtml 2
+
+make Editor label
+  let draft = ""
+  let saved = "Not saved"
+  when save
+    saved = draft
+  card class "task-card"
+    text label
+    input into draft
+    button "Save note" click save
+    text saved
+
+make Board
+  let tasks = ["Audit", "Ship"]
+  for task in tasks key task
+    Editor task
+
+page
+  Board

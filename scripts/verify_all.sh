@@ -46,6 +46,7 @@ grep -q 'data-jtml-cond-expr=&quot;user.active&quot;' "$repo_root/dist/browser-l
 rm -f "$tmp_browser_loop"
 
 JTML_REQUIRE_BROWSER_BENCH=1 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/benchmark_runtime.sh"
+JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_production_reference.sh"
 
 tmp_pkg_root="$(mktemp -d "${TMPDIR:-/tmp}/jtml-package.XXXXXX")"
 mkdir -p "$tmp_pkg_root/shared" "$tmp_pkg_root/app"

@@ -67,7 +67,46 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
 PY
 )"
 SERVER_LOG="${OUT_ROOT}/browser-benchmark-http.log"
-python3 -m http.server "${SERVER_PORT}" --bind 127.0.0.1 --directory "${OUT_ROOT}" >"${SERVER_LOG}" 2>&1 &
+RESULT_ROOT="${OUT_ROOT}/.browser-benchmark-results"
+rm -rf "${RESULT_ROOT}"
+mkdir -p "${RESULT_ROOT}"
+python3 - "${SERVER_PORT}" "${OUT_ROOT}" "${RESULT_ROOT}" >"${SERVER_LOG}" 2>&1 <<'PY' &
+import functools
+import http.server
+import json
+import pathlib
+import re
+import sys
+import urllib.parse
+
+port = int(sys.argv[1])
+out_root = sys.argv[2]
+result_root = pathlib.Path(sys.argv[3])
+
+class BenchmarkHandler(http.server.SimpleHTTPRequestHandler):
+  def do_POST(self):
+    parsed = urllib.parse.urlparse(self.path)
+    fixture = urllib.parse.parse_qs(parsed.query).get("fixture", [""])[0]
+    if parsed.path != "/__jtml_browser_benchmark_result" or not re.fullmatch(r"[A-Za-z0-9_-]+", fixture):
+      self.send_error(404)
+      return
+    length = int(self.headers.get("Content-Length", "0"))
+    if length <= 0 or length > 1024 * 1024:
+      self.send_error(400)
+      return
+    payload = self.rfile.read(length)
+    try:
+      json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+      self.send_error(400)
+      return
+    (result_root / f"{fixture}.json").write_bytes(payload)
+    self.send_response(204)
+    self.end_headers()
+
+handler = functools.partial(BenchmarkHandler, directory=out_root)
+http.server.ThreadingHTTPServer(("127.0.0.1", port), handler).serve_forever()
+PY
 SERVER_PID=$!
 cleanup_server() {
   if kill -0 "${SERVER_PID}" >/dev/null 2>&1; then
@@ -79,6 +118,10 @@ sleep 0.2
 echo "fixture server: http://127.0.0.1:${SERVER_PORT}/"
 
 fixtures=(static_counter keyed_list control_flow composition large_keyed_updates large_keyed_reorder nested_component_update lifecycle_cleanup form_focus)
+if (( $# > 1 )); then
+  shift
+  fixtures=("$@")
+fi
 for fixture in "${fixtures[@]}"; do
   fixture_dir="${OUT_ROOT}/${fixture}"
   index="${fixture_dir}/index.html"
@@ -88,9 +131,10 @@ for fixture in "${fixtures[@]}"; do
     exit 1
   fi
 
-  python3 - "${index}" "${bench}" "${fixture}" "${CLICK_COUNT}" <<'PY'
+  python3 - "${index}" "${bench}" "${fixture}" "${CLICK_COUNT}" "${ROOT}" <<'PY'
 import json
 import pathlib
+import os
 import sys
 
 source = pathlib.Path(sys.argv[1])
@@ -99,12 +143,18 @@ fixture = sys.argv[3]
 clicks = int(sys.argv[4])
 
 html = source.read_text(encoding="utf-8")
+if fixture == "reference-app":
+    scenario = pathlib.Path(sys.argv[5]) / "tests/fixtures/production/reference-app/browser.js"
+    # Install network guards before any application script executes.
+    html = html.replace("<head>", "<head><script>window.jtmlReferenceRegression = " + json.dumps(os.environ.get("JTML_REFERENCE_REGRESSION", "")) + ";" + scenario.read_text(encoding="utf-8") + "</script>", 1)
 harness = f"""
 <script id="jtml-browser-benchmark-harness">
 (function() {{
   const fixture = {json.dumps(fixture)};
   const clickCount = {clicks};
+  let running = false;
   const fixtureClickCount =
+    fixture === 'reference-app' ? 4 :
     (fixture === 'large_keyed_updates' || fixture === 'large_keyed_reorder') ? clickCount + 1 : clickCount;
   function finish(result) {{
     const pre = document.createElement('pre');
@@ -112,9 +162,32 @@ harness = f"""
     pre.textContent = JSON.stringify(result);
     document.body.appendChild(pre);
     document.body.setAttribute('data-jtml-browser-benchmark', pre.textContent);
+    const endpoint = '/__jtml_browser_benchmark_result?fixture=' + encodeURIComponent(fixture);
+    const payload = new Blob([pre.textContent], {{ type: 'application/json' }});
+    if (!navigator.sendBeacon(endpoint, payload)) {{
+      fetch(endpoint, {{ method: 'POST', body: pre.textContent, keepalive: true }}).catch(function() {{}});
+    }}
   }}
-  function run() {{
+  async function run() {{
+    if (running) return;
+    running = true;
     try {{
+      if (fixture === 'reference-app') {{
+        const started = performance.now();
+        const scenario = await window.runReferenceAppChecks();
+        const build = window.jtml && window.jtml.browserBuild || {{}};
+        finish({{
+          fixture, clicks: scenario.clicks, durationMs: performance.now() - started,
+          referenceChecks: scenario.checks,
+          regression: window.jtmlReferenceRegression,
+          browserBuildMode: build.mode,
+          browserBuildCleanProduction: build.cleanProduction,
+          browserBuildCompatibility: build.compatibility,
+          browserBuildDebug: build.debug,
+          loadedScripts: Array.from(document.scripts).map(el => el.src)
+        }});
+        return;
+      }}
       if (fixture === 'form_focus') {{
         const input = document.querySelector('input');
         if (!input) {{
@@ -270,9 +343,15 @@ harness = f"""
       }});
     }}
   }}
-  window.addEventListener('load', function() {{
+  function scheduleRun() {{
     setTimeout(run, 50);
-  }});
+  }}
+  window.runJtmlBrowserBenchmark = run;
+  if (document.readyState === 'loading') {{
+    window.addEventListener('DOMContentLoaded', scheduleRun, {{ once: true }});
+  }} else {{
+    scheduleRun();
+  }}
 }})();
 </script>
 """
@@ -288,13 +367,117 @@ PY
   log="${profile}/browser.log"
   dom_file="${profile}/dom.html"
   exit_mode_file="${profile}/exit-mode.txt"
+  result_file="${RESULT_ROOT}/${fixture}.json"
+  rm -f "${result_file}"
   set +e
   bench_url="http://127.0.0.1:${SERVER_PORT}/${fixture}/index.bench.html"
-  python3 - "${browser}" "${bench_url}" "${profile}" "${log}" "${dom_file}" "${exit_mode_file}" "${BROWSER_TIMEOUT}" "${REQUIRE_CLEAN_EXIT}" <<'PY'
+  if [[ -n "${JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT:-}" ]]; then
+    node - "${JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT}" "${browser}" "${bench}" "${bench_url}" "${log}" "${dom_file}" "${exit_mode_file}" "${BROWSER_TIMEOUT}" <<'JS'
+const fs = require('node:fs');
+const path = require('node:path');
+
+  const [, , playwrightRoot, executablePath, benchPath, benchUrl, logPath, domPath, exitModePath, timeoutSeconds] = process.argv;
+const { chromium } = require(path.join(playwrightRoot, 'node_modules', 'playwright'));
+
+(async () => {
+  const logs = [];
+  let browser;
+  try {
+    browser = await chromium.launch({
+      executablePath,
+      headless: true,
+      args: ['--disable-gpu', '--no-sandbox', '--disable-breakpad', '--disable-background-networking']
+    });
+    const page = await browser.newPage();
+    page.on('console', message => logs.push('[console] ' + message.type() + ': ' + message.text()));
+    page.on('pageerror', error => logs.push('[pageerror] ' + error.message));
+    const timeout = Number(timeoutSeconds) * 1000;
+    const html = fs.readFileSync(benchPath, 'utf8');
+    const parsed = await page.evaluate(({ source, baseUrl }) => {
+      const document = new DOMParser().parseFromString(source, 'text/html');
+      const base = document.createElement('base');
+      base.href = baseUrl;
+      document.head.prepend(base);
+      const scripts = [];
+      for (const script of document.querySelectorAll('script')) {
+        if (script.type === 'application/json') continue;
+        scripts.push({
+          src: script.getAttribute('src') || '',
+          source: script.textContent || '',
+          defer: script.hasAttribute('defer')
+        });
+        if (script.src) {
+          const marker = document.createElement('script');
+          marker.type = 'application/x-jtml-loaded';
+          marker.setAttribute('src', script.getAttribute('src'));
+          script.replaceWith(marker);
+        } else {
+          script.remove();
+        }
+      }
+      return { html: '<!doctype html>\n' + document.documentElement.outerHTML, scripts };
+    }, { source: html, baseUrl: benchUrl });
+    const client = await page.context().newCDPSession(page);
+    const frameTree = await client.send('Page.getFrameTree');
+    await client.send('Page.setDocumentContent', {
+      frameId: frameTree.frameTree.frame.id,
+      html: parsed.html
+    });
+    const evaluateScript = async script => {
+      const source = script.src
+        ? fs.readFileSync(path.resolve(path.dirname(benchPath), script.src), 'utf8')
+        : script.source;
+      const result = await client.send('Runtime.evaluate', {
+        expression: source,
+        awaitPromise: true
+      });
+      if (result.exceptionDetails) {
+        const exception = result.exceptionDetails.exception;
+        logs.push('[pageerror] ' + (exception && exception.description
+          ? exception.description
+          : result.exceptionDetails.text || 'browser script evaluation failed'));
+        await page.evaluate(message => {
+          window.dispatchEvent(new ErrorEvent('error', { message }));
+        }, exception && exception.description
+          ? exception.description
+          : result.exceptionDetails.text || 'browser script evaluation failed');
+      }
+    };
+    for (const script of parsed.scripts.filter(script => !script.defer)) {
+      await evaluateScript(script);
+    }
+    for (const script of parsed.scripts.filter(script => script.defer)) {
+      await evaluateScript(script);
+    }
+    await page.waitForFunction(
+      () => typeof window.runJtmlBrowserBenchmark === 'function' && !!window.jtml,
+      undefined,
+      { timeout }
+    );
+    await page.evaluate(() => window.runJtmlBrowserBenchmark());
+    await page.waitForSelector('#jtml-browser-benchmark-result', { timeout });
+    fs.writeFileSync(domPath, await page.content(), 'utf8');
+    await browser.close();
+    browser = undefined;
+    fs.writeFileSync(exitModePath, 'clean', 'utf8');
+    fs.writeFileSync(logPath, logs.join('\n'), 'utf8');
+  } catch (error) {
+    logs.push(error && error.stack ? error.stack : String(error));
+    fs.writeFileSync(logPath, logs.join('\n'), 'utf8');
+    fs.writeFileSync(exitModePath, 'failed', 'utf8');
+    process.exitCode = 1;
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+  }
+})();
+JS
+  else
+    python3 - "${browser}" "${bench_url}" "${profile}" "${log}" "${dom_file}" "${exit_mode_file}" "${result_file}" "${BROWSER_TIMEOUT}" "${REQUIRE_CLEAN_EXIT}" <<'PY'
 import subprocess
 import sys
+from pathlib import Path
 
-browser, bench_url, profile, log_path, dom_path, exit_mode_path, timeout_s, require_clean_exit = sys.argv[1:]
+browser, bench_url, profile, log_path, dom_path, exit_mode_path, result_path, timeout_s, require_clean_exit = sys.argv[1:]
 
 def text(value):
     if value is None:
@@ -312,6 +495,8 @@ for headless_flag in ("--headless=new", "--headless"):
         browser,
         headless_flag,
         "--disable-gpu",
+        "--no-sandbox",
+        "--disable-breakpad",
         "--no-first-run",
         "--no-default-browser-check",
         "--disable-background-networking",
@@ -323,24 +508,25 @@ for headless_flag in ("--headless=new", "--headless"):
         bench_url,
     ]
     try:
-        completed = subprocess.run(
-            args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            timeout=float(timeout_s),
-            check=False,
-        )
+        with open(dom_path, "w", encoding="utf-8") as dom_handle:
+            completed = subprocess.run(
+                args,
+                stdout=dom_handle,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=float(timeout_s),
+                check=False,
+            )
         logs.append(f"[{headless_flag}] exit={completed.returncode}\n" + (completed.stderr or ""))
-        last_stdout = completed.stdout or ""
+        last_stdout = Path(dom_path).read_text(encoding="utf-8")
         last_status = completed.returncode
         if completed.returncode == 0:
             exit_mode = "clean"
             break
     except subprocess.TimeoutExpired as exc:
         logs.append(f"[{headless_flag}] browser benchmark timed out\n" + text(exc.stderr))
-        last_stdout = text(exc.stdout)
-        if 'jtml-browser-benchmark-result' in last_stdout:
+        last_stdout = Path(dom_path).read_text(encoding="utf-8")
+        if Path(result_path).is_file() or 'jtml-browser-benchmark-result' in last_stdout:
             logs.append(f"[{headless_flag}] benchmark result was produced before timeout; browser did not exit cleanly")
             last_status = 125 if require_clean_exit == "1" else 0
             exit_mode = "terminated-after-result"
@@ -350,12 +536,11 @@ for headless_flag in ("--headless=new", "--headless"):
 
 with open(log_path, "w", encoding="utf-8") as handle:
     handle.write("\n".join(logs))
-with open(dom_path, "w", encoding="utf-8") as handle:
-    handle.write(last_stdout)
 with open(exit_mode_path, "w", encoding="utf-8") as handle:
     handle.write(exit_mode)
 raise SystemExit(last_status)
 PY
+  fi
   status=$?
   set -e
   if [[ ${status} -ne 0 ]]; then
@@ -364,6 +549,7 @@ PY
       exit 1
     fi
     if [[ "${JTML_REQUIRE_BROWSER_BENCH:-0}" == "1" ]]; then
+      cat "${log}" >&2
       echo "error: browser benchmark failed for ${fixture}; see ${log}" >&2
       exit 1
     fi
@@ -371,8 +557,21 @@ PY
     exit 0
   fi
 
-  result="$(
-    python3 - "${dom_file}" <<'PY'
+  if [[ -f "${result_file}" ]]; then
+    result="$(
+      python3 - "${result_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    payload = handle.read()
+json.loads(payload)
+print(payload)
+PY
+    )"
+  else
+    result="$(
+      python3 - "${dom_file}" <<'PY'
 import html
 import json
 import re
@@ -387,7 +586,8 @@ payload = html.unescape(match.group(1))
 json.loads(payload)
 print(payload)
 PY
-  )" || {
+    )"
+  fi || {
     echo "error: browser benchmark did not produce a runtime result for ${fixture}" >&2
     exit 1
   }
@@ -401,6 +601,8 @@ import sys
 result = json.loads(sys.argv[1])
 fixture = sys.argv[2]
 expected_clicks = int(sys.argv[3])
+if fixture == "reference-app":
+    expected_clicks = {"": 4, "form-submit": 0, "keyed-local-actions": 1, "routing": 2, "nested-heading": 1}[result.get("regression", "")]
 if fixture in ("large_keyed_updates", "large_keyed_reorder"):
     expected_clicks += 1
 budget_ms = float(sys.argv[4])
@@ -415,6 +617,13 @@ if not math.isfinite(duration):
     raise SystemExit(f"error: {fixture} duration is not finite")
 if duration > budget_ms:
     raise SystemExit(f"error: {fixture} browser runtime {duration:.2f}ms exceeds budget {budget_ms:.2f}ms")
+if fixture == "reference-app":
+  checks = result.get("referenceChecks", [])
+  regression = result.get("regression", "")
+  expected_checks = {"": 14, "form-submit": 2, "keyed-local-actions": 2, "routing": 5, "nested-heading": 2}[regression]
+  if len(checks) != expected_checks:
+    raise SystemExit(f"error: reference-app did not complete its interaction checks: {checks!r}")
+  print("Reference app checks: " + "; ".join(checks))
 text = str(result.get("textSample", ""))
 keyed_texts = result.get("keyedTexts", [])
 loaded_scripts = [str(item) for item in result.get("loadedScripts", [])]

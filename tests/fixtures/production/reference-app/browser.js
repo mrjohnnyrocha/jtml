@@ -97,12 +97,35 @@
         input.value = 'Saved note';
         input.dispatchEvent(new Event('input', { bubbles: true }));
         if (regression === 'form-submit') {
-          document.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+          const form = document.querySelector('form');
+          const locationBeforeSubmit = location.href;
+          let submitEvent;
+          form.addEventListener('submit', event => { submitEvent = event; });
+          assert(form.querySelector('button').type === 'submit', 'form uses a native submit button');
+          click('Save note', form);
+          await settle();
+          assert(document.body.textContent.includes('Saved note'), 'submit button dispatches the component-local action');
+          assert(submitEvent && submitEvent.defaultPrevented && location.href === locationBeforeSubmit,
+            'handled form submission prevents navigation');
+          assert(document.querySelector('form') === form && document.querySelector('input') === input,
+            'submit patch preserves form and input identity');
+          input.value = 'Keyboard note';
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.focus();
+          input.setSelectionRange(4, 4);
+          submitEvent = null;
+          if (window.jtmlPressEnter) await window.jtmlPressEnter();
+          else form.requestSubmit();
+          await settle();
+          assert(document.body.textContent.includes('Keyboard note'), 'Enter key submission dispatches the component-local action');
+          assert(document.querySelector('form') === form && document.querySelector('input') === input &&
+            document.activeElement === input && input.selectionStart === 4,
+            'keyboard submit preserves input identity, focus and cursor');
         } else {
           click('Save note', cards()[0]);
+          await settle();
+          assert(document.body.textContent.includes('Saved note'), regression + ' saves input in visible DOM');
         }
-        await settle();
-        assert(document.body.textContent.includes('Saved note'), regression + ' saves input in visible DOM');
       }
       assert(network.length === 0 && errors.length === 0, 'regression runs without network or browser errors');
       return { checks, clicks };

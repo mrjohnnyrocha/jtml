@@ -1377,6 +1377,7 @@ const char* browserRuntimePreludeChunk() {
       function semanticUiRenderExtras(head, parts) {
         const extras = {};
         const classes = [];
+        if (head === 'button' && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'button';
         if (isSemanticUiPrimitiveName(head)) {
           classes.push('jtml-' + head);
           extras['data-jtml-ui'] = head;
@@ -1637,13 +1638,17 @@ const char* browserRuntimeComponentChunk() {
               ' data-jtml-direct-component-args="' + escapeAttribute(JSON.stringify(invocation.args || [])) + '"'
             : '';
           const extras = semanticUiRenderExtras(head, parts);
-          return '<button type="button"' + directNodeAttr +
+          return '<button' + directNodeAttr +
             componentManagedAttributeMarker(parts, extras) +
             renderComponentAttributes(parts, extras) + attrs + '>' +
             escapeHtml(label) + '</button>' + children;
         }
         const tag = componentTagName(head);
-        const parts = parseComponentElementParts(words, 1, scope);
+        const parts = parseComponentElementParts(
+          words,
+          1,
+          scope,
+          head === 'form' ? { submit: true } : null);
         const contentExpr = parts.content || (node.expression || '').trim();
         const inline = children ? '' : (contentExpr
           ? escapeHtml(renderCompiledComponentExpression(parts.content ? parts.contentPlan : node.expressionPlan, contentExpr, scope))
@@ -1653,7 +1658,10 @@ const char* browserRuntimeComponentChunk() {
         if ((head === 'file' || head === 'dropzone') && !componentPartsHaveAttribute(parts, 'type')) extras.type = 'file';
         if (componentPartsHaveAttribute(parts, 'data-jtml-direct-component-bind')) extras['data-jtml-direct-component-id'] = instance && instance.id || '';
         extras['data-jtml-direct-node'] = head;
-        const attrs = directNodeAttr + componentManagedAttributeMarker(parts, extras) + renderComponentAttributes(parts, extras);
+        const formAttrs = head === 'form'
+          ? componentFormActionAttributes(instance, words, scope)
+          : '';
+        const attrs = directNodeAttr + componentManagedAttributeMarker(parts, extras) + renderComponentAttributes(parts, extras) + formAttrs;
         if (tag === 'input' || tag === 'img') return '<' + tag + attrs + '>';
         return '<' + tag + attrs + '>' + inline + children + '</' + tag + '>';
       }
@@ -2415,20 +2423,36 @@ const char* browserRuntimeComponentChunk() {
             ' data-jtml-direct-component-args="' + escapeAttribute(JSON.stringify(invocation.args || [])) + '"'
           : '';
         const extras = semanticUiRenderExtras(resolvedHead, parts);
-        return '<button type="button"' + directNodeAttr +
+        return '<button' + directNodeAttr +
           componentManagedAttributeMarker(parts, extras) +
           renderComponentAttributes(parts, extras) + attrs + '>' +
           escapeHtml(label) + '</button>';
       }
 
-      function renderStaticComponentElementNode(instance, definition, scope, nodeIndex, head, tag, partsPlan, expression, expressionPlan) {
+      function componentFormActionAttributes(instance, words, scope, compiled) {
+        const submitIndex = words.indexOf('submit');
+        const invocation = compiled && compiled.name
+          ? evaluateCompiledComponentActionInvocation(compiled, scope)
+          : submitIndex === -1
+            ? { name: '', args: [] }
+            : parseComponentActionInvocation(words[submitIndex + 1] || '', scope);
+        if (!invocation.name) return '';
+        return ' data-jtml-direct-component-id="' + escapeHtml(instance.id) + '"' +
+          ' data-jtml-direct-component-submit="' + escapeHtml(invocation.name) + '"' +
+          ' data-jtml-direct-component-args="' + escapeAttribute(JSON.stringify(invocation.args || [])) + '"';
+      }
+
+      function renderStaticComponentElementNode(instance, definition, scope, nodeIndex, head, tag, partsPlan, expression, expressionPlan, submitInvocation) {
         const node = (definition && definition.bodyPlan || [])[nodeIndex];
         if (!node) return null;
         const resolvedHead = head || componentNodeHead(node) || 'box';
         const resolvedTag = tag || componentTagName(resolvedHead);
         const words = splitComponentWords(node.text || '');
         const parts = evaluateCompiledComponentElementParts(
-          partsPlan || compileComponentElementParts(words, 1),
+          partsPlan || compileComponentElementParts(
+            words,
+            1,
+            resolvedHead === 'form' ? { submit: true } : null),
           scope);
         const children = renderComponentChildren(definition, instance, node, scope);
         const contentExpr = parts.content || String(expression || node.expression || '').trim();
@@ -2443,7 +2467,10 @@ const char* browserRuntimeComponentChunk() {
         if (componentPartsHaveAttribute(parts, 'data-jtml-direct-component-bind')) extras['data-jtml-direct-component-id'] = instance && instance.id || '';
         extras['data-jtml-direct-node'] = resolvedHead;
         const directNodeAttr = ' data-jtml-direct-body-node="' + String(nodeIndex) + '"';
-        const attrs = directNodeAttr + componentManagedAttributeMarker(parts, extras) + renderComponentAttributes(parts, extras);
+        const formAttrs = resolvedHead === 'form'
+          ? componentFormActionAttributes(instance, words, scope, submitInvocation)
+          : '';
+        const attrs = directNodeAttr + componentManagedAttributeMarker(parts, extras) + renderComponentAttributes(parts, extras) + formAttrs;
         if (resolvedTag === 'input' || resolvedTag === 'img') return '<' + resolvedTag + attrs + '>';
         return '<' + resolvedTag + attrs + '>' + inline + children + '</' + resolvedTag + '>';
       }
@@ -3280,6 +3307,24 @@ const char* browserRuntimeComponentChunk() {
             event.preventDefault();
             event.stopPropagation();
           }
+        });
+        document.addEventListener('submit', async function (event) {
+          const form = event.target.closest('[data-jtml-direct-component-submit]');
+          if (!form) return;
+          event.preventDefault();
+          const componentId = form.getAttribute('data-jtml-direct-component-id') || '';
+          const actionName = form.getAttribute('data-jtml-direct-component-submit') || '';
+          let args = [];
+          try {
+            args = JSON.parse(form.getAttribute('data-jtml-direct-component-args') || '[]');
+          } catch (_) {
+            args = [];
+          }
+          const handled = browserLocalRuntime
+            ? (runDirectComponentAction(componentId, actionName, args) ||
+               runDirectComponentFallbackAction(componentId, actionName))
+            : await runLiveComponentAction(componentId, actionName, args);
+          if (handled) event.stopPropagation();
         });
         document.addEventListener('input', function (event) {
           const el = event.target && event.target.closest &&

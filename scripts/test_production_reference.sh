@@ -51,10 +51,19 @@ if [[ -z "${JTML_REFERENCE_REGRESSION:-}" ]]; then
     echo "  __jtml_client_manifest is source-rich and duplicated across project/component definition payloads"
   fi
 
-  for regression in form-submit keyed-local-actions routing nested-heading; do
+  log="$(mktemp "${TMPDIR:-/tmp}/jtml-reference-keyed-local-actions.XXXXXX")"
+  if ! JTML_REFERENCE_REGRESSION=keyed-local-actions "$0" >"${log}" 2>&1; then
+    cat "${log}" >&2
+    rm -f "${log}"
+    echo "error: keyed-local-actions browser regression failed" >&2
+    exit 1
+  fi
+  rm -f "${log}"
+  echo "PASS: keyed-local-actions — component-local actions survive keyed reorder and cleanup"
+
+  for regression in form-submit routing nested-heading; do
     case "${regression}" in
       form-submit) expected_failure="form-submit saves input in visible DOM" ;;
-      keyed-local-actions) expected_failure="keyed-local-actions saves input in visible DOM" ;;
       routing) expected_failure="routing starts without initialization errors" ;;
       nested-heading) expected_failure="nested heading updates when parameter is named title" ;;
     esac

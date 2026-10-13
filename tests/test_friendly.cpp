@@ -2489,6 +2489,12 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("function patchDirectComponentFromWrites(instance, definition, writes)"),
               std::string::npos) << html;
+    EXPECT_NE(html.find("const mountedElement = componentElementFor(instance.id);"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("if (mountedElement) instance.element = mountedElement;"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("if (!instance.element || !instance.element.isConnected) return false;"),
+              std::string::npos) << html;
     EXPECT_EQ(html.find("function patchDirectComponentNodeInPlace(instance, definition, node, scope)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("function patchDirectComponentElementAttributes(el, parts, extra)"),

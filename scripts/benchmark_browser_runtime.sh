@@ -367,7 +367,46 @@ PY
   rm -f "${result_file}"
   set +e
   bench_url="http://127.0.0.1:${SERVER_PORT}/${fixture}/index.bench.html"
-  python3 - "${browser}" "${bench_url}" "${profile}" "${log}" "${dom_file}" "${exit_mode_file}" "${result_file}" "${BROWSER_TIMEOUT}" "${REQUIRE_CLEAN_EXIT}" <<'PY'
+  if [[ -n "${JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT:-}" ]]; then
+    node - "${JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT}" "${browser}" "${bench_url}" "${log}" "${dom_file}" "${exit_mode_file}" "${BROWSER_TIMEOUT}" <<'JS'
+const fs = require('node:fs');
+const path = require('node:path');
+
+const [, , playwrightRoot, executablePath, benchUrl, logPath, domPath, exitModePath, timeoutSeconds] = process.argv;
+const { chromium } = require(path.join(playwrightRoot, 'node_modules', 'playwright'));
+
+(async () => {
+  const logs = [];
+  let browser;
+  try {
+    browser = await chromium.launch({
+      executablePath,
+      headless: true,
+      args: ['--disable-gpu', '--no-sandbox', '--disable-breakpad', '--disable-background-networking']
+    });
+    const page = await browser.newPage();
+    page.on('console', message => logs.push('[console] ' + message.type() + ': ' + message.text()));
+    page.on('pageerror', error => logs.push('[pageerror] ' + error.message));
+    const timeout = Number(timeoutSeconds) * 1000;
+    await page.goto(benchUrl, { waitUntil: 'domcontentloaded', timeout });
+    await page.waitForSelector('#jtml-browser-benchmark-result', { timeout });
+    fs.writeFileSync(domPath, await page.content(), 'utf8');
+    await browser.close();
+    browser = undefined;
+    fs.writeFileSync(exitModePath, 'clean', 'utf8');
+    fs.writeFileSync(logPath, logs.join('\n'), 'utf8');
+  } catch (error) {
+    logs.push(error && error.stack ? error.stack : String(error));
+    fs.writeFileSync(logPath, logs.join('\n'), 'utf8');
+    fs.writeFileSync(exitModePath, 'failed', 'utf8');
+    process.exitCode = 1;
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+  }
+})();
+JS
+  else
+    python3 - "${browser}" "${bench_url}" "${profile}" "${log}" "${dom_file}" "${exit_mode_file}" "${result_file}" "${BROWSER_TIMEOUT}" "${REQUIRE_CLEAN_EXIT}" <<'PY'
 import subprocess
 import sys
 from pathlib import Path
@@ -435,6 +474,7 @@ with open(exit_mode_path, "w", encoding="utf-8") as handle:
     handle.write(exit_mode)
 raise SystemExit(last_status)
 PY
+  fi
   status=$?
   set -e
   if [[ ${status} -ne 0 ]]; then

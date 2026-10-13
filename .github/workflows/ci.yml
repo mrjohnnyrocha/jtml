@@ -46,11 +46,14 @@ jobs:
       - name: Install Chrome headless shell (macOS)
         if: runner.os == 'macOS'
         run: |
+          driver="${RUNNER_TEMP}/playwright-driver"
           export PLAYWRIGHT_BROWSERS_PATH="${RUNNER_TEMP}/ms-playwright"
-          npx --yes playwright@1.63.0 install chromium-headless-shell
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix "${driver}" --no-save playwright@1.63.0
+          "${driver}/node_modules/.bin/playwright" install chromium-headless-shell
           browser="$(find "${PLAYWRIGHT_BROWSERS_PATH}" -type f -name chrome-headless-shell -perm +111 -print -quit)"
           test -n "${browser}"
           echo "JTML_BENCH_BROWSER=${browser}" >> "${GITHUB_ENV}"
+          echo "JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=${driver}" >> "${GITHUB_ENV}"
           "${browser}" --version
 
       # --------------------------------------------------------------

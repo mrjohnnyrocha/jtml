@@ -1,15 +1,31 @@
 jtml 2
 
+make Detail title
+  panel class "detail" title title
+    h3 title
+
 make Summary title
-  panel title title
-    h2 title
+  panel class "summary" title title
+    box title title
+      h2 title
+      Detail title
 
 make Board
   let heading = "Before"
+  let fixed = "Fixed"
   when rename
     heading = "After"
-  Summary heading
-  button "Rename" click rename
+  when reset
+    heading = "Before"
+  when finish
+    heading = "Final"
+  box class "board"
+    Summary heading
+    Summary fixed
+    button "Rename" click rename
+    button "Reset" click reset
+    button "Finish" click finish
 
 page
+  Board
   Board

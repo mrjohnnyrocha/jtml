@@ -71,24 +71,29 @@ if [[ -z "${JTML_REFERENCE_REGRESSION:-}" ]]; then
   rm -f "${log}"
   echo "PASS: form-submit — native submission dispatches component-local actions without navigation"
 
-  for regression in routing nested-heading; do
-    case "${regression}" in
-      routing) expected_failure="routing starts without initialization errors" ;;
-      nested-heading) expected_failure="nested heading updates when parameter is named title" ;;
-    esac
-    log="$(mktemp "${TMPDIR:-/tmp}/jtml-reference-${regression}.XXXXXX")"
-    if JTML_REFERENCE_REGRESSION="${regression}" "$0" >"${log}" 2>&1; then
-      rm -f "${log}"
-      echo "error: ${regression} unexpectedly passed; update its regression status" >&2
-      exit 1
-    fi
-    if ! grep -Fq "${expected_failure}" "${log}"; then
-      cat "${log}" >&2
-      rm -f "${log}"
-      echo "error: ${regression} failed for an unexpected reason" >&2
-      exit 1
-    fi
+  log="$(mktemp "${TMPDIR:-/tmp}/jtml-reference-routing.XXXXXX")"
+  if ! JTML_REFERENCE_REGRESSION=routing "$0" >"${log}" 2>&1; then
+    cat "${log}" >&2
     rm -f "${log}"
-    echo "KNOWN FAILURE: ${regression} — ${expected_failure}"
-  done
+    echo "error: routing browser regression failed" >&2
+    exit 1
+  fi
+  rm -f "${log}"
+  echo "PASS: routing — startup, hash/history navigation, direct load and route lifecycle"
+
+  expected_failure="nested heading updates when parameter is named title"
+  log="$(mktemp "${TMPDIR:-/tmp}/jtml-reference-nested-heading.XXXXXX")"
+  if JTML_REFERENCE_REGRESSION=nested-heading "$0" >"${log}" 2>&1; then
+    rm -f "${log}"
+    echo "error: nested-heading unexpectedly passed; update its regression status" >&2
+    exit 1
+  fi
+  if ! grep -Fq "${expected_failure}" "${log}"; then
+    cat "${log}" >&2
+    rm -f "${log}"
+    echo "error: nested-heading failed for an unexpected reason" >&2
+    exit 1
+  fi
+  rm -f "${log}"
+  echo "KNOWN FAILURE: nested-heading — ${expected_failure}"
 fi

@@ -2,8 +2,14 @@
 (() => {
   const network = [];
   const errors = [];
-  window.addEventListener('error', event => errors.push(event.message));
+  const routeChanges = [];
+  let routesReady = 0;
+  window.addEventListener('error', event => errors.push(event.error && event.error.stack || event.message));
   window.addEventListener('unhandledrejection', event => errors.push(String(event.reason)));
+  document.addEventListener('jtml:routes-ready', () => { routesReady += 1; });
+  document.addEventListener('jtml:route-change', event => {
+    routeChanges.push(event.detail && event.detail.route && event.detail.route.path || '');
+  });
   window.WebSocket = class {
     constructor(url) { network.push(String(url)); throw new Error('WebSocket is forbidden'); }
   };
@@ -37,15 +43,99 @@
       if (regression === 'routing') {
         assert(errors.length === 0, 'routing starts without initialization errors');
         const route = path => document.querySelector('[data-jtml-route="' + path + '"]');
+        const routeNodes = Array.from(document.querySelectorAll('[data-jtml-route]'));
+        const componentNodes = routeNodes.map(el => el.querySelector('[data-jtml-instance]'));
+        const registry = window.jtml.getRuntimeRegistrySnapshot();
+        const waitForRoute = async path => {
+          for (let attempt = 0; attempt < 50; attempt += 1) {
+            const current = window.jtml.getCurrentRoute();
+            if (current && current.path === path) return;
+            await new Promise(resolve => setTimeout(resolve, 10));
+          }
+          throw new Error('Route did not settle: ' + path);
+        };
+        assert(routesReady === 1 && routeChanges.join(',') === '/', 'router initializes exactly once');
         assert(route('/').getClientRects().length > 0, 'home route initially visible');
-        document.querySelector('[data-jtml-href="#/about"]').click();
-        clicks += 1;
+        click('Visit', route('/'));
         await settle();
-        assert(route('/about').getClientRects().length > 0 && route('/').getClientRects().length === 0, 'about route navigation');
-        document.querySelector('[data-jtml-href="#/"]').click();
+        assert(route('/').textContent.includes('1'), 'route-local action updates home state');
+        const aboutLink = document.querySelector('[data-jtml-href="#/about"]');
+        const tasksLink = document.querySelector('[data-jtml-href="#/"]');
+        assert(aboutLink && tasksLink && !document.querySelector('a[to]'), 'route links use generated hash metadata');
+        aboutLink.click();
         clicks += 1;
+        await waitForRoute('/about');
+        assert(route('/about').getClientRects().length > 0 && route('/').getClientRects().length === 0 && aboutLink.classList.contains('active'), 'about route navigation');
+        assert(window.jtml.getCurrentRoute().name === 'About', 'about route metadata is current');
+        tasksLink.click();
+        clicks += 1;
+        await waitForRoute('/');
+        assert(route('/').getClientRects().length > 0 && tasksLink.classList.contains('active'), 'return to home route');
+        history.back();
+        await waitForRoute('/about');
+        assert(route('/about').getClientRects().length > 0, 'browser back restores about route');
+        history.back();
+        await waitForRoute('/');
+        assert(route('/').getClientRects().length > 0, 'browser back restores initial home route');
+        history.forward();
+        await waitForRoute('/about');
+        assert(route('/about').getClientRects().length > 0, 'browser forward restores about route');
+        location.hash = '#/';
+        await waitForRoute('/');
+        assert(route('/').getClientRects().length > 0, 'explicit hash change restores home route');
+        location.hash = '#/missing';
+        await waitForRoute('/missing');
+        assert(route('/').getClientRects().length > 0 && route('/about').getClientRects().length === 0, 'unknown route deterministically falls back to home');
+        const unknown = window.jtml.getCurrentRoute();
+        assert(unknown.path === '/missing' && unknown.pattern === '' && unknown.name === '', 'unknown route publishes unmatched metadata');
+        location.hash = '#/';
+        await waitForRoute('/');
+        assert(route('/').getClientRects().length > 0, 'home route recovers after unknown route');
+
+        if (window.jtmlLoadDirectRoute) {
+          // CDP-injected documents have an opaque origin. Use a fresh document
+          // with its initial hash set before the generated app assets execute.
+          const direct = await window.jtmlLoadDirectRoute('#/about');
+          assert(direct.aboutVisible && direct.homeHidden && direct.route.name === 'About' &&
+            direct.route.path === '/about' && direct.startup.hash === '#/about' &&
+            direct.startup.ready === 1 && direct.startup.paths.join(',') === '/about' &&
+            direct.startup.errors.length === 0, 'direct valid route load resolves about');
+        } else {
+          // Real HTTP documents (the native browser driver) retain navigation coverage.
+          const directFrame = document.createElement('iframe');
+          directFrame.hidden = true;
+          let timeout;
+          try {
+            const directLoad = new Promise((resolve, reject) => {
+              timeout = setTimeout(() => reject(new Error('Direct route load timed out')), 3000);
+              directFrame.addEventListener('load', resolve, { once: true });
+            });
+            directFrame.src = 'index.html#/about';
+            document.body.appendChild(directFrame);
+            await directLoad;
+            await settle();
+            const directDocument = directFrame.contentDocument;
+            if (!directDocument) throw new Error('Direct route document is not same-origin');
+            const directAbout = directDocument.querySelector('[data-jtml-route="/about"]');
+            const directHome = directDocument.querySelector('[data-jtml-route="/"]');
+            const directRoute = directFrame.contentWindow.jtml.getCurrentRoute();
+            assert(directAbout && !directAbout.hidden && directHome.hidden && directRoute.name === 'About', 'direct valid route load resolves about');
+          } finally {
+            clearTimeout(timeout);
+            directFrame.remove();
+          }
+        }
+
+        click('Visit', route('/'));
         await settle();
-        assert(route('/').getClientRects().length > 0, 'return to home route');
+        assert(route('/').textContent.includes('2'), 'retained route handler and state remain active');
+        const finalRegistry = window.jtml.getRuntimeRegistrySnapshot();
+        assert(routeNodes.every((el, index) => el.isConnected && el === document.querySelectorAll('[data-jtml-route]')[index]) &&
+          componentNodes.every(el => el && el.isConnected) && route('/').textContent.includes('2') &&
+          JSON.stringify(finalRegistry) === JSON.stringify(registry),
+          'route transitions preserve component identity without handler or state leaks');
+        assert(routeChanges.join(',') === '/,/about,/,/about,/,/about,/,/missing,/',
+          'route transitions emit exactly one lifecycle event each');
       } else if (regression === 'nested-heading') {
         click('Rename');
         await settle();

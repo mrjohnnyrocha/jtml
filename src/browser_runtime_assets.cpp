@@ -1358,6 +1358,18 @@ const char* browserRuntimePreludeChunk() {
           if (name === 'class') classValue = (classValue ? classValue + ' ' : '') + extra[name];
           else rendered[name] = extra[name];
         });
+        const head = rendered['data-jtml-direct-node'] || '';
+        if ((head === 'link' || head === 'navlink') && Object.prototype.hasOwnProperty.call(rendered, 'to')) {
+          const target = String(rendered.to || '/');
+          delete rendered.to;
+          rendered.href = 'javascript:void(0)';
+          rendered['data-jtml-href'] = target[0] === '#' ? target : '#' + (target[0] === '/' ? target : '/' + target);
+          rendered['data-jtml-link'] = 'true';
+        }
+        if ((head === 'link' || head === 'navlink') && Object.prototype.hasOwnProperty.call(rendered, 'active-class')) {
+          rendered['data-jtml-active-class'] = rendered['active-class'];
+          delete rendered['active-class'];
+        }
         if (classValue) rendered.class = classValue;
         return rendered;
       }
@@ -4537,7 +4549,7 @@ const char* browserRuntimeDataPlatformChunk() {
         applyClientExpressions();
         renderCharts();
         processImageBindings();
-        applyRoutes();
+        if (__jtml_router_ready) applyRoutes();
       }
 
       function jtmlStableHash(value) {
@@ -5372,7 +5384,9 @@ const char* browserRuntimeDataPlatformChunk() {
       }
 
       const __jtml_routes = [];
+      const __jtml_guards = [];
       let __jtml_current_route = null;
+      let __jtml_router_ready = false;
 
       function publicRouteRecord(record) {
         return {
@@ -5482,12 +5496,6 @@ const char* browserRuntimeDataPlatformChunk() {
         });
       }
 
-      // Intercept clicks on Friendly route links (`link "Label" to "/path"` →
-      // an inert anchor carrying `data-jtml-href="#/path"`.
-      // Older output used plain hash links, which could resolve against the
-      // parent Studio URL inside `srcdoc` previews if the default navigation
-      // ran before the router. Setting `location.hash` here mutates the
-      // iframe's own Location and keeps the preview on the rendered JTML app.
       function startLinkBindings() {
         document.addEventListener('click', function (event) {
           if (event.defaultPrevented) return;
@@ -5501,8 +5509,6 @@ const char* browserRuntimeDataPlatformChunk() {
           event.preventDefault();
           const next = href.length > 1 ? href : '#/';
           if (location.hash === next) {
-            // Same-hash click still has to re-run route bindings so users
-            // can re-trigger active-link feedback or load handlers.
             applyRoutes();
           } else {
             location.hash = next;
@@ -5725,6 +5731,7 @@ const char* browserRuntimeBootTransportChunk() {
         startGuardBindings();
         collectRouteBindings();
         startLinkBindings();
+        __jtml_router_ready = true;
         startDropzoneBindings();
         startMediaControllerBindings();
         startScene3DBindings();
@@ -5854,8 +5861,6 @@ const char* browserRuntimeBootTransportChunk() {
           }
         });
       }
-
-      const __jtml_guards = [];
 
       function startGuardBindings() {
         document.querySelectorAll('[data-jtml-route-guard]').forEach(function (meta) {

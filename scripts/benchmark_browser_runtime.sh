@@ -456,64 +456,107 @@ const { chromium } = require(path.join(playwrightRoot, 'node_modules', 'playwrig
     page.on('console', message => logs.push('[console] ' + message.type() + ': ' + message.text()));
     page.on('pageerror', error => logs.push('[pageerror] ' + error.message));
     const timeout = Number(timeoutSeconds) * 1000;
-    const html = fs.readFileSync(benchPath, 'utf8');
-    const parsed = await page.evaluate(({ source, baseUrl }) => {
-      const document = new DOMParser().parseFromString(source, 'text/html');
-      const base = document.createElement('base');
-      base.href = baseUrl;
-      document.head.prepend(base);
-      const scripts = [];
-      for (const script of document.querySelectorAll('script')) {
-        if (script.type === 'application/json') continue;
-        scripts.push({
-          src: script.getAttribute('src') || '',
-          source: script.textContent || '',
-          defer: script.hasAttribute('defer')
-        });
-        if (script.src) {
-          const marker = document.createElement('script');
-          marker.type = 'application/x-jtml-loaded';
-          marker.setAttribute('src', script.getAttribute('src'));
-          script.replaceWith(marker);
-        } else {
-          script.remove();
+    // Reuse the same loader for fresh startup documents, not just the benchmark.
+    // setDocumentContent preserves about:blank's opaque origin: a <base> URL
+    // does not make a navigated HTTP iframe same-origin with this document.
+    const loadDocument = async (page, documentPath, documentUrl, beforeScripts = async () => {}) => {
+      const html = fs.readFileSync(documentPath, 'utf8');
+      const parsed = await page.evaluate(({ source, baseUrl }) => {
+        const document = new DOMParser().parseFromString(source, 'text/html');
+        const base = document.createElement('base');
+        base.href = baseUrl;
+        document.head.prepend(base);
+        const scripts = [];
+        for (const script of document.querySelectorAll('script')) {
+          if (script.type === 'application/json') continue;
+          scripts.push({
+            src: script.getAttribute('src') || '',
+            source: script.textContent || '',
+            defer: script.hasAttribute('defer')
+          });
+          if (script.src) {
+            const marker = document.createElement('script');
+            marker.type = 'application/x-jtml-loaded';
+            marker.setAttribute('src', script.getAttribute('src'));
+            script.replaceWith(marker);
+          } else {
+            script.remove();
+          }
         }
-      }
-      return { html: '<!doctype html>\n' + document.documentElement.outerHTML, scripts };
-    }, { source: html, baseUrl: benchUrl });
-    const client = await page.context().newCDPSession(page);
-    const frameTree = await client.send('Page.getFrameTree');
-    await client.send('Page.setDocumentContent', {
-      frameId: frameTree.frameTree.frame.id,
-      html: parsed.html
-    });
-    await page.evaluate(() => { window.jtmlManualScriptLoading = true; });
-    const evaluateScript = async script => {
-      const source = script.src
-        ? fs.readFileSync(path.resolve(path.dirname(benchPath), script.src), 'utf8')
-        : script.source;
-      const result = await client.send('Runtime.evaluate', {
-        expression: source,
-        awaitPromise: true
+        return { html: '<!doctype html>\n' + document.documentElement.outerHTML, scripts };
+      }, { source: html, baseUrl: documentUrl });
+      const client = await page.context().newCDPSession(page);
+      const frameTree = await client.send('Page.getFrameTree');
+      await client.send('Page.setDocumentContent', {
+        frameId: frameTree.frameTree.frame.id,
+        html: parsed.html
       });
-      if (result.exceptionDetails) {
-        const exception = result.exceptionDetails.exception;
-        logs.push('[pageerror] ' + (exception && exception.description
-          ? exception.description
-          : result.exceptionDetails.text || 'browser script evaluation failed'));
-        await page.evaluate(message => {
-          window.dispatchEvent(new ErrorEvent('error', { message }));
-        }, exception && exception.description
-          ? exception.description
-          : result.exceptionDetails.text || 'browser script evaluation failed');
+      await page.evaluate(() => { window.jtmlManualScriptLoading = true; });
+      await beforeScripts();
+      const evaluateScript = async script => {
+        const source = script.src
+          ? fs.readFileSync(path.resolve(path.dirname(documentPath), script.src), 'utf8')
+          : script.source;
+        const result = await client.send('Runtime.evaluate', {
+          expression: source,
+          awaitPromise: true
+        });
+        if (result.exceptionDetails) {
+          const exception = result.exceptionDetails.exception;
+          logs.push('[pageerror] ' + (exception && exception.description
+            ? exception.description
+            : result.exceptionDetails.text || 'browser script evaluation failed'));
+          await page.evaluate(message => {
+            window.dispatchEvent(new ErrorEvent('error', { message }));
+          }, exception && exception.description
+            ? exception.description
+            : result.exceptionDetails.text || 'browser script evaluation failed');
+        }
+      };
+      for (const script of parsed.scripts.filter(script => !script.defer)) {
+        await evaluateScript(script);
+      }
+      for (const script of parsed.scripts.filter(script => script.defer)) {
+        await evaluateScript(script);
       }
     };
-    for (const script of parsed.scripts.filter(script => !script.defer)) {
-      await evaluateScript(script);
-    }
-    for (const script of parsed.scripts.filter(script => script.defer)) {
-      await evaluateScript(script);
-    }
+    await loadDocument(page, benchPath, benchUrl);
+    await page.exposeFunction('jtmlLoadDirectRoute', async hash => {
+      const directPage = await browser.newPage();
+      try {
+        await loadDocument(directPage, path.join(path.dirname(benchPath), 'index.html'),
+          new URL('index.html', benchUrl).href, async () => {
+            // Establish the hash BEFORE evaluating any actual generated asset.
+            // Record startup events so a home-start followed by navigation cannot pass.
+            await directPage.evaluate(hash => {
+              history.replaceState(null, '', location.href.split('#')[0] + hash);
+              window.jtmlDirectRouteStartup = { hash: location.hash, ready: 0, paths: [], errors: [] };
+              const startup = window.jtmlDirectRouteStartup;
+              window.addEventListener('error', event => startup.errors.push(event.message));
+              window.addEventListener('unhandledrejection', event => startup.errors.push(String(event.reason)));
+              document.addEventListener('jtml:routes-ready', () => { startup.ready += 1; });
+              document.addEventListener('jtml:route-change', event => {
+                startup.paths.push(event.detail && event.detail.route && event.detail.route.path);
+              });
+            }, hash);
+          });
+        await directPage.waitForFunction(() => window.jtml && window.jtml.browserBuild &&
+          window.__jtml_static_component_modules && window.jtml.getCurrentRoute &&
+          window.jtml.getCurrentRoute(), undefined, { timeout: 3000 });
+        return await directPage.evaluate(() => {
+          const about = document.querySelector('[data-jtml-route="/about"]');
+          const home = document.querySelector('[data-jtml-route="/"]');
+          return {
+            aboutVisible: !!about && !about.hidden,
+            homeHidden: !!home && home.hidden,
+            route: window.jtml.getCurrentRoute(),
+            startup: window.jtmlDirectRouteStartup
+          };
+        });
+      } finally {
+        await directPage.close();
+      }
+    });
     await page.waitForFunction(
       () => typeof window.runJtmlBrowserBenchmark === 'function' && !!window.jtml,
       undefined,
@@ -670,7 +713,7 @@ result = json.loads(sys.argv[1])
 fixture = sys.argv[2]
 expected_clicks = int(sys.argv[3])
 if fixture == "reference-app":
-  expected_clicks = {"": 4, "form-submit": 1, "keyed-local-actions": 4, "routing": 2, "nested-heading": 1}[result.get("regression", "")]
+  expected_clicks = {"": 4, "form-submit": 1, "keyed-local-actions": 4, "routing": 4, "nested-heading": 1}[result.get("regression", "")]
 if fixture in ("large_keyed_updates", "large_keyed_reorder"):
     expected_clicks += 1
 budget_ms = float(sys.argv[4])
@@ -704,7 +747,7 @@ if not math.isfinite(verification) or verification < 0:
 if fixture == "reference-app":
   checks = result.get("referenceChecks", [])
   regression = result.get("regression", "")
-  expected_checks = {"": 14, "form-submit": 7, "keyed-local-actions": 8, "routing": 5, "nested-heading": 2}[regression]
+  expected_checks = {"": 14, "form-submit": 7, "keyed-local-actions": 8, "routing": 20, "nested-heading": 2}[regression]
   if len(checks) != expected_checks:
     raise SystemExit(f"error: reference-app did not complete its interaction checks: {checks!r}")
   print("Reference app checks: " + "; ".join(checks))

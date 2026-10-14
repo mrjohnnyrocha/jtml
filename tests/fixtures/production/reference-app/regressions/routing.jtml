@@ -1,12 +1,17 @@
 jtml 2
 
 make Home
+  let visits = 0
+  when visit
+    visits = visits + 1
   text "Task route"
-  link "About" to "/about"
+  show visits
+  button "Visit" click visit
+  link "About" to "/about" active-class "active"
 
 make About
   text "About route"
-  link "Tasks" to "/"
+  link "Tasks" to "/" active-class "active"
 
 route "/" as Home
 route "/about" as About

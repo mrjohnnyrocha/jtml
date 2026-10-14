@@ -149,6 +149,33 @@ Do not try to resolve this migration during baseline maintenance. Future work
 should continue moving common production paths toward static/browser execution
 and leave compatibility/live paths as explicit backends.
 
+## PR #7 macOS routing harness repair — 2026-10-14
+
+The failed macOS run `38339524926` reached the direct-route iframe check after
+335 CTests and the reference app/keyed-action/form-submit checks passed. Its
+`load` event timed out at 3 seconds. With the same Playwright 1.63.0 and Chrome
+Headless Shell 153.0.8010.12 locally, two instrumented runs instead completed
+navigation: index and all three generated JS assets returned HTTP 200, and the
+child router resolved `/about`. However, the CDP parent remained `about:blank`
+with opaque origin `null`, making the HTTP child's `contentDocument` null.
+A `<base>` supplies URL resolution, not a document origin. The original runner
+log lacks request/frame traces, so its precise load-event stall is not proven;
+the independent origin failure makes that iframe check invalid for this loader.
+
+The CDP path now creates a fresh page, installs the generated `index.html`, sets
+its actual document URL hash to `#/about` before evaluating any generated script,
+and uses the same loader for the real generated assets. Startup must emit exactly
+one ready event and a single `/about` route event, with the correct visible DOM,
+metadata, and no errors. A temporary wrong-initial-hash control failed the direct
+load assertion. Real HTTP/native-browser runs retain the iframe navigation check,
+with cleanup on failure. All 20 routing assertions and existing budgets remain.
+
+Local focused suite (`scripts/test_production_reference.sh` with
+`JTML_BENCH_BROWSER` pointing to the pinned headless shell and
+`JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT` to Playwright 1.63.0) passed the reference app,
+keyed actions, form submit, and routing. The expected nested-heading failure and
+135395-byte reference HTML size regression remain reported, not hidden.
+
 ## Verified Development Baseline — 2026-10-12
 
 Starting commit: `5e0761925fcdd748268d3049d613fb767e1dbd45` (clean checkout).

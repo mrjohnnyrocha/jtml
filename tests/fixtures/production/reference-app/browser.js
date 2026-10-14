@@ -92,22 +92,39 @@
         await waitForRoute('/');
         assert(route('/').getClientRects().length > 0, 'home route recovers after unknown route');
 
-        const directFrame = document.createElement('iframe');
-        directFrame.hidden = true;
-        const directLoad = new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error('Direct route load timed out')), 3000);
-          directFrame.addEventListener('load', () => { clearTimeout(timeout); resolve(); }, { once: true });
-        });
-        directFrame.src = 'index.html#/about';
-        document.body.appendChild(directFrame);
-        await directLoad;
-        await settle();
-        const directDocument = directFrame.contentDocument;
-        const directAbout = directDocument.querySelector('[data-jtml-route="/about"]');
-        const directHome = directDocument.querySelector('[data-jtml-route="/"]');
-        const directRoute = directFrame.contentWindow.jtml.getCurrentRoute();
-        assert(directAbout && !directAbout.hidden && directHome.hidden && directRoute.name === 'About', 'direct valid route load resolves about');
-        directFrame.remove();
+        if (window.jtmlLoadDirectRoute) {
+          // CDP-injected documents have an opaque origin. Use a fresh document
+          // with its initial hash set before the generated app assets execute.
+          const direct = await window.jtmlLoadDirectRoute('#/about');
+          assert(direct.aboutVisible && direct.homeHidden && direct.route.name === 'About' &&
+            direct.route.path === '/about' && direct.startup.hash === '#/about' &&
+            direct.startup.ready === 1 && direct.startup.paths.join(',') === '/about' &&
+            direct.startup.errors.length === 0, 'direct valid route load resolves about');
+        } else {
+          // Real HTTP documents (the native browser driver) retain navigation coverage.
+          const directFrame = document.createElement('iframe');
+          directFrame.hidden = true;
+          let timeout;
+          try {
+            const directLoad = new Promise((resolve, reject) => {
+              timeout = setTimeout(() => reject(new Error('Direct route load timed out')), 3000);
+              directFrame.addEventListener('load', resolve, { once: true });
+            });
+            directFrame.src = 'index.html#/about';
+            document.body.appendChild(directFrame);
+            await directLoad;
+            await settle();
+            const directDocument = directFrame.contentDocument;
+            if (!directDocument) throw new Error('Direct route document is not same-origin');
+            const directAbout = directDocument.querySelector('[data-jtml-route="/about"]');
+            const directHome = directDocument.querySelector('[data-jtml-route="/"]');
+            const directRoute = directFrame.contentWindow.jtml.getCurrentRoute();
+            assert(directAbout && !directAbout.hidden && directHome.hidden && directRoute.name === 'About', 'direct valid route load resolves about');
+          } finally {
+            clearTimeout(timeout);
+            directFrame.remove();
+          }
+        }
 
         click('Visit', route('/'));
         await settle();

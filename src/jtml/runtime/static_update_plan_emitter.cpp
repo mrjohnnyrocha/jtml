@@ -2236,6 +2236,7 @@ std::string staticUpdateAffectedIndexesFunctionBody(const nlohmann::json& compon
     out << "    function affectedIndexes() {\n"
         << "      const out = [];\n"
         << "      const seen = {};\n"
+        << "      const subtreeSeen = {};\n"
         << "      const parentOf = {";
     bool firstParent = true;
     const auto bodyPlan = componentPlan.value("bodyPlan", nlohmann::json::array());
@@ -2254,7 +2255,7 @@ std::string staticUpdateAffectedIndexesFunctionBody(const nlohmann::json& compon
         << "        let parent = parentOf[index];\n"
         << "        let guard = 0;\n"
         << "        while (parent != null && guard++ < 1000) {\n"
-        << "          if (seen[parent]) return true;\n"
+        << "          if (subtreeSeen[parent]) return true;\n"
         << "          parent = parentOf[parent];\n"
         << "        }\n"
         << "        return false;\n"
@@ -2275,8 +2276,15 @@ std::string staticUpdateAffectedIndexesFunctionBody(const nlohmann::json& compon
             out << " && !writes[" << jsStringLiteral(read.get<std::string>()) << "]";
         }
         out << ") {}\n";
+        // Attribute-only container patches leave their descendants untouched.
+        // Only patches covering the subtree may suppress descendant work.
         out << "      else if (!seen[" << index << "]) { seen[" << index
-            << "] = true; out.push(" << index << "); }\n";
+            << "] = true; ";
+        if (entry.value("operation", nlohmann::json::object())
+                .value("operation", "") != "container-attrs") {
+            out << "subtreeSeen[" << index << "] = true; ";
+        }
+        out << "out.push(" << index << "); }\n";
     }
     out << "      return out;\n"
         << "    }\n";

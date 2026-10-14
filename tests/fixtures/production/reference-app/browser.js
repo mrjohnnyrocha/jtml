@@ -137,9 +137,41 @@
         assert(routeChanges.join(',') === '/,/about,/,/about,/,/about,/,/missing,/',
           'route transitions emit exactly one lifecycle event each');
       } else if (regression === 'nested-heading') {
-        click('Rename');
-        await settle();
-        assert(document.querySelector('h2').textContent === 'After', 'nested heading updates when parameter is named title');
+        const boards = Array.from(document.querySelectorAll('.board'));
+        const summaries = boards.map(board => Array.from(board.querySelectorAll('.summary')));
+        const retained = Array.from(document.querySelectorAll('[data-jtml-direct-instance], .summary, .detail, h2, h3'));
+        const instanceIds = retained.map(el => el.getAttribute('data-jtml-direct-instance'));
+        const registry = JSON.stringify(window.jtml.getRuntimeRegistrySnapshot());
+        const values = summary => [summary.querySelector('h2').textContent,
+          summary.querySelector('h3').textContent, summary.getAttribute('title'),
+          summary.querySelector('h2').parentElement.getAttribute('title'),
+          summary.querySelector('.detail').getAttribute('title')];
+        assert(boards.length === 2 && summaries.every(items => items.length === 2 &&
+          values(items[0]).every(value => value === 'Before') &&
+          values(items[1]).every(value => value === 'Fixed')), 'nested text and attributes start with independent parameters');
+        for (const [boardIndex, label, expected] of [
+          [0, 'Rename', 'After'], [0, 'Reset', 'Before'], [0, 'Rename', 'After'],
+          [0, 'Finish', 'Final'], [1, 'Rename', 'After']
+        ]) {
+          click(label, boards[boardIndex]);
+          await settle();
+          const target = summaries[boardIndex][0];
+          assert(values(target).every(value => value === expected),
+            'nested heading updates when parameter is named title: ' + boardIndex + ' ' + label + ' ' + JSON.stringify({ values: values(target) }));
+          assert(summaries.every((items, index) => values(items[1]).every(value => value === 'Fixed') &&
+            (index === boardIndex || values(items[0]).every(value => value === (boardIndex === 0 ? 'Before' : 'Final')))),
+            'parameter updates isolate nested siblings and sibling parents: ' + label);
+          const current = Array.from(document.querySelectorAll('[data-jtml-direct-instance], .summary, .detail, h2, h3'));
+          assert(current.length === retained.length && retained.every((el, index) =>
+            el.isConnected && el === current[index] && el.getAttribute('data-jtml-direct-instance') === instanceIds[index]) &&
+            JSON.stringify(window.jtml.getRuntimeRegistrySnapshot()) === registry,
+            'repeated nested updates retain DOM, component identity and registry ownership: ' + label);
+          assert(window.jtml.directNestedComponentParamPatch &&
+            window.jtml.directNestedComponentParamPatch.mode === 'nested-component-static-update' &&
+            !window.jtml.directComponentPatchFallback && !window.jtml.directComponentBodyPlanFallback &&
+            !window.jtml.directComponentStaticUpdateError,
+            'nested updates use generated static patches without fallback: ' + label);
+        }
       } else if (regression === 'keyed-local-actions') {
         const initial = cards();
         const [audit, ship] = initial;

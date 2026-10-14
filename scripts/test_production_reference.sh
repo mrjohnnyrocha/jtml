@@ -81,19 +81,13 @@ if [[ -z "${JTML_REFERENCE_REGRESSION:-}" ]]; then
   rm -f "${log}"
   echo "PASS: routing — startup, hash/history navigation, direct load and route lifecycle"
 
-  expected_failure="nested heading updates when parameter is named title"
   log="$(mktemp "${TMPDIR:-/tmp}/jtml-reference-nested-heading.XXXXXX")"
-  if JTML_REFERENCE_REGRESSION=nested-heading "$0" >"${log}" 2>&1; then
-    rm -f "${log}"
-    echo "error: nested-heading unexpectedly passed; update its regression status" >&2
-    exit 1
-  fi
-  if ! grep -Fq "${expected_failure}" "${log}"; then
+  if ! JTML_REFERENCE_REGRESSION=nested-heading "$0" >"${log}" 2>&1; then
     cat "${log}" >&2
     rm -f "${log}"
-    echo "error: nested-heading failed for an unexpected reason" >&2
+    echo "error: nested-heading browser regression failed" >&2
     exit 1
   fi
   rm -f "${log}"
-  echo "KNOWN FAILURE: nested-heading — ${expected_failure}"
+  echo "PASS: nested-heading — nested parameters update text and attributes while preserving sibling isolation and identity"
 fi

@@ -149,6 +149,34 @@ Do not try to resolve this migration during baseline maintenance. Future work
 should continue moving common production paths toward static/browser execution
 and leave compatibility/live paths as explicit backends.
 
+## Nested component parameter propagation — 2026-10-14
+
+The production nested-heading regression now passes and is mandatory in
+`scripts/test_production_reference.sh`. The static update selector previously
+suppressed descendants after selecting an attribute-only container patch.
+It now separates selected nodes from selected subtree patches, preserving
+nested text/attribute updates without replacing component DOM or adding fallback
+paths. The expanded browser scenario completes 22 assertions over five actions,
+including repeated changes, two nested component levels, sibling isolation,
+retained DOM/instance identity, stable registry ownership, and no network/errors.
+Restoring the old suppression in generated assets fails the first Rename.
+
+Local macOS Release validation used main `e1b9fb2`, Chrome Headless Shell
+153.0.8010.12, Playwright 1.63.0, and cached CMake dependencies. Focused CTests
+passed 55/55; full CTests passed 335/335. The production reference suite, all nine
+real-browser/asset benchmarks, and `scripts/verify_all.sh` passed with no skipped
+checks; all nine browser benchmark processes exited cleanly. Existing budgets
+were unchanged. The initial out-of-tree `/tmp` build failed doctor's layout
+CTest because it searches ancestors for repository assets; the normal `build/`
+layout resolved that test without a code or assertion change.
+
+The reference app's existing 135395-byte HTML size regression remains reported.
+An additional `if title == "After"` probe still has an empty Runtime Plan read
+set and stale conditional DOM; that separate dependency limitation is documented
+with the root cause and regression contract in
+[the implementation note](docs/architecture/nested-component-parameter-propagation.md).
+These local results do not establish hosted CI or production readiness.
+
 ## PR #7 macOS routing harness repair — 2026-10-14
 
 The failed macOS run `38339524926` reached the direct-route iframe check after

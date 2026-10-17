@@ -40,7 +40,84 @@
     };
     const regression = window.jtmlReferenceRegression;
     if (regression) {
-      if (regression === 'routing') {
+      if (regression === 'conditional-lifecycle') {
+        const owner = document.querySelector('.conditional-owner');
+        const counters = () => Array.from(owner.querySelectorAll('.counter'));
+        const wrappers = () => counters().map(el => el.closest('[data-jtml-direct-instance]'));
+        // show emits a body-node span, whose sibling p carries the parameter.
+        const count = el => el.querySelector('button').nextElementSibling.textContent.trim();
+        const registry = () => window.jtml.getRuntimeRegistrySnapshot();
+        const activeIds = () => Object.keys(registry().dynamicGenerations);
+        let mounted = counters();
+        let mountedWrappers = wrappers();
+        let initialRegistry = JSON.stringify(registry());
+        assert(mounted.length === 2 && mounted.every(el => count(el) === '0'), 'two interactive children mount with independent local state');
+        assert(mountedWrappers.every(el => activeIds().includes(el.getAttribute('data-jtml-direct-instance'))), 'connected children own live registry generations');
+        click('Increment', mounted[0]);
+        click('Increment', mounted[1]);
+        await settle();
+        assert(mounted.every(el => count(el) === '1'), 'nested actions dispatch exactly once');
+        let first = 1, second = 1;
+        for (let i = 0; i < 3; i += 1) {
+          click('Mutate', owner);
+          await settle();
+          assert(counters().every((el, j) => el === mounted[j]) && wrappers().every((el, j) => el === mountedWrappers[j]), 'same branch preserves child DOM and instance identity after unrelated write');
+          assert(JSON.stringify(registry()) === initialRegistry, 'same branch retains registry ownership without generations or handler leaks');
+          click('Increment', mounted[0]); first += 1;
+          await settle();
+          assert(count(mounted[0]) === String(first) && count(mounted[1]) === String(second), 'retained controls remain functional and sibling state stays isolated');
+        }
+        for (let value = 1; value <= 2; value += 1) {
+          click('Relevant', owner);
+          await settle();
+          assert(owner.querySelector('.consumed').textContent === String(value) && mounted[1].querySelector('.value').textContent === String(value), 'still-active branch updates consumed text, attributes and nested parameters');
+          assert(counters().every((el, j) => el === mounted[j]) && mounted[1].closest('[title]').getAttribute('title') === String(value), 'relevant write retains mounted children while patching ancestor attributes');
+          click('Increment', mounted[1]); second += 1;
+          await settle();
+          assert(count(mounted[0]) === String(first) && count(mounted[1]) === String(second) && JSON.stringify(registry()) === initialRegistry, 'relevant writes preserve local state and active handlers');
+        }
+        for (let cycle = 0; cycle < 2; cycle += 1) {
+          const removed = mountedWrappers.slice();
+          const removedIds = removed.map(el => el.getAttribute('data-jtml-direct-instance'));
+          click('Hide', owner);
+          await settle();
+          assert(counters().length === 0 && removed.every(el => !el.isConnected), 'true to false unmounts interactive descendants');
+          const destroyed = window.jtml.directComponentDestroyLifecycle || {};
+          assert(removedIds.every(id => !activeIds().includes(id) && (destroyed.entries || []).some(entry => entry.id === id && entry.r && entry.s && entry.e && entry.d)), 'unmounted descendants release state handlers and registry ownership');
+          click('Reveal', owner);
+          await settle();
+          mounted = counters(); mountedWrappers = wrappers();
+          assert(mounted.length === 2 && mounted.every(el => count(el) === '0') && mountedWrappers.every(el => !removed.includes(el)), 'false to true recreates fresh component state and DOM');
+          initialRegistry = JSON.stringify(registry());
+          assert(activeIds().length === 2 && mountedWrappers.every(el => activeIds().includes(el.getAttribute('data-jtml-direct-instance'))), 'new connected descendants own exactly their live generations');
+          click('Increment', mounted[0]); click('Increment', mounted[1]);
+          await settle();
+          assert(mounted.every(el => count(el) === '1'), 'recreated child actions dispatch once after repeated transitions');
+          click('Mutate', owner);
+          await settle();
+          assert(counters().every((el, j) => el === mounted[j]) && mounted.every(el => count(el) === '1') && JSON.stringify(registry()) === initialRegistry, 'repeated invalidations retain recreated state and ownership');
+        }
+        assert(!window.jtml.directComponentPatchFallback && !window.jtml.directComponentBodyPlanFallback && !window.jtml.directComponentStaticUpdateError, 'conditional lifecycle uses static production paths without fallback');
+      } else if (regression === 'owned-loop-writes') {
+        const owned = document.querySelector('.owned-collection');
+        for (const [label, expected] of [['Owned mutate', '2'], ['Owned index', '3'], ['Owned mutate', '5']]) {
+          click(label, owned);
+          await settle();
+          assert(owned.firstElementChild.textContent.trim() === expected, 'owned iterator aliases and supported dynamic indices remain functional: ' + label);
+        }
+        const scopeParent = document.querySelector('.scope-parent');
+        const scopeChild = scopeParent.querySelector('.scope-child');
+        const scopeWrapper = scopeChild.closest('[data-jtml-direct-instance]');
+        const scopeRegistry = JSON.stringify(window.jtml.getRuntimeRegistrySnapshot().dynamicGenerations);
+        for (const expected of ['1', '3', '4']) {
+          click('Scope mutate', scopeChild);
+          await settle();
+          assert(scopeChild.querySelector('.scope-owned').textContent.trim() === expected, 'distinct nested locals preserve outer owned writes across both branches: ' + expected);
+          assert(scopeChild.querySelector('.scope-borrowed').textContent.trim() === '0' && scopeParent.querySelector('.scope-source').textContent.trim() === '0', 'borrowed parent object and parent DOM remain unchanged');
+          assert(scopeParent.querySelector('.scope-child') === scopeChild && scopeChild.closest('[data-jtml-direct-instance]') === scopeWrapper && JSON.stringify(window.jtml.getRuntimeRegistrySnapshot().dynamicGenerations) === scopeRegistry, 'scope-safe updates retain component DOM and ownership');
+        }
+        assert(!window.jtml.directComponentPatchFallback && !window.jtml.directComponentBodyPlanFallback && !window.jtml.directComponentStaticUpdateError, 'owned loop writes use static production paths without fallback');
+      } else if (regression === 'routing') {
         assert(errors.length === 0, 'routing starts without initialization errors');
         const route = path => document.querySelector('[data-jtml-route="' + path + '"]');
         const routeNodes = Array.from(document.querySelectorAll('[data-jtml-route]'));
@@ -136,6 +213,70 @@
           'route transitions preserve component identity without handler or state leaks');
         assert(routeChanges.join(',') === '/,/about,/,/about,/,/about,/,/missing,/',
           'route transitions emit exactly one lifecycle event each');
+      } else if (regression === 'conditional-reactivity') {
+        const boards = Array.from(document.querySelectorAll('.board'));
+        const probes = boards.map(board => board.querySelector('.probe'));
+        const retained = Array.from(document.querySelectorAll('[data-jtml-direct-instance], .probe, h2'));
+        const ids = retained.map(el => el.getAttribute('data-jtml-direct-instance'));
+        const registry = JSON.stringify(window.jtml.getRuntimeRegistrySnapshot());
+        const state = [{ count: 0, score: 0, title: "Before", enabled: false, fallback: "Fallback 0", offset: 1, limit: 3, items: [0, 3], index: 0, alias: 0 }, { count: 0, score: 0, title: "Before", enabled: false, fallback: "Fallback 0", offset: 1, limit: 3, items: [0, 3], index: 0, alias: 0 }];
+        const check = (probe, model) => {
+          const high = model.count >= 2;
+          const value = selector => probe.querySelector(selector).textContent;
+          return value('.comparison') === model.title &&
+            value('.arithmetic') === (model.count + model.offset >= model.limit ? 'High' : 'Low') &&
+            value('.logical') === (model.enabled && high ? 'Both' : 'Other') &&
+            value('.property') === (model.score >= 2 ? 'High' : 'Low') &&
+            value('.alias') === (model.alias >= 2 ? 'High' : 'Low') &&
+            value('.indexed') === (model.items[model.index] >= 2 ? 'High' : 'Low') &&
+            value('.derived') === (high ? 'High' : 'Low') &&
+            value('.ternary') === ((model.enabled ? high : model.score >= 2) ? 'Yes' : 'No') &&
+            (model.enabled ? value('.branch') === model.title :
+              probe.textContent.includes(model.fallback));
+        };
+        assert(boards.length === 2 && probes.every((probe, index) => check(probe, state[index])),
+          'conditional matrix starts with independent nested state');
+        const shadowRows = document.querySelector('.shadow-rows');
+        const rowValues = () => Array.from(shadowRows.querySelectorAll('[data-jtml-direct-list-key]')).map(el => el.textContent.trim());
+        assert(rowValues().join(',') === '1,2', 'shadowed derived collection starts with outer observable values');
+        for (const [index, label] of [[0, 'Advance'], [0, 'Advance'], [0, 'Fallback'], [0, 'Toggle'],
+          [0, 'Alias'], [0, 'Alias'], [0, 'Offset'], [0, 'Limit'], [0, 'Index'], [0, 'Index'],
+          [0, 'Indexed score'], [0, 'Indexed score'], [0, 'Replace items'], [0, 'Title'], [0, 'Count'], [0, 'Score'], [0, 'Toggle'], [0, 'Fallback'], [0, 'Reset'],
+          [0, 'Score'], [0, 'Score'], [0, 'Count'], [0, 'Count'], [0, 'Toggle'], [0, 'Reset'],
+          [1, 'Advance'], [1, 'Advance']]) {
+          click(label, boards[index]);
+          if (label === 'Advance') { state[index].count += 1; state[index].score += 1; state[index].title = 'After'; state[index].fallback = 'Fallback ' + state[index].count; }
+          if (label === 'Alias') state[index].alias += 1;
+          if (label === 'Offset') state[index].offset = 0;
+          if (label === 'Limit') state[index].limit = 1;
+          if (label === 'Index') state[index].index = 1 - state[index].index;
+          if (label === 'Indexed score') state[index].items[state[index].index] += 1;
+          if (label === 'Replace items') state[index].items = [0, 0];
+          if (label === 'Count') state[index].count += 1;
+          if (label === 'Score') state[index].score += 1;
+          if (label === 'Title') state[index].title = 'Before';
+          if (label === 'Fallback') state[index].fallback = 'Independent fallback';
+          if (label === 'Toggle') state[index].enabled = !state[index].enabled;
+          if (label === 'Reset') { state[index].count = 0; state[index].score = 0; state[index].title = 'Before'; state[index].fallback = 'Fallback 0'; state[index].offset = 1; state[index].limit = 3; state[index].items = [0, 3]; state[index].index = 0; }
+          await settle();
+          assert(probes.every((probe, sibling) => check(probe, state[sibling])),
+            'conditional dependencies update comparisons arithmetic logical properties both branches and derived values: ' + index + ' ' + label + ' ' + JSON.stringify(probes.map(probe => probe.textContent)));
+          assert(retained.every((el, position) => el.isConnected &&
+            el === document.querySelectorAll('[data-jtml-direct-instance], .probe, h2')[position] &&
+            el.getAttribute('data-jtml-direct-instance') === ids[position]) &&
+            JSON.stringify(window.jtml.getRuntimeRegistrySnapshot()) === registry,
+            'conditional updates preserve component and unaffected DOM identity with sibling isolation: ' + label);
+          assert(!window.jtml.directComponentPatchFallback && !window.jtml.directComponentBodyPlanFallback &&
+            !window.jtml.directComponentStaticUpdateError,
+            'conditional updates stay on generated static paths: ' + label);
+        }
+        click('Replace rows', shadowRows);
+        await settle();
+        assert(rowValues().join(',') === '3,4' && shadowRows === document.querySelector('.shadow-rows'),
+          'shadowed derived collection invalidates on outer root replacement');
+        assert(!window.jtml.directComponentPatchFallback && !window.jtml.directComponentBodyPlanFallback &&
+          !window.jtml.directComponentStaticUpdateError,
+          'derived collection replacement stays on generated static updates');
       } else if (regression === 'nested-heading') {
         const boards = Array.from(document.querySelectorAll('.board'));
         const summaries = boards.map(board => Array.from(board.querySelectorAll('.summary')));

@@ -25,7 +25,7 @@ network or browser errors. `scripts/test_production_reference.sh` requires this
 scenario to pass. Restoring the old ancestor suppression in generated assets
 fails the first Rename with heading values still at Before.
 
-## Separate dependency limitation
+## Conditional dependency follow-up
 
 An additional conditional probe in Summary:
 
@@ -42,7 +42,7 @@ make Summary title
 produced an `if` Runtime Plan node with `reads: []` despite an expression plan
 reading `title`. With Board passing a mutable heading, Rename updated the heading
 and attributes after this fix but left the conditional at Original. This
-conditional dependency limitation remains outside the attribute-only ancestor
-suppression fix. It is not covered by the mandatory text/attribute scenario.
-Use `jtml explain <source> --json` to inspect the missing read, and the production
-reference browser harness to reproduce the stale conditional.
+was outside the attribute-only ancestor suppression fix. The follow-up
+[conditional reactivity slice](conditional-reactivity.md) repairs the missing
+reads and adds a separate mandatory browser matrix. The nested-heading scenario
+continues to cover its original text/attribute and identity contract.

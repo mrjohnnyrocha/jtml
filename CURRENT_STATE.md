@@ -204,6 +204,81 @@ Local focused suite (`scripts/test_production_reference.sh` with
 keyed actions, form submit, and routing. The expected nested-heading failure and
 135395-byte reference HTML size regression remain reported, not hidden.
 
+## Conditional dependency correctness — 2026-10-17
+
+Starting from main `1208ca7` (nested parameter PR #8 integrated), the conditional
+reactivity slice repairs complete-expression Runtime Plan reads, both-branch
+static region dependencies/ownership, and conservative mutable object propagation.
+Owned member/index writes invalidate aliases; unsupported borrowed mutations and
+unanalyzable production conditions fail closed with source/component remediation.
+The precise bounded expression/write contract and conservative ownership limits
+are documented in [conditional reactivity](docs/architecture/conditional-reactivity.md).
+This is not a freeze of the complete v0.3 surface.
+
+The exact new fixture fails on the original PR #8 compiler at the first Advance.
+With the repair, all 341 CTests, the complete production reference suite, all nine
+real browser benchmarks and `scripts/verify_all.sh` pass. The mandatory conditional
+scenario performs 28 actions/86 assertions, including independently varied
+operands, aliases, both branches, repeated writes, siblings and component identity.
+Pinned Chrome Headless Shell 153.0.8010.12/Playwright 1.63.0 exits cleanly for every
+browser fixture. No validation was skipped and no budget increased. Shared runtime
+is 271796/272000 bytes; large-keyed-reorder compatibility plan is 177847/180000 bytes.
+
+The initial full gate caught an update-plan budget failure (185911/180000 bytes)
+from incorrectly promoted row-local key dependencies; correcting Runtime Plan
+scope, rather than changing the budget, resolved it. The existing composed
+reference HTML size limitation remains (135374 bytes versus its 70000-byte
+microfixture comparison). Local verification does not establish production or
+release readiness; hosted CI is separate evidence.
+
+## PR #10 review repairs — 2026-10-17
+
+The reviewed head `6384d34` had three reproduced production defects: an unchanged
+conditional branch replaced and unregistered interactive children; iterator
+bindings bypassed borrowed ownership; and unsupported RHS/computed-target calls
+passed assignment validation, becoming literal text or a no-op.
+
+The follow-up retains active branches through generated static descendant patches,
+orders transition destruction before creation, resolves ownership by lexical
+binding identity (including iterators and aliases), and validates complete static
+assignment expressions/operators/ownership before clean production generation.
+Conservative invalidation and all existing budgets remain intact.
+
+The original compiler fails the new lifecycle identity assertion; all three new
+CTests fail against the reviewed backend. The repaired version passes 344/344
+CTests, the complete reference suite (new lifecycle 22 actions/32 assertions and
+owned-loop 3 actions/5 assertions, plus the existing conditional matrix), all nine
+real-browser/asset/CSP benchmarks and `scripts/verify_all.sh` with live smoke 8/8.
+No checks were skipped; all benchmark browsers exited cleanly. Shared runtime is
+271879/272000 bytes; large keyed compatibility output remains 177847/180000 bytes.
+The existing reference HTML size limitation is still visible. See the
+[architecture note](docs/architecture/conditional-reactivity.md) for root causes,
+negative controls, supported contracts and conservative ownership limitations.
+Hosted CI against the final pushed head is separate evidence; no merge or release
+is implied by these local results.
+
+## PR #10 shared declaration scope repair
+
+Review head `5a56947` incorrectly accepted a nested `let item = input` followed
+by a write to an outer owned `item`: the runtime shared storage while ownership
+analysis assumed separate lexical bindings. Clean production now fails closed
+for nested state/derived declarations that collide with another component binding,
+including sibling branches/actions, parameters and iterators. Use unique local
+names. Runtime/live/compatibility semantics and all budgets are unchanged; see the
+[scope trace and contract](docs/architecture/conditional-reactivity.md#shared-declaration-scope-repair-reviewed-head-5a56947).
+
+The exact reported fixture must fail compilation before assets are emitted.
+Both new CTests and the new production-reference guard fail against `5a56947`.
+The supported unique-name remediation runs in real Chrome alongside owned loop
+writes: 6 actions/14 assertions cover nested branches, repeated updates, unchanged
+borrowed parent state and retained component identity/registry ownership.
+Final local checks pass: 346/346 CTests, complete production reference suite,
+all nine real-browser/asset/CSP benchmarks and `scripts/verify_all.sh` (live smoke
+8/8), with no skipped checks and clean browser exits. All three prior PR #10
+regressions remain covered and passing. Runtime remains 271879/272000 bytes;
+large-keyed compatibility output remains 177847/180000 bytes. The existing
+135374-byte reference HTML limitation remains visible. Hosted CI is separate.
+
 ## Verified Development Baseline — 2026-10-12
 
 Starting commit: `5e0761925fcdd748268d3049d613fb767e1dbd45` (clean checkout).

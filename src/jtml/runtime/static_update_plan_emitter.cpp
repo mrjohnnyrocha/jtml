@@ -8,6 +8,7 @@
 #include <cctype>
 #include <cstdint>
 #include <iterator>
+#include <functional>
 #include <map>
 #include <set>
 #include <sstream>
@@ -463,11 +464,22 @@ std::vector<std::string> expandedNodeReads(
     }
     if (head == "for" || head == "if") {
         std::vector<int> stack = node.childIndices;
-        int guardChildren = 0;
-        while (!stack.empty() && guardChildren++ < 10000) {
+        if (head == "if") {
+            const auto nodeIndex = static_cast<size_t>(&node - definition.bodyPlan.data());
+            for (size_t i = nodeIndex + 1; i < definition.bodyPlan.size(); ++i) {
+                const auto& sibling = definition.bodyPlan[i];
+                if (sibling.parentIndex != node.parentIndex) continue;
+                if (componentNodeHead(sibling) == "else") {
+                    stack.insert(stack.end(), sibling.childIndices.begin(), sibling.childIndices.end());
+                }
+                break;
+            }
+        }
+        std::set<int> visited;
+        while (!stack.empty()) {
             const int childIndex = stack.back();
             stack.pop_back();
-            if (childIndex < 0 ||
+            if (childIndex < 0 || !visited.insert(childIndex).second ||
                 static_cast<size_t>(childIndex) >= definition.bodyPlan.size()) {
                 continue;
             }
@@ -478,20 +490,18 @@ std::vector<std::string> expandedNodeReads(
             for (const auto grandchild : child.childIndices) stack.push_back(grandchild);
         }
     }
-    bool changed = true;
-    int guard = 0;
-    while (changed && guard++ < 1000) {
-        changed = false;
-        for (const auto& [name, deps] : derivedDeps) {
-            if (!reads.count(name)) continue;
-            const auto before = reads.size();
-            for (const auto& dep : deps) {
-                if (!loopLocals.count(dep)) reads.insert(dep);
-            }
-            changed = changed || reads.size() != before;
+    // Only descendant row-local reads are filtered above. Component-derived
+    // dependencies resolve in the outer scope even if the iterator shadows one.
+    // A worklist reaches the finite transitive closure, including cycles,
+    // without silently truncating valid dependency chains at a fixed depth.
+    std::vector<std::string> pending(reads.begin(), reads.end());
+    for (size_t i = 0; i < pending.size(); ++i) {
+        const auto derived = derivedDeps.find(pending[i]);
+        if (derived == derivedDeps.end()) continue;
+        for (const auto& dep : derived->second) {
+            if (reads.insert(dep).second) pending.push_back(dep);
         }
     }
-    for (const auto& local : loopLocals) reads.erase(local);
     return {reads.begin(), reads.end()};
 }
 
@@ -1485,15 +1495,15 @@ std::string directStaticIfCreateExpression(const nlohmann::json& componentPlan,
 
     std::ostringstream out;
     out << "(function(){ "
-        << "const rendered = []; "
-        << "if (" << jsDirectExpressionCall(conditionPlan) << ") {";
+        << "const rendered = []; const branch = !!(" << jsDirectExpressionCall(conditionPlan) << "); "
+        << "if (branch) {";
     appendDirectRenderedChildrenStatements(out, thenChildren, "rendered");
     out << "} else {";
     appendDirectRenderedChildrenStatements(out, elseChildren, "rendered");
     out << "} "
         << "return '<span data-jtml-direct-body-node=\""
         << nodeIndex
-        << "\" data-jtml-direct-region=\"if\" style=\"display:contents\">' + "
+        << "\" data-jtml-direct-region=\"if\" data-jtml-direct-branch=\"' + (branch ? '1' : '0') + '\" style=\"display:contents\">' + "
         << "rendered.join('') + '</span>'; "
         << "})()";
     return out.str();
@@ -1876,7 +1886,8 @@ std::string directStaticCreateCall(
 std::string directStaticRegionPatchExpression(
         const nlohmann::json& componentPlan,
     size_t nodeIndex,
-    bool enableGeneratedKeyedPatch) {
+    bool enableGeneratedKeyedPatch,
+    size_t componentIndex) {
     const auto bodyPlan = componentPlan.value("bodyPlan", nlohmann::json::array());
     const nlohmann::json* node = nullptr;
     if (bodyPlan.is_array() && nodeIndex < bodyPlan.size() &&
@@ -1968,6 +1979,39 @@ std::string directStaticRegionPatchExpression(
         << "(instance && instance.element ? instance.element.querySelector('[data-jtml-direct-body-node=\""
         << nodeIndex << "\"]') : null); "
         << "if (!el) return false; ";
+    if (head == "if") {
+        out << "const branch = !!(" << jsDirectExpressionCall(node->value("expressionPlan", nlohmann::json::object())) << "); "
+            << "if (el.getAttribute('data-jtml-direct-branch') === (branch ? '1' : '0')) { ";
+        std::map<size_t, std::string> operations;
+        for (const auto& entry : componentPlan.value("entries", nlohmann::json::array())) {
+            operations[entry.value("index", 0)] = entry.value("operation", nlohmann::json::object()).value("operation", "");
+        }
+        // Reuse generated patch cases for the active branch. Containers patch
+        // attributes only; regions and nested modules own their descendants.
+        std::function<void(const nlohmann::json&)> patchChildren = [&](const nlohmann::json& parent) {
+            for (const auto& index : parent.value("childIndices", nlohmann::json::array())) {
+                const auto child = index.get<size_t>();
+                if (child >= bodyPlan.size()) continue;
+                const auto& childNode = bodyPlan[child];
+                if (childNode.value("head", "") == "else") continue;
+                const auto operation = operations.find(child);
+                if (operation != operations.end()) {
+                    out << "if (!jtml_static_component_patch_" << componentIndex << "(" << child
+                        << ", definition.bodyPlan[" << child << "], instance, definition, scope, h)) return false; ";
+                    if (operation->second != "container-attrs") continue;
+                }
+                patchChildren(childNode);
+            }
+        };
+        out << "if (branch) { ";
+        patchChildren(*node);
+        out << "} else { ";
+        nlohmann::json elseNode;
+        if (findStaticElseSibling(componentPlan, nodeIndex, *node, elseNode)) patchChildren(elseNode);
+        out << "} return true; } "
+            // Destroy before creating: creation registers the new generation.
+            << "if (h && h.destroyDirectComponentInstancesUnderElement) h.destroyDirectComponentInstancesUnderElement(el, 'subtree-prune'); ";
+    }
     if (head == "for") {
         out << "const node = (definition && definition.bodyPlan || [])["
             << nodeIndex << "]; ";
@@ -2053,11 +2097,13 @@ std::string directStaticRegionPatchExpression(
             << "h.patchComponentForRegion(instance, definition, node, scope, el)) return true; ";
     }
     out << "const html = " << directCreate << "; "
-        << "if (typeof html !== 'string') return false; "
-        << "if (h && h.destroyDirectComponentInstancesUnderElement) "
-        << "h.destroyDirectComponentInstancesUnderElement(el, "
-        << jsStringLiteral(replaceReason) << "); "
-        << "el.outerHTML = html; "
+        << "if (typeof html !== 'string') return false; ";
+    if (head != "if") {
+        out << "if (h && h.destroyDirectComponentInstancesUnderElement) "
+            << "h.destroyDirectComponentInstancesUnderElement(el, "
+            << jsStringLiteral(replaceReason) << "); ";
+    }
+    out << "el.outerHTML = html; "
         << "return true; "
         << "})()";
     return out.str();
@@ -2118,7 +2164,8 @@ std::string directStaticNestedPatchExpression(size_t nodeIndex,
 
 std::string directStaticPatchExpression(const nlohmann::json& componentPlan,
                                         const nlohmann::json& operation,
-                                        bool enableGeneratedKeyedPatch) {
+                                        bool enableGeneratedKeyedPatch,
+                                        size_t componentIndex) {
     if (!operation.is_object() || !operation.contains("operation") ||
         !operation.contains("nodeIndex")) {
         return "";
@@ -2187,7 +2234,7 @@ std::string directStaticPatchExpression(const nlohmann::json& componentPlan,
             directPatch = directStaticRegionPatchExpression(
                 componentPlan,
                 static_cast<size_t>(nodeIndex),
-                enableGeneratedKeyedPatch);
+                enableGeneratedKeyedPatch, componentIndex);
         }
         if (!directPatch.empty()) {
             out << directPatch;
@@ -2214,14 +2261,15 @@ std::string directStaticPatchExpression(const nlohmann::json& componentPlan,
 
 std::string directStaticPatchCase(const nlohmann::json& componentPlan,
                                   const nlohmann::json& entry,
-                                  bool enableGeneratedKeyedPatch) {
+                                  bool enableGeneratedKeyedPatch,
+                                  size_t componentIndex) {
     if (!entry.is_object() || !entry.contains("index") ||
         !entry.contains("operation")) {
         return "";
     }
     const auto operation = entry["operation"];
     const auto patchExpression = directStaticPatchExpression(
-        componentPlan, operation, enableGeneratedKeyedPatch);
+        componentPlan, operation, enableGeneratedKeyedPatch, componentIndex);
     if (patchExpression.empty()) return "";
     const auto index = entry.value("index", 0);
     std::ostringstream out;
@@ -2243,7 +2291,18 @@ std::string staticUpdateAffectedIndexesFunctionBody(const nlohmann::json& compon
     if (bodyPlan.is_array()) {
         for (size_t i = 0; i < bodyPlan.size(); ++i) {
             if (!bodyPlan[i].is_object()) continue;
-            const int parentIndex = bodyPlan[i].value("parentIndex", -1);
+            int parentIndex = bodyPlan[i].value("parentIndex", -1);
+            // Else is rendered by its preceding if region, not by a separate
+            // DOM region. Route descendant suppression through that owner.
+            if (bodyPlan[i].value("head", "") == "else") {
+                for (size_t sibling = i; sibling-- > 0;) {
+                    if (bodyPlan[sibling].value("parentIndex", -2) != parentIndex) continue;
+                    if (bodyPlan[sibling].value("head", "") == "if") {
+                        parentIndex = static_cast<int>(sibling);
+                    }
+                    break;
+                }
+            }
             if (parentIndex < 0) continue;
             if (!firstParent) out << ",";
             firstParent = false;
@@ -2254,7 +2313,7 @@ std::string staticUpdateAffectedIndexesFunctionBody(const nlohmann::json& compon
         << "      function ancestorSeen(index) {\n"
         << "        let parent = parentOf[index];\n"
         << "        let guard = 0;\n"
-        << "        while (parent != null && guard++ < 1000) {\n"
+        << "        while (parent != null && guard++ < " << bodyPlan.size() << ") {\n"
         << "          if (subtreeSeen[parent]) return true;\n"
         << "          parent = parentOf[parent];\n"
         << "        }\n"
@@ -2377,7 +2436,7 @@ std::string staticUpdateFunctionBody(size_t componentIndex,
     const auto entries = componentPlan.value("entries", nlohmann::json::array());
     for (const auto& entry : entries) {
         const auto patchCase = directStaticPatchCase(
-            componentPlan, entry, enableGeneratedKeyedPatch);
+            componentPlan, entry, enableGeneratedKeyedPatch, componentIndex);
         if (patchCase.empty()) continue;
         out << patchCase;
         emittedPatchCases += 1;
@@ -2567,6 +2626,160 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
         const auto context =
             name + (origin.empty() ? "" : " (" + origin + ")") +
             (key.empty() ? "" : " [" + key + "]");
+
+        const auto body = component.value("bodyPlan", nlohmann::json::array());
+        // Bindings, not bare names, carry ownership. A loop iterator receives
+        // the provenance of its collection in the enclosing lexical scope.
+        struct Binding {
+            std::string name;
+            int declaration;
+            bool writable;
+            bool iterator;
+            bool borrowed;
+            std::set<int> sources;
+        };
+        std::vector<Binding> bindings;
+        std::map<std::pair<int, std::string>, std::vector<int>> scopes;
+        auto declare = [&](int scope, const std::string& name, int declaration,
+                           bool writable, bool iterator, bool borrowed) {
+            const int id = static_cast<int>(bindings.size());
+            bindings.push_back({name, declaration, writable, iterator, borrowed, {}});
+            scopes[{scope, name}].push_back(id);
+            return id;
+        };
+        const auto componentParams = component.value("params", std::vector<std::string>{});
+        for (const auto& param : componentParams) declare(-1, param, -1, false, false, true);
+        std::map<size_t, int> declarations;
+        for (size_t i = 0; i < body.size(); ++i) {
+            const auto& node = body[i];
+            const auto kind = node.value("kind", "");
+            if (kind == "state" || kind == "derived") {
+                const auto scope = node.value("parentIndex", -1);
+                const auto local = node.value("name", "");
+                // Component scopes refresh parameters before every action; a
+                // same-scope declaration cannot turn that parameter into owned state.
+                const bool parameter = scope == -1 && std::find(componentParams.begin(), componentParams.end(), local) != componentParams.end();
+                declarations[i] = declare(scope, local, static_cast<int>(i),
+                    kind == "state" && node.value("head", "") == "let" && !parameter, false, parameter);
+            } else if (kind == "action") {
+                const auto words = splitStaticComponentWords(node.value("text", ""));
+                for (size_t j = 2; j < words.size(); ++j) declare(static_cast<int>(i), words[j], static_cast<int>(i), false, false, true);
+            } else if (node.value("head", "") == "for") {
+                const auto loop = node.value("loopPlan", nlohmann::json::object());
+                declarations[i] = declare(static_cast<int>(i), loop.value("item", ""), static_cast<int>(i), false, true, false);
+            }
+        }
+        // Runtime declarations write to one persistent component scope. Unlike
+        // action parameters and loop iterators, they are not restored on exit.
+        // Lexical ownership is sound only when a nested declaration cannot
+        // overwrite a different binding, including in sibling branches/actions.
+        std::map<std::string, size_t> bindingCounts;
+        for (const auto& binding : bindings) ++bindingCounts[binding.name];
+        for (const auto& declaration : declarations) {
+            const auto& node = body[declaration.first];
+            const auto kind = node.value("kind", "");
+            if ((kind != "state" && kind != "derived") || node.value("parentIndex", -1) == -1) continue;
+            const auto local = node.value("name", "");
+            if (bindingCounts[local] <= 1) continue;
+            issues.push_back("component " + context + " has unsupported production nested declaration `" +
+                local + "` at " + sourceLabelFor(component, node) +
+                "; declarations share runtime storage and may overwrite owned or borrowed bindings; use a unique local name");
+        }
+        auto resolve = [&](const std::string& name, size_t at) {
+            int scope = body[at].value("parentIndex", -1);
+            for (size_t guard = 0; guard <= body.size(); ++guard) {
+                const auto found = scopes.find({scope, name});
+                if (found != scopes.end()) {
+                    for (auto it = found->second.rbegin(); it != found->second.rend(); ++it) {
+                        const auto declaration = bindings[*it].declaration;
+                        if (declaration != static_cast<int>(at) && (scope == -1 || declaration < static_cast<int>(at))) return *it;
+                    }
+                }
+                if (scope < 0 || static_cast<size_t>(scope) >= body.size()) break;
+                scope = body[scope].value("parentIndex", -1);
+            }
+            return -1;
+        };
+        auto expressionSources = [&](int binding, const std::string& expression, size_t at) {
+            const auto rhs = parseExpressionIr(expression);
+            if (!rhs || !expressionIrSupportsDirectJs(*rhs)) {
+                bindings[binding].borrowed = true;
+                return;
+            }
+            for (const auto& read : expressionIrDependencies(*rhs)) {
+                const auto source = resolve(read.substr(0, read.find_first_of(".[")), at);
+                if (source < 0) bindings[binding].borrowed = true;
+                else bindings[binding].sources.insert(source);
+            }
+        };
+        for (size_t i = 0; i < body.size(); ++i) {
+            const auto& node = body[i];
+            const auto declaration = declarations.find(i);
+            if (declaration != declarations.end()) {
+                const auto expression = node.value("head", "") == "for"
+                    ? node.value("loopPlan", nlohmann::json::object()).value("collectionExpression", "")
+                    : node.value("expression", "");
+                expressionSources(declaration->second, expression, i);
+            } else if (node.value("kind", "") == "assignment") {
+                const auto target = node.value("name", "");
+                const auto binding = resolve(target.substr(0, target.find_first_of(".[")), i);
+                if (binding >= 0) expressionSources(binding, node.value("expression", ""), i);
+            }
+        }
+        bool borrowingChanged = true;
+        while (borrowingChanged) {
+            borrowingChanged = false;
+            for (auto& binding : bindings) {
+                for (const auto source : binding.sources) {
+                    if (!binding.borrowed && bindings[source].borrowed) {
+                        binding.borrowed = true;
+                        borrowingChanged = true;
+                    }
+                }
+            }
+        }
+        std::function<bool(const ExpressionIr&)> writablePath = [&](const ExpressionIr& target) {
+            if (target.kind == ExpressionIrKind::Path) return !target.root.empty();
+            if (target.kind != ExpressionIrKind::Member && target.kind != ExpressionIrKind::Subscript) return false;
+            if (target.children.empty() || !target.children[0] || !writablePath(*target.children[0])) return false;
+            return expressionIrSupportsDirectJs(target);
+        };
+        for (size_t i = 0; i < body.size(); ++i) {
+            const auto& node = body[i];
+            if (node.value("kind", "") != "assignment") continue;
+            const auto target = node.value("name", "");
+            const auto root = target.substr(0, target.find_first_of(".["));
+            const auto lhs = parseExpressionIr(target);
+            const auto rhs = parseExpressionIr(node.value("expression", ""));
+            const std::set<std::string> operators = {"=", "+=", "-=", "*=", "/=", "%="};
+            if (!lhs || !writablePath(*lhs) || !rhs || !expressionIrSupportsDirectJs(*rhs) ||
+                !operators.count(node.value("operator", ""))) {
+                issues.push_back("component " + context + " has unsupported production assignment `" + target +
+                    "` at " + sourceLabelFor(component, node) +
+                    "; use a writable path with statically analyzable indices and RHS; unknown or side-effectful calls are unsupported");
+                continue;
+            }
+            const auto id = resolve(root, i);
+            const bool path = root != target;
+            if (id >= 0 && ((!bindings[id].writable && !bindings[id].iterator) || (path && bindings[id].borrowed))) {
+                issues.push_back("component " + context + " has unsupported production write to borrowed value `" +
+                    target + "` at " + sourceLabelFor(component, node) +
+                    "; use component-owned state or a parent action; parameters are read-only, as are borrowed iterators");
+            } else if (id < 0 || (!bindings[id].writable && !(path && bindings[id].iterator))) {
+                issues.push_back("component " + context + " has unsupported production write target `" +
+                    target + "` at " + sourceLabelFor(component, node) +
+                    "; write a component-local let value or an owned collection member");
+            }
+        }
+
+        for (const auto& node : component.value("bodyPlan", nlohmann::json::array())) {
+            if (node.value("head", "") != "if") continue;
+            if (isDirectJsExpressionPlan(node.value("expressionPlan", nlohmann::json::object()))) continue;
+            const auto source = sourceLabelFor(component, node);
+            issues.push_back("component " + context +
+                " has unsupported production conditional expression at " + source +
+                "; use a statically analyzable expression over observable values");
+        }
 
         const auto unsafeRoots =
             component.value("unsafeRootCreateEntries", nlohmann::json::array());

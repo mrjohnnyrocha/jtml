@@ -9,10 +9,29 @@ INDEX_BUDGET_BYTES=70000
 # A browser is required: a successful compile alone is not interaction evidence.
 export JTML_REQUIRE_BROWSER_BENCH=1
 mkdir -p "${OUT}"
+# The exact reported exploit must never produce a runnable production app.
+# Browser coverage below exercises its supported unique-local-name remediation.
+if [[ -z "${JTML_REFERENCE_REGRESSION:-}" ]]; then
+  python3 - "${JTML}" "${FIXTURE}/regressions/scope-leak-rejected.jtml" <<'PYTHON'
+import pathlib
+import subprocess
+import sys
+import tempfile
+with tempfile.TemporaryDirectory(prefix="jtml-scope-rejection-") as temporary:
+    output = pathlib.Path(temporary) / "dist"
+    result = subprocess.run([sys.argv[1], "build", sys.argv[2], "--target", "browser", "--out", str(output)], capture_output=True, text=True)
+    message = result.stdout + result.stderr
+    assert result.returncode != 0, "production accepted the borrowed scope leak"
+    assert "nested declaration `item`" in message and "unique local name" in message, message
+    assert "Child" in message and "scope-leak-rejected.jtml" in message, message
+    assert not any((output / name).exists() for name in ("index.html", "app.js", "components/index.js", "jtml-runtime.js")), "rejected scope leak emitted runnable assets"
+print("PASS: exact borrowed scope leak fails closed before asset emission")
+PYTHON
+fi
 source="${FIXTURE}/index.jtml"
 case "${JTML_REFERENCE_REGRESSION:-}" in
   "") ;;
-  form-submit|keyed-local-actions|routing|nested-heading)
+  form-submit|keyed-local-actions|routing|nested-heading|conditional-reactivity|conditional-lifecycle|owned-loop-writes)
     source="${FIXTURE}/regressions/${JTML_REFERENCE_REGRESSION}.jtml" ;;
   *) echo "error: unknown reference regression" >&2; exit 1 ;;
 esac
@@ -80,6 +99,36 @@ if [[ -z "${JTML_REFERENCE_REGRESSION:-}" ]]; then
   fi
   rm -f "${log}"
   echo "PASS: routing — startup, hash/history navigation, direct load and route lifecycle"
+
+  log="$(mktemp "${TMPDIR:-/tmp}/jtml-reference-conditional-reactivity.XXXXXX")"
+  if ! JTML_REFERENCE_REGRESSION=conditional-reactivity "$0" >"${log}" 2>&1; then
+    cat "${log}" >&2
+    rm -f "${log}"
+    echo "error: conditional-reactivity browser regression failed" >&2
+    exit 1
+  fi
+  rm -f "${log}"
+  echo "PASS: conditional-reactivity — conservative dependencies and repeated nested conditional updates"
+
+  log="$(mktemp "${TMPDIR:-/tmp}/jtml-reference-conditional-lifecycle.XXXXXX")"
+  if ! JTML_REFERENCE_REGRESSION=conditional-lifecycle "$0" >"${log}" 2>&1; then
+    cat "${log}" >&2
+    rm -f "${log}"
+    echo "error: conditional-lifecycle browser regression failed" >&2
+    exit 1
+  fi
+  rm -f "${log}"
+  echo "PASS: conditional-lifecycle — retained interactive ownership, transitions and owned collection writes"
+
+  log="$(mktemp "${TMPDIR:-/tmp}/jtml-reference-owned-loop-writes.XXXXXX")"
+  if ! JTML_REFERENCE_REGRESSION=owned-loop-writes "$0" >"${log}" 2>&1; then
+    cat "${log}" >&2
+    rm -f "${log}"
+    echo "error: owned-loop-writes browser regression failed" >&2
+    exit 1
+  fi
+  rm -f "${log}"
+  echo "PASS: owned-loop-writes — owned iterators, aliases and dynamic indices"
 
   log="$(mktemp "${TMPDIR:-/tmp}/jtml-reference-nested-heading.XXXXXX")"
   if ! JTML_REFERENCE_REGRESSION=nested-heading "$0" >"${log}" 2>&1; then

@@ -1,6 +1,6 @@
 # JTML for VS Code
 
-Syntax highlighting, bracket matching, and snippets for the [JTML](https://github.com/mrjohnnyrocha/jtml-v1) reactive HTML language.
+Syntax highlighting, bracket matching, and snippets for the [JTML](https://github.com/mrjohnnyrocha/jtml) reactive HTML language.
 
 ## Features
 

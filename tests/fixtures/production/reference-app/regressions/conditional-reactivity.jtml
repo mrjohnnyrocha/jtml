@@ -1,0 +1,121 @@
+jtml 2
+
+make Probe title count enabled item fallback offset limit items index alias
+  get derived = count + 1
+  panel class "probe" title title
+    h2 "Stable heading"
+    if title == "After"
+      p class "comparison" "After"
+    else
+      p class "comparison" "Before"
+    if count + offset >= limit
+      p class "arithmetic" "High"
+    else
+      p class "arithmetic" "Low"
+    if enabled && count >= 2
+      p class "logical" "Both"
+    else
+      p class "logical" "Other"
+    if item.score > 1
+      p class "property" "High"
+    else
+      p class "property" "Low"
+    if alias.score > 1
+      p class "alias" "High"
+    else
+      p class "alias" "Low"
+    if items[index].score > 1
+      p class "indexed" "High"
+    else
+      p class "indexed" "Low"
+    if enabled
+      p class "branch" title
+    else
+      show fallback
+    if derived > 2
+      p class "derived" "High"
+    else
+      p class "derived" "Low"
+    if enabled ? count > 1 : item.score > 1
+      p class "ternary" "Yes"
+    else
+      p class "ternary" "No"
+
+make Board
+  let title = "Before"
+  let count = 0
+  let enabled = false
+  let item = { "score": 0 }
+  let fallback = "Fallback 0"
+  let offset = 1
+  let limit = 3
+  let items = [{ "score": 0 }, { "score": 3 }]
+  let index = 0
+  let shared = { "score": 0 }
+  let alias = shared
+  when advance
+    title = "After"
+    count = count + 1
+    item.score = item.score + 1
+    fallback = "Fallback " + count
+  when aliasOnly
+    shared.score += 1
+  when offsetOnly
+    offset = 0
+  when limitOnly
+    limit = 1
+  when indexOnly
+    index = 1 - index
+  when indexedScoreOnly
+    items[index].score += 1
+  when replaceItems
+    items = [{ "score": 0 }, { "score": 0 }]
+  when countOnly
+    count = count + 1
+  when scoreOnly
+    item.score = item.score + 1
+  when titleOnly
+    title = "Before"
+  when fallbackOnly
+    fallback = "Independent fallback"
+  when toggle
+    enabled = !enabled
+  when reset
+    title = "Before"
+    count = 0
+    item = { "score": 0 }
+    fallback = "Fallback 0"
+    offset = 1
+    limit = 3
+    items = [{ "score": 0 }, { "score": 3 }]
+    index = 0
+  box class "board"
+    Probe title count enabled item fallback offset limit items index alias
+    button "Advance" click advance
+    button "Alias" click aliasOnly
+    button "Offset" click offsetOnly
+    button "Limit" click limitOnly
+    button "Index" click indexOnly
+    button "Indexed score" click indexedScoreOnly
+    button "Replace items" click replaceItems
+    button "Count" click countOnly
+    button "Score" click scoreOnly
+    button "Title" click titleOnly
+    button "Fallback" click fallbackOnly
+    button "Toggle" click toggle
+    button "Reset" click reset
+
+make ShadowRows
+  let item = [1, 2]
+  get rows = item
+  when replace
+    item = [3, 4]
+  box class "shadow-rows"
+    for item in rows key item
+      show item
+    button "Replace rows" click replace
+
+page
+  Board
+  Board
+  ShadowRows

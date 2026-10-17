@@ -136,6 +136,70 @@
           'route transitions preserve component identity without handler or state leaks');
         assert(routeChanges.join(',') === '/,/about,/,/about,/,/about,/,/missing,/',
           'route transitions emit exactly one lifecycle event each');
+      } else if (regression === 'conditional-reactivity') {
+        const boards = Array.from(document.querySelectorAll('.board'));
+        const probes = boards.map(board => board.querySelector('.probe'));
+        const retained = Array.from(document.querySelectorAll('[data-jtml-direct-instance], .probe, h2'));
+        const ids = retained.map(el => el.getAttribute('data-jtml-direct-instance'));
+        const registry = JSON.stringify(window.jtml.getRuntimeRegistrySnapshot());
+        const state = [{ count: 0, score: 0, title: "Before", enabled: false, fallback: "Fallback 0", offset: 1, limit: 3, items: [0, 3], index: 0, alias: 0 }, { count: 0, score: 0, title: "Before", enabled: false, fallback: "Fallback 0", offset: 1, limit: 3, items: [0, 3], index: 0, alias: 0 }];
+        const check = (probe, model) => {
+          const high = model.count >= 2;
+          const value = selector => probe.querySelector(selector).textContent;
+          return value('.comparison') === model.title &&
+            value('.arithmetic') === (model.count + model.offset >= model.limit ? 'High' : 'Low') &&
+            value('.logical') === (model.enabled && high ? 'Both' : 'Other') &&
+            value('.property') === (model.score >= 2 ? 'High' : 'Low') &&
+            value('.alias') === (model.alias >= 2 ? 'High' : 'Low') &&
+            value('.indexed') === (model.items[model.index] >= 2 ? 'High' : 'Low') &&
+            value('.derived') === (high ? 'High' : 'Low') &&
+            value('.ternary') === ((model.enabled ? high : model.score >= 2) ? 'Yes' : 'No') &&
+            (model.enabled ? value('.branch') === model.title :
+              probe.textContent.includes(model.fallback));
+        };
+        assert(boards.length === 2 && probes.every((probe, index) => check(probe, state[index])),
+          'conditional matrix starts with independent nested state');
+        const shadowRows = document.querySelector('.shadow-rows');
+        const rowValues = () => Array.from(shadowRows.querySelectorAll('[data-jtml-direct-list-key]')).map(el => el.textContent.trim());
+        assert(rowValues().join(',') === '1,2', 'shadowed derived collection starts with outer observable values');
+        for (const [index, label] of [[0, 'Advance'], [0, 'Advance'], [0, 'Fallback'], [0, 'Toggle'],
+          [0, 'Alias'], [0, 'Alias'], [0, 'Offset'], [0, 'Limit'], [0, 'Index'], [0, 'Index'],
+          [0, 'Indexed score'], [0, 'Indexed score'], [0, 'Replace items'], [0, 'Title'], [0, 'Count'], [0, 'Score'], [0, 'Toggle'], [0, 'Fallback'], [0, 'Reset'],
+          [0, 'Score'], [0, 'Score'], [0, 'Count'], [0, 'Count'], [0, 'Toggle'], [0, 'Reset'],
+          [1, 'Advance'], [1, 'Advance']]) {
+          click(label, boards[index]);
+          if (label === 'Advance') { state[index].count += 1; state[index].score += 1; state[index].title = 'After'; state[index].fallback = 'Fallback ' + state[index].count; }
+          if (label === 'Alias') state[index].alias += 1;
+          if (label === 'Offset') state[index].offset = 0;
+          if (label === 'Limit') state[index].limit = 1;
+          if (label === 'Index') state[index].index = 1 - state[index].index;
+          if (label === 'Indexed score') state[index].items[state[index].index] += 1;
+          if (label === 'Replace items') state[index].items = [0, 0];
+          if (label === 'Count') state[index].count += 1;
+          if (label === 'Score') state[index].score += 1;
+          if (label === 'Title') state[index].title = 'Before';
+          if (label === 'Fallback') state[index].fallback = 'Independent fallback';
+          if (label === 'Toggle') state[index].enabled = !state[index].enabled;
+          if (label === 'Reset') { state[index].count = 0; state[index].score = 0; state[index].title = 'Before'; state[index].fallback = 'Fallback 0'; state[index].offset = 1; state[index].limit = 3; state[index].items = [0, 3]; state[index].index = 0; }
+          await settle();
+          assert(probes.every((probe, sibling) => check(probe, state[sibling])),
+            'conditional dependencies update comparisons arithmetic logical properties both branches and derived values: ' + index + ' ' + label + ' ' + JSON.stringify(probes.map(probe => probe.textContent)));
+          assert(retained.every((el, position) => el.isConnected &&
+            el === document.querySelectorAll('[data-jtml-direct-instance], .probe, h2')[position] &&
+            el.getAttribute('data-jtml-direct-instance') === ids[position]) &&
+            JSON.stringify(window.jtml.getRuntimeRegistrySnapshot()) === registry,
+            'conditional updates preserve component and unaffected DOM identity with sibling isolation: ' + label);
+          assert(!window.jtml.directComponentPatchFallback && !window.jtml.directComponentBodyPlanFallback &&
+            !window.jtml.directComponentStaticUpdateError,
+            'conditional updates stay on generated static paths: ' + label);
+        }
+        click('Replace rows', shadowRows);
+        await settle();
+        assert(rowValues().join(',') === '3,4' && shadowRows === document.querySelector('.shadow-rows'),
+          'shadowed derived collection invalidates on outer root replacement');
+        assert(!window.jtml.directComponentPatchFallback && !window.jtml.directComponentBodyPlanFallback &&
+          !window.jtml.directComponentStaticUpdateError,
+          'derived collection replacement stays on generated static updates');
       } else if (regression === 'nested-heading') {
         const boards = Array.from(document.querySelectorAll('.board'));
         const summaries = boards.map(board => Array.from(board.querySelectorAll('.summary')));

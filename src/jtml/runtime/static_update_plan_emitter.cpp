@@ -463,11 +463,22 @@ std::vector<std::string> expandedNodeReads(
     }
     if (head == "for" || head == "if") {
         std::vector<int> stack = node.childIndices;
-        int guardChildren = 0;
-        while (!stack.empty() && guardChildren++ < 10000) {
+        if (head == "if") {
+            const auto nodeIndex = static_cast<size_t>(&node - definition.bodyPlan.data());
+            for (size_t i = nodeIndex + 1; i < definition.bodyPlan.size(); ++i) {
+                const auto& sibling = definition.bodyPlan[i];
+                if (sibling.parentIndex != node.parentIndex) continue;
+                if (componentNodeHead(sibling) == "else") {
+                    stack.insert(stack.end(), sibling.childIndices.begin(), sibling.childIndices.end());
+                }
+                break;
+            }
+        }
+        std::set<int> visited;
+        while (!stack.empty()) {
             const int childIndex = stack.back();
             stack.pop_back();
-            if (childIndex < 0 ||
+            if (childIndex < 0 || !visited.insert(childIndex).second ||
                 static_cast<size_t>(childIndex) >= definition.bodyPlan.size()) {
                 continue;
             }
@@ -478,20 +489,18 @@ std::vector<std::string> expandedNodeReads(
             for (const auto grandchild : child.childIndices) stack.push_back(grandchild);
         }
     }
-    bool changed = true;
-    int guard = 0;
-    while (changed && guard++ < 1000) {
-        changed = false;
-        for (const auto& [name, deps] : derivedDeps) {
-            if (!reads.count(name)) continue;
-            const auto before = reads.size();
-            for (const auto& dep : deps) {
-                if (!loopLocals.count(dep)) reads.insert(dep);
-            }
-            changed = changed || reads.size() != before;
+    // Only descendant row-local reads are filtered above. Component-derived
+    // dependencies resolve in the outer scope even if the iterator shadows one.
+    // A worklist reaches the finite transitive closure, including cycles,
+    // without silently truncating valid dependency chains at a fixed depth.
+    std::vector<std::string> pending(reads.begin(), reads.end());
+    for (size_t i = 0; i < pending.size(); ++i) {
+        const auto derived = derivedDeps.find(pending[i]);
+        if (derived == derivedDeps.end()) continue;
+        for (const auto& dep : derived->second) {
+            if (reads.insert(dep).second) pending.push_back(dep);
         }
     }
-    for (const auto& local : loopLocals) reads.erase(local);
     return {reads.begin(), reads.end()};
 }
 
@@ -2243,7 +2252,18 @@ std::string staticUpdateAffectedIndexesFunctionBody(const nlohmann::json& compon
     if (bodyPlan.is_array()) {
         for (size_t i = 0; i < bodyPlan.size(); ++i) {
             if (!bodyPlan[i].is_object()) continue;
-            const int parentIndex = bodyPlan[i].value("parentIndex", -1);
+            int parentIndex = bodyPlan[i].value("parentIndex", -1);
+            // Else is rendered by its preceding if region, not by a separate
+            // DOM region. Route descendant suppression through that owner.
+            if (bodyPlan[i].value("head", "") == "else") {
+                for (size_t sibling = i; sibling-- > 0;) {
+                    if (bodyPlan[sibling].value("parentIndex", -2) != parentIndex) continue;
+                    if (bodyPlan[sibling].value("head", "") == "if") {
+                        parentIndex = static_cast<int>(sibling);
+                    }
+                    break;
+                }
+            }
             if (parentIndex < 0) continue;
             if (!firstParent) out << ",";
             firstParent = false;
@@ -2254,7 +2274,7 @@ std::string staticUpdateAffectedIndexesFunctionBody(const nlohmann::json& compon
         << "      function ancestorSeen(index) {\n"
         << "        let parent = parentOf[index];\n"
         << "        let guard = 0;\n"
-        << "        while (parent != null && guard++ < 1000) {\n"
+        << "        while (parent != null && guard++ < " << bodyPlan.size() << ") {\n"
         << "          if (subtreeSeen[parent]) return true;\n"
         << "          parent = parentOf[parent];\n"
         << "        }\n"
@@ -2567,6 +2587,72 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
         const auto context =
             name + (origin.empty() ? "" : " (" + origin + ")") +
             (key.empty() ? "" : " [" + key + "]");
+
+        const auto body = component.value("bodyPlan", nlohmann::json::array());
+        std::set<std::string> borrowed;
+        std::set<std::string> actionParams;
+        std::set<std::string> writableRoots;
+        for (const auto& node : body) {
+            if (node.value("kind", "") == "state" && node.value("head", "") == "let") {
+                writableRoots.insert(node.value("name", ""));
+            }
+        }
+        for (const auto& param : component.value("params", std::vector<std::string>{})) borrowed.insert(param);
+        for (const auto& node : body) {
+            if (node.value("kind", "") != "action") continue;
+            const auto words = splitStaticComponentWords(node.value("text", ""));
+            for (size_t i = 2; i < words.size(); ++i) {
+                borrowed.insert(words[i]);
+                actionParams.insert(words[i]);
+            }
+        }
+        // Conservatively propagate possible borrowed references through local
+        // declarations and assignments, including objects containing a param.
+        bool borrowingChanged = true;
+        while (borrowingChanged) {
+            borrowingChanged = false;
+            for (const auto& node : body) {
+                const auto kind = node.value("kind", "");
+                if (kind != "state" && kind != "derived" && kind != "assignment") continue;
+                const auto name = node.value("name", "");
+                const auto root = name.substr(0, name.find_first_of(".["));
+                const auto rhs = parseExpressionIr(node.value("expression", ""));
+                if (!rhs || !expressionIrSupportsDirectJs(*rhs)) {
+                    if (borrowed.insert(root).second) borrowingChanged = true;
+                    continue;
+                }
+                for (const auto& read : expressionIrDependencies(*rhs)) {
+                    const auto readRoot = read.substr(0, read.find_first_of(".["));
+                    if (borrowed.count(readRoot) && borrowed.insert(root).second) borrowingChanged = true;
+                }
+            }
+        }
+        for (const auto& node : body) {
+            if (node.value("kind", "") != "assignment") continue;
+            const auto target = node.value("name", "");
+            const auto root = target.substr(0, target.find_first_of(".["));
+            const auto params = component.value("params", std::vector<std::string>{});
+            const bool paramWrite = actionParams.count(root) ||
+                std::find(params.begin(), params.end(), root) != params.end();
+            if (paramWrite || (root != target && borrowed.count(root))) {
+                issues.push_back("component " + context + " has unsupported production write to borrowed value `" +
+                    target + "` at " + sourceLabelFor(component, node) +
+                    "; use component-owned state or a parent action; parameters are read-only");
+            } else if (!writableRoots.count(root)) {
+                issues.push_back("component " + context + " has unsupported production write target `" +
+                    target + "` at " + sourceLabelFor(component, node) +
+                    "; write a component-local let value or dispatch a parent action");
+            }
+        }
+
+        for (const auto& node : component.value("bodyPlan", nlohmann::json::array())) {
+            if (node.value("head", "") != "if") continue;
+            if (isDirectJsExpressionPlan(node.value("expressionPlan", nlohmann::json::object()))) continue;
+            const auto source = sourceLabelFor(component, node);
+            issues.push_back("component " + context +
+                " has unsupported production conditional expression at " + source +
+                "; use a statically analyzable expression over observable values");
+        }
 
         const auto unsafeRoots =
             component.value("unsafeRootCreateEntries", nlohmann::json::array());

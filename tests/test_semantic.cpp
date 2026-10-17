@@ -1645,6 +1645,141 @@ TEST(RuntimePlan, BodyPlanReadsComeFromParsedExpressionAst) {
     EXPECT_FALSE(contains(imageIt->reads, "Profile"));
 }
 
+TEST(RuntimePlan, ConditionalReadSetsConservativelyCoverSupportedExpressions) {
+    struct Case { std::string expression; std::vector<std::string> required; };
+    const std::vector<Case> cases = {
+        {"title == \"After\"", {"title"}},
+        {"count + offset >= limit", {"count", "offset", "limit"}},
+        {"enabled && title != fallback", {"enabled", "title", "fallback"}},
+        {"enabled || selected", {"enabled", "selected"}},
+        {"!enabled", {"enabled"}},
+        {"item.score > limit", {"item", "item.score", "limit"}},
+        {"items[index].score > limit", {"items", "index", "limit"}},
+        {"enabled ? title : fallback", {"enabled", "title", "fallback"}},
+        {"(count * offset - limit) / 2 != 0", {"count", "offset", "limit"}},
+    };
+    for (const auto& test : cases) {
+        SCOPED_TRACE(test.expression);
+        const auto ir = jtml::parseExpressionIr(test.expression);
+        ASSERT_TRUE(ir);
+        ASSERT_TRUE(jtml::expressionIrSupportsDirectJs(*ir));
+        const auto dependencies = jtml::expressionIrDependencies(*ir);
+        const std::string source = "jtml 2\nmake Probe title count offset limit enabled selected fallback item items index\n"
+            "  if " + test.expression + "\n    p \"Then\"\n  else\n    p \"Else\"\n"
+            "page\n  p \"Probe\"\n";
+        auto program = parseFriendly(source);
+        const auto plan = jtml::buildRuntimePlan(program);
+        ASSERT_EQ(plan.componentDefinitions.size(), 1u);
+        const auto& body = plan.componentDefinitions.front().bodyPlan;
+        const auto node = std::find_if(body.begin(), body.end(), [](const auto& candidate) {
+            return candidate.name == "if";
+        });
+        ASSERT_NE(node, body.end());
+        jtml::RuntimeProjectPlan project;
+        project.linkedPlan = plan;
+        const auto module = jtml::emitStaticComponentModuleAsset(project);
+        for (const auto& required : test.required) {
+            EXPECT_NE(module.find("!writes['" + required + "']"), std::string::npos)
+                << "Static update selector missing " << required;
+            EXPECT_TRUE(contains(dependencies, required)) << "Expression IR missing " << required;
+            EXPECT_TRUE(contains(node->reads, required)) << "Runtime Plan missing " << required;
+        }
+    }
+}
+
+TEST(RuntimePlan, ConditionalBranchesOwnAllReadsAndUnsupportedCallsFailClosed) {
+    const std::string source =
+        "jtml 2\nmake Branch enabled title fallback\n"
+        "  if enabled\n    show title\n  else\n    show fallback\n"
+        "page\n  p \"Branch\"\n";
+    auto program = parseFriendly(source);
+    jtml::RuntimeProjectPlan project;
+    project.linkedPlan = jtml::buildRuntimePlan(program);
+    const auto module = jtml::emitStaticComponentModuleAsset(project);
+    EXPECT_NE(module.find("!writes['enabled'] && !writes['fallback'] && !writes['title']"), std::string::npos);
+    EXPECT_NE(module.find("1:0,2:0,3:2"), std::string::npos)
+        << "else descendants must be suppressed by the owning if region";
+    EXPECT_TRUE(jtml::validateStaticComponentModuleForProduction(project).empty());
+
+    auto unsupported = parseFriendly(
+        "jtml 2\nmake Unsupported title\n  if mystery(title)\n    p \"Then\"\npage\n  p \"Unsupported\"\n");
+    project.linkedPlan = jtml::buildRuntimePlan(unsupported);
+    const auto issues = jtml::validateStaticComponentModuleForProduction(project);
+    ASSERT_FALSE(issues.empty());
+    EXPECT_NE(issues.front().find("unsupported production conditional expression"), std::string::npos);
+    EXPECT_NE(issues.front().find("Unsupported"), std::string::npos);
+}
+
+TEST(RuntimePlan, BorrowedParameterWritesFailClosedThroughAliases) {
+    for (const auto& assignment : {"item.score = 1", "alias.inner.score = 1", "item = {}"}) {
+        SCOPED_TRACE(assignment);
+        auto program = parseFriendly(
+            "jtml 2\nmake Borrowed item\n  let alias = { \"inner\": item }\n  when mutate\n    " +
+            std::string(assignment) + "\n  p \"Borrowed\"\npage\n  p \"Borrowed\"\n");
+        jtml::RuntimeProjectPlan project;
+        project.linkedPlan = jtml::buildRuntimePlan(program);
+        const auto issues = jtml::validateStaticComponentModuleForProduction(project);
+        ASSERT_FALSE(issues.empty());
+        EXPECT_NE(issues.front().find("borrowed value"), std::string::npos);
+        EXPECT_NE(issues.front().find("parameters are read-only"), std::string::npos);
+    }
+}
+
+TEST(RuntimePlan, ProductionWritesRequireOwnedLetRootsWithoutTaintingTargetIndices) {
+    for (const auto& statement : {"row.score = 1", "argument.score = 1"}) {
+        auto program = parseFriendly(
+            "jtml 2\nmake Unowned\n  when mutate argument\n    " + std::string(statement) +
+            "\n  p \"Unowned\"\npage\n  p \"Unowned\"\n");
+        jtml::RuntimeProjectPlan project;
+        project.linkedPlan = jtml::buildRuntimePlan(program);
+        EXPECT_FALSE(jtml::validateStaticComponentModuleForProduction(project).empty());
+    }
+    auto owned = parseFriendly(
+        "jtml 2\nmake Owned index\n  let items = [{ \"score\": 0 }]\n"
+        "  when mutate\n    items[index].score = 1\n  p \"Owned\"\npage\n  p \"Owned\"\n");
+    jtml::RuntimeProjectPlan project;
+    project.linkedPlan = jtml::buildRuntimePlan(owned);
+    EXPECT_TRUE(jtml::validateStaticComponentModuleForProduction(project).empty());
+}
+
+TEST(RuntimePlan, LoopShadowingPreservesOuterCollectionDependency) {
+    for (const bool derived : {false, true}) {
+        SCOPED_TRACE(derived ? "derived collection" : "direct collection");
+        auto program = parseFriendly(
+            std::string("jtml 2\nmake Rows\n  let item = [1, 2]\n") +
+            (derived ? "  get rows = item\n  for item in rows key item\n" : "  for item in item key item\n") +
+            "    show item\npage\n  p \"Rows\"\n");
+        jtml::RuntimeProjectPlan project;
+        project.linkedPlan = jtml::buildRuntimePlan(program);
+        const auto asset = jtml::emitStaticUpdatePlanAsset(project);
+        const auto regionIndex = derived ? "2" : "1";
+        EXPECT_NE(asset.find(std::string("\"entriesByRead\":{\"item\":[{\"index\":") + regionIndex + ",\"kind\":\"for\""), std::string::npos)
+            << "outer item must select the loop region, not just the row-local show";
+    }
+}
+
+TEST(RuntimePlan, ObservableAssignmentsInvalidatePathAndRoot) {
+    const std::string source =
+        "jtml 2\nmake Writes\n  let item = { \"score\": 0 }\n  let items = []\n  let index = 0\n"
+        "  when change\n    item.score += 1\n    items[index].score = 2\n"
+        "  if item.score > 0\n    p \"Changed\"\npage\n  p \"Writes\"\n";
+    auto program = parseFriendly(source);
+    const auto plan = jtml::buildRuntimePlan(program);
+    ASSERT_EQ(plan.componentDefinitions.size(), 1u);
+    const auto& body = plan.componentDefinitions.front().bodyPlan;
+    size_t assignments = 0;
+    for (const auto& node : body) {
+        if (node.kind != "assignment") continue;
+        ++assignments;
+        EXPECT_TRUE(node.name == "item.score" || node.name == "items[index].score");
+        const auto root = node.name == "item.score" ? "item" : "items";
+        EXPECT_TRUE(contains(node.writes, node.name));
+        EXPECT_TRUE(contains(node.writes, root));
+        if (node.name == "items[index].score") EXPECT_TRUE(contains(node.reads, "index"));
+    }
+    EXPECT_EQ(assignments, 2u);
+}
+
 TEST(RuntimePlan, CanonicalExpressionPlanCoversCompositeOperators) {
     const auto directExpression = jtml::compileRuntimeExpressionPlan("users.data[index].name");
     ASSERT_EQ(directExpression["kind"], "member") << directExpression.dump(2);

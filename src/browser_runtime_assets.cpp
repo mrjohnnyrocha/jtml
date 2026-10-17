@@ -736,18 +736,12 @@ const char* browserRuntimePreludeChunk() {
             addComponentNameSet(reads, node.reads || []);
           }
         });
-        let changed = true;
-        let guard = 0;
-        while (changed && guard++ < 1000) {
-          changed = false;
-          Object.keys(derivedDeps).forEach(function (name) {
-            if (!reads[name]) return;
-            (derivedDeps[name] || []).forEach(function (dep) {
-              dep = String(dep || '');
-              if (!dep || reads[dep]) return;
-              reads[dep] = true;
-              changed = true;
-            });
+        const pending = Object.keys(reads);
+        for (let i = 0; i < pending.length; i += 1) {
+          (derivedDeps[pending[i]] || []).forEach(function (dep) {
+            if (!dep || reads[dep]) return;
+            reads[dep] = true;
+            pending.push(dep);
           });
         }
         return reads;
@@ -775,18 +769,12 @@ const char* browserRuntimePreludeChunk() {
             derivedDeps[candidate.name] = (candidate.reads || []).slice();
           }
         });
-        let changed = true;
-        let guard = 0;
-        while (changed && guard++ < 1000) {
-          changed = false;
-          Object.keys(derivedDeps).forEach(function (name) {
-            if (!reads[name]) return;
-            (derivedDeps[name] || []).forEach(function (dep) {
-              dep = String(dep || '');
-              if (!dep || reads[dep]) return;
-              reads[dep] = true;
-              changed = true;
-            });
+        const pending = Object.keys(reads);
+        for (let i = 0; i < pending.length; i += 1) {
+          (derivedDeps[pending[i]] || []).forEach(function (dep) {
+            if (!dep || reads[dep]) return;
+            reads[dep] = true;
+            pending.push(dep);
           });
         }
         return reads;
@@ -1504,13 +1492,10 @@ const char* browserRuntimeComponentChunk() {
       }
 
       function changedParamNames(previous, next) {
-        const names = {};
-        Object.keys(previous || {}).forEach(function (name) { names[name] = true; });
-        Object.keys(next || {}).forEach(function (name) { names[name] = true; });
-        return Object.keys(names).filter(function (name) {
-          return !runtimeValuesEqual(
-            previous && previous[name],
-            next && next[name]);
+        // Objects may alias an in-place observable write. Identity/deep equality
+        // cannot prove they are unchanged after the write has already happened.
+        return Object.keys(Object.assign({}, previous, next)).filter(function (name) {
+          return typeof next[name] === 'object' || !Object.is(previous[name], next[name]);
         });
       }
 
@@ -2979,6 +2964,9 @@ const char* browserRuntimeComponentChunk() {
               return recordComponentBodyPlanFallback(instance, definition, node, 'assignment nodes cannot have child statements', actionContext);
             }
             addComponentNameSet(changes && changes.writes || {}, node.writes && node.writes.length ? node.writes : [node.name]);
+            if (/[.\[]/.test(node.name)) Object.keys(scope).forEach(function (name) {
+              if (scope[name] && typeof scope[name] === 'object') changes.writes[name] = true;
+            });
             continue;
           }
           if (node.kind === 'call' && node.name) {

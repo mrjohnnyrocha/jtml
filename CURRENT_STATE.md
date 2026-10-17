@@ -204,6 +204,33 @@ Local focused suite (`scripts/test_production_reference.sh` with
 keyed actions, form submit, and routing. The expected nested-heading failure and
 135395-byte reference HTML size regression remain reported, not hidden.
 
+## Conditional dependency correctness — 2026-10-17
+
+Starting from main `1208ca7` (nested parameter PR #8 integrated), the conditional
+reactivity slice repairs complete-expression Runtime Plan reads, both-branch
+static region dependencies/ownership, and conservative mutable object propagation.
+Owned member/index writes invalidate aliases; unsupported borrowed mutations and
+unanalyzable production conditions fail closed with source/component remediation.
+The precise bounded expression/write contract and conservative ownership limits
+are documented in [conditional reactivity](docs/architecture/conditional-reactivity.md).
+This is not a freeze of the complete v0.3 surface.
+
+The exact new fixture fails on the original PR #8 compiler at the first Advance.
+With the repair, all 341 CTests, the complete production reference suite, all nine
+real browser benchmarks and `scripts/verify_all.sh` pass. The mandatory conditional
+scenario performs 28 actions/86 assertions, including independently varied
+operands, aliases, both branches, repeated writes, siblings and component identity.
+Pinned Chrome Headless Shell 153.0.8010.12/Playwright 1.63.0 exits cleanly for every
+browser fixture. No validation was skipped and no budget increased. Shared runtime
+is 271796/272000 bytes; large-keyed-reorder compatibility plan is 177847/180000 bytes.
+
+The initial full gate caught an update-plan budget failure (185911/180000 bytes)
+from incorrectly promoted row-local key dependencies; correcting Runtime Plan
+scope, rather than changing the budget, resolved it. The existing composed
+reference HTML size limitation remains (135374 bytes versus its 70000-byte
+microfixture comparison). Local verification does not establish production or
+release readiness; hosted CI is separate evidence.
+
 ## Verified Development Baseline — 2026-10-12
 
 Starting commit: `5e0761925fcdd748268d3049d613fb767e1dbd45` (clean checkout).

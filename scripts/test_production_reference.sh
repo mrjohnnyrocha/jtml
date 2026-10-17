@@ -12,7 +12,7 @@ mkdir -p "${OUT}"
 source="${FIXTURE}/index.jtml"
 case "${JTML_REFERENCE_REGRESSION:-}" in
   "") ;;
-  form-submit|keyed-local-actions|routing|nested-heading)
+  form-submit|keyed-local-actions|routing|nested-heading|conditional-reactivity)
     source="${FIXTURE}/regressions/${JTML_REFERENCE_REGRESSION}.jtml" ;;
   *) echo "error: unknown reference regression" >&2; exit 1 ;;
 esac
@@ -80,6 +80,16 @@ if [[ -z "${JTML_REFERENCE_REGRESSION:-}" ]]; then
   fi
   rm -f "${log}"
   echo "PASS: routing — startup, hash/history navigation, direct load and route lifecycle"
+
+  log="$(mktemp "${TMPDIR:-/tmp}/jtml-reference-conditional-reactivity.XXXXXX")"
+  if ! JTML_REFERENCE_REGRESSION=conditional-reactivity "$0" >"${log}" 2>&1; then
+    cat "${log}" >&2
+    rm -f "${log}"
+    echo "error: conditional-reactivity browser regression failed" >&2
+    exit 1
+  fi
+  rm -f "${log}"
+  echo "PASS: conditional-reactivity — conservative dependencies and repeated nested conditional updates"
 
   log="$(mktemp "${TMPDIR:-/tmp}/jtml-reference-nested-heading.XXXXXX")"
   if ! JTML_REFERENCE_REGRESSION=nested-heading "$0" >"${log}" 2>&1; then

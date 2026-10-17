@@ -544,7 +544,13 @@ std::vector<std::string> forLoopExpressionDependencies(
     const auto inPos = expression.find(" in ");
     std::vector<std::string> reads = expressionDependencies(
         inPos == std::string::npos ? expression : expression.substr(inPos + 4));
-    appendUnique(reads, expressionDependencies(keyExpression));
+    const auto iterator = inPos == std::string::npos ? std::string() : trimCopy(expression.substr(0, inPos));
+    for (const auto& dependency : expressionDependencies(keyExpression)) {
+        // Key expressions execute in row scope. The iterator is not an outer
+        // observable; collection reads above remain even when names shadow.
+        if (!iterator.empty() && rootDependencyName(dependency) == iterator) continue;
+        appendUnique(reads, dependency);
+    }
     return reads;
 }
 
@@ -604,7 +610,8 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
             appendUnique(node.writes, node.name);
             appendUnique(node.writes, rootDependencyName(node.name));
             appendUnique(node.reads, expressionDependencies(node.expression));
-            if (node.operatorToken != "=") {
+            if (node.operatorToken != "=" || node.name.find('[') != std::string::npos) {
+                // Resolving a computed write target also reads its index.
                 appendUnique(node.reads, expressionDependencies(node.name));
                 appendUnique(node.reads, rootDependencyName(node.name));
             }
@@ -639,7 +646,12 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
                     node.keyExpression = joinTokens(tokens, keyIndex + 1);
                 }
             }
-            if (node.name == "for") {
+            if (node.name == "if" || node.name == "show" || node.name == "text") {
+                // These heads own a complete expression, not element attributes.
+                // In particular, observable names such as title, selected and
+                // enabled must not be consumed by the template attribute grammar.
+                appendUnique(node.reads, expressionDependencies(node.expression));
+            } else if (node.name == "for") {
                 appendUnique(node.reads, forLoopExpressionDependencies(node.expression, node.keyExpression));
             } else {
                 appendUnique(node.reads, templateExpressionDependencies(node.expression, tokens));

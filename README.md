@@ -1,26 +1,50 @@
 # JTML
 
-JTML is a C++17 language/toolchain for Friendly JTML 2, a semantic,
-observable-first UI language for apps that read like documents but behave like
-reactive software.
+JTML is an experimental, compiler-driven language for web applications.
+Friendly JTML 2 combines HTML-shaped markup, observable state, derived values,
+actions, and components in readable source files. A C++17 toolchain compiles
+supported applications into HTML and JavaScript for browser-local execution.
 
-Current repository status: **hibernated research state**. JTML is
-enterprise-relevant but not enterprise-ready. It has meaningful compiler,
-runtime, Studio, CLI, and tooling slices, but it still contains compatibility
-bridges and unfinished production-hardening work. Start with
-[`CURRENT_STATE.md`](CURRENT_STATE.md), [`ARCHITECTURE.md`](ARCHITECTURE.md),
-and [`RESTART.md`](RESTART.md) before resuming development after a long pause.
+The repository is in active development toward an **experimental v0.3 research
+preview**. This is a development target, not a released version or a claim of
+production readiness. Reactive dependency correctness, supported app semantics,
+and source diagnostics still need validation. See [`CURRENT_STATE.md`](CURRENT_STATE.md)
+for verified results and known limitations, and [`ARCHITECTURE.md`](ARCHITECTURE.md)
+for compiler ownership and backend contracts.
 
-Longer term, **JTL** is the planned core language and **JTML** is its web/app
-dialect. The current implementation accepts experimental `jtl 1` files through
-the same Friendly pipeline so core-language examples can begin to share the
-typed AST, semantic IR, and observable graph with JTML.
+Version numbers describe different artifacts: CMake currently declares the CLI
+as **0.1.0** (the default local build reports **0.1.0-dev**); the VS Code extension
+manifest declares **0.2.0**. Neither number means v0.3 has been released. These
+instructions build from source; they do not require a published package or an
+online JTML service.
 
-The backend/API direction is contract-first and planned, not implemented
-syntax yet: future JTL modules should describe governed operations for internal
-tools, generate OpenAPI/adapters, and feed typed JTML `fetch`/future `call`
-usage. Today, use JTML for the web/app surface and normal backend APIs for
-server work.
+## Get started from source
+
+You need Git, a C++17 compiler, and CMake (validated with 3.31.3). Configure fetches pinned
+WebSocket++ 0.8.2 and standalone Asio 1.30.2 dependencies, so it needs network
+access or a populated dependency cache. Python bindings are optional and disabled
+here. Python 3 is used only to serve the generated files below.
+
+```sh
+git clone https://github.com/mrjohnnyrocha/jtml.git
+cd jtml
+cmake -S . -B build -DJTML_BUILD_PYTHON=OFF
+cmake --build build --target jtml_cli --parallel
+./build/jtml --version
+./build/jtml check examples/friendly_counter.jtml
+./build/jtml build examples/friendly_counter.jtml --target browser --out dist/counter
+python3 -m http.server 8000 --directory dist/counter
+```
+
+Open [localhost:8000](http://localhost:8000), then try **Add one** and **Reset**.
+The generated application runs in the browser; the Python server only serves
+static files. Stop it with Ctrl+C. To try the separate live development backend,
+run `./build/jtml serve examples/friendly_counter.jtml --port 8000 --watch`.
+
+Friendly JTML 2 is the canonical authoring language. Classic JTML remains
+compatibility, migration, and embedding infrastructure. `jtl 1` is experimental;
+a standalone JTL language/runtime and contract-first backend/API system remain
+future work.
 
 ## Syntax
 
@@ -108,7 +132,9 @@ page
     text "Saved {email}"
 ```
 
-Core production features are first-class in Friendly JTML:
+The syntax also includes imports, fetches, and routes. These surfaces have
+partial implementations; this sketch needs the referenced component and an
+application-provided API, and is not a standalone getting-started example:
 
 ```jtml
 use Card from "./components/card.jtml"
@@ -367,21 +393,21 @@ exposes renderer/fallback state and lets host renderers publish updates through
 `spec.update(...)`. Richer charts, 3D adapters, and media processing are tracked
 in `docs/roadmaps/media-graphics-roadmap.md` and `docs/roadmaps/3d-custom-interfaces-roadmap.md`.
 
-The freeze/restart documents are:
+Development context:
 
-- [`CURRENT_STATE.md`](CURRENT_STATE.md) - authoritative hibernation snapshot.
+- [`CURRENT_STATE.md`](CURRENT_STATE.md) - verified development state and known limitations.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) - compact architecture and invariants.
 - [`RESTART.md`](RESTART.md) - how to resume safely after a long pause.
 - [`NEXT.md`](NEXT.md) - short actionable restart backlog.
 
 The larger roadmap lives in `ROADMAP.md`, and the docs index lives in
-`docs/README.md`. The current product lane is production hardening:
+`docs/README.md`. The current development direction is compiler and runtime correctness:
 Friendly-first app semantics, Studio as the main hub, zero-config tooling,
 modular apps, interop, media/graphics, and AI-native authoring.
 
 ## Local Toolkit
 
-Everything needed before public deployment is available from the repo:
+Local tooling can be exercised from the repository:
 
 ```sh
 ./build/jtml serve examples/friendly_counter.jtml --port 8000 --watch
@@ -425,7 +451,7 @@ Broadening the supported body-plan subset until compatibility DOM is only an
 explicit fallback, Studio content externalization, and internal module
 boundaries remain the next architecture hardening targets.
 
-The future public site content is in `site/`, including `site/tools.html` for
+The static website source is in `site/`, including `site/tools.html` for
 the editor, runner, tutorial, studio, tester, and release-tooling overview.
 
 ## Install And Package

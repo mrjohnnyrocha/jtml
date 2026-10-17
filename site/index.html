@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="JTML is a local-first CLI and reactive HTML language for teams that need small, auditable interfaces without a heavy frontend stack.">
+    <meta name="description" content="JTML is an experimental, compiler-driven language for web applications. Explore Friendly JTML 2 and build the v0.3 research preview from source.">
     <meta name="theme-color" content="#172026">
-    <title>JTML - local-first reactive HTML for serious teams</title>
+    <title>JTML - experimental language for web applications</title>
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
@@ -23,6 +23,7 @@
         <a href="./security.html">Security</a>
         <a href="./deploy.html">Deploy</a>
         <a href="#roadmap">Roadmap</a>
+        <a href="https://github.com/mrjohnnyrocha/jtml">GitHub</a>
       </nav>
       <a class="header-action" href="#try">Get started</a>
     </header>
@@ -62,25 +63,26 @@ page
         </div>
 
         <div class="hero-content">
-          <p class="eyebrow">Local-first reactive HTML for serious teams</p>
+          <p class="eyebrow">Experimental language for web applications</p>
           <h1 id="hero-title">JTML</h1>
           <p class="hero-copy">
-            Build small internal tools, prototypes, demos, and teaching apps with a
-            C++ CLI, readable source files, deterministic local builds, and browser
-            runtime behavior that stays close to HTML.
+            Write HTML-shaped markup, observable state, actions, and components in
+            Friendly JTML 2. The C++17 compiler generates HTML and JavaScript for
+            supported browser-local applications. Active development targets an
+            experimental v0.3 research preview; JTML is not production-ready.
           </p>
           <div class="hero-actions" aria-label="Primary actions">
             <a class="button primary" href="#try">Run locally</a>
-            <a class="button secondary" href="./tools.html">See toolchain</a>
+            <a class="button secondary" href="https://github.com/mrjohnnyrocha/jtml">Source on GitHub</a>
           </div>
         </div>
       </section>
 
       <section class="trust-section" aria-labelledby="trust-title">
-        <div class="metric-grid" aria-label="JTML product guarantees">
+        <div class="metric-grid" aria-label="JTML research toolchain">
           <article>
-            <strong>0 cloud services</strong>
-            <span>CLI, Studio, tutorial, examples, site artifact, and release package run locally.</span>
+            <strong>Build from source</strong>
+            <span>No online JTML service is required. Initial dependency downloads need network access or a cache.</span>
           </article>
           <article>
             <strong>1 binary</strong>
@@ -91,8 +93,8 @@ page
             <span>Normal attributes, custom elements, boolean attrs, events, and static HTML output.</span>
           </article>
           <article>
-            <strong>Predeploy verified</strong>
-            <span><code>scripts/verify_all.sh</code> builds tests, examples, site, and release artifacts.</span>
+            <strong>Research preview</strong>
+            <span>CLI defaults to 0.1.0-dev; extension metadata is 0.2.0. v0.3 is the development target.</span>
           </article>
         </div>
       </section>
@@ -128,12 +130,13 @@ page
 
       <section class="enterprise-section" aria-labelledby="enterprise-title">
         <div class="section-heading">
-          <p class="eyebrow">Enterprise posture</p>
-          <h2 id="enterprise-title">Small enough to audit, complete enough to operate.</h2>
+          <p class="eyebrow">Compiler direction</p>
+          <h2 id="enterprise-title">Readable source, compiler-owned behavior.</h2>
           <p>
-            JTML is not trying to replace your design system or deployment platform.
-            It gives teams a focused local toolchain for HTML-shaped reactive pages,
-            with clear build artifacts and predictable operational boundaries.
+            Friendly source flows through Expression IR, semantic analysis, and a
+            Runtime Plan into browser code. Supported shapes use static component
+            create and update paths. Dependency correctness and broader application
+            coverage are still being validated.
           </p>
         </div>
 
@@ -148,7 +151,7 @@ page
           </article>
           <article>
             <h3>Two Deployment Modes</h3>
-            <p>Emit static HTML for simple pages or run the tiny live runtime for server-backed events.</p>
+            <p>Build HTML and JavaScript for supported browser-local apps, or use the separate live backend for Studio and local development.</p>
           </article>
           <article>
             <h3>Verification Loop</h3>
@@ -160,30 +163,35 @@ page
       <section class="try-section" id="try" aria-labelledby="try-title">
         <div class="section-heading">
           <p class="eyebrow">Try it locally</p>
-          <h2 id="try-title">A five-minute language loop.</h2>
+          <h2 id="try-title">Build and run a local example.</h2>
           <p>
-            Build the CLI, generate a starter page, serve it, edit it, and reload.
-            The language stays close to the browser instead of hiding it.
+            Start with Git, a C++17 compiler, CMake (validated with 3.31.3), and Python 3
+            to serve static files. Dependency downloads require network access or
+            a cache. No released v0.3 package is assumed.
           </p>
         </div>
 
         <div class="steps">
           <article class="step">
             <span class="step-number">1</span>
-            <h3>Open Studio</h3>
-            <pre><code>./build/jtml demo --port 8000</code></pre>
+            <h3>Clone And Build</h3>
+            <pre><code>git clone https://github.com/mrjohnnyrocha/jtml.git
+cd jtml
+cmake -S . -B build -DJTML_BUILD_PYTHON=OFF
+cmake --build build --target jtml_cli --parallel</code></pre>
           </article>
           <article class="step">
             <span class="step-number">2</span>
-            <h3>Create And Check</h3>
-            <pre><code>./build/jtml new my_page.jtml
-./build/jtml check my_page.jtml
-./build/jtml lint my_page.jtml</code></pre>
+            <h3>Check And Compile</h3>
+            <pre><code>./build/jtml --version
+./build/jtml check examples/friendly_counter.jtml
+./build/jtml build examples/friendly_counter.jtml --target browser --out dist/counter</code></pre>
           </article>
           <article class="step">
             <span class="step-number">3</span>
-            <h3>Serve</h3>
-            <pre><code>./build/jtml serve my_page.jtml --port 8000 --watch</code></pre>
+            <h3>Open In Your Browser</h3>
+            <pre><code>python3 -m http.server 8000 --directory dist/counter</code></pre>
+            <p>Open <a href="http://localhost:8000">localhost:8000</a> and try Add one and Reset. Stop the server with Ctrl+C.</p>
           </article>
         </div>
       </section>
@@ -221,7 +229,7 @@ page
 
         <ol class="roadmap-list">
           <li>
-            <strong>Try it in five minutes</strong>
+            <strong>Local authoring</strong>
             <span>Studio, starter generator, syntax checker, tutorial, examples, and Friendly `jtml 2` syntax.</span>
           </li>
           <li>
@@ -233,8 +241,8 @@ page
             <span>Boolean attributes, custom elements, SVG-friendly names, and void-element ergonomics.</span>
           </li>
           <li>
-            <strong>Enterprise polish</strong>
-            <span>Production website, local Studio, packaging manifest, security posture, and predeploy verification.</span>
+            <strong>Distribution validation</strong>
+            <span>Verify documentation, local artifacts, ownership, and security boundaries before release decisions.</span>
           </li>
         </ol>
       </section>
@@ -242,7 +250,7 @@ page
 
     <footer class="site-footer">
       <span>JTML</span>
-      <span>Simple syntax. Real HTML. Tiny runtime.</span>
+      <a href="https://github.com/mrjohnnyrocha/jtml">Source and known limitations on GitHub</a>
     </footer>
 
     <script src="./app.js"></script>

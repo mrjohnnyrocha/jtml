@@ -83,9 +83,10 @@ scripts/verify_all.sh
 
 `.github/workflows/ci.yml` runs on pushes and PRs to `main`: Ubuntu and macOS,
 Release, Ninja, Python bindings off. It builds, runs parallel CTest and `jtml test`,
-creates site/package artifacts, lints examples with four explicit exclusions,
-and checks formatter idempotence. It does **not** run `verify_all.sh`, browser
-benchmarks, the standalone doctor check, or the full LSP/live smoke gate. Local
+requires the production-reference browser suite, creates site/package artifacts,
+lints examples with four explicit exclusions, and checks formatter idempotence.
+It does **not** run `verify_all.sh`, all nine performance browser benchmarks,
+the standalone doctor check, or the full LSP/live smoke gate. Local
 verification and a green CI run are distinct evidence; do not claim equivalence.
 
 ## Code navigation and conventions

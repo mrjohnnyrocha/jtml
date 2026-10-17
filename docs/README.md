@@ -31,6 +31,11 @@ Use `jtml doctor --json` for the current machine-readable readiness contract:
 local toolkit checks, verification gates, stable/first-slice/experimental
 tiers, and current enterprise-readiness status.
 
+## Preview support and application acceptance
+
+- [v0.3 candidate support matrix and release evidence](release/v0.3-support-candidates.md) — evidence-backed proposal awaiting owner approval; not a frozen release promise.
+- [Taskboard T0 Core and v0.4 T1/T2 acceptance](release/taskboard-acceptance-contract.md) — independent adversarial requirements; not an implementation report.
+
 ## Folder Map
 
 | Folder | Contents |

@@ -2669,6 +2669,22 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
                 declarations[i] = declare(static_cast<int>(i), loop.value("item", ""), static_cast<int>(i), false, true, false);
             }
         }
+        // Runtime declarations write to one persistent component scope. Unlike
+        // action parameters and loop iterators, they are not restored on exit.
+        // Lexical ownership is sound only when a nested declaration cannot
+        // overwrite a different binding, including in sibling branches/actions.
+        std::map<std::string, size_t> bindingCounts;
+        for (const auto& binding : bindings) ++bindingCounts[binding.name];
+        for (const auto& declaration : declarations) {
+            const auto& node = body[declaration.first];
+            const auto kind = node.value("kind", "");
+            if ((kind != "state" && kind != "derived") || node.value("parentIndex", -1) == -1) continue;
+            const auto local = node.value("name", "");
+            if (bindingCounts[local] <= 1) continue;
+            issues.push_back("component " + context + " has unsupported production nested declaration `" +
+                local + "` at " + sourceLabelFor(component, node) +
+                "; declarations share runtime storage and may overwrite owned or borrowed bindings; use a unique local name");
+        }
         auto resolve = [&](const std::string& name, size_t at) {
             int scope = body[at].value("parentIndex", -1);
             for (size_t guard = 0; guard <= body.size(); ++guard) {

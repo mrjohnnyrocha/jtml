@@ -257,6 +257,28 @@ negative controls, supported contracts and conservative ownership limitations.
 Hosted CI against the final pushed head is separate evidence; no merge or release
 is implied by these local results.
 
+## PR #10 shared declaration scope repair
+
+Review head `5a56947` incorrectly accepted a nested `let item = input` followed
+by a write to an outer owned `item`: the runtime shared storage while ownership
+analysis assumed separate lexical bindings. Clean production now fails closed
+for nested state/derived declarations that collide with another component binding,
+including sibling branches/actions, parameters and iterators. Use unique local
+names. Runtime/live/compatibility semantics and all budgets are unchanged; see the
+[scope trace and contract](docs/architecture/conditional-reactivity.md#shared-declaration-scope-repair-reviewed-head-5a56947).
+
+The exact reported fixture must fail compilation before assets are emitted.
+Both new CTests and the new production-reference guard fail against `5a56947`.
+The supported unique-name remediation runs in real Chrome alongside owned loop
+writes: 6 actions/14 assertions cover nested branches, repeated updates, unchanged
+borrowed parent state and retained component identity/registry ownership.
+Final local checks pass: 346/346 CTests, complete production reference suite,
+all nine real-browser/asset/CSP benchmarks and `scripts/verify_all.sh` (live smoke
+8/8), with no skipped checks and clean browser exits. All three prior PR #10
+regressions remain covered and passing. Runtime remains 271879/272000 bytes;
+large-keyed compatibility output remains 177847/180000 bytes. The existing
+135374-byte reference HTML limitation remains visible. Hosted CI is separate.
+
 ## Verified Development Baseline — 2026-10-12
 
 Starting commit: `5e0761925fcdd748268d3049d613fb767e1dbd45` (clean checkout).

@@ -1752,7 +1752,7 @@ TEST(RuntimePlan, LoopIteratorOwnershipFollowsLexicalCollectionsAndAliases) {
         {"items", "  let alias = {}\n  let next = {}\n", "  when mutate\n    for row in items\n      alias = { \"inner\": row }\n      next = alias\n      next.inner.score += 1\n", false},
         {"items", "  let alias = {}\n", "  when mutate\n    for group in items\n      for row in group.rows\n        alias = row\n        alias.score += 1\n", false},
         {"row", "  let owned = [{ \"score\": 0 }]\n", "  when mutate\n    for row in owned\n      row.score += 1\n", true},
-        {"items", "  let alias = {}\n", "  when mutate\n    let items = [{ \"score\": 0 }]\n    for row in items\n      alias = row\n      alias.score += 1\n", true},
+        {"items", "  let alias = {}\n", "  when mutate\n    let ownedItems = [{ \"score\": 0 }]\n    for row in ownedItems\n      alias = row\n      alias.score += 1\n", true},
         {"row", "  let owned = [{ \"score\": 0 }]\n  let alias = {}\n", "  when mutate\n    for row in owned\n      row.score += 1\n    alias = row\n    alias.score += 1\n", false},
         {"", "  let items = [{ \"score\": 0 }]\n  let alias = {}\n", "  when mutate items\n    for row in items\n      alias = row\n      alias.score += 1\n", false},
     };
@@ -1767,6 +1767,42 @@ TEST(RuntimePlan, LoopIteratorOwnershipFollowsLexicalCollectionsAndAliases) {
         if (!test.accepted) {
             ASSERT_FALSE(issues.empty());
             EXPECT_NE(issues.front().find("borrowed"), std::string::npos) << issues.front();
+            EXPECT_NE(issues.front().find("Candidate"), std::string::npos);
+            EXPECT_NE(issues.front().find("line "), std::string::npos);
+        }
+    }
+}
+
+TEST(RuntimePlan, ProductionRejectsSharedScopeDeclarationCollisions) {
+    struct Case { std::string declarations; std::string action; bool accepted; };
+    const std::vector<Case> cases = {
+        // Original review repro, deeper nesting, else, and a borrowed alias.
+        {"  let item = { \"score\": 0 }\n", "  when mutate\n    if true\n      let item = input\n    item.score += 1\n", false},
+        {"  let item = { \"score\": 0 }\n", "  when mutate\n    if true\n      if true\n        let item = input\n    item.score += 1\n", false},
+        {"  let item = { \"score\": 0 }\n", "  when mutate\n    if false\n      let harmless = 0\n    else\n      let item = input\n    item.score += 1\n", false},
+        {"  let alias = input\n  let item = { \"score\": 0 }\n", "  when mutate\n    if true\n      let item = alias\n    item.score += 1\n", false},
+        {"  let items = [{ \"score\": 0 }]\n", "  when mutate\n    if true\n      let items = input\n    for row in items\n      row.score += 1\n", false},
+        {"", "  when mutate\n    let input = [{ \"score\": 0 }]\n    for row in input\n      row.score += 1\n", false},
+        // Both sibling branches, independent actions, formals and iterators share storage.
+        {"", "  when mutate\n    if true\n      let local = input\n    else\n      let local = {}\n", false},
+        {"", "  when capture\n    let local = input\n  when mutate\n    let local = {}\n", false},
+        {"", "  when mutate input\n    let input = {}\n", false},
+        {"  let rows = [{}]\n", "  when mutate\n    for row in rows\n      let row = input\n", false},
+        {"  let item = {}\n", "  when mutate\n    if true\n      get item = input\n", false},
+        // Unique locals and writes to enclosing owned state remain supported.
+        {"  let item = { \"score\": 0 }\n", "  when mutate\n    if true\n      let borrowed = input\n      let local = { \"score\": 0 }\n      local.score += 1\n    item.score += 1\n", true},
+    };
+    for (const auto& test : cases) {
+        const auto source = "jtml 2\nmake Candidate input\n" + test.declarations + test.action + "  p \"Candidate\"\npage\n  p \"Test\"\n";
+        SCOPED_TRACE(source);
+        auto program = parseFriendly(source);
+        jtml::RuntimeProjectPlan project;
+        project.linkedPlan = jtml::buildRuntimePlan(program);
+        const auto issues = jtml::validateStaticComponentModuleForProduction(project);
+        EXPECT_EQ(issues.empty(), test.accepted);
+        if (!test.accepted) {
+            ASSERT_FALSE(issues.empty());
+            EXPECT_NE(issues.front().find("nested declaration"), std::string::npos) << issues.front();
             EXPECT_NE(issues.front().find("Candidate"), std::string::npos);
             EXPECT_NE(issues.front().find("line "), std::string::npos);
         }

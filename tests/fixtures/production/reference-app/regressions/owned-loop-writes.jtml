@@ -16,6 +16,34 @@ make Owned
     button "Owned mutate" click mutate
     button "Owned index" click indexed
 
+# Safe remediation for scope-leak-rejected: nested locals have distinct names.
+make ScopeChild input
+  let item = { "score": 0 }
+  let first = true
+  when mutate
+    if first
+      let borrowedFirst = input
+      if true
+        let nestedFirst = borrowedFirst
+        item.score += 1
+    else
+      let borrowedSecond = input
+      item.score += 2
+    first = !first
+  box class "scope-child"
+    box class "scope-owned"
+      show item.score
+    box class "scope-borrowed"
+      show input.score
+    button "Scope mutate" click mutate
+
+make ScopeParent
+  let item = { "score": 0 }
+  box class "scope-parent"
+    ScopeChild item
+    box class "scope-source"
+      show item.score
 
 page
   Owned
+  ScopeParent

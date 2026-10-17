@@ -130,10 +130,11 @@ interactive branch.
 Borrowing now follows lexical binding identities through component/action
 parameters, local declarations, loop collections/iterators and transitive aliases,
 including nested containers. An owned collection iterator may mutate its members;
-an iterator over a borrowed collection may not. A nested local declaration can
-shadow an outer parameter without borrowing its name accidentally. Component-scope
-parameter names remain borrowed even if redeclared because the runtime refreshes
-those names from parameters before actions. The analysis remains flow-insensitive
+an iterator over a borrowed collection may not. Loop iterators restore shadowed names, but nested declarations share persistent
+runtime storage. The later scope-leak repair below rejects colliding nested
+declarations rather than claiming lexical declaration shadowing is supported.
+Component-scope parameter names remain borrowed even if redeclared because the
+runtime refreshes those names from parameters before actions. The analysis remains flow-insensitive
 and conservative: potentially borrowed reference copies can still be rejected.
 No cross-component mutation fallback is introduced.
 
@@ -169,3 +170,64 @@ cleanly. Runtime is 271879/272000 bytes; large-keyed-reorder compatibility asset
 remains 177847/180000 bytes. The existing reference HTML size limitation remains
 explicitly reported. Logs and the saved reviewed binary are ephemeral under
 `/tmp/jtml-pr10-review/`. Hosted CI is checked separately against the pushed head.
+
+
+## Shared declaration scope repair (reviewed head `5a56947`)
+
+The review's exact `scope-leak-rejected.jtml` compiles at `5a56947`; two real
+browser clicks change the child's borrowed `input.score` to 1 and 2 while its
+parent DOM stays at 0. The compiler resolves the write to the outer owned `item`,
+but the runtime's nested `let item = input` has overwritten that same storage.
+
+Scope tracing establishes these existing backend contracts:
+
+- `componentScopeFor` creates persistent component storage and refreshes parameters
+  on later entry. Expression lookup and assignment read/write this same object.
+- `runComponentPlanStatements` shares that object across action, conditional and
+  loop statements. Declarations assign directly into it. Action formal parameters
+  and loop iterators save/restore their own names; local declarations do not.
+- Ownership validation resolves lexical binding identities and propagates reference
+  provenance from initializers, assignments and iterator collections. A declaration
+  collision invalidates the assumed separation between those identities.
+- The general language reference does not promise lexical block declarations.
+  The live interpreter's `interpretIf` also executes in its current environment,
+  while explicit block statements create an environment. The existing
+  `FriendlyEffect.EffectBodyMutatesOuterVariableAndPropagates` test deliberately
+  requires a nested `let` to update an outer value. A global lexical runtime
+  conversion would therefore need a separate semantics decision.
+
+The clean-production validator now rejects nested state/derived declarations
+whose name is shared by any other binding in the component, including parameters,
+iterators and declarations in sibling branches or separate actions. It reports the
+component and source location, explains shared storage, and asks for a unique local
+name before assets are emitted. Without a collision, a nested declaration cannot
+overwrite the distinct owned/borrowed binding used by lexical ownership analysis.
+The existing reference-provenance validation remains in force for unique locals.
+
+This is a conservative supported-shape restriction, not a runtime semantics change.
+Some harmless duplicate names are rejected; use distinct names. The formerly
+accepted action-local `items` shadowing a component parameter is now explicitly
+rejected; its owned-loop positive test uses `ownedItems` instead. Compiler/runtime
+code generation, compatibility backends, asset budgets and fallback policy are
+unchanged. This repair does not claim complete language-wide lexical scopes.
+
+The exact exploit is a tracked negative CLI/production-reference regression:
+compilation must fail with source/component remediation and no runnable assets.
+It is intentionally not executed as a supposedly supported production app. The
+real-browser `owned-loop-writes` scenario additionally executes the unique-name
+remediation through nested conditionals and both branches, repeated owned writes,
+unchanged borrowed child/parent values, retained component identity and registry,
+and no fallback/network/errors (6 actions/14 assertions total). Compiler cases
+cover deep nesting, else, borrowed aliases, loop collection leaks, parameters,
+iterators, derived declarations and cross-branch/action collisions. The exact CLI
+and compiler regressions both fail against `5a56947`; the production-reference
+negative guard also fails against that saved compiler.
+
+Final local verification of this repair: 346/346 CTests, the full production
+reference suite, all nine required browser/asset/CSP benchmarks, and
+`scripts/verify_all.sh` including live smoke 8/8. No validation was skipped and
+all browsers exited cleanly. The prior lifecycle, borrowed-iterator and assignment
+regressions remain passing. Runtime is unchanged at 271879/272000 bytes; the large
+keyed compatibility plan remains 177847/180000 bytes. The reference HTML limitation
+remains 135374 bytes versus its 70000-byte microfixture comparison. Local logs are
+under `/tmp/jtml-pr10-review/scope-*`; hosted CI is separate evidence.

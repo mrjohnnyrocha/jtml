@@ -1,0 +1,17 @@
+jtml 2
+make Child input
+  let item = { "score": 0 }
+  when mutate
+    if true
+      let item = input
+    item.score += 1
+  box
+    button "Mutate" click mutate
+    show input.score
+make Parent
+  let item = { "score": 0 }
+  box
+    Child item
+    show item.score
+page
+  Parent

@@ -2344,6 +2344,32 @@ TEST(CliBuild, ProductionRejectsBorrowedIteratorsAndUnsupportedAssignments) {
     }
 }
 
+TEST(CliBuild, ProductionRejectsLexicalScopeLeakBeforeEmittingAssets) {
+    const auto root = makeTempDir("scope-ownership");
+    const auto input = root / "index.jtml";
+    writeTempFile(input, readTextFile(std::filesystem::path(JTML_SOURCE_DIR) /
+        "tests/fixtures/production/reference-app/regressions/scope-leak-rejected.jtml"));
+    jtml::cli::Options opts;
+    opts.inputFile = input.string();
+    opts.outputFile = (root / "dist").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.target = "browser";
+    try {
+        (void)jtml::cli::cmdBuild(opts);
+        FAIL() << "production accepted the reported borrowed scope leak";
+    } catch (const std::runtime_error& error) {
+        const std::string message = error.what();
+        EXPECT_NE(message.find("nested declaration `item`"), std::string::npos) << message;
+        EXPECT_NE(message.find("Child"), std::string::npos) << message;
+        EXPECT_NE(message.find(input.string()), std::string::npos) << message;
+        EXPECT_NE(message.find("unique local name"), std::string::npos) << message;
+    }
+    for (const auto* asset : {"index.html", "app.js", "jtml-runtime.js", "components/index.js"}) {
+        EXPECT_FALSE(std::filesystem::exists(root / "dist" / asset)) << asset;
+    }
+    std::filesystem::remove_all(root);
+}
+
 TEST(CliBuild, BrowserDirectoryBuildSkipsSensitiveAndGeneratedAssets) {
     const auto root = makeTempDir("browser-assets");
     writeTempFile(root / "index.jtml",

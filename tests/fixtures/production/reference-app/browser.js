@@ -105,6 +105,17 @@
           await settle();
           assert(owned.firstElementChild.textContent.trim() === expected, 'owned iterator aliases and supported dynamic indices remain functional: ' + label);
         }
+        const scopeParent = document.querySelector('.scope-parent');
+        const scopeChild = scopeParent.querySelector('.scope-child');
+        const scopeWrapper = scopeChild.closest('[data-jtml-direct-instance]');
+        const scopeRegistry = JSON.stringify(window.jtml.getRuntimeRegistrySnapshot().dynamicGenerations);
+        for (const expected of ['1', '3', '4']) {
+          click('Scope mutate', scopeChild);
+          await settle();
+          assert(scopeChild.querySelector('.scope-owned').textContent.trim() === expected, 'distinct nested locals preserve outer owned writes across both branches: ' + expected);
+          assert(scopeChild.querySelector('.scope-borrowed').textContent.trim() === '0' && scopeParent.querySelector('.scope-source').textContent.trim() === '0', 'borrowed parent object and parent DOM remain unchanged');
+          assert(scopeParent.querySelector('.scope-child') === scopeChild && scopeChild.closest('[data-jtml-direct-instance]') === scopeWrapper && JSON.stringify(window.jtml.getRuntimeRegistrySnapshot().dynamicGenerations) === scopeRegistry, 'scope-safe updates retain component DOM and ownership');
+        }
         assert(!window.jtml.directComponentPatchFallback && !window.jtml.directComponentBodyPlanFallback && !window.jtml.directComponentStaticUpdateError, 'owned loop writes use static production paths without fallback');
       } else if (regression === 'routing') {
         assert(errors.length === 0, 'routing starts without initialization errors');

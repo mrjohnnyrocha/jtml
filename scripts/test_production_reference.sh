@@ -9,6 +9,25 @@ INDEX_BUDGET_BYTES=70000
 # A browser is required: a successful compile alone is not interaction evidence.
 export JTML_REQUIRE_BROWSER_BENCH=1
 mkdir -p "${OUT}"
+# The exact reported exploit must never produce a runnable production app.
+# Browser coverage below exercises its supported unique-local-name remediation.
+if [[ -z "${JTML_REFERENCE_REGRESSION:-}" ]]; then
+  python3 - "${JTML}" "${FIXTURE}/regressions/scope-leak-rejected.jtml" <<'PYTHON'
+import pathlib
+import subprocess
+import sys
+import tempfile
+with tempfile.TemporaryDirectory(prefix="jtml-scope-rejection-") as temporary:
+    output = pathlib.Path(temporary) / "dist"
+    result = subprocess.run([sys.argv[1], "build", sys.argv[2], "--target", "browser", "--out", str(output)], capture_output=True, text=True)
+    message = result.stdout + result.stderr
+    assert result.returncode != 0, "production accepted the borrowed scope leak"
+    assert "nested declaration `item`" in message and "unique local name" in message, message
+    assert "Child" in message and "scope-leak-rejected.jtml" in message, message
+    assert not any((output / name).exists() for name in ("index.html", "app.js", "components/index.js", "jtml-runtime.js")), "rejected scope leak emitted runnable assets"
+print("PASS: exact borrowed scope leak fails closed before asset emission")
+PYTHON
+fi
 source="${FIXTURE}/index.jtml"
 case "${JTML_REFERENCE_REGRESSION:-}" in
   "") ;;

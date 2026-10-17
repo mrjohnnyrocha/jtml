@@ -1,0 +1,30 @@
+jtml 2
+
+make Editor
+  let draft = "Seed"
+  let note = "Initial"
+  let kind = "one"
+  let saved = ""
+  let attempts = 0
+  get invalid = attempts > 0
+  when save
+    attempts += 1
+    saved = draft
+    draft = ""
+    note = ""
+    kind = "two"
+  form class "editor" submit save
+    input aria-label "Draft" value draft aria-invalid invalid into draft
+    textarea aria-label "Note" value note into note
+    select aria-label "Kind" value kind into kind
+      option "One" value "one"
+      option "Two" value "two"
+    button "Save" type "submit"
+    box class "saved"
+      show saved
+    box class "attempts"
+      show attempts
+
+page
+  Editor
+  Editor

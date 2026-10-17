@@ -149,6 +149,27 @@ Do not try to resolve this migration during baseline maintenance. Future work
 should continue moving common production paths toward static/browser execution
 and leave compatibility/live paths as explicit backends.
 
+## Taskboard Core C01–C03 — 2026-10-18
+
+The first adversarial slice starts from merged PR #11 (`b4b7501`). Two independent
+object-backed boards, immutable-ID keyed rows, nested components, derived counts,
+text escaping and native create/validation pass the independent C01–C03 browser
+oracle. Full T0 and C04–C14/N01–N08 remain unverified; the approved contract and
+support matrix are unchanged. Generic static control emission and nested keyed
+reconciliation repairs preserve binding owners, live input values and retained
+component identity. No compatibility fallback or Taskboard compiler special case
+was introduced.
+
+Local Release validation: focused CTests 47/47, full CTests 346/346, complete
+production reference suite, all nine required browser/asset benchmarks and
+`scripts/verify_all.sh` pass with no skipped checks and clean browser exits;
+live smoke 8/8. Shared runtime is 271758/272000 bytes; no budgets changed. Two
+negative controls fail on old control code / old keyed runtime respectively.
+Taskboard lint still fails on lowered component/action-local names; it is not
+counted as a pass. See the [implementation evidence](docs/architecture/taskboard-core-c01-c03.md)
+for scenario results, failures, asset deltas, source-provenance limitations and
+reproduction. Hosted CI is separate evidence, not implied by local success.
+
 ## Nested component parameter propagation — 2026-10-14
 
 The production nested-heading regression now passes and is mandatory in

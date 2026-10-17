@@ -1127,7 +1127,7 @@ void appendDirectAttributeMapStatements(std::ostringstream& out,
     out << "const next = {}; "
         << "let classValue = ''; "
         << "function addAttr(name, value) { "
-        << "if (value == null || value === '') return; "
+        << "if (value == null || (value === '' && name !== 'value')) return; "
         << "if (name === 'class' && value !== true) { "
         << "classValue = (classValue ? classValue + ' ' : '') + String(value); "
         << "} else if (value === true) next[name] = true; "
@@ -1167,9 +1167,9 @@ void appendDirectAttributeMapStatements(std::ostringstream& out,
             out << "addAttr(" << jsStringLiteral(name) << ", true); ";
             continue;
         }
-        out << "addAttr(" << jsStringLiteral(name) << ", "
+        out << "addAttr(" << jsStringLiteral(name) << ", String("
             << jsDirectExpressionCall(attr.value("exprPlan", nlohmann::json::object()))
-            << "); ";
+            << ")); ";
     }
 
     if (head == "link" || head == "navlink") {
@@ -1194,6 +1194,13 @@ void appendDirectAttributeMapStatements(std::ostringstream& out,
         out << "addAttr('data-jtml-direct-node'," << jsStringLiteral(head) << "); ";
     }
     out << "if (classValue) next.class = classValue; ";
+    // Binding ownership is managed on both creation and retained patches.
+    for (const auto& attr : partsPlan.value("attrs", nlohmann::json::array())) {
+        if (attr.value("name", "") == "data-jtml-direct-component-bind") {
+            out << "addAttr('data-jtml-direct-component-id', instance && instance.id || ''); ";
+            break;
+        }
+    }
 }
 
 void appendDirectAttributePatchStatements(std::ostringstream& out,
@@ -1203,11 +1210,19 @@ void appendDirectAttributePatchStatements(std::ostringstream& out,
     out
         << "const previous = String(el.getAttribute('data-jtml-direct-managed-attrs') || '')"
         << ".split(',').filter(Boolean); "
-        << "previous.forEach(function(name){ if (!Object.prototype.hasOwnProperty.call(next, name)) el.removeAttribute(name); }); "
+        << "previous.forEach(function(name){ if (name !== 'data-jtml-direct-body-node' && !Object.prototype.hasOwnProperty.call(next, name)) el.removeAttribute(name); }); "
         << "Object.keys(next).forEach(function(name){ "
         << "if (next[name] === true) el.setAttribute(name, name); "
-        << "else el.setAttribute(name, next[name]); "
-        << "}); "
+        << "else el.setAttribute(name, next[name]); ";
+    for (const auto& attr : partsPlan.value("attrs", nlohmann::json::array())) {
+        if (attr.value("name", "") == "value") {
+            // Dirty controls need property updates; unchanged values retain selection.
+            out << "if (name === 'value' && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') "
+                << "&& el.value !== String(next[name])) el.value = next[name]; ";
+            break;
+        }
+    }
+    out << "}); "
         << "el.setAttribute('data-jtml-direct-managed-attrs', Object.keys(next).join(',')); ";
 }
 
@@ -1292,7 +1307,9 @@ std::string directStaticElementPatchExpression(size_t nodeIndex,
                                                const std::string& rootExpression = "") {
     const auto contentPlan = partsPlan.value("contentPlan", nlohmann::json::object());
     const bool usesPartsContent = !partsPlan.value("content", "").empty();
-    const auto& planForContent = usesPartsContent ? contentPlan : expressionPlan;
+    // An explicitly empty content plan means an attribute-only element. Its
+    // raw expression contains attributes, not an alternate content expression.
+    const auto& planForContent = partsPlan.contains("contentPlan") ? contentPlan : expressionPlan;
     if (!staticElementPartsAreDirect(partsPlan, patchContent && usesPartsContent) ||
         (patchContent && !isDirectJsExpressionPlan(planForContent))) {
         return "";
@@ -1387,7 +1404,9 @@ std::string directStaticElementCreateExpression(size_t nodeIndex,
                                                 const nlohmann::json& expressionPlan) {
     const auto contentPlan = partsPlan.value("contentPlan", nlohmann::json::object());
     const bool usesPartsContent = !partsPlan.value("content", "").empty();
-    const auto& planForContent = usesPartsContent ? contentPlan : expressionPlan;
+    // An explicitly empty content plan means an attribute-only element. Its
+    // raw expression contains attributes, not an alternate content expression.
+    const auto& planForContent = partsPlan.contains("contentPlan") ? contentPlan : expressionPlan;
     if (!staticElementPartsAreDirect(partsPlan, usesPartsContent) ||
         !isDirectJsExpressionPlan(planForContent)) {
         return "";
@@ -1398,10 +1417,6 @@ std::string directStaticElementCreateExpression(size_t nodeIndex,
     out << "(function(){ "
         << "const contentValue = " << jsDirectExpressionCall(planForContent) << "; ";
     appendDirectAttributeMapStatements(out, partsPlan, resolvedHead);
-    if (resolvedTag == "input" || resolvedTag == "textarea" || resolvedTag == "select") {
-        out << "if (Object.prototype.hasOwnProperty.call(next, 'data-jtml-direct-component-bind')) "
-            << "addAttr('data-jtml-direct-component-id', instance && instance.id || ''); ";
-    }
     out << "next['data-jtml-direct-body-node'] = " << jsStringLiteral(std::to_string(nodeIndex)) << "; "
         << "next['data-jtml-direct-managed-attrs'] = Object.keys(next).join(','); "
         << "const attrs = jtml_static_attrs_to_string(next); ";

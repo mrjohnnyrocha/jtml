@@ -1809,6 +1809,8 @@ const char* browserRuntimeComponentChunk() {
             current.tagName.toLowerCase() !== next.tagName.toLowerCase()) {
           return false;
         }
+        // A body marker is local to its component: never reuse another owner.
+        if (current.getAttribute('data-jtml-direct-instance') !== next.getAttribute('data-jtml-direct-instance')) return false;
         const currentMarker = elementBodyNodeMarker(current);
         const nextMarker = elementBodyNodeMarker(next);
         return currentMarker && nextMarker && currentMarker === nextMarker;
@@ -1825,11 +1827,6 @@ const char* browserRuntimeComponentChunk() {
         Array.prototype.slice.call(current.attributes || []).forEach(function (attr) {
           if (!seen[attr.name]) current.removeAttribute(attr.name);
         });
-      }
-
-      function hasNestedDirectComponentElement(el) {
-        return !!(el && el.querySelector &&
-          el.querySelector('[data-jtml-direct-instance]'));
       }
 
       function keyedPatchableChildMarkers(children) {
@@ -1914,9 +1911,6 @@ const char* browserRuntimeComponentChunk() {
         if (!samePatchableElementShape(current, next)) return false;
         copyElementAttributesInPlace(current, next);
         stats.elementsPatched += 1;
-        if (hasNestedDirectComponentElement(current) || hasNestedDirectComponentElement(next)) {
-          return current.innerHTML === next.innerHTML;
-        }
         if (current.innerHTML === next.innerHTML) return true;
         if (patchElementChildrenInPlace(current, next, stats)) return true;
         return false;

@@ -1,0 +1,95 @@
+jtml 2
+
+# C01–C03 only. Canonical records and every record write belong to TaskBoard.
+make TaskStatus boardTitle completed
+  get status = completed ? "Complete" : "Open"
+  box class "task-status-detail" title status
+    box class "board-heading"
+      show boardTitle
+    box class "task-status"
+      show status
+
+make TaskHeader boardTitle record
+  box class "task-header"
+    h2 record.title
+    TaskStatus boardTitle record.completed
+
+make TaskRow boardTitle record
+  let draftTitle = record.title
+  let draftNote = record.note
+  let editing = false
+  let interactions = 0
+  card class "task-row" data-task-id record.id
+    TaskHeader boardTitle record
+    input class "row-draft" aria-label "Task title draft" value draftTitle into draftTitle
+    input class "row-note" aria-label "Task note draft" value draftNote into draftNote
+
+make TaskBoard boardId
+  let title = "Before"
+  let records = { "t-101": { "id": "t-101", "title": "Audit runtime", "completed": false, "note": "" }, "t-102": { "id": "t-102", "title": "Audit runtime", "completed": false, "note": "" }, "t-103": { "id": "t-103", "title": "Ship documentation", "completed": true, "note": "" }, "t-104": { "id": "t-104", "title": "<release> & CSP", "completed": false, "note": "" } }
+  let order = ["t-101", "t-102", "t-103", "t-104"]
+  # Parent-maintained completion index. No completion mutation in this slice.
+  let completeIds = ["t-103"]
+  let nextId = 105
+  let draft = ""
+  let error = ""
+  let submitCount = 0
+  get total = order.length
+  get complete = completeIds.length
+  get open = total - complete
+  get visible = total
+  get inputId = "create-title-" + boardId
+  get errorId = "create-error-" + boardId
+  get invalid = error != ""
+
+  when create
+    submitCount += 1
+    let trimmed = ""
+    let pending = ""
+    let whitespace = false
+    # Literal whitespace characters: string escapes are not decoded by JTML.
+    # Native text inputs remove CR/LF; preserve internal whitespace verbatim.
+    for character in draft
+      whitespace = false
+      for blank in " 	                 　﻿"
+        if character == blank
+          whitespace = true
+      if whitespace
+        if trimmed != ""
+          pending = pending + character
+      else
+        trimmed = trimmed + pending + character
+        pending = ""
+    if trimmed == ""
+      error = "Enter a task title"
+    else
+      let createdId = "t-" + nextId
+      records[createdId] = { "id": createdId, "title": trimmed, "completed": false, "note": "" }
+      order[order.length] = createdId
+      nextId += 1
+      draft = ""
+      error = ""
+
+  section class "taskboard" data-board boardId
+    h1 title
+    box class "counts"
+      box class "count-total"
+        show total
+      box class "count-open"
+        show open
+      box class "count-complete"
+        show complete
+      box class "count-visible"
+        show visible
+    form class "create-task" submit create
+      label "Task title" for inputId
+      input class "create-title" id inputId aria-describedby errorId aria-invalid invalid value draft into draft
+      button "Create task" type "submit"
+      box class "create-error" id errorId role "alert"
+        show error
+    for taskId in order key taskId
+      TaskRow title records[taskId]
+
+page
+  TaskBoard "A"
+  TaskBoard "B"

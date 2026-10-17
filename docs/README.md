@@ -73,6 +73,7 @@ prose blocks.
 | --- | --- |
 | [`architecture/observable-first-architecture-roadmap.md`](architecture/observable-first-architecture-roadmap.md) | Semantic IR and observable-graph dependency order. |
 | [`architecture/language-family-design.md`](architecture/language-family-design.md) | How JTL core and JTML web/app syntax should evolve together without splitting the architecture into scattered plans. |
+| [`architecture/taskboard-core-c01-c03.md`](architecture/taskboard-core-c01-c03.md) | First adversarial Taskboard slice: C01–C03 browser evidence, generic repairs, negative controls and remaining gaps. |
 | [`architecture/studio-redesign-proposal.md`](architecture/studio-redesign-proposal.md) | Product/design RFC for Studio as the main JTML home and learning hub. |
 
 ## Roadmaps

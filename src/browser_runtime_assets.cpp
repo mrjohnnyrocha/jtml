@@ -1583,7 +1583,7 @@ const char* browserRuntimeComponentChunk() {
             html = elseNode ? renderComponentChildren(definition, instance, elseNode, scope) : '';
           }
           return '<span' + directNodeAttr +
-            ' data-jtml-direct-region="if" style="display:contents">' +
+            ' data-jtml-direct-region="if" data-jtml-direct-branch="' + (condition.found && condition.value ? '1' : '0') + '" style="display:contents">' +
             html + '</span>';
         }
         if (head === 'for') {

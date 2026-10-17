@@ -2315,6 +2315,35 @@ TEST(CliBuild, BrowserTargetProdUnsupportedShapeMatrixReportsRemediation) {
     }
 }
 
+TEST(CliBuild, ProductionRejectsBorrowedIteratorsAndUnsupportedAssignments) {
+    const std::vector<std::pair<std::string, std::string>> cases = {
+        {"borrowed", "jtml 2\nmake Candidate items\n  let alias = {}\n  when mutate\n    for row in items\n      alias = row\n      alias.score += 1\n  p \"Candidate\"\npage\n  p \"Test\"\n"},
+        {"assignment", "jtml 2\nmake Candidate\n  let input = []\n  let result = 0\n  when mutate\n    result = input.push(1)\n  p \"Candidate\"\npage\n  Candidate\n"},
+        {"assignment", "jtml 2\nmake Candidate\n  let items = [{ \"score\": 0 }]\n  when mutate\n    items[mystery()].score = 1\n  p \"Candidate\"\npage\n  Candidate\n"},
+    };
+    for (const auto& test : cases) {
+        const auto root = makeTempDir("reviewed-assignment-contract");
+        const auto input = root / "index.jtml";
+        writeTempFile(input, test.second);
+        jtml::cli::Options opts;
+        opts.inputFile = input.string();
+        opts.outputFile = (root / "dist").string();
+        opts.syntax = jtml::SyntaxMode::Auto;
+        opts.target = "browser";
+        try {
+            (void)jtml::cli::cmdBuild(opts);
+            FAIL() << "production accepted " << test.first;
+        } catch (const std::runtime_error& error) {
+            const std::string message = error.what();
+            EXPECT_NE(message.find(test.first), std::string::npos) << message;
+            EXPECT_NE(message.find("Candidate"), std::string::npos) << message;
+            EXPECT_NE(message.find(input.string()), std::string::npos) << message;
+        }
+        EXPECT_FALSE(std::filesystem::exists(root / "dist" / "app.js"));
+        std::filesystem::remove_all(root);
+    }
+}
+
 TEST(CliBuild, BrowserDirectoryBuildSkipsSensitiveAndGeneratedAssets) {
     const auto root = makeTempDir("browser-assets");
     writeTempFile(root / "index.jtml",

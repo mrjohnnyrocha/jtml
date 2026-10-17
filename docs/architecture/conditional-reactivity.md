@@ -66,7 +66,7 @@ Assignment stack traces showed separate intended iterations instead; no event
 handling change was necessary. The additional real defect was object-reference
 equality suppressing an in-place nested parameter mutation.
 
-## Evidence
+## Evidence at the initially reviewed head
 
 `conditional-reactivity.jtml` is mandatory in
 `scripts/test_production_reference.sh`. Its real browser scenario executes 28
@@ -100,3 +100,72 @@ The composed reference app still reports its existing HTML size limitation
 not fix manifest duplication. Source-span propagation, full type/ownership
 analysis, the full v0.3 support matrix, fresh hosted CI and release readiness are
 separate evidence. Local logs are ephemeral under `/tmp/jtml-conditional-*`.
+
+## PR #10 review repairs (reviewed head `6384d34`)
+
+Three independent review findings were reproduced before editing with the reviewed
+compiler and clean production builds in real Chrome:
+
+1. Increment -> Mutate -> Increment left the Counter at 1; an unrelated object
+   write removed the still-visible child's dynamic generation. Static conditional
+   patches always replaced their subtree. Worse, creation registered replacement
+   children before destruction unregistered those same identities.
+2. A child action iterated a borrowed parameter collection, copied a row into a
+   local alias and mutated it. The child showed 1 while the parent remained at 0.
+   The borrowing graph omitted iterator bindings and conflated lexical names.
+3. `result = input.push(1)` and `items[mystery()].score = 1` both built successfully.
+   The former rendered literal source text; the latter silently left state
+   unchanged. Ownership checks had not validated the complete assignment shape.
+
+Conditional creation now records its selected branch in both initial/runtime
+rendering and generated static creation. On an unchanged branch, the compiler
+emits calls to its generated descendant patch cases, preserving mounted child DOM,
+state and generations while updating consumed values and nested parameters.
+Containers patch their attributes and descendants; nested components and regions
+retain ownership of their own subtrees. On a genuine branch transition, old
+children are destroyed before new children are created and registered. Conservative
+object invalidation is unchanged; extra scheduling no longer destroys an active
+interactive branch.
+
+Borrowing now follows lexical binding identities through component/action
+parameters, local declarations, loop collections/iterators and transitive aliases,
+including nested containers. An owned collection iterator may mutate its members;
+an iterator over a borrowed collection may not. A nested local declaration can
+shadow an outer parameter without borrowing its name accidentally. Component-scope
+parameter names remain borrowed even if redeclared because the runtime refreshes
+those names from parameters before actions. The analysis remains flow-insensitive
+and conservative: potentially borrowed reference copies can still be rejected.
+No cross-component mutation fallback is introduced.
+
+Every production assignment must have a parsed static RHS, a writable path whose
+entire computed indices support static expression compilation, and one of `=`,
+`+=`, `-=`, `*=`, `/=`, `%=`. Root ownership is checked against the resolved binding.
+Unknown/side-effectful calls anywhere in the RHS or lvalue fail the clean build
+with component/source context and remediation. Supported dynamic indices such as
+`items[index].score = 1` remain accepted and execute correctly.
+
+### Regression and negative-control evidence
+
+- Mandatory `conditional-lifecycle`: 22 actions/32 assertions cover a constant
+  child and a parameterized child, repeated unrelated and relevant writes,
+  retained DOM/state/actions, true->false->true twice, fresh state on recreation,
+  destruction flags and exact registry consistency. The same fixture built with
+  `6384d34` fails on the first unrelated write at the identity assertion.
+- Mandatory `owned-loop-writes`: 3 actions/5 assertions exercise direct owned
+  iterator mutation, alias mutation and a dynamic-index update in real Chrome.
+- New CTests cover borrowed component/action collections, nested loops and
+  containers, transitive aliases, lexical shadowing, legitimate owned writes,
+  supported operators, and rejection of complete unsupported assignments. CLI
+  tests require clean-build rejection with the source path and component name.
+- Negative control: rebuilding the three new CTests against the reviewed emitter
+  and runtime produces 0/3 passing tests (CTest exit 8). Restoring the repairs
+  makes all three pass. No assertion or budget was weakened.
+
+Final local verification: 344/344 CTests; complete production reference suite
+(including the existing 28-action/86-assertion dependency matrix); all nine real
+browser benchmarks; production asset/CSP checks; and `scripts/verify_all.sh`,
+including live smoke 8/8. No checks were skipped and all benchmark browsers exited
+cleanly. Runtime is 271879/272000 bytes; large-keyed-reorder compatibility asset
+remains 177847/180000 bytes. The existing reference HTML size limitation remains
+explicitly reported. Logs and the saved reviewed binary are ephemeral under
+`/tmp/jtml-pr10-review/`. Hosted CI is checked separately against the pushed head.

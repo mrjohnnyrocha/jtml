@@ -1742,6 +1742,74 @@ TEST(RuntimePlan, ProductionWritesRequireOwnedLetRootsWithoutTaintingTargetIndic
     EXPECT_TRUE(jtml::validateStaticComponentModuleForProduction(project).empty());
 }
 
+TEST(RuntimePlan, LoopIteratorOwnershipFollowsLexicalCollectionsAndAliases) {
+    struct Case { std::string header; std::string declarations; std::string action; bool accepted; };
+    const std::vector<Case> cases = {
+        {"items", "  let items = [{ \"score\": 0 }]\n", "  when mutate\n    items[0].score += 1\n", false},
+        {"", "  let row = { \"score\": 0 }\n", "  when helper row\n    let temporary = 0\n  when mutate\n    row.score += 1\n", true},
+        {"items", "  let alias = {}\n", "  when mutate\n    for row in items\n      alias = row\n      alias.score += 1\n", false},
+        {"", "  let alias = {}\n", "  when mutate items\n    for row in items\n      alias = row\n      alias.score += 1\n", false},
+        {"items", "  let alias = {}\n  let next = {}\n", "  when mutate\n    for row in items\n      alias = { \"inner\": row }\n      next = alias\n      next.inner.score += 1\n", false},
+        {"items", "  let alias = {}\n", "  when mutate\n    for group in items\n      for row in group.rows\n        alias = row\n        alias.score += 1\n", false},
+        {"row", "  let owned = [{ \"score\": 0 }]\n", "  when mutate\n    for row in owned\n      row.score += 1\n", true},
+        {"items", "  let alias = {}\n", "  when mutate\n    let items = [{ \"score\": 0 }]\n    for row in items\n      alias = row\n      alias.score += 1\n", true},
+        {"row", "  let owned = [{ \"score\": 0 }]\n  let alias = {}\n", "  when mutate\n    for row in owned\n      row.score += 1\n    alias = row\n    alias.score += 1\n", false},
+        {"", "  let items = [{ \"score\": 0 }]\n  let alias = {}\n", "  when mutate items\n    for row in items\n      alias = row\n      alias.score += 1\n", false},
+    };
+    for (const auto& test : cases) {
+        const auto source = "jtml 2\nmake Candidate " + test.header + "\n" + test.declarations + test.action + "  p \"Candidate\"\npage\n  p \"Test\"\n";
+        SCOPED_TRACE(source);
+        auto program = parseFriendly(source);
+        jtml::RuntimeProjectPlan project;
+        project.linkedPlan = jtml::buildRuntimePlan(program);
+        const auto issues = jtml::validateStaticComponentModuleForProduction(project);
+        EXPECT_EQ(issues.empty(), test.accepted);
+        if (!test.accepted) {
+            ASSERT_FALSE(issues.empty());
+            EXPECT_NE(issues.front().find("borrowed"), std::string::npos) << issues.front();
+            EXPECT_NE(issues.front().find("Candidate"), std::string::npos);
+            EXPECT_NE(issues.front().find("line "), std::string::npos);
+        }
+    }
+}
+
+TEST(RuntimePlan, ProductionAssignmentsValidateRhsEntireLvalueAndOperator) {
+    const std::vector<std::pair<std::string, bool>> cases = {
+        {"result = input.push(1)", false},
+        {"items[mystery()].score = 1", false},
+        {"items[index + mystery()].score = 1", false},
+        {"result = enabled ? 1 : mystery()", false},
+        {"items[index].score = 1", true},
+        {"items[index + 0].score += 1", true},
+        {"result += 1", true}, {"result -= 1", true}, {"result *= 2", true},
+        {"result /= 2", true}, {"result %= 2", true},
+    };
+    for (const auto& test : cases) {
+        SCOPED_TRACE(test.first);
+        auto program = parseFriendly("jtml 2\nmake Assignment\n  let input = []\n  let result = 0\n"
+            "  let items = [{ \"score\": 0 }]\n  let index = 0\n  let enabled = true\n"
+            "  when mutate\n    " + test.first + "\n  p \"Assignment\"\npage\n  p \"Test\"\n");
+        jtml::RuntimeProjectPlan project;
+        project.linkedPlan = jtml::buildRuntimePlan(program);
+        const auto issues = jtml::validateStaticComponentModuleForProduction(project);
+        EXPECT_EQ(issues.empty(), test.second);
+        if (!test.second) {
+            ASSERT_FALSE(issues.empty());
+            EXPECT_NE(issues.front().find("unsupported production assignment"), std::string::npos);
+            EXPECT_NE(issues.front().find("Assignment"), std::string::npos);
+            EXPECT_NE(issues.front().find("statically analyzable indices and RHS"), std::string::npos);
+        }
+        if (test.second) {
+            auto& body = project.linkedPlan.componentDefinitions.front().bodyPlan;
+            const auto assignment = std::find_if(body.begin(), body.end(), [](const auto& node) { return node.kind == "assignment"; });
+            ASSERT_NE(assignment, body.end());
+            assignment->operatorToken = "^=";
+            const auto invalid = jtml::validateStaticComponentModuleForProduction(project);
+            EXPECT_FALSE(invalid.empty()) << "unsupported compound operator accepted";
+        }
+    }
+}
+
 TEST(RuntimePlan, LoopShadowingPreservesOuterCollectionDependency) {
     for (const bool derived : {false, true}) {
         SCOPED_TRACE(derived ? "derived collection" : "direct collection");

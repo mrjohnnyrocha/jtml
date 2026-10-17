@@ -1,0 +1,44 @@
+jtml 2
+
+make DisplayCounter payload
+  let count = 0
+  when increment
+    count += 1
+  box class "counter"
+    button "Increment" click increment
+    show count
+    p class "value" payload
+
+make Counter
+  let count = 0
+  when increment
+    count += 1
+  box class "counter"
+    button "Increment" click increment
+    show count
+
+make Parent
+  let item = { "score": 0 }
+  let unrelated = { "score": 0 }
+  let value = 0
+  when mutate
+    unrelated.score += 1
+  when relevant
+    value += 1
+  when hide
+    item.score = 1
+  when reveal
+    item.score = 0
+  box class "conditional-owner"
+    if item.score == 0
+      Counter
+      box title value
+        DisplayCounter value
+        p class "consumed" value
+    button "Mutate" click mutate
+    button "Relevant" click relevant
+    button "Hide" click hide
+    button "Reveal" click reveal
+
+page
+  Parent

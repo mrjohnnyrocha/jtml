@@ -1,0 +1,21 @@
+jtml 2
+
+make Owned
+  let items = [{ "score": 0 }]
+  let alias = {}
+  let index = 0
+  when mutate
+    for row in items
+      alias = row
+      alias.score += 1
+      row.score += 1
+  when indexed
+    items[index].score += 1
+  box class "owned-collection"
+    show items[0].score
+    button "Owned mutate" click mutate
+    button "Owned index" click indexed
+
+
+page
+  Owned

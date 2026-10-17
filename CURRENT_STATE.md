@@ -231,6 +231,32 @@ reference HTML size limitation remains (135374 bytes versus its 70000-byte
 microfixture comparison). Local verification does not establish production or
 release readiness; hosted CI is separate evidence.
 
+## PR #10 review repairs — 2026-10-17
+
+The reviewed head `6384d34` had three reproduced production defects: an unchanged
+conditional branch replaced and unregistered interactive children; iterator
+bindings bypassed borrowed ownership; and unsupported RHS/computed-target calls
+passed assignment validation, becoming literal text or a no-op.
+
+The follow-up retains active branches through generated static descendant patches,
+orders transition destruction before creation, resolves ownership by lexical
+binding identity (including iterators and aliases), and validates complete static
+assignment expressions/operators/ownership before clean production generation.
+Conservative invalidation and all existing budgets remain intact.
+
+The original compiler fails the new lifecycle identity assertion; all three new
+CTests fail against the reviewed backend. The repaired version passes 344/344
+CTests, the complete reference suite (new lifecycle 22 actions/32 assertions and
+owned-loop 3 actions/5 assertions, plus the existing conditional matrix), all nine
+real-browser/asset/CSP benchmarks and `scripts/verify_all.sh` with live smoke 8/8.
+No checks were skipped; all benchmark browsers exited cleanly. Shared runtime is
+271879/272000 bytes; large keyed compatibility output remains 177847/180000 bytes.
+The existing reference HTML size limitation is still visible. See the
+[architecture note](docs/architecture/conditional-reactivity.md) for root causes,
+negative controls, supported contracts and conservative ownership limitations.
+Hosted CI against the final pushed head is separate evidence; no merge or release
+is implied by these local results.
+
 ## Verified Development Baseline — 2026-10-12
 
 Starting commit: `5e0761925fcdd748268d3049d613fb767e1dbd45` (clean checkout).

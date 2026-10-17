@@ -40,7 +40,73 @@
     };
     const regression = window.jtmlReferenceRegression;
     if (regression) {
-      if (regression === 'routing') {
+      if (regression === 'conditional-lifecycle') {
+        const owner = document.querySelector('.conditional-owner');
+        const counters = () => Array.from(owner.querySelectorAll('.counter'));
+        const wrappers = () => counters().map(el => el.closest('[data-jtml-direct-instance]'));
+        // show emits a body-node span, whose sibling p carries the parameter.
+        const count = el => el.querySelector('button').nextElementSibling.textContent.trim();
+        const registry = () => window.jtml.getRuntimeRegistrySnapshot();
+        const activeIds = () => Object.keys(registry().dynamicGenerations);
+        let mounted = counters();
+        let mountedWrappers = wrappers();
+        let initialRegistry = JSON.stringify(registry());
+        assert(mounted.length === 2 && mounted.every(el => count(el) === '0'), 'two interactive children mount with independent local state');
+        assert(mountedWrappers.every(el => activeIds().includes(el.getAttribute('data-jtml-direct-instance'))), 'connected children own live registry generations');
+        click('Increment', mounted[0]);
+        click('Increment', mounted[1]);
+        await settle();
+        assert(mounted.every(el => count(el) === '1'), 'nested actions dispatch exactly once');
+        let first = 1, second = 1;
+        for (let i = 0; i < 3; i += 1) {
+          click('Mutate', owner);
+          await settle();
+          assert(counters().every((el, j) => el === mounted[j]) && wrappers().every((el, j) => el === mountedWrappers[j]), 'same branch preserves child DOM and instance identity after unrelated write');
+          assert(JSON.stringify(registry()) === initialRegistry, 'same branch retains registry ownership without generations or handler leaks');
+          click('Increment', mounted[0]); first += 1;
+          await settle();
+          assert(count(mounted[0]) === String(first) && count(mounted[1]) === String(second), 'retained controls remain functional and sibling state stays isolated');
+        }
+        for (let value = 1; value <= 2; value += 1) {
+          click('Relevant', owner);
+          await settle();
+          assert(owner.querySelector('.consumed').textContent === String(value) && mounted[1].querySelector('.value').textContent === String(value), 'still-active branch updates consumed text, attributes and nested parameters');
+          assert(counters().every((el, j) => el === mounted[j]) && mounted[1].closest('[title]').getAttribute('title') === String(value), 'relevant write retains mounted children while patching ancestor attributes');
+          click('Increment', mounted[1]); second += 1;
+          await settle();
+          assert(count(mounted[0]) === String(first) && count(mounted[1]) === String(second) && JSON.stringify(registry()) === initialRegistry, 'relevant writes preserve local state and active handlers');
+        }
+        for (let cycle = 0; cycle < 2; cycle += 1) {
+          const removed = mountedWrappers.slice();
+          const removedIds = removed.map(el => el.getAttribute('data-jtml-direct-instance'));
+          click('Hide', owner);
+          await settle();
+          assert(counters().length === 0 && removed.every(el => !el.isConnected), 'true to false unmounts interactive descendants');
+          const destroyed = window.jtml.directComponentDestroyLifecycle || {};
+          assert(removedIds.every(id => !activeIds().includes(id) && (destroyed.entries || []).some(entry => entry.id === id && entry.r && entry.s && entry.e && entry.d)), 'unmounted descendants release state handlers and registry ownership');
+          click('Reveal', owner);
+          await settle();
+          mounted = counters(); mountedWrappers = wrappers();
+          assert(mounted.length === 2 && mounted.every(el => count(el) === '0') && mountedWrappers.every(el => !removed.includes(el)), 'false to true recreates fresh component state and DOM');
+          initialRegistry = JSON.stringify(registry());
+          assert(activeIds().length === 2 && mountedWrappers.every(el => activeIds().includes(el.getAttribute('data-jtml-direct-instance'))), 'new connected descendants own exactly their live generations');
+          click('Increment', mounted[0]); click('Increment', mounted[1]);
+          await settle();
+          assert(mounted.every(el => count(el) === '1'), 'recreated child actions dispatch once after repeated transitions');
+          click('Mutate', owner);
+          await settle();
+          assert(counters().every((el, j) => el === mounted[j]) && mounted.every(el => count(el) === '1') && JSON.stringify(registry()) === initialRegistry, 'repeated invalidations retain recreated state and ownership');
+        }
+        assert(!window.jtml.directComponentPatchFallback && !window.jtml.directComponentBodyPlanFallback && !window.jtml.directComponentStaticUpdateError, 'conditional lifecycle uses static production paths without fallback');
+      } else if (regression === 'owned-loop-writes') {
+        const owned = document.querySelector('.owned-collection');
+        for (const [label, expected] of [['Owned mutate', '2'], ['Owned index', '3'], ['Owned mutate', '5']]) {
+          click(label, owned);
+          await settle();
+          assert(owned.firstElementChild.textContent.trim() === expected, 'owned iterator aliases and supported dynamic indices remain functional: ' + label);
+        }
+        assert(!window.jtml.directComponentPatchFallback && !window.jtml.directComponentBodyPlanFallback && !window.jtml.directComponentStaticUpdateError, 'owned loop writes use static production paths without fallback');
+      } else if (regression === 'routing') {
         assert(errors.length === 0, 'routing starts without initialization errors');
         const route = path => document.querySelector('[data-jtml-route="' + path + '"]');
         const routeNodes = Array.from(document.querySelectorAll('[data-jtml-route]'));

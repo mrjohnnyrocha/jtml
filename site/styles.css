@@ -660,9 +660,7 @@ section:not(.hero) {
   }
 
   .scene-preview {
-    right: 24px;
-    bottom: 8%;
-    width: 260px;
+    display: none;
   }
 
   section:not(.hero) {

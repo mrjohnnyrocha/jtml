@@ -1,6 +1,7 @@
 # Taskboard adversarial acceptance contract
 
-Status: **proposed acceptance specification; owner approval pending**, 2026-10-18.
+Status: **acceptance specification approved in principle**, 2026-10-18.
+Owner-requested release/provenance clarifications are recorded below.
 This defines desired application behavior independently of the compiler. It is
 not an implementation report or a claim that the current language can express
 all requirements. The companion [support matrix](v0.3-support-candidates.md)
@@ -27,9 +28,36 @@ No language/runtime feature, application, backend, license or release is added h
 | T2 Application (v0.4) | Conventional backend authentication boundary, production deployment, end-to-end/accessibility and external developer maintenance acceptance. | Enterprise readiness or a new JTML backend language. |
 
 The concrete choices below (trimming, monotonic IDs, fresh local state on remount,
-focus after removal, HTTP conflict behavior) are proposals awaiting owner approval.
+focus after removal, HTTP conflict behavior) remain explicit product decisions to record before implementation.
 They deliberately settle ambiguous outcomes before implementation. They are not
 permissions to lower T0's required stress coverage.
+
+The first experimental v0.3 preview is gated by the
+[approved supported surface and mandatory preview evidence](v0.3-support-candidates.md#minimum-evidence-for-an-experimental-v03-preview),
+including semantic correctness, production regressions, licensing, security and
+reproducible installation. **Complete T0 Core does not automatically block that
+preview.** All T0 Core scenarios are mandatory before claiming support for the
+full adversarial object-backed application composition. T1/T2 remain v0.4
+application acceptance. All 32 C/N/A scenarios and their failure criteria remain
+in force; an incomplete T0 is reported as incomplete, and any failure violating
+a declared supported shape or mandatory security gate still blocks that gate.
+
+## Diagnostic provenance dependency
+
+Accurate diagnostics must reference original Friendly source file/line/column
+and component context. End-to-end spans are incomplete: **S1–S3 are required to
+establish reliable source provenance**, and T0 diagnostic acceptance (including
+N04) may depend on that work. Existing approximate, lowered or adjusted source
+locations must not be presented as exact original-source locations. A diagnostic
+containing a file path and component name alone does not prove the complete
+location requirement.
+
+Record affected diagnostic scenarios as failed or unverified until original-source
+attribution is independently demonstrated. This evidence gap does not weaken the
+required diagnostics or authorize a T0 pass. See the
+[matrix provenance dependency](v0.3-support-candidates.md#diagnostic-provenance-dependency)
+for compiler-layer scope and roadmap evidence. No source-span implementation is
+part of this PR.
 
 ## T0 data, ownership and UI
 
@@ -215,7 +243,10 @@ all nine mandatory real-browser/asset benchmarks, relevant CTests and separate
 full local `scripts/verify_all.sh`. Capture versions, counts, skips and browser
 process exit status. Preserve the reference HTML regression: 135374 bytes in the
 last PR #10 record versus a 70000-byte **microfixture comparison**, not an approved
-real-application budget. Neither T0 nor a green doctor declares a release ready.
+real-application budget. These T0 completion requirements govern the full
+adversarial composition claim, not automatic eligibility for the first
+experimental v0.3 preview. Preserve all failures and the separate mandatory
+preview gates. Neither T0 nor a green doctor declares a release ready.
 
 This specification PR only inspects existing evidence and runs documentation
 checks; it does not execute or pass T0/T1/T2. The

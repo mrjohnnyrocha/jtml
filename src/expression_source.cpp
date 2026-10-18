@@ -1,8 +1,34 @@
 #include "jtml/expression_source.h"
 
 #include <sstream>
+#include <stdexcept>
+#include "json.hpp"
 
 namespace jtml {
+
+std::string decodeStringLiteral(const std::string& source) {
+    if (source.size() < 2 || (source.front() != '"' && source.front() != '\'') ||
+        source.back() != source.front()) {
+        throw std::invalid_argument("Unterminated string literal");
+    }
+    std::string json = "\"";
+    for (size_t i = 1; i + 1 < source.size(); ++i) {
+        const char ch = source[i];
+        if (ch == '\\') {
+            if (++i + 1 >= source.size()) throw std::invalid_argument("Incomplete string escape");
+            if (source[i] == '\'') json += '\'';
+            else { json += '\\'; json += source[i]; }
+        } else {
+            if (ch == source.front()) throw std::invalid_argument("Unescaped string delimiter");
+            // Raw multiline/whitespace literals remain valid JTML. JSON validates
+            // escapes and Unicode after normalization, without losing backslashes.
+            const auto escaped = jsonString(std::string(1, ch));
+            json.append(escaped, 1, escaped.size() - 2);
+        }
+    }
+    json += '"';
+    return nlohmann::json::parse(json).get<std::string>();
+}
 
 std::string jsonString(const std::string& value) {
     std::ostringstream out;

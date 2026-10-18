@@ -8,6 +8,8 @@
 namespace jtml {
 
 std::string expressionSource(const ExpressionStatementNode* expr);
+// Decode JTML quoted source using JSON escapes, plus single-quoted strings.
+std::string decodeStringLiteral(const std::string& source);
 std::string jsonString(const std::string& value);
 
 } // namespace jtml

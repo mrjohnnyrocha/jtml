@@ -21,6 +21,8 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <mutex>
+#include <thread>
 #include <iostream>
 #include "json.hpp"
 
@@ -37,6 +39,9 @@ struct InterpreterConfig {
     bool startWebSocket = true;
 };
 
+// Public operations require external serialization and a live Interpreter.
+// Function-entry ownership checks reject overlapping calls; they do not make
+// environments, callbacks, reset, or detached async lifetime thread-safe.
 // Interpreter class
 class Interpreter {
 public:
@@ -106,6 +111,10 @@ private:
     std::shared_ptr<JTML::Environment> globalEnv;
     std::shared_ptr<JTML::Environment> currentEnv;
     bool inFunctionContext = false;
+    struct FunctionCallFrame;
+    std::mutex functionCallMutex;
+    std::thread::id functionCallOwner;
+    size_t functionCallDepth = 0;
 
     std::thread wsThread;
 

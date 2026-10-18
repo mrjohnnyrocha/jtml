@@ -88,6 +88,8 @@ jobs:
 
       - name: Local HTTP and WebSocket security (browser required)
         run: scripts/test_local_server_security.sh
+      - name: Browser literal fidelity (clean and compatibility)
+        run: scripts/test_literal_fidelity.sh
 
       - name: JTML smoke tests
         run: ./build/jtml test

@@ -1,0 +1,38 @@
+jtml 2
+make Counter label
+  let count = 0
+  when increment
+    count += 1
+  box class "counter" data-label label
+    button "Increment" click increment
+    show count
+make Row label text
+  let draft = "Seed"
+  box class "row" data-id label
+    input aria-label "Draft" value draft into draft
+    Counter label
+    show text
+make Board boardId
+  let ids = ["a", "b"]
+  let text = ""
+  when update
+    text = "Changed"
+    ids = ["b", "a"]
+  when insert
+    text = "Pending"
+    ids = ["b", "a", "c"]
+  when removeB
+    ids = ["a"]
+  when restore
+    text = ""
+    ids = ["a", "b"]
+  box class "board" data-board boardId
+    button "Update" click update
+    button "Restore" click restore
+    button "Insert" click insert
+    button "Remove B" click removeB
+    for id in ids key id
+      Row id text
+page
+  Board "A"
+  Board "B"

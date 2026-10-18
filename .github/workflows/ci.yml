@@ -83,6 +83,9 @@ jobs:
       - name: Adversarial Taskboard Core C01–C03 (browser required)
         run: scripts/test_taskboard_core.sh
 
+      - name: Nested keyed lifecycle regressions (browser required)
+        run: scripts/test_keyed_lifecycle.sh
+
       - name: JTML smoke tests
         run: ./build/jtml test
 

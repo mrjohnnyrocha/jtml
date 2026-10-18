@@ -1,0 +1,37 @@
+jtml 2
+make Counter label
+  let count = 0
+  when increment
+    count += 1
+  box class "counter" data-label label
+    button "Increment" click increment
+    show count
+make Row label visible
+  let draft = "Seed"
+  box class "row" data-id label
+    input aria-label "Draft" value draft into draft
+    if visible
+      Counter label
+      p "Active"
+    else
+      p "Inactive"
+make Board boardId
+  let ids = ["a", "b"]
+  let visible = true
+  when update
+    visible = false
+    ids = ["b", "a"]
+  when removeB
+    ids = ["a"]
+  when restore
+    visible = true
+    ids = ["a", "b"]
+  box class "board" data-board boardId
+    button "Update" click update
+    button "Restore" click restore
+    button "Remove B" click removeB
+    for id in ids key id
+      Row id visible
+page
+  Board "A"
+  Board "B"

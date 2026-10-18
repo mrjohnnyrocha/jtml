@@ -1702,7 +1702,11 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
               std::string::npos) << runtimeAsset;
     EXPECT_NE(runtimeAsset.find("componentNodeHead(node)==='if'?'subtree-prune':'body-node-html-replace'"),
               std::string::npos) << runtimeAsset;
-    EXPECT_NE(runtimeAsset.find("destroyDirectComponentInstancesUnderElement(wrapper, 'keyed-item-html-replace')"),
+    EXPECT_EQ(runtimeAsset.find("destroyDirectComponentInstancesUnderElement(wrapper, 'keyed-item-html-replace')"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("destroyRuntimeComponentInstance(id, 'keyed-child-remove')"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("if (err.jtmlReconciliation) throw err"),
               std::string::npos) << runtimeAsset;
     const std::string appAsset = readTextFile(outDir / "app.js");
     EXPECT_NE(appAsset.find("productionAssets"), std::string::npos) << appAsset;

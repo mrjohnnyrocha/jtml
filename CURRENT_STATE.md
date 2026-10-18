@@ -476,3 +476,26 @@ Do not currently treat these as canonical production evidence:
   browser/live parity or production readiness.
 - Older Classic examples - useful for compatibility regression, not public
   authoring guidance.
+
+## Local serve / Studio security defaults — 2026-10-18
+
+The local-server security branch integrates merged PR #14 without changes to
+its string decoding or interpreter function execution. HTTP and WebSocket bind
+to IPv4 loopback; pre-routing Host/Origin/Fetch Metadata checks protect mutations
+independently of CORS, whose wildcard grant has been removed. Native clients
+without Origin remain supported and unauthenticated. Studio preview sockets use
+the configured HTTP + 80 port.
+
+HTTP runtime handlers, Studio POSTs, WebSocket callbacks and watch reloads share
+recursive adapter serialization for supported synchronous execution. Focused
+policy/function-call tests (8/8) and real HTTP/WebSocket/browser security tests
+pass with no skips; old-server negative controls reproduce foreign execution,
+foreign WebSocket upgrade and network-interface exposure. Detached async workers
+remain outside synchronization and lifetime ownership; this is follow-up work,
+not a general Interpreter thread-safety claim. The known intermittent native
+`friendly_store` crash remains unresolved. The full local gate passed once on the combined tree: 359/359 CTests,
+production references, Taskboard C01–C08, lifecycle and PR #14 literal tests,
+all nine browser benchmarks with clean exit, package/site/LSP checks and live
+smoke 8/8. No validation was skipped; the store crash did not reproduce in this
+run and remains unresolved. Final-head hosted CI is separate PR evidence. See the
+[security contract](docs/tooling/local-server-security.md) for exact boundaries.

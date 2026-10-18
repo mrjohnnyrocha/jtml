@@ -252,8 +252,12 @@ def check_concurrency(port, event, mode):
         with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
             results = [pool.submit(post, port, path, {'code': CODE}) for path in
                        ['/api/run', '/api/export', '/api/format', '/api/fix', '/api/lint'] * 3]
+            # Snapshots overlap reload/export rather than only observing final state.
+            snapshots = [pool.submit(snapshot, port) for _ in range(15)]
             for future in results:
                 future.result(timeout=20)
+            for future in snapshots:
+                assert future.result(timeout=20) == 0, 'snapshot raced a Studio reload'
         assert snapshot(port) == 0, 'Studio reload did not leave a coherent fresh interpreter'
 
 
@@ -272,7 +276,11 @@ def main():
                 check_security(port, mode, event)
                 check_concurrency(port, event, mode)
                 if mode == 'watch':
-                    source.write_text(CODE.replace('Increment', 'Reloaded'))
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+                        snapshots = [pool.submit(snapshot, port) for _ in range(20)]
+                        source.write_text(CODE.replace('Increment', 'Reloaded'))
+                        for future in snapshots:
+                            assert future.result(timeout=20) in (40, 0), 'snapshot raced watch reload'
                     deadline = time.monotonic() + 10
                     while '"Reloaded"' not in request(port)[2]:
                         assert time.monotonic() < deadline, 'watch did not reload'

@@ -15,9 +15,9 @@ const code = 'jtml 2\nlet count = 0\nwhen increment\n  count += 1\npage\n  butto
       const page = await browser.newPage();
       // Exercise Studio's HTTP origin and srcdoc transport without the optional
       // editor CDN or its automatic welcome-program reload racing this fixture.
-      let populated = false, eventFallbacks = 0;
+      let populated = false, httpEvents = 0;
       page.on('request', request => {
-        if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/event') eventFallbacks += 1;
+        if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/event') httpEvents += 1;
       });
       page.on('websocket', ws => ws.on('framereceived', frame => {
         try { if (JSON.parse(String(frame.payload)).type === 'populateBindings') populated = true; } catch {}
@@ -59,7 +59,7 @@ const code = 'jtml 2\nlet count = 0\nwhen increment\n  count += 1\npage\n  butto
         assert(Date.now() < deadline, 'browser event did not increment exactly once');
         await page.waitForTimeout(25);
       }
-      assert.equal(eventFallbacks, 1, 'the existing live browser HTTP event workflow changed');
+      assert.equal(httpEvents, 1, 'the existing live browser HTTP event workflow changed');
       await page.evaluate(({port,event,expected}) => new Promise((resolve,reject) => {
         const ws = new WebSocket(`ws://${location.hostname}:${port + 80}`);
         const timer = setTimeout(() => {ws.close();reject(new Error('browser WebSocket event timed out'));}, 10000);

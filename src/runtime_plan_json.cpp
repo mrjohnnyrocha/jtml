@@ -1041,10 +1041,36 @@ nlohmann::json runtimeProjectPlanToClientJson(const RuntimeProjectPlan& plan) {
         }
         modules.push_back(std::move(item));
     }
+    // The linked and module projections describe the same physical instances.
+    // Reuse module ownership only for an exact, unique match; equal names in
+    // different modules do not establish identity. Never normalize user values.
+    auto withoutModule = [](nlohmann::json instance) {
+        instance.erase("moduleId");
+        instance.erase("definitionModule");
+        for (auto& node : instance["slotPlan"]) node.erase("definitionModule");
+        return instance;
+    };
+    for (auto& instance : client["componentInstances"]) {
+        if (!instance["moduleId"].is_null()) continue;
+        const auto identity = withoutModule(instance);
+        const nlohmann::json* match = nullptr;
+        bool ambiguous = false;
+        for (const auto& module : modules) {
+            if (!module["executable"].get<bool>()) continue;
+            for (const auto& candidate : module["plan"]["componentInstances"]) {
+                if (withoutModule(candidate) != identity) continue;
+                if (match) ambiguous = true;
+                match = &candidate;
+            }
+        }
+        if (match && !ambiguous) instance = *match;
+    }
     client["project"] = {
         {"sourceOfTruth", "runtime client manifest"},
         {"entry", moduleIdToJson(plan.entry)},
-        {"linkedPlan", runtimePlanToClientJson(plan.linkedPlan)},
+        // The root already contains the linked client payload. Keep the closed
+        // project schema without serializing/merging that full payload twice.
+        {"linkedPlan", runtimePlanToClientJson(RuntimePlan{})},
         {"modules", modules},
     };
     return client;

@@ -80,7 +80,7 @@ jobs:
       - name: Production reference application (browser required)
         run: scripts/test_production_reference.sh
 
-      - name: Adversarial Taskboard Core C01–C08 (browser required)
+      - name: Adversarial Taskboard Core C01–C14 (browser required)
         run: scripts/test_taskboard_core.sh
 
       - name: Nested keyed lifecycle regressions (browser required)

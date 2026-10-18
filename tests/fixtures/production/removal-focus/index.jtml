@@ -1,0 +1,18 @@
+jtml 2
+make RemovalExample suffix
+  let present = true
+  get afterId = "after-" + suffix
+  get target = "#after-" + suffix
+  when remove
+    present = false
+  box class "removal-example" data-example suffix data-jtml-focus-after-removal target
+    input class "unrelated" aria-label "Unrelated draft"
+    if present
+      box class "removed"
+        input aria-label "Removed draft"
+        button "Remove control" click remove
+    button "Remove from outside" click remove
+    button "After removal" id afterId
+page
+  RemovalExample "A"
+  RemovalExample "B"

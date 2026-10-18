@@ -1,0 +1,21 @@
+jtml 2
+make Counter
+  let count = 0
+  when increment
+    count += 1
+  box class "counter"
+    button "Increment counter" click increment
+    box class "count"
+      show count
+make Owner
+  let draft = "Seed"
+  when walk
+    let cursor = 0
+    while cursor < 2
+      cursor += 1
+  box class "owner"
+    input aria-label "Draft" value draft into draft
+    button "Walk locals" click walk
+    Counter
+page
+  Owner

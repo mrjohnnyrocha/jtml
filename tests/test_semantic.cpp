@@ -2589,3 +2589,37 @@ TEST(RuntimePlan, ClientProjectionQualifiesOnlyUnambiguousInstanceMirrors) {
     EXPECT_TRUE(json["componentInstances"][0]["moduleId"].is_null());
     EXPECT_EQ(json["project"]["modules"].size(), 2u);
 }
+
+
+TEST(RuntimePlan, ClientProjectionRetainsRootLinkedPayloadAndExecutableModules) {
+    auto program = parseFriendly(
+        "jtml 2\nlet count = 0\nget label = count + 1\n"
+        "when add\n  count += 1\nmake Counter\n  text label\n"
+        "route \"/counter\" as Counter\npage\n  Counter\n");
+    jtml::RuntimeProjectPlan project;
+    project.entry = 0;
+    project.linkedPlan = jtml::buildRuntimePlan(program);
+    jtml::RuntimeModulePlan executable;
+    executable.id = 0;
+    executable.clientExecutable = true;
+    executable.plan = project.linkedPlan;
+    project.modules.push_back(executable);
+    auto unavailable = executable;
+    unavailable.id = 1;
+    unavailable.clientExecutable = false;
+    project.modules.push_back(unavailable);
+    const auto expected = jtml::runtimePlanToClientJson(project.linkedPlan);
+    const auto client = jtml::runtimeProjectPlanToClientJson(project);
+    // Bootstrap consumes the root first; the empty mirror must not discard any
+    // linked-only state, compiled expressions, actions, routes or definitions.
+    for (const auto& field : {"state", "statePlans", "derived", "derivedPlans",
+                              "actions", "routes", "fetches", "componentDefinitions",
+                              "componentInstances"}) {
+        EXPECT_EQ(client.at(field), expected.at(field)) << field;
+    }
+    EXPECT_EQ(client["project"]["modules"][0]["plan"], expected);
+    EXPECT_FALSE(client["project"]["modules"][1].contains("plan"));
+    // Explain/compiler consumers continue to receive the actual linked plan.
+    const auto explain = jtml::runtimeProjectPlanToExplainJson(project);
+    EXPECT_EQ(explain["linkedPlan"], jtml::runtimePlanToExplainJson(project.linkedPlan));
+}

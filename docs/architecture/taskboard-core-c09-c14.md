@@ -1,10 +1,11 @@
 # Taskboard Core functional completion: C09–C14
 
-Base: main `1a5a9df`, merged PR #14. The approved 32-scenario contract and original
+Original base: main `1a5a9df`, merged PR #14. Integrated main `7a848bb`
+(merged PR #15) through merge commit `4d4e4e9`, without conflicts. The approved 32-scenario contract and original
 C01–C08/lifecycle oracles are unchanged. All mutations use actual JTML, native
 browser controls, immutable IDs and TaskBoard-owned object records. PR #15's
 server security, listeners, origin validation, adapter synchronization and
-interpreter function ownership are untouched.
+interpreter function ownership are identical to integrated main.
 
 | Scenario | Result | Independent Chromium evidence                                                                                                                                                                                                                                                                     |
 | -------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -73,7 +74,9 @@ policy repairs it and adds the corresponding minimal negative control.
 Local macOS arm64 Release; Node 22.23.3, Playwright 1.63.0 and Chrome Headless
 Shell 153.0.8010.12; Python bindings off, cached pinned build dependencies:
 
-- Focused CTests **41/41**; full CTests **358/358**.
+- Original focused CTests **41/41**; integration/module/schema/security focused
+  CTests **16/16**; combined-tree full CTests **361/361** (two PR #15 policy
+  tests and one additional projection-preservation test).
 - `scripts/verify_all.sh` **PASS** on the first full run: complete production
   reference, C01–C14, both original lifecycle cases, all four bounded commit-recovery
   cases, clean/compat literal fidelity, malformed-source controls, native call
@@ -130,3 +133,53 @@ Ephemeral evidence: `/tmp/jtml-core-final-{verify,taskboard,projection-focused}.
 `/tmp/jtml-core-final-negative-{focus,focus-priority,noop,projection}.log`,
 `/tmp/jtml-core-final-projection-negative.log`, `/tmp/jtml-core-final-lint.log` and
 `/tmp/jtml-core-final-sizes.json`. No automatic merge.
+
+
+## PR #15 integration and client projection audit
+
+The integrated tree preserves PR #15's CI security step and full-gate hook.
+`git diff origin/main` is empty for HTTP/WebSocket/security implementation and
+integration tests, Interpreter ownership and async worker code. The only browser
+runtime changes remain rendered action-read filtering and browser-local removal
+focus. All C01–C14 oracle files and the approved contract match `e89d111` exactly.
+The four negative controls again exit 1 at their intended assertions.
+
+No additional projection compatibility regression was demonstrated. Repository
+consumer search finds browser `mergeProjectManifest` and closed schema validation;
+bootstrap copies every root collection before merging the optional linked mirror
+and executable module plans. Root state/expression plans/actions/routes/fetches/
+definitions are retained, module payloads are unchanged, non-executable imports
+remain omitted, and compiler/explain retains its actual linked plan. The new
+`ClientProjectionRetainsRootLinkedPayloadAndExecutableModules` CTest pins those
+properties. Existing imported/module ownership and closed-schema tests pass.
+Consumers of browser output must read the root plus executable modules; the empty
+mirror is not a standalone linked payload. This is now explicit in the authoring
+reference. No unobserved external consumer compatibility is claimed.
+
+Independent Chromium audit: the existing `friendly_import_page.jtml` builds in
+clean mode and renders its imported module state. A two-file `ImportedCounter`
+fixture with two instances inside a component-local Host passes in explicit
+compat mode on both this tree and the saved pre-PR #17 compiler: Before→After
+parent parameter update, retained counter 1, sibling counter 0, no page errors.
+The same imported-component source fails closed in clean mode on both compilers
+(unknown imported component during per-module compilation); it is not advertised
+as newly supported. A top-level variable passed as that imported parameter renders
+the identifier text in compat on both compilers. These are existing boundaries,
+not evidence that arbitrary imported components work in production. No compatibility
+fallback or unrelated importer repair was added.
+
+Combined validation: `verify_all.sh` **PASS**, no skipped checks, all **361/361**
+CTests, all nine benchmarks with clean exits, C01–C14, full production reference,
+original lifecycle/commit recovery, clean/compat literals/native calls and live
+smoke **8/8**. Real local-server security integration **PASS** both independently
+and within the full gate: serve/Studio/watch, authority/origin denials, browser
+and native HTTP/WS, 40 concurrent mutations per mode, shutdown and port reuse.
+The first audit test draft used a route with invalid arity; corrected fixture
+passes without production changes. Existing native friendly_store instability
+was not reproduced in this combined run and remains unresolved.
+
+Combined output sizes equal the table above, including runtime **271969** bytes,
+**31-byte** remaining margin, gzip **50037**, Brotli **40502**. No budget changes.
+Logs: `/tmp/jtml-pr17-{focused,security,integrated-verify}.log`,
+`/tmp/jtml-pr17-negative-{focus,focus-priority,noop,projection}.log`, and
+`/tmp/jtml-pr17-manifest-*.log`. Final-head hosted CI is recorded in the PR.

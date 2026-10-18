@@ -158,13 +158,17 @@ repairs address removal focus, action-local invalidation and duplicate linked /
 module instance projections. No acceptance scenario, previous oracle or budget
 was weakened. See [functional evidence](docs/architecture/taskboard-core-c09-c14.md).
 
-Full local gate **PASS**, **358/358 CTests**, all nine required browser benchmarks
+After integrating PR #15 main `7a848bb`: full local gate **PASS**, **361/361
+CTests**, all nine required browser benchmarks
 with clean exits, production reference, lifecycle/commit recovery, literal/native
 regressions and live smoke **8/8**, no skips. Runtime **271969/272000** bytes (+340);
 HTML/module raw, gzip and Brotli growth and remaining duplication are recorded.
 Taskboard check passes; lint fails **232 errors / five warnings**. N01–N08, full
 T0 acceptance, source provenance and native store instability remain unresolved.
-PR #15's owned server/security/adapter/interpreter areas are untouched. Hosted
+PR #15's server/security/adapter/interpreter code and tests match main; real
+server security integration passes independently and in the gate. Client manifest
+root/module preservation audit passes; existing clean imported-component and
+compat top-level parameter limitations remain visible in the evidence. Hosted
 Ubuntu/macOS CI is separate final-head evidence on the implementation PR.
 
 ## Browser literals and live nested calls — 2026-10-18

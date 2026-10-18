@@ -151,8 +151,12 @@ re-export public declarations. Barrel imports now resolve to the ultimate
 exported symbol kind in semantic tooling, and malformed re-export chains have
 dedicated project issue codes. Runtime tooling now exposes a module-scoped
 `runtimeProjectPlan` from retained per-file ASTs, and browser-target builds
-embed that plan under the client manifest `project` key. Browser-local startup
-now merges that project plan into the active runtime manifest, which means
+embed executable module plans under the client manifest `project` key. The
+complete linked client payload lives at the manifest root; `project.linkedPlan`
+is an empty, schema-valid mirror rather than another copy of that payload.
+Consumers must read the root together with executable `project.modules[].plan`,
+as browser-local startup does. Compiler/explain output retains the full linked
+plan. Browser-local startup merges module plans into the active manifest, so
 module-owned component definitions, fetches, routes, actions, and state are
 available to the production target. Full direct component-template execution
 from the module plans remains the next hardening step.

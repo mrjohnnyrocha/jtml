@@ -23,6 +23,7 @@ set(JTML_TEST_SOURCES
     test_diagnostics.cpp
     test_c_api.cpp
     test_cli_commands.cpp
+    test_local_server_security.cpp
     test_fix.cpp
     test_formatter.cpp
     test_friendly.cpp

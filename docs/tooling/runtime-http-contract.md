@@ -293,9 +293,13 @@ supported.
 
 ## CORS
 
-Runtime API responses include permissive CORS headers so local development
-tools, browser previews, and framework shells can inspect the app from another
-localhost port.
+Runtime APIs no longer grant arbitrary origins. HTTP listeners bind to
+`127.0.0.1`; Host, Origin and Fetch Metadata are checked before routing,
+including mutating endpoints and preflights. Browser clients must use the
+server’s own HTTP origin. Native clients without Origin remain supported;
+absence of Origin is not authentication. See the
+[local-server security contract](local-server-security.md) for the paired
+WebSocket policy and the limits of interpreter synchronization.
 
 ## Stability
 

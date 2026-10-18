@@ -149,6 +149,24 @@ Do not try to resolve this migration during baseline maintenance. Future work
 should continue moving common production paths toward static/browser execution
 and leave compatibility/live paths as explicit backends.
 
+## Taskboard Core functional C09–C14 — 2026-10-18
+
+The object-backed Taskboard now passes **C01–C14** on clean production assets:
+conditional probes/Help lifecycle, parent-owned deletion, monotonic restart IDs,
+reorder boundaries, Complete/Open filtering and distinct empty states. Generic
+repairs address removal focus, action-local invalidation and duplicate linked /
+module instance projections. No acceptance scenario, previous oracle or budget
+was weakened. See [functional evidence](docs/architecture/taskboard-core-c09-c14.md).
+
+Full local gate **PASS**, **358/358 CTests**, all nine required browser benchmarks
+with clean exits, production reference, lifecycle/commit recovery, literal/native
+regressions and live smoke **8/8**, no skips. Runtime **271969/272000** bytes (+340);
+HTML/module raw, gzip and Brotli growth and remaining duplication are recorded.
+Taskboard check passes; lint fails **232 errors / five warnings**. N01–N08, full
+T0 acceptance, source provenance and native store instability remain unresolved.
+PR #15's owned server/security/adapter/interpreter areas are untouched. Hosted
+Ubuntu/macOS CI is separate final-head evidence on the implementation PR.
+
 ## Browser literals and live nested calls — 2026-10-18
 
 Source literals now decode consistently through Friendly lowering, the lexer,

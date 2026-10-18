@@ -1014,3 +1014,21 @@ statement and expression positions for Classic files and lowered artifacts.
 Keyword-shaped names can still appear as element or attribute names when the
 parser is clearly reading HTML-shaped syntax, for example
 `label for "email"`.
+
+### Browser focus after removal
+
+For a browser-local click action that removes its focused control, JTML keeps
+focus on the activation control when that control survives (for example, a
+filter button). If the activation control is also removed, a container that survives
+may declare `data-jtml-focus-after-removal` with a valid CSS selector
+for a focusable descendant. The selector is read **after** the action, so an
+ordinary reactive attribute can select the next item, previous item or empty-list
+input. JTML captures the closest marked container before the action; the selector is
+scoped to that container. Connected focus and selection
+are preserved; live/server actions do not use this browser-local policy.
+
+```jtml
+box data-jtml-focus-after-removal focusSelector
+  # focusSelector is component-owned state, such as "#new-item".
+  input id "new-item" aria-label "New item"
+```

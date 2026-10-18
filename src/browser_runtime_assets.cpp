@@ -738,8 +738,10 @@ const char* browserRuntimePreludeChunk() {
       function componentRenderedReadSet(definition) {
         const reads = {};
         const derivedDeps = {};
-        (definition && definition.bodyPlan || []).forEach(function (node) {
+        const body = definition && definition.bodyPlan || [];
+        body.forEach(function (node) {
           if (!node) return;
+          for (let p = node; p; p = body[p.parentIndex]) if (p.kind === 'action') return;
           if (node.kind === 'derived' && node.name) {
             derivedDeps[node.name] = (node.reads || []).slice();
           }
@@ -3216,13 +3218,16 @@ const char* browserRuntimeComponentChunk() {
           } catch (_) {
             args = [];
           }
-          const active = document.activeElement;
+          const active = document.activeElement, focusScope = button.closest('[data-jtml-focus-after-removal]');
           const handled = browserLocalRuntime
             ? (runDirectComponentAction(componentId, actionName, args) ||
                runDirectComponentFallbackAction(componentId, actionName))
             : await runLiveComponentAction(componentId, actionName, args);
           if (handled) {
-            if (browserLocalRuntime && active && !active.isConnected && button.isConnected) button.focus();
+            if (browserLocalRuntime && active && !active.isConnected) {
+              const target = button.isConnected ? button : focusScope && focusScope.querySelector(focusScope.dataset.jtmlFocusAfterRemoval);
+              if (target) target.focus();
+            }
             event.preventDefault();
             event.stopPropagation();
           }

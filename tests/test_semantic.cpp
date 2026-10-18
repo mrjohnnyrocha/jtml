@@ -2554,3 +2554,38 @@ TEST(RuntimePlan, ProjectPlanKeepsDuplicateComponentNamesModuleScoped) {
     EXPECT_EQ(nestedCard->definitionModule, projectPlan.modules[2].id);
     EXPECT_NE(nestedCard->definitionModule, projectPlan.modules[3].id);
 }
+
+TEST(RuntimePlan, ClientProjectionQualifiesOnlyUnambiguousInstanceMirrors) {
+    auto program = parseFriendly("jtml 2\nmake Counter\n  p \"Counter\"\npage\n  Counter\n");
+    const auto linked = jtml::buildRuntimePlan(program);
+    ASSERT_FALSE(linked.componentInstances.empty());
+    jtml::RuntimeProjectPlan project;
+    project.entry = 0;
+    project.linkedPlan = linked;
+    jtml::RuntimeModulePlan module;
+    module.id = 0;
+    module.clientExecutable = true;
+    module.plan = linked;
+    for (auto& instance : module.plan.componentInstances) {
+        instance.moduleId = 0;
+        instance.definitionModule = 0;
+    }
+    project.modules.push_back(module);
+    auto json = jtml::runtimeProjectPlanToClientJson(project);
+    ASSERT_FALSE(json["componentInstances"].empty());
+    EXPECT_EQ(json["componentInstances"][0]["moduleId"], 0);
+    EXPECT_EQ(json["componentInstances"][0]["definitionModule"], 0);
+    EXPECT_TRUE(json["project"]["linkedPlan"]["componentInstances"].empty());
+    EXPECT_TRUE(json["project"]["linkedPlan"]["componentDefinitions"].empty());
+    EXPECT_FALSE(json["project"]["modules"][0]["plan"]["componentInstances"].empty());
+    // Equal names/IDs in different modules cannot authorize choosing an owner.
+    module.id = 1;
+    for (auto& instance : module.plan.componentInstances) {
+        instance.moduleId = 1;
+        instance.definitionModule = 1;
+    }
+    project.modules.push_back(module);
+    json = jtml::runtimeProjectPlanToClientJson(project);
+    EXPECT_TRUE(json["componentInstances"][0]["moduleId"].is_null());
+    EXPECT_EQ(json["project"]["modules"].size(), 2u);
+}

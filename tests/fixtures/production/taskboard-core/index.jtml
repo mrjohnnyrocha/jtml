@@ -1,26 +1,27 @@
 jtml 2
 
-# C01–C08 interactive workflow. Canonical records and every record write belong to TaskBoard.
+# C01–C14 interactive workflow. Canonical records and every record write belong to TaskBoard.
 make TaskStatus boardTitle completed
   get status = completed ? "Complete" : "Open"
-  box class "task-status-detail" title status data-completed completed
-    box class "board-heading"
+  box class "task-status-detail" title status data-completed completed data-board-title boardTitle
+    box class "board-heading" title boardTitle
       show boardTitle
     box class "task-status"
       show status
 
 make TaskHeader boardTitle record
-  box class "task-header"
+  box class "task-header" title boardTitle
     h2 record.title
     TaskStatus boardTitle record.completed
 
-make TaskRow boardTitle record boardId emits titleSaved(id: string, value: string) noteSaved(id: string, value: string) movedDown(id: string) movedUp(id: string) toggled(id: string)
+make TaskRow boardTitle record boardId emits titleSaved(id: string, value: string) noteSaved(id: string, value: string) movedDown(id: string) movedUp(id: string) toggled(id: string) deleted(id: string)
   let draftTitle = record.title
   let draftNote = record.note
   let editing = false
   let interactions = 0
   let titleError = ""
   get titleInvalid = titleError != ""
+  get editId = "edit-title-" + boardId + "-" + record.id
   get titleErrorId = "title-error-" + boardId + "-" + record.id
   # Alt+F8 / Alt+F7 move the row without leaving its focused input.
   when reorderKey event
@@ -42,7 +43,7 @@ make TaskRow boardTitle record boardId emits titleSaved(id: string, value: strin
     let trimmed = ""
     let pending = ""
     let whitespace = false
-    # Literal whitespace characters: string escapes are not decoded by JTML.
+    # Keep the complete Unicode whitespace set explicit for title validation.
     # Native text inputs remove CR/LF; preserve internal whitespace verbatim.
     for character in draftTitle
       whitespace = false
@@ -64,7 +65,7 @@ make TaskRow boardTitle record boardId emits titleSaved(id: string, value: strin
       titleSaved(record.id, trimmed)
   card class "task-row" data-task-id record.id data-editing editing
     TaskHeader boardTitle record
-    button "Edit title" click editTitle
+    button "Edit title" id editId click editTitle
     form class "edit-title" submit saveTitle
       input class "row-draft" aria-label "Task title draft" aria-describedby titleErrorId aria-invalid titleInvalid value draftTitle into draftTitle
       button "Save title" type "submit"
@@ -76,6 +77,7 @@ make TaskRow boardTitle record boardId emits titleSaved(id: string, value: strin
       button "Save note" type "submit"
     box class "saved-note"
       show record.note
+    button "Delete task" click deleted(record.id)
     button "Toggle complete" click toggled(record.id)
     button "Move down" title "Alt+F8" click movedDown(record.id)
     button "Move up" title "Alt+F7" click movedUp(record.id)
@@ -83,9 +85,34 @@ make TaskRow boardTitle record boardId emits titleSaved(id: string, value: strin
     box class "interaction-count"
       show interactions
 
+make BranchProbe label
+  let count = 0
+  when increment
+    count += 1
+  box class "branch-probe" title label
+    box class "branch-label"
+      show label
+    button "Increment branch" click increment
+    box class "branch-count"
+      show count
+
+make Help
+  let count = 0
+  when increment
+    count += 1
+  aside class "help"
+    p "Taskboard help"
+    button "Increment help" click increment
+    box class "help-count"
+      show count
+
 make TaskBoard boardId
   let title = "Before"
   let filter = "All"
+  let fallback = "Fallback A"
+  let help = false
+  let renameDraft = "Before"
+  let focusSelector = "#create-title-" + boardId
   let records = { "t-101": { "id": "t-101", "title": "Audit runtime", "completed": false, "note": "" }, "t-102": { "id": "t-102", "title": "Audit runtime", "completed": false, "note": "" }, "t-103": { "id": "t-103", "title": "Ship documentation", "completed": true, "note": "" }, "t-104": { "id": "t-104", "title": "<release> & CSP", "completed": false, "note": "" } }
   let order = ["t-101", "t-102", "t-103", "t-104"]
   # Parent-maintained completion index; rebuilt from records in canonical order.
@@ -96,20 +123,33 @@ make TaskBoard boardId
   let titleSaveCount = 0
   let noteSaveCount = 0
   let submitCount = 0
+  get logicalFlag = title == "After" && help
+  get ternaryLabel = help ? title : fallback
   get total = order.length
   get complete = completeIds.length
   get open = total - complete
-  get visible = filter == "All" ? total : open
+  get remaining = total - complete
+  get completionLabel = remaining == 0 ? "All complete" : "Work remains"
+  get visible = filter == "All" ? total : filter == "Open" ? open : complete
   get inputId = "create-title-" + boardId
   get errorId = "create-error-" + boardId
   get invalid = error != ""
+
+  when rename
+    title = renameDraft
+
+  when changeFallback
+    fallback = "Fallback B"
+
+  when toggleHelp
+    help = !help
 
   when create
     submitCount += 1
     let trimmed = ""
     let pending = ""
     let whitespace = false
-    # Literal whitespace characters: string escapes are not decoded by JTML.
+    # Keep the complete Unicode whitespace set explicit for title validation.
     # Native text inputs remove CR/LF; preserve internal whitespace verbatim.
     for character in draft
       whitespace = false
@@ -134,6 +174,9 @@ make TaskBoard boardId
 
   when onlyOpen
     filter = "Open"
+
+  when onlyComplete
+    filter = "Complete"
 
   when showAll
     filter = "All"
@@ -170,6 +213,30 @@ make TaskBoard boardId
         upDone = true
       upIndex += 1
 
+  when removeTask id
+    let keptOrder = []
+    let keptRecords = {}
+    let keptComplete = []
+    let removedIndex = 0
+    for keptId in order
+      if keptId != id
+        keptOrder[keptOrder.length] = keptId
+        keptRecords[keptId] = records[keptId]
+        if records[keptId].completed
+          keptComplete[keptComplete.length] = keptId
+      else
+        removedIndex = keptOrder.length
+    order = keptOrder
+    records = keptRecords
+    completeIds = keptComplete
+    if order.length == 0
+      focusSelector = "#create-title-" + boardId
+    else
+      let focusIndex = removedIndex
+      if focusIndex >= order.length
+        focusIndex = order.length - 1
+      focusSelector = "#edit-title-" + boardId + "-" + order[focusIndex]
+
   when commitNote id value
     records[id].note = "" + value
     noteSaveCount += 1
@@ -178,10 +245,36 @@ make TaskBoard boardId
     records[id].title = "" + value
     titleSaveCount += 1
 
-  section class "taskboard" data-board boardId
+  section class "taskboard" data-board boardId data-jtml-focus-after-removal focusSelector
     h1 title
+    form class "rename-board" submit rename
+      input aria-label "Board title" value renameDraft into renameDraft
+      button "Rename board" type "submit"
+    button "Change fallback" click changeFallback
+    button "Toggle help" click toggleHelp
+    if title == "After"
+      BranchProbe title
+    else
+      BranchProbe fallback
+    box class "logical-flag"
+      show logicalFlag
+    box class "ternary-label"
+      show ternaryLabel
+    box class "remaining"
+      show remaining
+    box class "completion-label"
+      show completionLabel
+    if help
+      Help
     button "All" class "filter-all" click showAll
     button "Open" class "filter-open" click onlyOpen
+    button "Complete" class "filter-complete" click onlyComplete
+    if total == 0
+      box class "empty-board" role "status"
+        text "No tasks"
+    if total > 0 && visible == 0
+      box class "empty-filter" role "status"
+        text "No tasks match this filter"
     box class "counts"
       box class "count-total"
         show total
@@ -198,8 +291,8 @@ make TaskBoard boardId
       box class "create-error" id errorId role "alert"
         show error
     for taskId in order key taskId
-      if filter == "All" || !records[taskId].completed
-        TaskRow title records[taskId] boardId on titleSaved commitTitle on noteSaved commitNote on movedDown moveDown on movedUp moveUp on toggled toggle
+      if filter == "All" || (filter == "Open" && !records[taskId].completed) || (filter == "Complete" && records[taskId].completed)
+        TaskRow title records[taskId] boardId on titleSaved commitTitle on noteSaved commitNote on movedDown moveDown on movedUp moveUp on toggled toggle on deleted removeTask
 
 page
   TaskBoard "A"

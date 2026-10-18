@@ -163,12 +163,24 @@ was introduced.
 Local Release validation: focused CTests 47/47, full CTests 346/346, complete
 production reference suite, all nine required browser/asset benchmarks and
 `scripts/verify_all.sh` pass with no skipped checks and clean browser exits;
-live smoke 8/8. Shared runtime is 271758/272000 bytes; no budgets changed. Two
+live smoke 8/8 on the settled-build rerun. The earlier full gate aborted in
+`friendly_store` smoke (exit 134); cause remains unestablished. Shared runtime
+after lifecycle correction `13bf65f` is 269151/272000 bytes; no budgets changed. Two
 negative controls fail on old control code / old keyed runtime respectively.
 Taskboard lint still fails on lowered component/action-local names; it is not
 counted as a pass. See the [implementation evidence](docs/architecture/taskboard-core-c01-c03.md)
 for scenario results, failures, asset deltas, source-provenance limitations and
 reproduction. Hosted CI is separate evidence, not implied by local success.
+
+Independent pre-merge inspection of `13bf65f`: original P1-A/P1-B lifecycle
+reproductions pass, including tentative nested-scope rollback. A one-shot injected
+DOM commit exception still enters full-render fallback after partial mutation,
+resets retained state, duplicates component IDs and misroutes a row handler.
+**PR #12 is NOT READY for the requested failed-commit guarantee.** This is fault
+injection; an unmodified-source native commit exception has not been reproduced.
+Ubuntu/macOS CI passed runtime head `13bf65f` (run `39130173055`); it does not
+cover that injected failure. The implementation note contains the exact probe,
+attribute audit, before/after sizes and remaining limitations. No C04 work begun.
 
 ## Nested component parameter propagation — 2026-10-14
 

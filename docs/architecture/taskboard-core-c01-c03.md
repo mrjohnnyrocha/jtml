@@ -156,8 +156,8 @@ Playwright 1.63.0, Chrome Headless Shell 153.0.8010.12:
   Diagnosing that separate tooling gap remains work; accurate original-source
   provenance still depends on S1–S3. No exact-span diagnostic claim is made here.
 
-Asset sizes on the same final fixture source, comparing saved main compiler to
-this implementation (uncompressed bytes):
+Initial-slice asset sizes before the lifecycle correction, comparing saved main compiler to
+that implementation (uncompressed bytes):
 
 | Fixture / asset | Main | Repaired | Delta |
 | --- | --- | --- | --- |
@@ -181,3 +181,135 @@ Recommended next implementation: C04's parent-owned edit/save/cancel and validat
 path, using the unchanged oracle contract; verify the completion-index invariant
 when completion actions arrive. Do not promote the full-composition matrix row
 until full T0 acceptance is demonstrated.
+
+## Lifecycle correction and independent pre-merge review — 2026-10-18
+
+Runtime head reviewed: `13bf65f584c32918fda185c059c7bf0f179e7933`.
+**Merge assessment: NOT READY.** The two original P1 reproductions pass, but the
+failed-commit recovery boundary below remains blocking for the requested failure
+contract. No C04 work or further runtime rewrite was undertaken during this review.
+
+### Original P1 corrections
+
+P1-A previously mutated retained descendants before discovering an unsupported
+patch, then destroyed registrations in wrapper fallback. P1-B matched outer
+identities without destroying omitted nested children. Reconciliation now renders
+a detached candidate, plans every descendant before connected DOM changes,
+rejects ambiguous keys/identities and unsupported retained shape changes, restores
+tentative registrations/scopes/generations on rendering/preflight rejection, and
+destroys omitted identities deepest first before committing the planned edits.
+Reconciliation rejections are flagged and escape the full-render fallback.
+
+The mandatory [browser oracle](../../tests/browser/keyed_lifecycle.cjs) and
+[runner](../../scripts/test_keyed_lifecycle.sh) preserve both regressions: repeated
+empty/nonempty text updates, retained input/counter identity and focus, conditional
+hide/reorder/remount with fresh state/generations, genuine removal, overlapping
+board keys, stale-handler rejection, and failed second-row preflight after an
+earlier sibling was examined and a new child registered tentatively. Both pass
+on `13bf65f`; the unchanged oracle fails both cases on reviewed head `7b8728d`
+(retained rows/drafts for P1-A; disconnected registrations for P1-B).
+
+Independent rendering-failure injection wrapped generated child `create` functions
+before runtime initialization, captured actual nested scope references/values,
+then threw after a child finished rendering during Insert. The surfaced error was
+`Keyed reconciliation in Board: independent render rejection`; captured nested
+scope objects and fields, connected DOM and registry were restored exactly. The
+snapshot is shallow: supported render expressions assign scope fields and replace
+metadata, rather than mutating borrowed nested objects. This does not establish
+transactional safety for host getters or other reentrant host mutations, and it
+does not roll back the parent action's already-applied state writes.
+
+### Blocking failed-commit recovery reproduction
+
+The commit closures run outside the rendering/preflight `try/catch`, after omitted
+instances have been destroyed. Their exceptions lack `jtmlReconciliation`, so
+`compileStaticComponentUpdateFunction` converts them to an unhandled update and
+permits full-render fallback after partial mutation. There is no commit undo path.
+
+This is **fault-injection evidence**: no native commit exception from unmodified
+JTML source has been established. It specifically tests the requested failed-commit
+boundary; ordinary C01–C03 and the two corrected P1 browser cases still pass.
+The supported synchronous native-DOM path has no demonstrated commit throw:
+references are selected from the current parent at insertion, candidate nodes are
+detached, and generated attribute names are compiler-owned. Host method overrides
+and reentrant mutations are not covered by that argument.
+
+Smallest reproduction uses the existing clean-production `partial` fixture:
+
+```sh
+scripts/test_keyed_lifecycle.sh
+```
+
+Open `dist/keyed-lifecycle/partial/index.html` in a browser. Increment A's row `a`
+to 1 and type `Unsaved` in its draft. Before clicking A's Update, execute:
+
+```js
+const insertBefore = Node.prototype.insertBefore;
+Node.prototype.insertBefore = function (child, reference) {
+  Node.prototype.insertBefore = insertBefore; // one failure only
+  throw new DOMException('injected commit failure', 'NotFoundError');
+};
+```
+
+Observed after Update: retained rows are replaced, A's draft resets to `Seed`,
+both counters reset to 0, and A's two row wrappers share `Board_3__Row_19` (their
+Counter wrappers also share one ID). Across both boards there are eight visible
+component wrappers but six dynamic registrations. Clicking Increment in row `a`
+changes row `b` to 1 while `a` stays 0. No `pageerror` is surfaced;
+`directComponentStaticUpdateError.message` records `injected commit failure`.
+Expected failure handling must preserve ownership/identity and surface the error;
+falling back after a partially committed tree cannot satisfy that requirement.
+
+The browser probe/log are `/tmp/jtml-pr12-commit-fault.cjs` and
+`/tmp/jtml-pr12-commit-fault.log` (ephemeral). Recommended next implementation is a
+bounded correction to failed-commit handling with this negative browser regression;
+do not proceed to C04 or claim arbitrary transactional/reentrant DOM support.
+
+### Dynamic attribute audit
+
+No confirmed attribute regression was found in the inspected production paths.
+Value-bearing ARIA booleans render as strings `"false"`/`"true"`; native `disabled`,
+`checked` and `required` remain presence attributes. They are not dynamic boolean
+expressions in this syntax; `disabled false` does not express conditional omission.
+Direct JS expression wrappers normalize nullish results before `String(...)`.
+Generated `create` was also invoked with actual JS null and undefined member
+values: `title`/`aria-label` were omitted, `value=""` remained, and ARIA true was
+`"true"`. Repeated Seed/nullish/missing-member/Seed updates produced no
+`"null"`/`"undefined"` attribute text, no fallback and no browser error.
+
+Comparison with saved main `b4b7501` preserved native boolean and ARIA behavior.
+That older helper path kept empty `title`/`aria-label` attributes for missing
+members; the current static path omits them. Empty `value` intentionally remains
+to clear live controls. This is the existing static attribute-map policy, not a
+new null-to-string regression. No emitter/runtime change was justified by these
+probes. Non-direct literal/path plan branches were inspected separately; they are
+not evidence of an end-to-end supported source shape emitting nullish strings.
+Probe sources/logs: `/tmp/jtml-pr12-attribute-update.jtml`,
+`/tmp/jtml-pr12-attribute-update.cjs`, `/tmp/jtml-pr12-attribute-update.log`, and
+`/tmp/jtml-pr12-independent.cjs` (ephemeral).
+
+### Actual validation and sizes
+
+- Fresh review rerun at `13bf65f`: focused CTests 47/47; both lifecycle fixtures
+  PASS; retained-control and C01/C02/C03 PASS. Existing scenario tests unchanged.
+- Recorded final runtime full gate: 346/346 CTests; complete production reference;
+  all nine browser/asset benchmarks with clean exits; package/refactor/source-map/
+  LSP/editor/site checks and live smoke 8/8 PASS, no checks skipped. Log:
+  `/tmp/jtml-pr12-verify-all-final.log`. This does not override the fault-test FAIL.
+- Earlier full gate `/tmp/jtml-pr12-verify-all.log` aborted at live smoke 4/8,
+  `examples/friendly_store.jtml`, exit 134 / Abort trap 6, with an empty store log.
+  A settled-build rerun passed 8/8. Cause remains unestablished; record this as an
+  intermittent smoke failure, not a diagnosed or fixed defect.
+- Shared runtime: **271758 → 269151 bytes (-2607)** from reviewed `7b8728d` to
+  `13bf65f`; unchanged 272000-byte budget. Taskboard HTML 316624, components
+  178082, bootstrap 619 bytes unchanged. Lifecycle partial HTML/components:
+  109360/99032; nested: 105426/99594; both bootstrap 619 bytes. No budget raised.
+- [Ubuntu/macOS CI on runtime head 13bf65f](https://github.com/mrjohnnyrocha/jtml/actions/runs/39130173055)
+  passed both platforms, including mandatory lifecycle and Taskboard browser runs.
+  CI does not exercise the failed-commit injection or the full local smoke gate.
+
+All 32 acceptance scenarios and support-matrix evidence references remain intact.
+C04–C14, N01–N08 and T1/T2 remain UNVERIFIED. Linter accuracy (observed 46 errors /
+5 warnings), S1–S3 source provenance, general slot behavior, and complete T0
+application acceptance remain limitations. The full T0 claim is not supported by
+these selected passes; mandatory preview gates remain independent of T0 completion.

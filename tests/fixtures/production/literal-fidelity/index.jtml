@@ -1,0 +1,29 @@
+jtml 2
+let topIndex = 0
+let topValues = ["Tom & Jerry", "<tag> > &", "Quote: \"yes\" and 'ok'", "C:\\tmp\\new", "line\nnext\r\ttab\b\f", "literal \\n \\u0026", "Unicode café 雪 😀", "\u0026\u003c\u003e\uD83D\uDE00", "</script><img src=x onerror=\"window.literalXss=1\">", "\u0000\u001f", "tail\\", "--><img src=x onerror=\"window.literalXss=1\">", 'single \' quote', "Done"]
+let topText = "Tom & Jerry"
+get topDerived = "<&> " + topText + "!"
+when nextTop
+  topIndex += 1
+  topText = topValues[topIndex]
+make Literals
+  let localIndex = 0
+  let localValues = ["Tom & Jerry", "<tag> > &", "Quote: \"yes\" and 'ok'", "C:\\tmp\\new", "line\nnext\r\ttab\b\f", "literal \\n \\u0026", "Unicode café 雪 😀", "\u0026\u003c\u003e\uD83D\uDE00", "</script><img src=x onerror=\"window.literalXss=1\">", "\u0000\u001f", "tail\\", "--><img src=x onerror=\"window.literalXss=1\">", 'single \' quote', "Done"]
+  let localText = "Tom & Jerry"
+  get localDerived = "<&> " + localText + "!"
+  when advance
+    localIndex += 1
+    localText = localValues[localIndex]
+  box
+    box class "local" title localText
+      show localText
+    box class "local-derived"
+      show localDerived
+    button "Next local" click advance
+page
+  box class "top"
+    show topText
+  box class "top-derived"
+    show topDerived
+  button "Next top" click nextTop
+  Literals

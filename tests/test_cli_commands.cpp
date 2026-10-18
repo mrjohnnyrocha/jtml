@@ -2319,8 +2319,47 @@ TEST(CliBuild, BrowserTargetProdUnsupportedShapeMatrixReportsRemediation) {
     }
 }
 
+TEST(CliBuild, ProductionOwnedCollectionsAcceptComputedScalarValues) {
+    const auto root = makeTempDir("owned-scalar-copy");
+    const auto input = root / "index.jtml";
+    writeTempFile(input,
+        "jtml 2\nmake Candidate incoming\n"
+        "  let records = {}\n"
+        "  when copy value\n"
+        "    records[\"title\"] = \"\" + value\n"
+        "    records[\"flag\"] = !incoming\n"
+        "    records[\"score\"] = incoming == 1\n"
+        "  p \"Candidate\"\npage\n  Candidate \"Seed\"\n");
+    jtml::cli::Options opts;
+    opts.inputFile = input.string();
+    opts.outputFile = (root / "dist").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.target = "browser";
+    EXPECT_EQ(jtml::cli::cmdBuild(opts), 0);
+    EXPECT_TRUE(std::filesystem::exists(root / "dist" / "app.js"));
+    std::filesystem::remove_all(root);
+}
+
+TEST(CliBuild, ProductionRejectsUnsupportedStaticKeyboardInvocation) {
+    const auto root = makeTempDir("static-keyboard-rejection");
+    const auto input = root / "index.jtml";
+    writeTempFile(input,
+        "jtml 2\nmake Candidate\n  let draft = \"\"\n"
+        "  when observe event\n    draft = \"Changed\"\n"
+        "  input value draft into draft keydown observe(1)\npage\n  Candidate\n");
+    jtml::cli::Options opts;
+    opts.inputFile = input.string();
+    opts.outputFile = (root / "dist").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.target = "browser";
+    EXPECT_THROW(jtml::cli::cmdBuild(opts), std::runtime_error);
+    EXPECT_FALSE(std::filesystem::exists(root / "dist" / "app.js"));
+    std::filesystem::remove_all(root);
+}
+
 TEST(CliBuild, ProductionRejectsBorrowedIteratorsAndUnsupportedAssignments) {
     const std::vector<std::pair<std::string, std::string>> cases = {
+        {"borrowed", "jtml 2\nmake Candidate incoming\n  let alias = {}\n  when mutate\n    alias = incoming || {}\n    alias.score = 1\n  p \"Candidate\"\npage\n  p \"Test\"\n"},
         {"borrowed", "jtml 2\nmake Candidate items\n  let alias = {}\n  when mutate\n    for row in items\n      alias = row\n      alias.score += 1\n  p \"Candidate\"\npage\n  p \"Test\"\n"},
         {"assignment", "jtml 2\nmake Candidate\n  let input = []\n  let result = 0\n  when mutate\n    result = input.push(1)\n  p \"Candidate\"\npage\n  Candidate\n"},
         {"assignment", "jtml 2\nmake Candidate\n  let items = [{ \"score\": 0 }]\n  when mutate\n    items[mystery()].score = 1\n  p \"Candidate\"\npage\n  Candidate\n"},

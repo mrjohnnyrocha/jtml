@@ -323,6 +323,16 @@ nlohmann::json compileStaticElementParts(
     for (size_t i = start; i < words.size(); ++i) {
         const auto& token = words[i];
         if (stopWords.count(token)) break;
+        if ((token == "keydown" || token == "key-down") && i + 1 < words.size()) {
+            const auto action = words[++i];
+            const bool valid = !action.empty() &&
+                (std::isalpha(static_cast<unsigned char>(action[0])) || action[0] == '_') &&
+                std::all_of(action.begin(), action.end(), [](unsigned char ch) { return std::isalnum(ch) || ch == '_'; });
+            attrs.push_back({{"name", "data-jtml-direct-component-keydown"},
+                {"exprPlan", valid ? nlohmann::json({{"kind", "literal"}, {"value", action}})
+                                   : nlohmann::json({{"kind", "source"}})}});
+            continue;
+        }
         if (token == "into" && i + 1 < words.size()) {
             attrs.push_back({
                 {"name", "data-jtml-direct-component-bind"},
@@ -1196,7 +1206,8 @@ void appendDirectAttributeMapStatements(std::ostringstream& out,
     out << "if (classValue) next.class = classValue; ";
     // Binding ownership is managed on both creation and retained patches.
     for (const auto& attr : partsPlan.value("attrs", nlohmann::json::array())) {
-        if (attr.value("name", "") == "data-jtml-direct-component-bind") {
+        if (attr.value("name", "") == "data-jtml-direct-component-bind" ||
+            attr.value("name", "") == "data-jtml-direct-component-keydown") {
             out << "addAttr('data-jtml-direct-component-id', instance && instance.id || ''); ";
             break;
         }
@@ -2721,6 +2732,10 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
                 bindings[binding].borrowed = true;
                 return;
             }
+            // Unary/arithmetic/comparison results are scalar copies, never aliases.
+            // Logical &&/|| can return an object operand and retain provenance.
+            if (rhs->kind == ExpressionIrKind::Unary ||
+                (rhs->kind == ExpressionIrKind::Binary && rhs->op != "&&" && rhs->op != "||")) return;
             for (const auto& read : expressionIrDependencies(*rhs)) {
                 const auto source = resolve(read.substr(0, read.find_first_of(".[")), at);
                 if (source < 0) bindings[binding].borrowed = true;
@@ -2788,6 +2803,17 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
         }
 
         for (const auto& node : component.value("bodyPlan", nlohmann::json::array())) {
+            if (node.value("kind", "") == "template") {
+                const auto words = splitStaticComponentWords(node.value("text", ""));
+                const auto parts = compileStaticElementParts(words, 1);
+                for (const auto& attr : parts.value("attrs", nlohmann::json::array())) {
+                    if (attr.value("name", "") == "data-jtml-direct-component-keydown" &&
+                        attr.value("exprPlan", nlohmann::json::object()).value("kind", "") == "source") {
+                        issues.push_back("component " + context + " has unsupported production keydown invocation at " +
+                            sourceLabelFor(component, node) + "; use a bare component action name");
+                    }
+                }
+            }
             if (node.value("head", "") != "if") continue;
             if (isDirectJsExpressionPlan(node.value("expressionPlan", nlohmann::json::object()))) continue;
             const auto source = sourceLabelFor(component, node);

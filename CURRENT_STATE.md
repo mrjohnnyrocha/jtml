@@ -149,6 +149,23 @@ Do not try to resolve this migration during baseline maintenance. Future work
 should continue moving common production paths toward static/browser execution
 and leave compatibility/live paths as explicit backends.
 
+## Taskboard interactive workflow C04–C08 — 2026-10-18
+
+The existing object-backed application now verifies parent-owned title editing,
+native note save, immutable-ID keyboard reordering, completion and genuine
+Open/All unmount/remount. Independent C04–C08 acceptance and the original C01–C03 /
+lifecycle/commit-recovery oracles pass. Generic repairs address scalar ownership,
+emit-only rendering, static keydown binding, computed assignment indices and
+focus after removal. No contract or budget changed; later scenarios remain
+unverified. See [workflow evidence](docs/architecture/taskboard-core-c04-c08.md).
+
+Final local gate passes 348/348 CTests, full production reference, all nine clean
+browser benchmarks and live smoke 8/8 without skips. Taskboard check passes;
+lint still fails (182 errors/five warnings). Shared runtime is 271114/272000 bytes.
+The native store crash remains unresolved; a separate clean investigation
+worktree's five healthy main startups are not proof of a fix. Hosted final-head
+CI is recorded separately in the implementation PR. No automatic merge.
+
 ## Taskboard Core C01–C03 — 2026-10-18
 
 The first adversarial slice starts from merged PR #11 (`b4b7501`). Two independent

@@ -1827,6 +1827,13 @@ const char* browserRuntimeComponentChunk() {
         return marker ? 'm' + marker : 'p' + index;
       }
 
+      function commitKeyedChildren(current, children) {
+        Array.from(current.childNodes).forEach(function (child) { if (!children.includes(child)) child.remove(); });
+        children.forEach(function (child, i) {
+          if (current.childNodes[i] !== child) current.insertBefore(child, current.childNodes[i] || null);
+        });
+      }
+
       // Planning never changes connected DOM, destroys instances, or moves nodes.
       function planKeyedChildren(current, next, changes, liveIds, stats) {
         const old = Array.from(current.childNodes), desired = Array.from(next.childNodes);
@@ -1837,14 +1844,20 @@ const char* browserRuntimeComponentChunk() {
           const previous = byKey.get(keys[i]);
           if (previous && previous.nodeType === child.nodeType) {
             if (child.nodeType === 3 || child.nodeType === 8) {
-              if (previous.nodeValue !== child.nodeValue) changes.push(function () {
+              if (previous.nodeValue !== child.nodeValue) changes.push(function (undo) {
+                const value = previous.nodeValue;
+                undo.push(function () { previous.nodeValue = value; });
                 previous.nodeValue = child.nodeValue; stats.textNodesPatched++;
               });
               return previous;
             }
             if (child.nodeType === 1 && previous.tagName === child.tagName &&
                 previous.getAttribute('data-jtml-direct-instance') === child.getAttribute('data-jtml-direct-instance')) {
-              changes.push(function () { copyElementAttributesInPlace(previous, child); stats.elementsPatched++; });
+              changes.push(function (undo) {
+                const attrs = previous.cloneNode(false);
+                undo.push(function () { copyElementAttributesInPlace(previous, attrs); });
+                copyElementAttributesInPlace(previous, child); stats.elementsPatched++;
+              });
               if (previous.innerHTML !== child.innerHTML) planKeyedChildren(previous, child, changes, liveIds, stats);
               return previous;
             }
@@ -1854,11 +1867,9 @@ const char* browserRuntimeComponentChunk() {
           if (ids.some(function (id) { return liveIds.has(id); })) throw Error('Unsupported retained component shape change');
           return child;
         });
-        changes.push(function () {
-          old.forEach(function (child) { if (!children.includes(child)) child.remove(); });
-          children.forEach(function (child, i) {
-            if (current.childNodes[i] !== child) current.insertBefore(child, current.childNodes[i] || null);
-          });
+        changes.push(function (undo) {
+          undo.push(function () { commitKeyedChildren(current, old); });
+          commitKeyedChildren(current, children);
         });
       }
 
@@ -1877,6 +1888,15 @@ const char* browserRuntimeComponentChunk() {
         const generations = Object.assign({}, dynamicComponentInstanceGenerations);
         const liveIds = new Set(keyedComponentIds(el)), changes = [], stats = {elementsPatched: 0, textNodesPatched: 0};
         const previousKeys = Array.from(el.children, function (child) { return child.getAttribute('data-jtml-direct-list-key'); });
+        const undo = [];
+        const active = document.activeElement;
+        const selection = active && typeof active.selectionStart === 'number'
+          ? [active.selectionStart, active.selectionEnd, active.selectionDirection] : null;
+        function restoreFocus() {
+          if (active && active.isConnected && document.activeElement !== active) {
+            active.focus(); if (selection) active.setSelectionRange.apply(active, selection);
+          }
+        }
         let items, nextKeys, desired, nextIds;
         try {
           items = renderComponentForItems(definition, instance, node, scope);
@@ -1889,7 +1909,16 @@ const char* browserRuntimeComponentChunk() {
           if (new Set(ids).size !== ids.length) throw Error('Duplicate component identities');
           nextIds = new Set(ids);
           planKeyedChildren(el, desired, changes, liveIds, stats);
+          // Each inverse is recorded before its mutation, including a failing edit.
+          changes.forEach(function (commit) { commit(undo); });
+          restoreFocus();
         } catch (error) {
+          // Bounded recovery assumes native DOM methods work again. Persistent or
+          // reentrant hostile host mutation is unsupported, but never falls back.
+          let recoveryError = null;
+          undo.reverse().forEach(function (restore) {
+            try { restore(); } catch (failure) { recoveryError = failure; }
+          });
           Object.keys(dynamicComponentInstances).forEach(function (id) {
             if (!saved.has(id)) { delete dynamicComponentInstances[id]; delete componentScopes[id]; }
           });
@@ -1906,23 +1935,19 @@ const char* browserRuntimeComponentChunk() {
           Object.assign(dynamicComponentInstanceGenerations, generations);
           if (listKeys) instance.directListKeys = listKeys; else delete instance.directListKeys;
           window.jtml.directComponentListLifecycle = listLifecycle;
-          error.message = 'Keyed reconciliation in ' + definition.name + ': ' + error.message;
-          error.jtmlReconciliation = true;
-          throw error;
+          try { restoreFocus(); } catch (failure) { recoveryError = failure; }
+          const failure = new Error('Keyed reconciliation in ' + definition.name + ': ' + error.message +
+            (recoveryError ? '; recovery failed: ' + recoveryError.message : ''));
+          failure.cause = error;
+          failure.jtmlReconciliation = true;
+          throw failure;
         }
-        // Destroy only omitted old identities, deepest first, before mounting new DOM.
+        // Only a successful DOM commit may destroy omitted old identities.
         let prunedDynamicInstances = 0;
         Array.from(liveIds).filter(function (id) { return !nextIds.has(id); })
           .sort(function (a, b) { return b.length - a.length; }).forEach(function (id) {
             if (destroyRuntimeComponentInstance(id, 'keyed-child-remove')) prunedDynamicInstances++;
           });
-        const active = document.activeElement;
-        const selection = active && typeof active.selectionStart === 'number'
-          ? [active.selectionStart, active.selectionEnd, active.selectionDirection] : null;
-        changes.forEach(function (commit) { commit(); });
-        if (active && active.isConnected && document.activeElement !== active) {
-          active.focus(); if (selection) active.setSelectionRange.apply(active, selection);
-        }
         const retainedKeys = nextKeys.filter(function (key) { return previousKeys.includes(key); });
         const removedKeys = previousKeys.filter(function (key) { return !nextKeys.includes(key); });
         const insertedKeys = nextKeys.filter(function (key) { return !previousKeys.includes(key); });

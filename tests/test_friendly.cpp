@@ -2647,7 +2647,7 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("Object.assign(dynamicComponentInstanceGenerations, generations)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("changes.forEach(function (commit) { commit(); })"),
+    EXPECT_NE(html.find("changes.forEach(function (commit) { commit(undo); })"),
               std::string::npos) << html;
     EXPECT_NE(html.find("destroyRuntimeComponentInstance(id, 'keyed-child-remove')"),
               std::string::npos) << html;

@@ -185,7 +185,7 @@ until full T0 acceptance is demonstrated.
 ## Lifecycle correction and independent pre-merge review — 2026-10-18
 
 Runtime head reviewed: `13bf65f584c32918fda185c059c7bf0f179e7933`.
-**Merge assessment: NOT READY.** The two original P1 reproductions pass, but the
+**Historical assessment at a74d88c: NOT READY (superseded by bounded commit recovery below).** The two original P1 reproductions pass, but the
 failed-commit recovery boundary below remains blocking for the requested failure
 contract. No C04 work or further runtime rewrite was undertaken during this review.
 
@@ -313,3 +313,134 @@ C04–C14, N01–N08 and T1/T2 remain UNVERIFIED. Linter accuracy (observed 46 e
 5 warnings), S1–S3 source provenance, general slot behavior, and complete T0
 application acceptance remain limitations. The full T0 claim is not supported by
 these selected passes; mandatory preview gates remain independent of T0 completion.
+
+## Bounded commit recovery — 2026-10-18
+
+This supersedes the failed-commit blocker recorded at `a74d88c` above. The correction
+is confined to the keyed DOM commit path and its browser oracle; no C04, semantic
+conformance, source-span or linter implementation was added.
+
+### Trace and support decision
+
+The original one-shot `Node.prototype.insertBefore` probe reproduced on saved
+`a74d88c`. Rendering first tentatively registers new children/refreshes scopes.
+Planning changes no connected DOM. Previously omitted registrations were then
+destroyed, nested edits were applied, and the insertion threw outside the rollback
+catch. The unflagged exception entered static-update fallback, replacing retained
+rows and generating duplicate identities and misrouted handlers.
+
+A new late-region probe exposes the timing independently: after nested edits but
+before/after the native row insertion, partial Insert has 10 tentative registrations
+(8 old plus the new row/Counter), while nested Update has already destroyed two
+Counters and has 6 registrations on the old runtime. After fallback, the old
+partial fixture has 10 wrappers but only 6 unique IDs/registrations; nested has 6
+wrappers but only 5 unique IDs/registrations. All four cases fail the new oracle.
+
+No supported-program native commit exception has been demonstrated. Within the
+inspected native-element path, desired new nodes are detached; retained nodes are
+direct children of the planned parent; insertion references are read from that
+parent immediately before insertion; rendering rejects duplicate identities and
+unsupported retained structural changes before commit; and attribute names come
+from the compiler. No asynchronous work interleaves those operations. Invalid
+attribute syntax used in an exploratory probe was rejected by the parser.
+This argument is bounded to that path, not a proof about arbitrary host code,
+custom-element reactions, memory exhaustion or external DOM interference.
+
+The accepted recovery contract is a synchronous exception during a planned native
+DOM edit, including a throw after the edit has taken effect, **provided subsequent
+native DOM operations remain usable and host code does not independently mutate
+the managed tree**. Host overrides are the deterministic test mechanism, not a
+new public interop surface. Persistent throwing methods, adversarial getters,
+reentrant tree edits and arbitrary custom-element/host side effects remain outside
+this contract. Recovery failure is surfaced explicitly with `recovery failed`;
+there is no claim that such hostile mutation leaves a consistent tree.
+
+### Small implementation
+
+Each applied edit records its inverse before mutation: the prior text value,
+prior attributes on a shallow detached element, or the prior child-node references
+and order. On failure, the journal is replayed in reverse, then the existing
+scope/instance/generation/list-metadata snapshot is restored and retained focus /
+selection recovered. Undo continues if one inverse fails, and the original error
+plus recovery failure is reported. No replacement HTML or cloned live component
+subtree is mounted during recovery.
+
+Only after the full DOM commit and retained-focus restoration succeed are omitted
+old registrations destroyed, deepest first. A wrapped Error carries the original
+exception as its cause and `jtmlReconciliation`, preventing full-render fallback.
+Wrapping is necessary because `DOMException.message` is read-only. This is a local
+undo list, not a general transaction framework; parent action state writes remain
+applied, and the regression verifies that directly retrying that same action works.
+The earlier shallow scope snapshot and pure-render limitations still apply.
+
+### Independent real-browser regression
+
+[Commit failure oracle](../../tests/browser/keyed_commit.cjs) runs through the
+existing [mandatory lifecycle runner](../../scripts/test_keyed_lifecycle.sh),
+therefore in both CI platforms and the full local gate. It uses both unchanged
+lifecycle fixtures, injecting exactly one late keyed-region insertion exception
+before and after the actual native insertion. Partial Insert exercises tentative
+new registrations; conditional hide/reorder exercises omitted children after prior
+DOM removal. Each case requires:
+
+- Evidence that the fault point was reached after earlier DOM edits, with no old
+  destruction at that point on the repaired runtime.
+- Exactly one surfaced reconciliation error and no wrapper-fallback telemetry.
+- Exact previous DOM serialization and connected element references, scope-related
+  list metadata, registry owners/generations and no duplicate component IDs.
+- Draft `Unsaved`, focus and selection retained; A's Counter increments 1→2 exactly
+  once, while B and the other row remain unchanged.
+- Successful direct retry: new row/Counter generations start at 1, or removed
+  Counters are destroyed and later remount fresh at 0; final DOM/registry bijection.
+
+All four pass after repair. The unchanged final oracle fails all four against
+saved `a74d88c` (expected exit 1); both original P1 fixtures still pass on that
+negative control, separating the remaining boundary from the earlier repairs.
+Earlier independent `7b8728d` P1 negative controls and main/old-runtime C01–C03
+controls remain recorded above and unchanged. The original lifecycle oracle,
+Taskboard oracle/fixture, all 32 acceptance requirements and support matrix are
+byte-for-byte unchanged by this correction.
+
+### Validation, failure evidence and assets
+
+Focused CTests pass 47/47. The final full gate passes 346/346 CTests, the complete
+production-reference suite, retained-control and C01–C03, both original lifecycle
+regressions, all four commit-failure cases, all nine required browser/asset
+benchmarks with clean exits, package/refactor/source-map/LSP/editor/site checks,
+and live smoke 8/8. No checks were skipped or budgets raised.
+
+The first candidate full gate failed at `friendly_store` live smoke 4/8, status
+134 / Abort trap 6, again with an empty store log. Unlike the earlier run, macOS
+provided a crash report: SIGABRT in `malloc`'s `free_list_checksum_botch`, reached
+while `FunctionDeclarationNode::toString()` was executing. This identifies a heap
+corruption detection point, not the corrupting operation. It does not establish
+that the browser journal caused or repaired the native issue.
+
+A separate five-start comparison reproduced a native startup crash on the saved
+**pre-change `a74d88c` binary** (4/5 ready, one SIGSEGV / exit -11, empty log);
+the candidate was ready 5/5. The settled candidate full-gate retry passed 8/8.
+This independently confirms a pre-existing intermittent native startup defect;
+its corrupting operation remains undiagnosed, and the successful retry does not
+make it fixed. No retry, skip or smoke assertion was added to hide it.
+
+Local evidence is ephemeral: `/tmp/jtml-pr12-journal-focused.log`,
+`/tmp/jtml-pr12-journal-verify.log` (failed),
+`/tmp/jtml-pr12-journal-verify-retry.log` (passed),
+`/tmp/jtml-pr12-commit-negative-final.log`,
+`/tmp/jtml-pr12-commit-positive-final.log`, and
+`/tmp/jtml-pr12-store-probe.log`. Crash reports were
+`jtml-2026-10-18-154102.ips` and `jtml-pr12-a74d88c-2026-10-18-154231.ips`
+in the local macOS diagnostic directory.
+
+Shared runtime grows **269151 → 270406 bytes (+1255)** from `a74d88c`, still below
+the unchanged **272000-byte** budget and **1352 bytes below** reviewed `7b8728d`.
+Taskboard HTML/components/bootstrap remain 316624/178082/619 bytes; partial
+lifecycle HTML/components 109360/99032 and nested 105426/99594, bootstrap 619.
+No static emitter or component-module code changed for this correction.
+
+The one-shot commit-failure blocker is repaired. The scoped merge assessment is
+**MERGE READY**, subject to final-head Ubuntu/macOS CI confirmation in the PR.
+That assessment distinguishes the repaired fault-injection-only boundary from the
+pre-existing native startup defect, which remains visible follow-up work. General
+host transactions, later Taskboard scenarios, linter/source provenance and full
+T0 support remain unverified. Do not merge automatically.

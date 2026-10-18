@@ -22,3 +22,4 @@ for fixture in ('partial', 'nested'):
     assert (root / 'jtml-runtime.js').stat().st_size <= 272000
 PYTHON
 node "${ROOT}/tests/browser/keyed_lifecycle.cjs" "${OUT}"
+node "${ROOT}/tests/browser/keyed_commit.cjs" "${OUT}"

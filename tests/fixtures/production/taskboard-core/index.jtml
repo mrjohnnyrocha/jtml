@@ -1,9 +1,9 @@
 jtml 2
 
-# C01–C03 only. Canonical records and every record write belong to TaskBoard.
+# C01–C08 interactive workflow. Canonical records and every record write belong to TaskBoard.
 make TaskStatus boardTitle completed
   get status = completed ? "Complete" : "Open"
-  box class "task-status-detail" title status
+  box class "task-status-detail" title status data-completed completed
     box class "board-heading"
       show boardTitle
     box class "task-status"
@@ -14,30 +14,92 @@ make TaskHeader boardTitle record
     h2 record.title
     TaskStatus boardTitle record.completed
 
-make TaskRow boardTitle record
+make TaskRow boardTitle record boardId emits titleSaved(id: string, value: string) noteSaved(id: string, value: string) movedDown(id: string) movedUp(id: string) toggled(id: string)
   let draftTitle = record.title
   let draftNote = record.note
   let editing = false
   let interactions = 0
-  card class "task-row" data-task-id record.id
+  let titleError = ""
+  get titleInvalid = titleError != ""
+  get titleErrorId = "title-error-" + boardId + "-" + record.id
+  # Alt+F8 / Alt+F7 move the row without leaving its focused input.
+  when reorderKey event
+    if event.altKey && event.key == "F8"
+      movedDown(record.id)
+    if event.altKey && event.key == "F7"
+      movedUp(record.id)
+  when increment
+    interactions += 1
+  when saveNote
+    noteSaved(record.id, draftNote)
+  when editTitle
+    editing = true
+  when cancelTitle
+    draftTitle = record.title
+    editing = false
+    titleError = ""
+  when saveTitle
+    let trimmed = ""
+    let pending = ""
+    let whitespace = false
+    # Literal whitespace characters: string escapes are not decoded by JTML.
+    # Native text inputs remove CR/LF; preserve internal whitespace verbatim.
+    for character in draftTitle
+      whitespace = false
+      for blank in " 	                 　﻿"
+        if character == blank
+          whitespace = true
+      if whitespace
+        if trimmed != ""
+          pending = pending + character
+      else
+        trimmed = trimmed + pending + character
+        pending = ""
+    if trimmed == ""
+      titleError = "Enter a task title"
+    else
+      draftTitle = trimmed
+      titleError = ""
+      editing = false
+      titleSaved(record.id, trimmed)
+  card class "task-row" data-task-id record.id data-editing editing
     TaskHeader boardTitle record
-    input class "row-draft" aria-label "Task title draft" value draftTitle into draftTitle
-    input class "row-note" aria-label "Task note draft" value draftNote into draftNote
+    button "Edit title" click editTitle
+    form class "edit-title" submit saveTitle
+      input class "row-draft" aria-label "Task title draft" aria-describedby titleErrorId aria-invalid titleInvalid value draftTitle into draftTitle
+      button "Save title" type "submit"
+      button "Cancel title" type "button" click cancelTitle
+      box class "title-error" id titleErrorId role "alert"
+        show titleError
+    form class "save-note" submit saveNote
+      input class "row-note" aria-label "Task note draft" value draftNote into draftNote keydown reorderKey
+      button "Save note" type "submit"
+    box class "saved-note"
+      show record.note
+    button "Toggle complete" click toggled(record.id)
+    button "Move down" title "Alt+F8" click movedDown(record.id)
+    button "Move up" title "Alt+F7" click movedUp(record.id)
+    button "Increment" class "increment" click increment
+    box class "interaction-count"
+      show interactions
 
 make TaskBoard boardId
   let title = "Before"
+  let filter = "All"
   let records = { "t-101": { "id": "t-101", "title": "Audit runtime", "completed": false, "note": "" }, "t-102": { "id": "t-102", "title": "Audit runtime", "completed": false, "note": "" }, "t-103": { "id": "t-103", "title": "Ship documentation", "completed": true, "note": "" }, "t-104": { "id": "t-104", "title": "<release> & CSP", "completed": false, "note": "" } }
   let order = ["t-101", "t-102", "t-103", "t-104"]
-  # Parent-maintained completion index. No completion mutation in this slice.
+  # Parent-maintained completion index; rebuilt from records in canonical order.
   let completeIds = ["t-103"]
   let nextId = 105
   let draft = ""
   let error = ""
+  let titleSaveCount = 0
+  let noteSaveCount = 0
   let submitCount = 0
   get total = order.length
   get complete = completeIds.length
   get open = total - complete
-  get visible = total
+  get visible = filter == "All" ? total : open
   get inputId = "create-title-" + boardId
   get errorId = "create-error-" + boardId
   get invalid = error != ""
@@ -70,8 +132,56 @@ make TaskBoard boardId
       draft = ""
       error = ""
 
+  when onlyOpen
+    filter = "Open"
+
+  when showAll
+    filter = "All"
+
+  when toggle id
+    records[id].completed = !records[id].completed
+    let nextComplete = []
+    for completeId in order
+      if records[completeId].completed
+        nextComplete[nextComplete.length] = completeId
+    completeIds = nextComplete
+
+  when moveDown id
+    let downIndex = 0
+    let downDone = false
+    let downNext = ""
+    while downIndex < order.length - 1
+      if order[downIndex] == id && !downDone
+        downNext = order[downIndex + 1]
+        order[downIndex + 1] = order[downIndex]
+        order[downIndex] = downNext
+        downDone = true
+      downIndex += 1
+
+  when moveUp id
+    let upIndex = 1
+    let upDone = false
+    let upPrevious = ""
+    while upIndex < order.length
+      if order[upIndex] == id && !upDone
+        upPrevious = order[upIndex - 1]
+        order[upIndex - 1] = order[upIndex]
+        order[upIndex] = upPrevious
+        upDone = true
+      upIndex += 1
+
+  when commitNote id value
+    records[id].note = "" + value
+    noteSaveCount += 1
+
+  when commitTitle id value
+    records[id].title = "" + value
+    titleSaveCount += 1
+
   section class "taskboard" data-board boardId
     h1 title
+    button "All" class "filter-all" click showAll
+    button "Open" class "filter-open" click onlyOpen
     box class "counts"
       box class "count-total"
         show total
@@ -88,7 +198,8 @@ make TaskBoard boardId
       box class "create-error" id errorId role "alert"
         show error
     for taskId in order key taskId
-      TaskRow title records[taskId]
+      if filter == "All" || !records[taskId].completed
+        TaskRow title records[taskId] boardId on titleSaved commitTitle on noteSaved commitNote on movedDown moveDown on movedUp moveUp on toggled toggle
 
 page
   TaskBoard "A"

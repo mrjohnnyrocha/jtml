@@ -21,3 +21,7 @@ PY
 "${JTML_BIN:-"${ROOT}/build/jtml"}" build \
   "${ROOT}/tests/fixtures/production/retained-control/index.jtml" --target browser --out "${OUT}/retained-control"
 node "${ROOT}/tests/browser/taskboard_core.cjs" "${OUT}"
+"${JTML_BIN:-"${ROOT}/build/jtml"}" build \
+  "${ROOT}/tests/fixtures/production/component-events/index.jtml" --target browser --out "${OUT}/component-events"
+node "${ROOT}/tests/browser/component_events.cjs" "${OUT}/component-events"
+node "${ROOT}/tests/browser/taskboard_workflow.cjs" "${OUT}"

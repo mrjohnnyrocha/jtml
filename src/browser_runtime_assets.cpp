@@ -751,7 +751,7 @@ const char* browserRuntimePreludeChunk() {
         const changed = {};
         addComponentNameSet(changed, writes || []);
         const names = Object.keys(changed);
-        if (!names.length) return true;
+        if (!names.length) return false;
         const renderedReads = componentRenderedReadSet(definition);
         return names.some(function (name) { return !!renderedReads[name]; });
       }
@@ -3205,14 +3205,22 @@ const char* browserRuntimeComponentChunk() {
           } catch (_) {
             args = [];
           }
+          const active = document.activeElement;
           const handled = browserLocalRuntime
             ? (runDirectComponentAction(componentId, actionName, args) ||
                runDirectComponentFallbackAction(componentId, actionName))
             : await runLiveComponentAction(componentId, actionName, args);
           if (handled) {
+            if (browserLocalRuntime && active && !active.isConnected && button.isConnected) button.focus();
             event.preventDefault();
             event.stopPropagation();
           }
+        });
+        document.addEventListener('keydown', function (event) {
+          const el = event.target.closest && event.target.closest('[data-jtml-direct-component-keydown]');
+          if (el && browserLocalRuntime) runDirectComponentAction(
+            el.getAttribute('data-jtml-direct-component-id'), el.getAttribute('data-jtml-direct-component-keydown'),
+            [{key: event.key, altKey: event.altKey, ctrlKey: event.ctrlKey, shiftKey: event.shiftKey, metaKey: event.metaKey}]);
         });
         document.addEventListener('submit', async function (event) {
           const form = event.target.closest('[data-jtml-direct-component-submit]');
@@ -3580,7 +3588,7 @@ const char* browserRuntimeComponentChunk() {
             return raw.slice(1, -1);
           }
           if (/^-?\d+$/.test(raw)) return Number(raw);
-          const evaluated = evaluateClientExpression(raw, scope);
+          const evaluated = evaluateCompiledComponentExpressionResult(compileComponentExpressionPlan(raw), raw, scope);
           return evaluated.found ? evaluated.value : raw;
         }
         while (i < source.length) {

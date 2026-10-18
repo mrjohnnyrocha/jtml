@@ -1,0 +1,46 @@
+jtml 2
+make Editor emits saved(value: string)
+  let draft = "Seed"
+  let count = 0
+  let items = ["left", "right"]
+  let position = 0
+  when publish
+    saved(draft)
+  when observe event
+    if event.altKey && event.key == "F8"
+      count += 1
+      swap()
+  when swap
+    let right = items[position + 1]
+    items[position + 1] = items[position]
+    items[position] = right
+  when increment
+    count += 1
+  form class "editor" submit publish
+    input aria-label "Draft" value draft into draft keydown observe
+    button "Save" type "submit"
+    button "Increment" type "button" click increment
+    box class "items"
+      show items[0]
+      show items[1]
+    box class "counter"
+      show count
+make Parent
+  let note = ""
+  let visible = true
+  let saves = 0
+  when hide
+    visible = false
+  when remember value
+    note = "" + value
+    saves += 1
+  box
+    button "Hide editor" click hide
+    if visible
+      Editor on saved remember
+    box class "saved"
+      show note
+    box class "saves"
+      show saves
+page
+  Parent

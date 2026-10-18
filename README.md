@@ -420,6 +420,12 @@ Local tooling can be exercised from the repository:
 scripts/verify_all.sh
 ```
 
+Local HTTP and WebSocket servers bind to `127.0.0.1`. Open the advertised
+`localhost` URL or use `127.0.0.1`; cross-origin browser access is rejected.
+These servers execute trusted local JTML and provide no authentication or
+execution sandbox. See the [local-server security contract](docs/tooling/local-server-security.md)
+for native clients, ports, synchronization and async limitations.
+
 `jtml doctor --json` is also the current readiness contract. It reports local
 toolkit checks, stable/first-slice/experimental feature tiers, required
 verification gates, and the honest platform status: JTML is enterprise-relevant

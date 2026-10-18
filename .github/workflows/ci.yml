@@ -86,6 +86,9 @@ jobs:
       - name: Nested keyed lifecycle regressions (browser required)
         run: scripts/test_keyed_lifecycle.sh
 
+      - name: Local HTTP and WebSocket security (browser required)
+        run: scripts/test_local_server_security.sh
+
       - name: Browser literal fidelity (clean and compatibility)
         run: scripts/test_literal_fidelity.sh
 

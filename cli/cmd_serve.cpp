@@ -11,6 +11,7 @@
 #include "jtml/fix.h"
 #include "jtml/interpreter.h"
 #include "jtml/linter.h"
+#include "jtml/local_server_security.h"
 #include "jtml/semantic.h"
 #include "jtml/transpiler.h"
 #include "httplib.h"
@@ -48,6 +49,33 @@ using jtml::JtmlFormatter;
 using jtml::JtmlLinter;
 
 namespace {
+
+// Security is enforced before routing, including static assets and preflights.
+void installLocalServerPolicy(httplib::Server& server, int port) {
+    server.set_pre_routing_handler([port](const httplib::Request& req, httplib::Response& res) {
+        const bool allowed = req.get_header_value_count("Host") == 1 &&
+            req.get_header_value_count("Origin") <= 1 &&
+            req.get_header_value_count("Sec-Fetch-Site") <= 1 &&
+            JTML::localServerRequestAllowed(req.get_header_value("Host"),
+                req.get_header_value("Origin"), req.has_header("Origin"),
+                req.get_header_value("Sec-Fetch-Site"), static_cast<uint16_t>(port),
+                static_cast<uint16_t>(port));
+        if (!allowed) {
+            res.status = 403;
+            res.set_content("Forbidden: JTML accepts same-origin loopback requests only", "text/plain");
+            return httplib::Server::HandlerResponse::Handled;
+        }
+        return httplib::Server::HandlerResponse::Unhandled;
+    });
+}
+
+httplib::Server::Handler serializedLocalHandler(httplib::Server::Handler handler) {
+    return [handler = std::move(handler)](const httplib::Request& req, httplib::Response& res) {
+        std::lock_guard<std::recursive_mutex> lock(JTML::localServerExecutionMutex());
+        SilenceStdout silence;
+        handler(req, res);
+    };
+}
 
 /* ── Shared parse helper ─────────────────────────────────── */
 std::vector<std::unique_ptr<ASTNode>> parseProgramFromNormalizedSource(const std::string& code) {
@@ -378,6 +406,9 @@ bool canBindTcpPort(int) {
 #endif
 
 void ensureServePortsAvailable(int httpPort, int wsPort, const std::string& commandName) {
+    if (httpPort < 1 || httpPort > 65535 - 80) {
+        throw std::runtime_error(commandName + " requires --port between 1 and 65455 (WebSocket uses HTTP port + 80)");
+    }
     if (!canBindTcpPort(httpPort)) {
         throw std::runtime_error(
             commandName + " cannot start: HTTP port " + std::to_string(httpPort) +
@@ -458,51 +489,46 @@ void installDemoDataApi(httplib::Server& svr) {
 void installRuntimeApi(httplib::Server& svr,
                        std::unique_ptr<Interpreter>& interpreter,
                        uint16_t wsPort) {
-    svr.set_default_headers({
-        {"Access-Control-Allow-Origin",  "*"},
-        {"Access-Control-Allow-Methods", "GET, POST, OPTIONS"},
-        {"Access-Control-Allow-Headers", "Content-Type"},
-    });
     svr.Options(R"(/api/.*)", [](const httplib::Request&, httplib::Response& res) {
         res.status = 204;
     });
     installDemoDataApi(svr);
-    svr.Get("/api/health", [wsPort](const httplib::Request&, httplib::Response& res) {
+    svr.Get("/api/health", serializedLocalHandler([wsPort](const httplib::Request&, httplib::Response& res) {
         setJson(res, {
             {"ok", true},
             {"version", versionString()},
             {"contract", runtimeContractJson(wsPort)},
         });
-    });
-    svr.Get("/api/bindings", [&interpreter](const httplib::Request&, httplib::Response& res) {
+    }));
+    svr.Get("/api/bindings", serializedLocalHandler([&interpreter](const httplib::Request&, httplib::Response& res) {
         try {
             setJson(res, {{"ok", true}, {"bindings", nlohmann::json::parse(interpreter->getBindingsJSON())}});
         } catch (const std::exception& e) {
             setJson(res, errorResponseJson(e.what()));
         }
-    });
-    svr.Get("/api/state", [&interpreter](const httplib::Request&, httplib::Response& res) {
+    }));
+    svr.Get("/api/state", serializedLocalHandler([&interpreter](const httplib::Request&, httplib::Response& res) {
         try {
             setJson(res, {{"ok", true}, {"state", nlohmann::json::parse(interpreter->getStateJSON())}});
         } catch (const std::exception& e) {
             setJson(res, errorResponseJson(e.what()));
         }
-    });
-    svr.Get("/api/components", [&interpreter](const httplib::Request&, httplib::Response& res) {
+    }));
+    svr.Get("/api/components", serializedLocalHandler([&interpreter](const httplib::Request&, httplib::Response& res) {
         try {
             setJson(res, {{"ok", true}, {"components", nlohmann::json::parse(interpreter->getComponentsJSON())}});
         } catch (const std::exception& e) {
             setJson(res, errorResponseJson(e.what()));
         }
-    });
-    svr.Get("/api/component-definitions", [&interpreter](const httplib::Request&, httplib::Response& res) {
+    }));
+    svr.Get("/api/component-definitions", serializedLocalHandler([&interpreter](const httplib::Request&, httplib::Response& res) {
         try {
             setJson(res, {{"ok", true}, {"componentDefinitions", nlohmann::json::parse(interpreter->getComponentDefinitionsJSON())}});
         } catch (const std::exception& e) {
             setJson(res, errorResponseJson(e.what()));
         }
-    });
-    svr.Get("/api/rendered-components", [&interpreter](const httplib::Request&, httplib::Response& res) {
+    }));
+    svr.Get("/api/rendered-components", serializedLocalHandler([&interpreter](const httplib::Request&, httplib::Response& res) {
         try {
             const auto state = nlohmann::json::parse(interpreter->getStateJSON());
             auto rendered = renderedComponentsFromState(state);
@@ -511,15 +537,15 @@ void installRuntimeApi(httplib::Server& svr,
         } catch (const std::exception& e) {
             setJson(res, errorResponseJson(e.what()));
         }
-    });
-    svr.Get("/api/runtime", [&interpreter, wsPort](const httplib::Request&, httplib::Response& res) {
+    }));
+    svr.Get("/api/runtime", serializedLocalHandler([&interpreter, wsPort](const httplib::Request&, httplib::Response& res) {
         try {
             setJson(res, runtimeSnapshotJson(*interpreter, wsPort));
         } catch (const std::exception& e) {
             setJson(res, errorResponseJson(e.what()));
         }
-    });
-    svr.Post("/api/event", [&interpreter, wsPort](const httplib::Request& req, httplib::Response& res) {
+    }));
+    svr.Post("/api/event", serializedLocalHandler([&interpreter, wsPort](const httplib::Request& req, httplib::Response& res) {
         try {
             auto body = nlohmann::json::parse(req.body);
             std::string id   = body.value("elementId", std::string{});
@@ -543,8 +569,8 @@ void installRuntimeApi(httplib::Server& svr,
         } catch (const std::exception& e) {
             setJson(res, errorResponseJson(e.what()));
         }
-    });
-    svr.Post("/api/component-action", [&interpreter, wsPort](const httplib::Request& req, httplib::Response& res) {
+    }));
+    svr.Post("/api/component-action", serializedLocalHandler([&interpreter, wsPort](const httplib::Request& req, httplib::Response& res) {
         try {
             auto body = nlohmann::json::parse(req.body);
             std::string componentId = body.value("componentId", std::string{});
@@ -569,7 +595,7 @@ void installRuntimeApi(httplib::Server& svr,
         } catch (const std::exception& e) {
             setJson(res, errorResponseJson(e.what()));
         }
-    });
+    }));
 }
 
 std::string mimeTypeFor(const std::filesystem::path& path) {
@@ -758,14 +784,16 @@ static void serveOnce(const std::vector<std::unique_ptr<ASTNode>>& program,
 
     std::unique_ptr<Interpreter> interpreter;
     {
+        std::lock_guard<std::recursive_mutex> lock(JTML::localServerExecutionMutex());
         SilenceStdout silence;
         interpreter = std::make_unique<Interpreter>(transpiler, cfg);
         interpreter->interpret(program);
+        html = withInitialBodyPlanRender(std::move(html), interpreter->getStateJSON());
+        html = withInitialBindings(std::move(html), interpreter->getBindingsJSON());
     }
-    html = withInitialBodyPlanRender(std::move(html), interpreter->getStateJSON());
-    html = withInitialBindings(std::move(html), interpreter->getBindingsJSON());
 
     httplib::Server svr;
+    installLocalServerPolicy(svr, port);
     installRuntimeApi(svr, interpreter, cfg.wsPort);
     svr.Get("/", [&html](const httplib::Request&, httplib::Response& res) {
         res.set_content(html, "text/html");
@@ -779,9 +807,8 @@ static void serveOnce(const std::vector<std::unique_ptr<ASTNode>>& program,
     });
     std::cout << "jtml serve: http://localhost:" << port
               << "  (WebSocket on " << cfg.wsPort << ")\n" << std::flush;
-    SilenceStdout silence;
-    if (!svr.listen("0.0.0.0", port)) {
-        throw std::runtime_error("jtml serve cannot start: HTTP listener failed on 0.0.0.0:" +
+    if (!svr.listen("127.0.0.1", port)) {
+        throw std::runtime_error("jtml serve cannot start: HTTP listener failed on 127.0.0.1:" +
                                  std::to_string(port));
     }
 }
@@ -798,11 +825,13 @@ static void serveWatching(const std::string& inputFile, int port, SyntaxMode syn
     transpiler.setWebSocketPort(cfg.wsPort);
     std::unique_ptr<Interpreter> interpreter;
     {
+        std::lock_guard<std::recursive_mutex> lock(JTML::localServerExecutionMutex());
         SilenceStdout silence;
         interpreter = std::make_unique<Interpreter>(transpiler, cfg);
     }
 
     auto rebuild = [&](bool firstLoad) {
+        std::lock_guard<std::recursive_mutex> lock(JTML::localServerExecutionMutex());
         try {
             auto program = parseProgramFromFile(inputFile, syntax);
             std::string html = transpiler.transpile(program);
@@ -844,6 +873,7 @@ static void serveWatching(const std::string& inputFile, int port, SyntaxMode syn
     });
 
     httplib::Server svr;
+    installLocalServerPolicy(svr, port);
     installRuntimeApi(svr, interpreter, cfg.wsPort);
     svr.Get("/", [&](const httplib::Request&, httplib::Response& res) {
         std::lock_guard<std::mutex> lk(htmlMutex);
@@ -860,9 +890,8 @@ static void serveWatching(const std::string& inputFile, int port, SyntaxMode syn
     std::cout << "jtml serve --watch: http://localhost:" << port
               << "  (WebSocket on " << cfg.wsPort << ")\n"
               << "Watching: " << inputFile << "\n" << std::flush;
-    SilenceStdout silence;
-    if (!svr.listen("0.0.0.0", port)) {
-        throw std::runtime_error("jtml serve --watch cannot start: HTTP listener failed on 0.0.0.0:" +
+    if (!svr.listen("127.0.0.1", port)) {
+        throw std::runtime_error("jtml serve --watch cannot start: HTTP listener failed on 127.0.0.1:" +
                                  std::to_string(port));
     }
     stopFlag.store(true);
@@ -877,23 +906,21 @@ static void serveStudio(int port) {
     auto referenceCatalog = loadStudioReferenceCatalog("studio/reference/catalog.json");
     auto sidebarCatalog = loadStudioSidebarCatalog("studio/sidebar/catalog.json");
 
-    static JtmlTranspiler transpiler;
+    JtmlTranspiler transpiler;
     InterpreterConfig cfg;
     cfg.wsPort         = static_cast<uint16_t>(port + 80);
     cfg.startWebSocket = true;
     ensureServePortsAvailable(port, cfg.wsPort, "jtml studio");
-    static std::unique_ptr<Interpreter> interpreter;
+    transpiler.setWebSocketPort(cfg.wsPort);
+    std::unique_ptr<Interpreter> interpreter;
     if (!interpreter) {
+        std::lock_guard<std::recursive_mutex> lock(JTML::localServerExecutionMutex());
         SilenceStdout silence;
         interpreter = std::make_unique<Interpreter>(transpiler, cfg);
     }
 
     httplib::Server svr;
-    svr.set_default_headers({
-        {"Access-Control-Allow-Origin",  "*"},
-        {"Access-Control-Allow-Methods", "GET, POST, OPTIONS"},
-        {"Access-Control-Allow-Headers", "Content-Type"},
-    });
+    installLocalServerPolicy(svr, port);
     svr.Options(R"(/api/.*)", [](const httplib::Request&, httplib::Response& res) {
         res.status = 204;
     });
@@ -968,7 +995,7 @@ static void serveStudio(int port) {
         res.set_content(R"({"error":"doc not found"})", "application/json");
     });
 
-    svr.Post("/api/run", [](const httplib::Request& req, httplib::Response& res) {
+    svr.Post("/api/run", serializedLocalHandler([&](const httplib::Request& req, httplib::Response& res) {
         try {
             auto body = nlohmann::json::parse(req.body);
             std::string code = body.value("code", std::string{});
@@ -1000,9 +1027,9 @@ static void serveStudio(int port) {
         } catch (const std::exception& e) {
             res.set_content(errorResponseJson(e.what()).dump(), "application/json");
         }
-    });
+    }));
 
-    svr.Post("/api/format", [](const httplib::Request& req, httplib::Response& res) {
+    svr.Post("/api/format", serializedLocalHandler([&](const httplib::Request& req, httplib::Response& res) {
         try {
             auto body = nlohmann::json::parse(req.body);
             std::string code = body.value("code", std::string{});
@@ -1026,9 +1053,9 @@ static void serveStudio(int port) {
         } catch (const std::exception& e) {
             res.set_content(errorResponseJson(e.what()).dump(), "application/json");
         }
-    });
+    }));
 
-    svr.Post("/api/fix", [](const httplib::Request& req, httplib::Response& res) {
+    svr.Post("/api/fix", serializedLocalHandler([&](const httplib::Request& req, httplib::Response& res) {
         try {
             auto body = nlohmann::json::parse(req.body);
             std::string code = body.value("code", std::string{});
@@ -1044,9 +1071,9 @@ static void serveStudio(int port) {
         } catch (const std::exception& e) {
             res.set_content(errorResponseJson(e.what()).dump(), "application/json");
         }
-    });
+    }));
 
-    svr.Post("/api/lint", [](const httplib::Request& req, httplib::Response& res) {
+    svr.Post("/api/lint", serializedLocalHandler([&](const httplib::Request& req, httplib::Response& res) {
         try {
             auto body = nlohmann::json::parse(req.body);
             std::string code = body.value("code", std::string{});
@@ -1066,9 +1093,9 @@ static void serveStudio(int port) {
         } catch (const std::exception& e) {
             res.set_content(errorResponseJson(e.what()).dump(), "application/json");
         }
-    });
+    }));
 
-    svr.Post("/api/export", [](const httplib::Request& req, httplib::Response& res) {
+    svr.Post("/api/export", serializedLocalHandler([&](const httplib::Request& req, httplib::Response& res) {
         try {
             auto body = nlohmann::json::parse(req.body);
             std::string code = body.value("code", std::string{});
@@ -1100,9 +1127,9 @@ static void serveStudio(int port) {
         } catch (const std::exception& e) {
             res.set_content(errorResponseJson(e.what()).dump(), "application/json");
         }
-    });
+    }));
 
-    svr.Post("/api/event", [](const httplib::Request& req, httplib::Response& res) {
+    svr.Post("/api/event", serializedLocalHandler([&](const httplib::Request& req, httplib::Response& res) {
         try {
             auto body = nlohmann::json::parse(req.body);
             std::string id   = body.value("elementId", std::string{});
@@ -1121,7 +1148,7 @@ static void serveStudio(int port) {
         } catch (const std::exception& e) {
             res.set_content(errorResponseJson(e.what()).dump(), "application/json");
         }
-    });
+    }));
 
     std::cout << "JTML Studio: http://localhost:" << port
               << "  (WebSocket on " << cfg.wsPort << ")\n";
@@ -1133,9 +1160,8 @@ static void serveStudio(int port) {
         std::cout << "Tutorial: no ./tutorial/ found (run from the repo root to include it)\n";
     std::cout << std::flush;
 
-    SilenceStdout silence;
-    if (!svr.listen("0.0.0.0", port)) {
-        throw std::runtime_error("jtml studio cannot start: HTTP listener failed on 0.0.0.0:" +
+    if (!svr.listen("127.0.0.1", port)) {
+        throw std::runtime_error("jtml studio cannot start: HTTP listener failed on 127.0.0.1:" +
                                  std::to_string(port));
     }
 }

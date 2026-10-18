@@ -91,6 +91,7 @@ prose blocks.
 | Document | Use it for |
 | --- | --- |
 | [`tooling/deployment.md`](tooling/deployment.md) | Static HTML, live runtime, packaging, predeploy artifacts, and production hosting notes. |
+| [`tooling/local-server-security.md`](tooling/local-server-security.md) | Loopback, request validation, synchronous execution and async boundaries. |
 | [`tooling/runtime-http-contract.md`](tooling/runtime-http-contract.md) | Stable JSON endpoints exposed by `jtml serve` and `jtml dev`. |
 | [`tooling/language-server.md`](tooling/language-server.md) | LSP features and editor integration contract. |
 | [`tooling/embedding-c-api.md`](tooling/embedding-c-api.md) | Native embedding through the C ABI. |

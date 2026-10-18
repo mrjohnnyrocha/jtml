@@ -8,6 +8,7 @@
 #include <iostream>
 #include <atomic>
 #include <exception>
+#include "jtml/local_server_security.h"
 
 namespace JTMLInterpreter {
 
@@ -37,6 +38,17 @@ namespace JTMLInterpreter {
             wsServer.clear_error_channels(websocketpp::log::elevel::all);
 
             // Register handler callbacks
+            wsServer.set_validate_handler([this](connection_hdl hdl) {
+                const auto connection = wsServer.get_con_from_hdl(hdl);
+                const auto origin = connection->get_request_header("Origin");
+                // CLI live servers pair HTTP P with WebSocket P + 80.
+                const bool allowed = localServerRequestAllowed(
+                    connection->get_request_header("Host"), origin, connection->get_request().get_headers().count("Origin") != 0,
+                    connection->get_request_header("Sec-Fetch-Site"), listenPort,
+                    listenPort >= 80 ? static_cast<uint16_t>(listenPort - 80) : listenPort);
+                if (!allowed) connection->set_status(websocketpp::http::status_code::forbidden);
+                return allowed;
+            });
             wsServer.set_open_handler(std::bind(&WebSocketServer::onOpen, this, std::placeholders::_1));
             wsServer.set_close_handler(std::bind(&WebSocketServer::onClose, this, std::placeholders::_1));
             wsServer.set_message_handler(std::bind(&WebSocketServer::onMessage, this, std::placeholders::_1, std::placeholders::_2));
@@ -50,10 +62,15 @@ namespace JTMLInterpreter {
         void run(uint16_t port) {
             try {
                 wsServer.set_reuse_addr(true);
-                wsServer.listen(port);
+                listenPort = port;
+                wsServer.listen(websocketpp::lib::asio::ip::tcp::endpoint(
+                    websocketpp::lib::asio::ip::address_v4::loopback(), port));
                 wsServer.start_accept();
                 isRunning = true;
-                std::cout << "[WebSocket] Server started on port " << port << "\n";
+                {
+                    std::lock_guard<std::recursive_mutex> lock(localServerExecutionMutex());
+                    std::cout << "[WebSocket] Server started on 127.0.0.1:" << port << "\n";
+                }
                 wsServer.run();
             } catch (const websocketpp::exception& e) {
                 std::cerr << "[WebSocket] Server error: " << e.what() << "\n";
@@ -102,6 +119,7 @@ namespace JTMLInterpreter {
 
         // Broadcast a message to all connected clients
         void broadcastMessage(const std::string& message) {
+            std::lock_guard<std::recursive_mutex> lock(localServerExecutionMutex());
             for (const auto& hdl : connections) {
                 wsServer.send(hdl, message, websocketpp::frame::opcode::text);
             }
@@ -110,11 +128,13 @@ namespace JTMLInterpreter {
     private:
         server wsServer;
         std::atomic<bool> isRunning{false};
+        uint16_t listenPort = 0;
         std::unordered_set<connection_hdl, ConnectionHash, ConnectionEqual> connections;
         std::function<void(const std::string&, connection_hdl)> messageCallback;
         std::function<void(connection_hdl)> openCallback;
 
         void onOpen(connection_hdl hdl) {
+            std::lock_guard<std::recursive_mutex> lock(localServerExecutionMutex());
              connections.insert(hdl);
             std::cout << "[WebSocket] Client connected.\n";
             if (openCallback) {
@@ -123,11 +143,13 @@ namespace JTMLInterpreter {
         }
 
         void onClose(connection_hdl hdl) {
+            std::lock_guard<std::recursive_mutex> lock(localServerExecutionMutex());
             connections.erase(hdl);
             std::cout << "[WebSocket] Client disconnected.\n";
         }
 
         void onMessage(connection_hdl hdl, server::message_ptr msg) {
+            std::lock_guard<std::recursive_mutex> lock(localServerExecutionMutex());
             if (messageCallback) {
                 messageCallback(msg->get_payload(), hdl);
             }

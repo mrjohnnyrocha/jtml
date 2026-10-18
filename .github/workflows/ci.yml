@@ -43,14 +43,17 @@ jobs:
           brew update
           brew install cmake ninja
 
-      - name: Install Chrome headless shell (macOS)
-        if: runner.os == 'macOS'
+      - name: Install Chrome headless shell
         run: |
           driver="${RUNNER_TEMP}/playwright-driver"
           export PLAYWRIGHT_BROWSERS_PATH="${RUNNER_TEMP}/ms-playwright"
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix "${driver}" --no-save playwright@1.63.0
-          "${driver}/node_modules/.bin/playwright" install chromium-headless-shell
-          browser="$(find "${PLAYWRIGHT_BROWSERS_PATH}" -type f -name chrome-headless-shell -perm +111 -print -quit)"
+          if [[ "${RUNNER_OS}" == "Linux" ]]; then
+            "${driver}/node_modules/.bin/playwright" install --with-deps chromium-headless-shell
+          else
+            "${driver}/node_modules/.bin/playwright" install chromium-headless-shell
+          fi
+          browser="$(find "${PLAYWRIGHT_BROWSERS_PATH}" -type f -name chrome-headless-shell -perm -111 -print -quit)"
           test -n "${browser}"
           echo "JTML_BENCH_BROWSER=${browser}" >> "${GITHUB_ENV}"
           echo "JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=${driver}" >> "${GITHUB_ENV}"
@@ -76,6 +79,12 @@ jobs:
 
       - name: Production reference application (browser required)
         run: scripts/test_production_reference.sh
+
+      - name: Adversarial Taskboard Core C01–C03 (browser required)
+        run: scripts/test_taskboard_core.sh
+
+      - name: Nested keyed lifecycle regressions (browser required)
+        run: scripts/test_keyed_lifecycle.sh
 
       - name: JTML smoke tests
         run: ./build/jtml test

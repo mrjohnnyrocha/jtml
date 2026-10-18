@@ -2641,15 +2641,15 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("function patchComponentForRegion(instance, definition, node, scope, el)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("function patchKeyedListItemWrapperInPlace(wrapper, item)"),
+    EXPECT_NE(html.find("function planKeyedChildren(current, next, changes, liveIds, stats)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("function patchElementFromTemplateInPlace(current, next, stats)"),
+    EXPECT_NE(html.find("const saved = new Map(Object.keys(dynamicComponentInstances)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("function patchElementChildrenByMarkerInPlace(current, next, stats)"),
+    EXPECT_NE(html.find("Object.assign(dynamicComponentInstanceGenerations, generations)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("keyedPatchableChildMarkers(nextChildren)"),
+    EXPECT_NE(html.find("changes.forEach(function (commit) { commit(undo); })"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("document.importNode(nextChild, true)"),
+    EXPECT_NE(html.find("destroyRuntimeComponentInstance(id, 'keyed-child-remove')"),
               std::string::npos) << html;
     EXPECT_NE(html.find("function pruneDynamicComponentListItem(parentId, nodeIndex, key)"),
               std::string::npos) << html;
@@ -2659,7 +2659,7 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("patchComponentForRegion(instance, definition, node, scope, el)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("keyed for-region patch requires unique next keys"),
+    EXPECT_NE(html.find("Duplicate keyed row keys"),
               std::string::npos) << html;
     EXPECT_NE(html.find("directComponentListLifecycle"),
               std::string::npos) << html;
@@ -2677,7 +2677,7 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("prunedDynamicInstances: prunedDynamicInstances"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("itemElementPatches: itemElementPatches"),
+    EXPECT_NE(html.find("itemElementPatches: stats.elementsPatched"),
               std::string::npos) << html;
     EXPECT_NE(html.find("itemTextPatches: itemTextPatches"),
               std::string::npos) << html;

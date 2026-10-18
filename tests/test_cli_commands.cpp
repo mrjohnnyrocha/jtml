@@ -1702,7 +1702,11 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
               std::string::npos) << runtimeAsset;
     EXPECT_NE(runtimeAsset.find("componentNodeHead(node)==='if'?'subtree-prune':'body-node-html-replace'"),
               std::string::npos) << runtimeAsset;
-    EXPECT_NE(runtimeAsset.find("destroyDirectComponentInstancesUnderElement(wrapper, 'keyed-item-html-replace')"),
+    EXPECT_EQ(runtimeAsset.find("destroyDirectComponentInstancesUnderElement(wrapper, 'keyed-item-html-replace')"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("destroyRuntimeComponentInstance(id, 'keyed-child-remove')"),
+              std::string::npos) << runtimeAsset;
+    EXPECT_NE(runtimeAsset.find("if (err.jtmlReconciliation) throw err"),
               std::string::npos) << runtimeAsset;
     const std::string appAsset = readTextFile(outDir / "app.js");
     EXPECT_NE(appAsset.find("productionAssets"), std::string::npos) << appAsset;
@@ -2571,7 +2575,7 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("function addAttr(name, value)"),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("addAttr('title', (function(scope){"),
+    EXPECT_NE(componentModule.find("addAttr('title', String((function(scope){"),
               std::string::npos) << componentModule;
     EXPECT_NE(componentModule.find("addAttr('data-jtml-direct-node','panel')"),
               std::string::npos) << componentModule;
@@ -2732,7 +2736,7 @@ TEST(CliBuild, BrowserTargetEmbedsRuntimeProjectPlanForModules) {
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("function addAttr(name, value)"),
               std::string::npos) << updatePlans;
-    EXPECT_NE(updatePlans.find("addAttr('title', (function(scope){"),
+    EXPECT_NE(updatePlans.find("addAttr('title', String((function(scope){"),
               std::string::npos) << updatePlans;
     EXPECT_NE(updatePlans.find("addAttr('data-jtml-direct-node','panel')"),
               std::string::npos) << updatePlans;
@@ -2869,9 +2873,11 @@ TEST(CliBuild, BrowserTargetCompilesComponentLocalFormSubmitActions) {
               std::string::npos) << runtimeAsset;
 
     const std::string componentModule = readTextFile(outDir / "components" / "index.js");
-    EXPECT_NE(componentModule.find("renderStaticComponentElementNode(instance, definition, scope, 4, 'form', 'form'"),
+    EXPECT_EQ(componentModule.find("renderStaticComponentElementNode(instance, definition, scope, 4, 'form', 'form'"),
               std::string::npos) << componentModule;
-    EXPECT_NE(componentModule.find("{\"argExpressions\":[],\"argPlans\":[],\"name\":\"save\"}"),
+    EXPECT_NE(componentModule.find("next['data-jtml-direct-component-submit'] = 'save'"),
+              std::string::npos) << componentModule;
+    EXPECT_NE(componentModule.find("const submitArgs = []"),
               std::string::npos) << componentModule;
     EXPECT_EQ(componentModule.find("new Function"), std::string::npos) << componentModule;
     EXPECT_EQ(componentModule.find("eval("), std::string::npos) << componentModule;

@@ -149,6 +149,24 @@ Do not try to resolve this migration during baseline maintenance. Future work
 should continue moving common production paths toward static/browser execution
 and leave compatibility/live paths as explicit backends.
 
+## Browser literals and live nested calls — 2026-10-18
+
+Source literals now decode consistently through Friendly lowering, the lexer,
+Expression IR reparsing and browser source evaluators while retaining JSON-safe
+escaping. Clean/compat Chromium checks cover exact reactive values and XSS
+negatives; malformed source fails with diagnostics. Diagnostic comments escape
+hostile literal text. Live nested/recursive calls use exception-safe per-interpreter
+frames with a 128-frame bound and explicit overlapping-entry rejection; this does
+not certify general concurrent interpreter or detached-async lifetime safety.
+
+Final local full gate passes **357/357 CTests**, all nine clean-exit browser
+benchmarks, complete production reference, C01–C08/lifecycle/commit recovery and
+live smoke **8/8**, without skips. Runtime is **271629/272000** bytes (+515).
+The known native store crash and reference HTML size regression remain visible;
+no repair of either is claimed. See [repair evidence](docs/architecture/literal-fidelity-and-function-calls.md)
+for pre-fix failures, early candidate failures, negative controls and limits.
+Hosted Ubuntu/macOS CI is recorded separately in PR #14. No C09–C14 work or merge.
+
 ## Taskboard interactive workflow C04–C08 — 2026-10-18
 
 The existing object-backed application now verifies parent-owned title editing,

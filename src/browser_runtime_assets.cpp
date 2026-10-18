@@ -190,7 +190,18 @@ const char* browserRuntimePreludeChunk() {
         value = String(value || '').trim();
         if ((value[0] === '"' && value[value.length - 1] === '"') ||
             (value[0] === "'" && value[value.length - 1] === "'")) {
-          return value.slice(1, -1);
+          let json = '"';
+          for (let i = 1; i < value.length - 1; i++) {
+            const ch = value[i];
+            if (ch === '\\') {
+              if (++i >= value.length - 1) throw new SyntaxError('Incomplete string escape');
+              json += value[i] === "'" ? "'" : '\\' + value[i];
+            } else {
+              if (ch === value[0]) throw new SyntaxError('Unescaped string delimiter');
+              json += JSON.stringify(ch).slice(1, -1);
+            }
+          }
+          return JSON.parse(json + '"');
         }
         return value;
       }
@@ -3585,7 +3596,7 @@ const char* browserRuntimeComponentChunk() {
           if (!raw) return '';
           if ((raw[0] === '"' && raw[raw.length - 1] === '"') ||
               (raw[0] === "'" && raw[raw.length - 1] === "'")) {
-            return raw.slice(1, -1);
+            return unquoteComponentText(raw);
           }
           if (/^-?\d+$/.test(raw)) return Number(raw);
           const evaluated = evaluateCompiledComponentExpressionResult(compileComponentExpressionPlan(raw), raw, scope);
@@ -3758,7 +3769,7 @@ const char* browserRuntimeComponentChunk() {
         if (expr === 'false') return { found: true, value: false };
         if ((expr[0] === '"' && expr[expr.length - 1] === '"') ||
             (expr[0] === "'" && expr[expr.length - 1] === "'")) {
-          return { found: true, value: expr.slice(1, -1) };
+          return { found: true, value: unquoteComponentText(expr) };
         }
         if (/^-?\d+(?:\.\d+)?$/.test(expr)) {
           return { found: true, value: Number(expr) };

@@ -11,6 +11,7 @@
 #include "json.hpp"
 
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <string>
 
 namespace {
@@ -4879,3 +4880,26 @@ TEST(FriendlyMedia, FileInputEventCarriesObjectState) {
 }
 
 } // namespace
+
+TEST(FriendlySyntax, LiteralEscapesAndQuotedConcatenationSurviveLowering) {
+    const auto classic = normalizeOk(R"JTML(jtml 2
+let title = "Tom & Jerry"
+let message = "line\n" + "literal \\n"
+make Card tone
+  article class "metric {tone}"
+    text tone
+page
+  Card "accent"
+)JTML");
+    Lexer lexer(classic);
+    const auto tokens = lexer.tokenize();
+    ASSERT_TRUE(lexer.getErrors().empty());
+    std::vector<std::string> strings;
+    for (const auto& token : tokens) {
+        if (token.type == TokenType::STRING_LITERAL) strings.push_back(token.text);
+    }
+    EXPECT_NE(std::find(strings.begin(), strings.end(), "Tom & Jerry"), strings.end());
+    EXPECT_NE(std::find(strings.begin(), strings.end(), "line\n"), strings.end());
+    EXPECT_NE(std::find(strings.begin(), strings.end(), "literal \\n"), strings.end());
+    EXPECT_NE(std::find(strings.begin(), strings.end(), "metric "), strings.end());
+}

@@ -21,6 +21,13 @@
 #include <thread>
 
 namespace {
+// Resource/ownership failures must unwind the entire active call stack rather
+// than be swallowed by statement-level diagnostic handlers.
+class FunctionCallError : public std::runtime_error {
+public:
+    using std::runtime_error::runtime_error;
+};
+
 bool eventCarriesBrowserValue(const std::string& eventType) {
     return eventType == "onInput" ||
            eventType == "onChange" ||
@@ -2696,6 +2703,8 @@ void Interpreter::interpretNode(const ASTNode& node) {
         throw;
     } catch (const ContinueException&) {
         throw;
+    } catch (const FunctionCallError&) {
+        throw;
     } catch (const std::exception& e) {
         handleError("Node Interpretation Error: " + std::string(e.what()));
     }
@@ -3522,6 +3531,8 @@ void Interpreter::interpretDefine(const DefineStatementNode& stmt) {
     } catch (const ReturnException&) {
         // Allow ReturnException to propagate
         throw;
+    } catch (const FunctionCallError&) {
+        throw;
     } catch (const std::exception& e) {
         handleError(std::string("Define Statement Error: ") + e.what());
     }
@@ -3704,6 +3715,8 @@ void Interpreter::interpretClassDeclaration(const ClassDeclarationNode& node) {
             }
             std::cout << "\n";
 
+        } catch (const FunctionCallError&) {
+            throw;
         } catch (const std::exception& e) {
             handleError("Derive Statement Error: " + std::string(e.what()));
         }
@@ -3728,6 +3741,8 @@ void Interpreter::interpretUnbind(const UnbindStatementNode& stmt) {
 
         // Logging
         std::cout << "[UNBIND] " << key.varName << " has been unbound from environment.\n";
+    } catch (const FunctionCallError&) {
+        throw;
     } catch (const std::exception& e) {
         handleError("Unbind Statement Error: " + std::string(e.what()));
     }
@@ -3739,6 +3754,8 @@ void Interpreter::interpretStore(const StoreStatementNode& stmt) {
         std::cout << "[STORE] " << stmt.variableName << " => Scope: " << stmt.targetScope << "\n";
     } catch (const ReturnException&) {
         // Allow ReturnException to propagate
+        throw;
+    } catch (const FunctionCallError&) {
         throw;
     } catch (const std::exception& e) {
         handleError(std::string("Store Statement Error: ") + e.what());
@@ -3766,6 +3783,8 @@ void Interpreter::interpretIf(const IfStatementNode& node) {
     } catch (const ContinueException&) {
         throw;
     } catch (const BreakException&) {
+        throw;
+    } catch (const FunctionCallError&) {
         throw;
     } catch (const std::exception& e) {
         handleError("If Statement Error: " + std::string(e.what()));
@@ -3796,6 +3815,8 @@ void Interpreter::interpretWhile(const WhileStatementNode& node) {
         }
     } catch (const ReturnException&) {
         // Allow ReturnException to propagate
+        throw;
+    } catch (const FunctionCallError&) {
         throw;
     } catch (const std::exception& e) {
         handleError("While Interpretation Error: " + std::string(e.what()));
@@ -3899,6 +3920,8 @@ void Interpreter::interpretFor(const ForStatementNode& node) {
     } catch (const ReturnException&) {
         // Allow ReturnException to propagate
         throw;
+    } catch (const FunctionCallError&) {
+        throw;
     } catch (const std::exception& e) {
         handleError("For Loop Interpretation Error: " + std::string(e.what()));
     }
@@ -3922,6 +3945,8 @@ void Interpreter::interpretTryExceptThen(const TryExceptThenNode& node) {
     } catch (const ReturnException&) {
         // Allow ReturnException to propagate
         throw;
+    } catch (const FunctionCallError&) {
+        throw;
     } catch (const std::exception& e) {
         errorOccurred = true;
         errorMessage = e.what();
@@ -3941,6 +3966,8 @@ void Interpreter::interpretTryExceptThen(const TryExceptThenNode& node) {
         } catch (const ReturnException&) {
             // Allow ReturnException to propagate
             throw;
+        } catch (const FunctionCallError&) {
+            throw;
         } catch (const std::exception& e) {
             handleError("Try-Except Block Interpretation Error: " + std::string(e.what()));
         }
@@ -3952,6 +3979,8 @@ void Interpreter::interpretTryExceptThen(const TryExceptThenNode& node) {
             interpret(node.finallyBlock);
         } catch (const ReturnException&) {
             // Allow ReturnException to propagate
+            throw;
+        } catch (const FunctionCallError&) {
             throw;
         } catch (const std::exception& e) {
             handleError("Finally Block Interpretation Error: " + std::string(e.what()));
@@ -3973,6 +4002,8 @@ void Interpreter::interpretThrow(const ThrowStatementNode& node) {
         throw std::runtime_error(msg);
     } catch (const ReturnException&) {
         // Allow ReturnException to propagate
+        throw;
+    } catch (const FunctionCallError&) {
         throw;
     } catch (const std::exception& e) {
         handleError(std::string("Throw Statement Error: ") + e.what());
@@ -4011,6 +4042,8 @@ void Interpreter::interpretImport(const ImportStatementNode& stmt) {
         std::cout << "[IMPORT] " << stmt.path << "\n";
     } catch (const ReturnException&) {
         throw;
+    } catch (const FunctionCallError&) {
+        throw;
     } catch (const std::exception& e) {
         handleError("Import Statement Error: " + std::string(e.what()));
     }
@@ -4047,6 +4080,8 @@ void Interpreter::interpretReturn(const ReturnStatementNode& node) {
 
     } catch (const ReturnException&) {
         // Explicitly allow ReturnException to propagate
+        throw;
+    } catch (const FunctionCallError&) {
         throw;
     } catch (const std::exception& e) {
         std::cout << "[DEBUG] Function is not following ReturnException path! "<< "\n";
@@ -4093,6 +4128,8 @@ void Interpreter::interpretSubscribe(const SubscribeStatementNode& node) {
                         }
                     }
                     executeFunction(func, args, nullptr);
+                } catch (const FunctionCallError&) {
+                    throw;
                 } catch (const std::exception& e) {
                     std::cerr << "[ERROR] Callback execution failed for function '"
                               << func->name << "': " << e.what() << "\n";
@@ -4112,6 +4149,8 @@ void Interpreter::interpretSubscribe(const SubscribeStatementNode& node) {
                         }
                     }
                     executeFunction(func, args, nullptr);
+                } catch (const FunctionCallError&) {
+                    throw;
                 } catch (const std::exception& e) {
                     std::cerr << "[ERROR] Callback execution failed for function '"
                               << func->name << "': " << e.what() << "\n";
@@ -4128,6 +4167,8 @@ void Interpreter::interpretSubscribe(const SubscribeStatementNode& node) {
                         throw std::runtime_error("Scalar subscription callbacks take 0 or 1 parameter.");
                     }
                     executeFunction(func, args, nullptr);
+                } catch (const FunctionCallError&) {
+                    throw;
                 } catch (const std::exception& e) {
                     std::cerr << "[ERROR] Callback execution failed for function '"
                               << func->name << "': " << e.what() << "\n";
@@ -4140,6 +4181,8 @@ void Interpreter::interpretSubscribe(const SubscribeStatementNode& node) {
 
         std::cout << "[SUBSCRIBE] Function '" << node.functionName
                   << "' subscribed to variable '" << key.varName << "'\n";
+    } catch (const FunctionCallError&) {
+        throw;
     } catch (const std::exception& e) {
         handleError("Subscribe Statement Error: " + std::string(e.what()));
     }
@@ -4159,6 +4202,8 @@ void Interpreter::interpretUnsubscribe(const UnsubscribeStatementNode& node) {
 
         std::cout << "[UNSUBSCRIBE] Function '" << funcName
                   << "' unsubscribed from variable '" << node.variableName << "'\n";
+    } catch (const FunctionCallError&) {
+        throw;
     } catch (const std::exception& e) {
         handleError("Unsubscribe Statement Error: " + std::string(e.what()));
     }
@@ -4275,6 +4320,38 @@ void Interpreter::collectAllNestedFunctions(
     }
 }
 
+// Only protect entry/exit bookkeeping. Holding a mutex across user code would
+// deadlock reentrant calls; a recursive mutex would hide unsafe cross-thread use.
+struct Interpreter::FunctionCallFrame {
+    Interpreter& interpreter;
+    std::shared_ptr<JTML::Environment> previousEnv;
+    bool previousContext;
+
+    FunctionCallFrame(Interpreter& owner, const std::string& function) : interpreter(owner) {
+        std::lock_guard<std::mutex> lock(owner.functionCallMutex);
+        const auto thread = std::this_thread::get_id();
+        if (owner.functionCallDepth && owner.functionCallOwner != thread) {
+            throw FunctionCallError("Concurrent function execution on the same Interpreter is unsupported");
+        }
+        // Bound native-stack use before allocating another environment.
+        if (owner.functionCallDepth >= 128) {
+            throw FunctionCallError("Maximum recursion depth exceeded (128) in function '" + function + "'");
+        }
+        previousEnv = owner.currentEnv;
+        previousContext = owner.inFunctionContext;
+        owner.functionCallOwner = thread;
+        ++owner.functionCallDepth;
+        owner.inFunctionContext = true;
+    }
+
+    ~FunctionCallFrame() {
+        std::lock_guard<std::mutex> lock(interpreter.functionCallMutex);
+        interpreter.currentEnv = previousEnv;
+        interpreter.inFunctionContext = previousContext;
+        if (--interpreter.functionCallDepth == 0) interpreter.functionCallOwner = {};
+    }
+};
+
 std::shared_ptr<JTML::VarValue> Interpreter::executeFunction(
     const std::shared_ptr<JTML::Function>& func,
     const std::vector<std::shared_ptr<JTML::VarValue>>& args,
@@ -4302,18 +4379,7 @@ std::shared_ptr<JTML::VarValue> Interpreter::executeFunction(
             std::to_string(args.size()));
     }
 
-    // Manage function context
-    bool previousContext = inFunctionContext;
-    inFunctionContext = true;
-
-    // Limit Recursion Depth
-    static std::mutex recursionMutex;
-    std::lock_guard<std::mutex> lock(recursionMutex);
-    static int recursionDepth = 0;
-    const int MAX_RECURSION_DEPTH = 1000;
-    if (++recursionDepth > MAX_RECURSION_DEPTH) {
-        throw std::runtime_error("Maximum recursion depth exceeded in function '" + func->name + "'");
-    }
+    FunctionCallFrame frame(*this, func->name);
 
     // Create a new environment for the function execution
     auto funcEnv = std::make_shared<JTML::Environment>(
@@ -4321,7 +4387,6 @@ std::shared_ptr<JTML::VarValue> Interpreter::executeFunction(
         JTML::InstanceIDGenerator::getNextID(),
         currentEnv->renderer
     ); // Closure for accessing outer variables
-    std::shared_ptr<JTML::Environment> previousEnv = currentEnv;
     currentEnv = funcEnv; // Update current environment
 
     // Bind parameters locally using JTML::CompositeKey
@@ -4360,26 +4425,19 @@ std::shared_ptr<JTML::VarValue> Interpreter::executeFunction(
         std::cout << "[DEBUG] Function '" << func->name << "' returned with value: "
                   << re.value->toString() << "\n";
         returnValue = re.value;
+    } catch (const FunctionCallError&) {
+        throw;
     } catch (const std::exception& e) {
-        // Restore previous environment and context before handling the error
-        currentEnv = previousEnv; // Restore previous environment
-        inFunctionContext = previousContext;
         handleError("Function Execution Error: " + std::string(e.what()));
     }
 
-    // Restore previous environment and context
-    currentEnv = previousEnv; // Restore previous environment
-    inFunctionContext = previousContext;
-
     // Debug: Print parent environment variables
     std::cout << "[DEBUG] Parent environment variables after function execution:\n";
-    for (const auto& [key, varInfo] : currentEnv->variables) {
-        std::cout << "  " << currentEnv->getCompositeName(key) << " = "
+    for (const auto& [key, varInfo] : frame.previousEnv->variables) {
+        std::cout << "  " << frame.previousEnv->getCompositeName(key) << " = "
                   << (varInfo->currentValue ? varInfo->currentValue->toString() : "undefined")
                   << "\n";
     }
-
-    --recursionDepth;
 
     // If no return statement, return a default value
     if (!returnValue) {
@@ -4882,6 +4940,8 @@ std::shared_ptr<JTML::VarValue> Interpreter::evaluateExpression(const Expression
             // Execute the function
             try {
                 return executeFunction(func, args, nullptr); // 'this' is nullptr for regular functions
+            } catch (const FunctionCallError&) {
+                throw;
             } catch (const std::exception& e) {
                 throw std::runtime_error("Error during execution of function '" + callExpr->functionName + "': " + e.what());
             }
@@ -5063,6 +5123,8 @@ void Interpreter::gatherDeps(
                 // Determine the VarKind and gather additional dependencies accordingly
 
 
+            } catch (const FunctionCallError&) {
+                throw;
             } catch (const std::exception& e) {
                 handleError("Dependency Gathering Error: " + std::string(e.what()));
             }
@@ -5245,7 +5307,9 @@ void Interpreter::updateVariable(JTML::VarID varID, std::shared_ptr<JTML::Enviro
                 // Note: Do NOT mark dependents dirty here - they are already included in the topological sort
             }
         }
-        catch (const std::exception& e) {
+        catch (const FunctionCallError&) {
+            throw;
+        } catch (const std::exception& e) {
             handleError("Error updating derived variable '" + key.varName + "': " + e.what());
         }
     }

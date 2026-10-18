@@ -70,3 +70,10 @@ add_test(NAME BrowserBuild.LinkcheckWithoutAggregateCore
 set_tests_properties(BrowserBuild.LinkcheckWithoutAggregateCore
     PROPERTIES LABELS "unit;architecture"
 )
+
+add_executable(jtml_function_call_probe interpreter_call_probe.cpp)
+target_link_libraries(jtml_function_call_probe PRIVATE jtml_core)
+foreach(mode simple nested recursion excessive independent concurrent)
+    add_test(NAME InterpreterCalls.${mode} COMMAND jtml_function_call_probe ${mode})
+    set_tests_properties(InterpreterCalls.${mode} PROPERTIES TIMEOUT 10 LABELS "unit;interpreter")
+endforeach()

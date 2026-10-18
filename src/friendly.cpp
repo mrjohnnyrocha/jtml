@@ -1,3 +1,4 @@
+#include "jtml/expression_source.h"
 #include "jtml/friendly.h"
 
 #include <algorithm>
@@ -143,28 +144,7 @@ std::string unquote(const std::string& token) {
 }
 
 std::string unquoteRawPayload(const std::string& token) {
-    const std::string inner = unquote(token);
-    std::ostringstream out;
-    for (size_t i = 0; i < inner.size(); ++i) {
-        char ch = inner[i];
-        if (ch != '\\' || i + 1 >= inner.size()) {
-            out << ch;
-            continue;
-        }
-        const char next = inner[++i];
-        switch (next) {
-            case 'n': out << '\n'; break;
-            case 'r': out << '\r'; break;
-            case 't': out << '\t'; break;
-            case '"': out << '"'; break;
-            case '\'': out << '\''; break;
-            case '\\': out << '\\'; break;
-            default:
-                out << '\\' << next;
-                break;
-        }
-    }
-    return out.str();
+    return isQuoted(token) ? jtml::decodeStringLiteral(token) : token;
 }
 
 std::string quote(const std::string& s) {
@@ -206,7 +186,8 @@ std::string interpolateQuotedLiteral(const std::string& quotedLiteral) {
 
     auto flushLiteral = [&]() {
         if (!literal.empty()) {
-            parts.push_back(quote(literal));
+            parts.push_back(jtml::jsonString(jtml::decodeStringLiteral(
+                std::string(1, quoteChar) + literal + std::string(1, quoteChar))));
             literal.clear();
         }
     };
@@ -248,43 +229,43 @@ std::string interpolateQuotedLiteral(const std::string& quotedLiteral) {
 
 std::string friendlyExpression(const std::string& expr) {
     std::string trimmed = trim(expr);
-    if (!isQuoted(trimmed)) {
-        std::ostringstream out;
-        for (size_t i = 0; i < trimmed.size(); ++i) {
-            char ch = trimmed[i];
-            if (ch != '"' && ch != '\'') {
-                out << ch;
+    std::ostringstream out;
+    for (size_t i = 0; i < trimmed.size(); ++i) {
+        char ch = trimmed[i];
+        if (ch != '"' && ch != '\'') {
+            out << ch;
+            continue;
+        }
+
+        const char quoteChar = ch;
+        const size_t start = i;
+        ++i;
+        bool closed = false;
+        int interpolationDepth = 0;
+        for (; i < trimmed.size(); ++i) {
+            if (trimmed[i] == '\\' && i + 1 < trimmed.size()) {
+                ++i;
                 continue;
             }
-
-            const char quoteChar = ch;
-            const size_t start = i;
-            ++i;
-            bool closed = false;
-            for (; i < trimmed.size(); ++i) {
-                if (trimmed[i] == '\\' && i + 1 < trimmed.size()) {
-                    ++i;
-                    continue;
-                }
-                if (trimmed[i] == quoteChar) {
-                    closed = true;
-                    break;
-                }
-            }
-            if (!closed) return trimmed;
-
-            std::string literal = trimmed.substr(start, i - start + 1);
-            std::string lowered = interpolateQuotedLiteral(literal);
-            if (lowered != literal && lowered.find(" + ") != std::string::npos) {
-                out << "(" << lowered << ")";
-            } else {
-                out << lowered;
+            if (trimmed[i] == '{') ++interpolationDepth;
+            if (trimmed[i] == '}' && interpolationDepth > 0) --interpolationDepth;
+            if (trimmed[i] == quoteChar && interpolationDepth == 0) {
+                closed = true;
+                break;
             }
         }
-        return out.str();
-    }
+        if (!closed) return trimmed;
 
-    return interpolateQuotedLiteral(trimmed);
+        std::string literal = trimmed.substr(start, i - start + 1);
+        std::string lowered = interpolateQuotedLiteral(literal);
+        if ((start != 0 || i + 1 != trimmed.size()) &&
+            lowered != literal && lowered.find(" + ") != std::string::npos) {
+            out << "(" << lowered << ")";
+        } else {
+            out << lowered;
+        }
+    }
+    return out.str();
 }
 
 std::vector<std::string> splitTokens(const std::string& line) {

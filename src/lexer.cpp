@@ -1,5 +1,6 @@
 // jtml_lexer.cpp
 #include "jtml/lexer.h"
+#include "jtml/expression_source.h"
 
 // --------------------- Utility Functions ---------------------------
 
@@ -507,28 +508,30 @@ Token Lexer::consumeStringLiteral(char quoteChar) {
 
     advance(); // Consume opening quote
 
-    std::string value;
-
     while (!isEOF() && peek() != quoteChar) {
         if (peek() == '\\') {
             advance();
-            if (!isEOF()) {
-                value.push_back(peek());
-                advance();
-            }
+            if (!isEOF()) advance();
         } else {
-            value.push_back(peek());
             advance();
         }
     }
-    if (peek() != quoteChar) {
+    if (isEOF()) {
         errors.emplace_back("Unterminated string at line " + std::to_string(startLine)
             + ", column " + std::to_string(startColumn));
-        return Token{TokenType::ERROR, value, static_cast<int>(startPos), startLine, startColumn};
+        return Token{TokenType::ERROR, m_input.substr(startPos, m_pos - startPos),
+                     static_cast<int>(startPos), startLine, startColumn};
     }
     advance(); // Consume closing quote
-
-    return Token{TokenType::STRING_LITERAL, value, static_cast<int>(startPos), startLine, startColumn};
+    const auto source = m_input.substr(startPos, m_pos - startPos);
+    try {
+        return Token{TokenType::STRING_LITERAL, jtml::decodeStringLiteral(source),
+                     static_cast<int>(startPos), startLine, startColumn};
+    } catch (const std::exception& e) {
+        errors.emplace_back("Invalid string at line " + std::to_string(startLine)
+            + ", column " + std::to_string(startColumn) + ": " + e.what());
+        return Token{TokenType::ERROR, source, static_cast<int>(startPos), startLine, startColumn};
+    }
 }
 
 Token Lexer::consumeNumber() {

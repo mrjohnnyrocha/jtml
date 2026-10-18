@@ -128,7 +128,7 @@ std::string JtmlTranspiler::transpileNode(const ASTNode& node, bool insideElemen
     // For define, function, class, etc. we might produce minimal placeholders
     // or skip
     default:
-        return "<!-- " + node.toString() + " not explicitly transpiled. -->\n";
+        return "<!-- " + escapeHTML(node.toString()) + " not explicitly transpiled. -->\n";
     }
 }
 

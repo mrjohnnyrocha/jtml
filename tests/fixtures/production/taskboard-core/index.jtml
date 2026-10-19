@@ -117,6 +117,14 @@ make TaskBoard boardId
   let order = ["t-101", "t-102", "t-103", "t-104"]
   # Parent-maintained completion index; rebuilt from records in canonical order.
   let completeIds = ["t-103"]
+  let issuedIds = { "t-101": true, "t-102": true, "t-103": true, "t-104": true }
+  let dataError = ""
+  let selectedId = "t-101"
+  let selectedSuffix = "!"
+  let selectedFallback = "Unselected"
+  let selectedGuard = false
+  get selectedTitle = records[selectedId].title + selectedSuffix
+  get selectedLabel = selectedGuard ? selectedTitle : selectedFallback
   let nextId = 105
   let draft = ""
   let error = ""
@@ -134,6 +142,75 @@ make TaskBoard boardId
   get inputId = "create-title-" + boardId
   get errorId = "create-error-" + boardId
   get invalid = error != ""
+
+  # Explicit test-data/model boundary. Validate the entire batch before any
+  # canonical write. Imported values are scalar copies, never borrowed records.
+  # This in-memory Taskboard uses the same t-<digits> ID domain as its allocator.
+  when acceptBatch supplied
+    let batchError = ""
+    let seenIds = {}
+    for candidate in supplied
+      let idText = "" + candidate.id
+      let idValid = idText.length > 2 && idText[0] == "t" && idText[1] == "-" && candidate.id.length == idText.length
+      let idPosition = 0
+      for idCharacter in idText
+        if idPosition >= 2
+          let digitFound = false
+          for digit in "0123456789"
+            if idCharacter == digit
+              digitFound = true
+          if !digitFound
+            idValid = false
+        idPosition += 1
+      if !idValid || seenIds[idText]
+        batchError = "Invalid task IDs"
+      if idValid && !seenIds[idText]
+        seenIds[idText] = true
+        if issuedIds[idText] && !records[idText]
+          batchError = "Task ID was already used"
+    if batchError != ""
+      dataError = batchError
+    else
+      let acceptedRecords = {}
+      let acceptedOrder = []
+      let acceptedComplete = []
+      for accepted in supplied
+        let copiedId = "" + accepted.id
+        let copiedTitle = "" + accepted.title
+        let copiedNote = "" + accepted.note
+        let copiedCompleted = !(!accepted.completed)
+        acceptedRecords[copiedId] = { "id": copiedId, "title": copiedTitle, "note": copiedNote, "completed": copiedCompleted }
+        acceptedOrder[acceptedOrder.length] = copiedId
+        if copiedCompleted
+          acceptedComplete[acceptedComplete.length] = copiedId
+        issuedIds[copiedId] = true
+      records = acceptedRecords
+      order = acceptedOrder
+      completeIds = acceptedComplete
+      dataError = ""
+
+  when replaceEquivalent
+    let equivalentRecords = {}
+    for equivalentId in order
+      equivalentRecords[equivalentId] = { "id": records[equivalentId].id, "title": records[equivalentId].title, "note": records[equivalentId].note, "completed": records[equivalentId].completed }
+    records = equivalentRecords
+
+  when ownedProperty
+    records["t-101"].title = "First owned"
+
+  when ownedIndex
+    records[selectedId].title = "Indexed owned"
+
+  when ownedAlias
+    let selectedRecord = records[selectedId]
+    selectedRecord.title = selectedRecord.title + " alias"
+
+  when selectGuard
+    selectedGuard = !selectedGuard
+
+  when changeTaskId originalId requestedId
+    if originalId != requestedId
+      dataError = "Task IDs are immutable"
 
   when rename
     title = renameDraft
@@ -166,6 +243,10 @@ make TaskBoard boardId
       error = "Enter a task title"
     else
       let createdId = "t-" + nextId
+      while issuedIds[createdId]
+        nextId += 1
+        createdId = "t-" + nextId
+      issuedIds[createdId] = true
       records[createdId] = { "id": createdId, "title": trimmed, "completed": false, "note": "" }
       order[order.length] = createdId
       nextId += 1
@@ -247,6 +328,26 @@ make TaskBoard boardId
 
   section class "taskboard" data-board boardId data-jtml-focus-after-removal focusSelector
     h1 title
+    box class "data-boundary"
+      h2 "Test data boundary"
+      input aria-label "Selected task ID" value selectedId into selectedId
+      input aria-label "Selected suffix" value selectedSuffix into selectedSuffix
+      input aria-label "Selected fallback" value selectedFallback into selectedFallback
+      box class "selected-title"
+        show selectedTitle
+      box class "selected-label"
+        show selectedLabel
+      button "Enable selected label" click selectGuard
+      button "Owned property title" click ownedProperty
+      button "Owned indexed title" click ownedIndex
+      button "Owned alias title" click ownedAlias
+      button "Equivalent task records" click replaceEquivalent
+      box class "data-error" role "alert"
+        show dataError
+      # The independent browser oracle supplies JSON through this native event's
+      # argument boundary. It never mutates records or calls runtime internals.
+      button "Validate supplied data" click acceptBatch([])
+      button "Mutate task ID" click changeTaskId("t-101", "t-999")
     form class "rename-board" submit rename
       input aria-label "Board title" value renameDraft into renameDraft
       button "Rename board" type "submit"

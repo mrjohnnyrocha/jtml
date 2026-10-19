@@ -1,0 +1,10 @@
+jtml 2
+
+# Unknown RHS execution must not fall back at runtime.
+make Candidate
+  let result = 0
+  when mutate
+    result = mystery()
+  p "Candidate"
+page
+  Candidate

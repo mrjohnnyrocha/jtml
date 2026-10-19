@@ -1,0 +1,75 @@
+jtml 2
+make DependencyChild label
+  let count = 0
+  when increment
+    count += 1
+  box class "dependency-child" title label
+    h2 label
+    button "Increment dependency" click increment
+    box class "counter"
+      show count
+make DependencyRow record
+  let draft = ""
+  box class "dependency-row" data-record record.id
+    input aria-label "Dependency draft" value draft into draft
+    box class "score"
+      show record.score
+make DependencyProbe probeId
+  let records = [{ id: "r-0", score: 2 }, { id: "r-1", score: 5 }]
+  let index = 0
+  let offset = 1
+  let limit = 4
+  let enabled = false
+  let fallback = "First"
+  get selected = records[index].score + offset
+  get logical = selected > limit && enabled
+  get label = enabled ? "Selected " + selected : fallback
+  when property
+    records[0].score += 1
+  when indexed
+    records[index].score += 1
+  when alias
+    for item in records
+      if item.id == records[index].id
+        let ownedAlias = item
+        ownedAlias.score += 2
+  when changeIndex
+    index = 1 - index
+  when changeOffset
+    offset += 1
+  when changeLimit
+    limit += 1
+  when enable
+    enabled = !enabled
+  when changeFallback
+    fallback = "Changed"
+  when equivalent
+    let equivalentRecords = []
+    for original in records
+      equivalentRecords[equivalentRecords.length] = { id: original.id, score: original.score }
+    records = equivalentRecords
+  section data-probe probeId
+    box class "selected"
+      show selected
+    box class "logical"
+      show logical
+    box class "ternary"
+      show label
+    if enabled
+      DependencyChild label
+    else
+      DependencyChild label
+    for record in records key record.id
+      DependencyRow record
+    button "Property" click property
+    button "Indexed" click indexed
+    button "Alias" click alias
+    button "Index" click changeIndex
+    button "Offset" click changeOffset
+    button "Limit" click changeLimit
+    button "Enable" click enable
+    button "Fallback" click changeFallback
+    button "Equivalent replacement" click equivalent
+page
+  DependencyProbe "A"
+  DependencyProbe "B"

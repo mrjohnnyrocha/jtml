@@ -1,0 +1,13 @@
+jtml 2
+
+# Nested borrowed iterators and aliases must retain ownership provenance.
+make Candidate incoming
+  let alias = {}
+  when mutate
+    for group in incoming
+      for item in group.rows
+        alias = item
+        alias.score += 1
+  p "Candidate"
+page
+  p "Rejected"

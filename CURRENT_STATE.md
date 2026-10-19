@@ -149,6 +149,24 @@ Do not try to resolve this migration during baseline maintenance. Future work
 should continue moving common production paths toward static/browser execution
 and leave compatibility/live paths as explicit backends.
 
+## Taskboard negative validation — 2026-10-19
+
+N01–N03 and N05–N08 pass independent clean-production Chromium checks. **N04
+remains BLOCKED**: unsupported writes reject before runnable output, but linked
+and module diagnostics disagree on original line/column. Strict provenance
+acceptance exits 2; **full T0 is incomplete**. The approved contract and previous
+oracles are unchanged. See [negative validation evidence](docs/architecture/taskboard-t0-negative-validation.md).
+
+Generic repairs cover structured action tokenization and deferred asset startup.
+The startup correction exposed duplicate keyed component paths; generated `for`
+creation now shares reconciliation's scoped key path, with exception-safe cleanup.
+Original lifecycle/commit tests and a new two-owner/two-loop regression pass.
+Runtime is **271564/272000** bytes (436-byte margin); compressed asset growth is
+recorded. Repaired full local gate **PASS**, **362/362 CTests**, all nine clean-exit
+benchmarks and live smoke **8/8**, no verification skips. N04 strict acceptance
+still exits 2. Final-head hosted CI is recorded separately on the PR. Native
+store instability, linter limits and source provenance remain unresolved.
+
 ## Taskboard Core functional C09–C14 — 2026-10-18
 
 The object-backed Taskboard now passes **C01–C14** on clean production assets:

@@ -1,0 +1,12 @@
+jtml 2
+
+# The borrowed local must not shadow persistent owned storage.
+make Candidate incoming
+  let item = { score: 0 }
+  when mutate
+    if true
+      let item = incoming
+    item.score += 1
+  p "Candidate"
+page
+  p "Rejected"

@@ -1,0 +1,38 @@
+jtml 2
+make PathCounter label
+  let count = 0
+  when increment
+    count += 1
+  box class "path-counter" title label
+    button "Increment path counter" click increment
+    box class "counter-value"
+      show count
+make PathRow groupId rowId
+  let draft = "Seed"
+  box class "path-row" data-group groupId data-row rowId
+    input aria-label "Path draft" value draft into draft
+    PathCounter rowId
+make PathBoard boardId
+  let groups = [{ "id": "g-1", "rows": [{ "id": "r-1" }, { "id": "r-2" }] }, { "id": "g-2", "rows": [{ "id": "r-1" }, { "id": "r-2" }] }]
+  let held = []
+  when reorderGroups
+    groups = [groups[1], groups[0]]
+  when reorderRows
+    groups[0].rows = [groups[0].rows[1], groups[0].rows[0]]
+  when removeFirst
+    held = groups
+    groups = [groups[1]]
+  when restore
+    groups = held
+  section class "path-board" data-board boardId
+    h1 boardId
+    button "Reorder groups" click reorderGroups
+    button "Reorder rows" click reorderRows
+    button "Remove first group" click removeFirst
+    button "Restore groups" click restore
+    for group in groups key group.id
+      for row in group.rows key row.id
+        PathRow group.id row.id
+page
+  PathBoard "A"
+  PathBoard "B"

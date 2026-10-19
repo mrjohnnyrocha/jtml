@@ -156,34 +156,7 @@ const char* browserRuntimePreludeChunk() {
       }
 
       function splitComponentWords(source) {
-        const words = [];
-        let current = '';
-        let quote = '';
-        source = String(source || '');
-        for (let i = 0; i < source.length; i += 1) {
-          const ch = source[i];
-          if (quote) {
-            current += ch;
-            if (ch === '\\' && i + 1 < source.length) current += source[++i];
-            else if (ch === quote) quote = '';
-            continue;
-          }
-          if (ch === '"' || ch === "'") {
-            quote = ch;
-            current += ch;
-            continue;
-          }
-          if (/\s/.test(ch)) {
-            if (current) {
-              words.push(current);
-              current = '';
-            }
-          } else {
-            current += ch;
-          }
-        }
-        if (current) words.push(current);
-        return words;
+        return splitTopLevelList(String(source || ''), true);
       }
 
       function unquoteComponentText(value) {
@@ -2269,6 +2242,8 @@ const char* browserRuntimeComponentChunk() {
           destroyDirectComponentInstancesUnderElement: destroyDirectComponentInstancesUnderElement,
           unregisterComponentInstance: unregisterComponentInstance,
           createNestedComponentInstance: nestedComponentInstanceForNode,
+          componentPathSegment,
+          withComponentRenderPath: function (path, render) { componentRenderPath.push(path); try { return render(); } finally { componentRenderPath.pop(); } },
           componentScopeFor,
           applyComponentDerived,
           patchStaticComponentButtonNode: patchStaticComponentButtonNode,
@@ -3820,7 +3795,7 @@ const char* browserRuntimeComponentChunk() {
         return parts.filter(function (part) { return part.length > 0; });
       }
 
-      function splitTopLevelList(source) {
+      function splitTopLevelList(source, words) {
         const parts = [];
         let current = '';
         let quote = '';
@@ -3840,7 +3815,7 @@ const char* browserRuntimeComponentChunk() {
           }
           if (ch === '{' || ch === '[' || ch === '(') depth += 1;
           if (ch === '}' || ch === ']' || ch === ')') depth -= 1;
-          if (ch === ',' && depth === 0) {
+          if ((words ? /\s/.test(ch) : ch === ',') && depth === 0) {
             if (current.trim()) parts.push(current.trim());
             current = '';
           } else {
@@ -5659,7 +5634,8 @@ const char* browserRuntimeBootTransportChunk() {
         applyRoutes();
         refreshLiveBodyPlanRender();
       }
-      if (document.readyState === 'loading') {
+      if (document.readyState === 'loading' ||
+          (document.readyState === 'interactive' && document.currentScript && document.currentScript.defer)) {
         document.addEventListener('DOMContentLoaded', applyInitial);
       } else {
         applyInitial();

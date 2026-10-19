@@ -2623,3 +2623,30 @@ TEST(RuntimePlan, ClientProjectionRetainsRootLinkedPayloadAndExecutableModules) 
     const auto explain = jtml::runtimeProjectPlanToExplainJson(project);
     EXPECT_EQ(explain["linkedPlan"], jtml::runtimePlanToExplainJson(project.linkedPlan));
 }
+
+TEST(RuntimePlan, AdversarialTaskboardDependenciesCoverDynamicOperands) {
+    struct Case { std::string expression; std::vector<std::string> roots; };
+    const std::vector<Case> cases = {
+        {"records[index].score + offset", {"records", "index", "offset"}},
+        {"records[index].score + offset > limit && enabled", {"records", "index", "offset", "limit", "enabled"}},
+        {"enabled ? records[index].score + offset : fallback", {"enabled", "records", "index", "offset", "fallback"}},
+    };
+    for (const auto& test : cases) {
+        SCOPED_TRACE(test.expression);
+        const auto ir = jtml::parseExpressionIr(test.expression);
+        ASSERT_TRUE(ir);
+        const auto dependencies = jtml::expressionIrDependencies(*ir);
+        auto program = parseFriendly("jtml 2\nmake Probe records index offset limit enabled fallback\n  show " + test.expression + "\npage\n  p \"Probe\"\n");
+        jtml::RuntimeProjectPlan project;
+        project.linkedPlan = jtml::buildRuntimePlan(program);
+        const auto& nodes = project.linkedPlan.componentDefinitions.front().bodyPlan;
+        const auto node = std::find_if(nodes.begin(), nodes.end(), [](const auto& n) { return n.kind == "template" && n.name == "show"; });
+        ASSERT_NE(node, nodes.end());
+        const auto emitted = jtml::emitStaticComponentModuleAsset(project);
+        for (const auto& root : test.roots) {
+            EXPECT_TRUE(contains(dependencies, root)) << "Expression IR: " << root;
+            EXPECT_TRUE(contains(node->reads, root)) << "Runtime Plan: " << root;
+            EXPECT_NE(emitted.find("!writes['" + root + "']"), std::string::npos) << "Generated selection: " << root;
+        }
+    }
+}

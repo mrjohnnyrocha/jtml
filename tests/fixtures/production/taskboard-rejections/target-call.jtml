@@ -1,0 +1,10 @@
+jtml 2
+
+# Unknown computed target execution must not fall back at runtime.
+make Candidate
+  let items = [{ score: 0 }]
+  when mutate
+    items[mystery()].score = 1
+  p "Candidate"
+page
+  Candidate

@@ -23,3 +23,8 @@ for fixture in ('partial', 'nested'):
 PYTHON
 node "${ROOT}/tests/browser/keyed_lifecycle.cjs" "${OUT}"
 node "${ROOT}/tests/browser/keyed_commit.cjs" "${OUT}"
+
+"${JTML_BIN:-"${ROOT}/build/jtml"}" build \
+  "${ROOT}/tests/fixtures/production/static-keyed-path/index.jtml" --target browser --out "${OUT}/static-keyed-path"
+node "${ROOT}/tests/browser/component_render_path.cjs" "${OUT}/static-keyed-path/jtml-runtime.js"
+node "${ROOT}/tests/browser/static_keyed_path.cjs" "${OUT}/static-keyed-path"

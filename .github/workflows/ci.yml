@@ -83,6 +83,9 @@ jobs:
       - name: Adversarial Taskboard Core C01–C14 (browser required)
         run: scripts/test_taskboard_core.sh
 
+      - name: Taskboard negatives and diagnostic provenance audit (browser required)
+        run: scripts/test_taskboard_negative.sh
+
       - name: Nested keyed lifecycle regressions (browser required)
         run: scripts/test_keyed_lifecycle.sh
 

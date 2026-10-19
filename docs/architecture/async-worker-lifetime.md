@@ -167,3 +167,29 @@ also reported a broken pipe during watch concurrency while headers/builds were
 changing; no native crash diagnostic was captured. Frozen-source HTTP/WS runs
 subsequently passed all three modes. Earlier failures remain recorded separately
 from final passing evidence; they are not silently converted to passes.
+
+## Integration with PR #18 — 2026-10-19
+
+Integrated main `92e7772` without rewriting PR history. The merge preserves
+PR #18's static keyed paths, deferred startup and Taskboard negative suite.
+Review found no new supported-contract lifetime defect at that integration
+boundary; this is bounded review evidence, not unrestricted concurrency proof.
+
+On the combined frozen implementation: Release CTest **375/375 PASS**;
+ASan/UBSan **13 async + 6 synchronous-call probes PASS**; separate TSan
+**13 + 6 PASS**, all with `halt_on_error=1`. The full local gate passed,
+including all nine actual browser benchmarks with clean exits, production
+references, C01–C14, N01–N03/N05–N08, keyed lifecycle, literal fidelity,
+local security, async HTTP/WebSocket serve/Studio/watch and live smoke 8/8.
+No applicable check was skipped. The unchanged strict N04 command still exits 2;
+N04 and full T0 are **BLOCKED**, not passing because the normal gate passes.
+The known intermittent store crash did not reproduce; its cause is unresolved.
+
+The preserved old C API library again fails the same ASan probe with
+heap-use-after-free in `JtmlTranspiler::getNodeBinding` (subprocess exit -6).
+Current-library probes pass. Shared runtime is 271564 raw bytes against 272000,
+50352 gzip bytes and 40582 Brotli bytes (Node zlib defaults). No budget changed.
+Logs are retained under `/tmp/jtml-async-review/mission-*`; strict provenance
+negative evidence is `/tmp/jtml-deep-mission/n04-before.log`.
+Hosted Ubuntu/macOS results must be checked against the resulting pushed merge
+commit separately; these local results do not substitute for hosted CI.

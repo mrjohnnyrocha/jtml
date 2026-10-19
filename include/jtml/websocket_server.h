@@ -61,14 +61,19 @@ namespace JTMLInterpreter {
         // TIME_WAIT sockets from a previous run.
         void run(uint16_t port) {
             try {
+                if (stopRequested) return;
                 wsServer.set_reuse_addr(true);
                 listenPort = port;
                 wsServer.listen(websocketpp::lib::asio::ip::tcp::endpoint(
                     websocketpp::lib::asio::ip::address_v4::loopback(), port));
                 wsServer.start_accept();
                 isRunning = true;
+                if (stopRequested) {
+                    wsServer.stop_listening();
+                    wsServer.stop();
+                }
                 {
-                    std::lock_guard<std::recursive_mutex> lock(localServerExecutionMutex());
+                    std::lock_guard<JTMLInterpreter::LocalServerExecutionMutex> lock(localServerExecutionMutex());
                     std::cout << "[WebSocket] Server started on 127.0.0.1:" << port << "\n";
                 }
                 wsServer.run();
@@ -83,6 +88,7 @@ namespace JTMLInterpreter {
         }
 
         void stop() {
+            stopRequested = true;
             if (!isRunning) {
                 return;
             }
@@ -119,7 +125,7 @@ namespace JTMLInterpreter {
 
         // Broadcast a message to all connected clients
         void broadcastMessage(const std::string& message) {
-            std::lock_guard<std::recursive_mutex> lock(localServerExecutionMutex());
+            std::lock_guard<JTMLInterpreter::LocalServerExecutionMutex> lock(localServerExecutionMutex());
             for (const auto& hdl : connections) {
                 wsServer.send(hdl, message, websocketpp::frame::opcode::text);
             }
@@ -128,13 +134,14 @@ namespace JTMLInterpreter {
     private:
         server wsServer;
         std::atomic<bool> isRunning{false};
+        std::atomic<bool> stopRequested{false};
         uint16_t listenPort = 0;
         std::unordered_set<connection_hdl, ConnectionHash, ConnectionEqual> connections;
         std::function<void(const std::string&, connection_hdl)> messageCallback;
         std::function<void(connection_hdl)> openCallback;
 
         void onOpen(connection_hdl hdl) {
-            std::lock_guard<std::recursive_mutex> lock(localServerExecutionMutex());
+            std::lock_guard<JTMLInterpreter::LocalServerExecutionMutex> lock(localServerExecutionMutex());
              connections.insert(hdl);
             std::cout << "[WebSocket] Client connected.\n";
             if (openCallback) {
@@ -143,13 +150,13 @@ namespace JTMLInterpreter {
         }
 
         void onClose(connection_hdl hdl) {
-            std::lock_guard<std::recursive_mutex> lock(localServerExecutionMutex());
+            std::lock_guard<JTMLInterpreter::LocalServerExecutionMutex> lock(localServerExecutionMutex());
             connections.erase(hdl);
             std::cout << "[WebSocket] Client disconnected.\n";
         }
 
         void onMessage(connection_hdl hdl, server::message_ptr msg) {
-            std::lock_guard<std::recursive_mutex> lock(localServerExecutionMutex());
+            std::lock_guard<JTMLInterpreter::LocalServerExecutionMutex> lock(localServerExecutionMutex());
             if (messageCallback) {
                 messageCallback(msg->get_payload(), hdl);
             }

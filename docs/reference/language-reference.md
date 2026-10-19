@@ -963,7 +963,15 @@ function greet(name)\\
 \\
 ```
 
-`async function` dispatches calls without blocking the caller:
+`async function` dispatches calls without waiting for their bodies to execute.
+The interpreter owns a serial task queue; nested async calls are deferred too.
+Reset/reload finishes active execution and cancels pending old-program tasks;
+destruction drains admitted work. Tasks must finish for draining to complete.
+Worker errors/cancellations are reported; embedding callers can use
+`waitForAsync()` as a completion/error boundary outside execution callbacks.
+See the [async lifetime contract](../architecture/async-worker-lifetime.md).
+
+Example:
 
 ```jtml
 async function refresh()\\

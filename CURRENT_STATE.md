@@ -521,3 +521,27 @@ all nine browser benchmarks with clean exit, package/site/LSP checks and live
 smoke 8/8. No validation was skipped; the store crash did not reproduce in this
 run and remains unresolved. Final-head hosted CI is separate PR evidence. See the
 [security contract](docs/tooling/local-server-security.md) for exact boundaries.
+
+## Owned interpreter async lifetime — 2026-10-19
+
+Async functions now enqueue explicitly owned work and remain deferred. Live
+workers serialize with HTTP/WS/watch adapters; headless instances use separate
+execution locks. Reset/reload finishes active execution and cancels pending
+old-generation work with diagnostics. Normal destruction closes admission and
+drains admitted work and finite descendants outside execution locks, then joins
+the WebSocket thread. Stop-before-start requests are retained. Reentrant
+lifecycle replacement/drain and self/locked destruction are explicitly rejected;
+borrowed mutable environments/values still require host serialization/lifetime
+coordination. See the [lifetime and public-operation audit](docs/architecture/async-worker-lifetime.md).
+
+Local evidence on frozen implementation: 373/373 CTests; ASan/UBSan 18/18 and
+separate TSan 18/18 with halt-on-error; actual HTTP/WS async execution in serve,
+Studio and watch; full local gate including all nine clean-exit browser
+benchmarks, production references, Taskboard C01–C14, security/lifecycle/literal
+regressions, package/site/LSP checks and live smoke 8/8. No validation skipped or
+budgets raised. Negative controls reproduce the old unowned-worker boundary and
+lost early-stop request. Earlier fixture/setup failures and a post-PASS TSan
+finalization timeout remain documented rather than counted as passes. The native
+store crash remains unresolved and did not occur in the final gate. Hosted CI
+is separate final-head PR evidence. No Taskboard/browser rendering implementation
+changed; N01–N08 remain outside this work.

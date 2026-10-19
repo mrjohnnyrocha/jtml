@@ -423,7 +423,91 @@ nlohmann::json bodyPlanNodeToLiveJson(
 }
 }
 
+namespace {
+thread_local Interpreter* executingAsyncInterpreter = nullptr;
+}
+
+void Interpreter::enqueueAsync(const std::shared_ptr<JTML::Function>& function,
+                               const std::vector<std::shared_ptr<JTML::VarValue>>& args,
+                               const std::shared_ptr<JTML::VarValue>& thisPtr) {
+    // executionMutex -> asyncMutex. The worker never waits for executionMutex
+    // while holding asyncMutex; drain/destruction never hold executionMutex.
+    std::lock_guard<std::mutex> lock(asyncMutex);
+    if (asyncStopping && executingAsyncInterpreter != this) throw FunctionCallError("Interpreter is shutting down; async admission is closed");
+    if (!asyncWorker.joinable()) asyncWorker = std::thread([this] { runAsyncTasks(); });
+    asyncTasks.push_back({function, args, thisPtr, asyncGeneration});
+    asyncCondition.notify_all();
+}
+
+void Interpreter::runAsyncTasks() {
+    for (;;) {
+        AsyncTask task;
+        {
+            std::unique_lock<std::mutex> lock(asyncMutex);
+            asyncCondition.wait(lock, [&] { return asyncStopping || !asyncTasks.empty(); });
+            if (asyncTasks.empty() && asyncStopping) return;
+            task = std::move(asyncTasks.front());
+            asyncTasks.pop_front();
+            asyncRunning = true;
+        }
+        {
+            std::lock_guard<JTML::LocalServerExecutionMutex> lock(executionMutex);
+            executingAsyncInterpreter = this;
+            try {
+                if (task.generation != asyncGeneration)
+                    throw FunctionCallError("Async function '" + task.function->name + "' cancelled by reset/reload");
+                executeFunction(task.function, task.args, task.thisPtr, false);
+            } catch (const std::exception& error) {
+                handleError("Async Function Execution Error: " + std::string(error.what()));
+            } catch (...) {
+                handleError("Async Function Execution Error: unknown exception");
+            }
+            executingAsyncInterpreter = nullptr;
+        }
+        {
+            std::lock_guard<std::mutex> lock(asyncMutex);
+            asyncRunning = false;
+        }
+        asyncCondition.notify_all();
+    }
+}
+
+void Interpreter::waitForAsync() {
+    if (JTML::LocalServerExecutionMutex::heldByCurrentThread())
+        throw FunctionCallError("Cannot wait for async work while holding an execution lock");
+    std::vector<std::string> errors;
+    {
+        std::unique_lock<std::mutex> lock(asyncMutex);
+        asyncCondition.wait(lock, [&] { return asyncTasks.empty() && !asyncRunning; });
+        errors.swap(asyncErrors);
+    }
+    if (!errors.empty()) {
+        std::string message = "Async interpreter failures:";
+        for (const auto& error : errors) message += "\n" + error;
+        throw FunctionCallError(message);
+    }
+}
+
+void Interpreter::rejectReentrantReset() {
+    // Resetting a live frame would make its scope restoration stale. Recursive
+    // snapshot/event callbacks are permitted; lifecycle replacement is not.
+    std::lock_guard<std::mutex> lock(functionCallMutex);
+    if (functionCallDepth) throw FunctionCallError("Cannot reset/reload during an active function callback");
+}
+
 Interpreter::~Interpreter() {
+    // A worker may need either lock to finish a callback/broadcast. Never join
+    // under one, including destruction reentered by user callbacks.
+    if (JTML::LocalServerExecutionMutex::heldByCurrentThread()) {
+        std::cerr << "Interpreter destruction while holding an execution lock is unsupported\n";
+        std::terminate();
+    }
+    {
+        std::lock_guard<std::mutex> lock(asyncMutex);
+        asyncStopping = true;
+    }
+    asyncCondition.notify_all();
+    if (asyncWorker.joinable()) asyncWorker.join();
     if (wsServer) {
         wsServer->stop();
     }
@@ -433,7 +517,8 @@ Interpreter::~Interpreter() {
     }
 }
 Interpreter::Interpreter(JtmlTranspiler& transpilerRef, InterpreterConfig config)
-    : transpiler(transpilerRef) // Initialize transpiler reference
+    : transpiler(transpilerRef),
+      executionMutex(config.startWebSocket ? JTML::localServerExecutionMutex() : headlessExecutionMutex)
 {
     // Create the Renderer
     renderer = std::make_unique<JTML::Renderer>();
@@ -482,6 +567,9 @@ Interpreter::Interpreter(JtmlTranspiler& transpilerRef, InterpreterConfig config
 }
 
 void Interpreter::reset() {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
+    rejectReentrantReset();
+    ++asyncGeneration; // stale queued/popped tasks cannot enter the replacement program
     // Drop the current program state. We keep `wsServer`, `wsThread`, and
     // `renderer` alive so the frontend connection is preserved across
     // lesson / playground switches.
@@ -502,6 +590,8 @@ void Interpreter::reset() {
 }
 
 void Interpreter::reload(const std::vector<std::unique_ptr<ASTNode>>& program) {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
+    rejectReentrantReset();
     reset();
     interpret(program);
     if (wsServer) {
@@ -514,6 +604,7 @@ void Interpreter::reload(const std::vector<std::unique_ptr<ASTNode>>& program) {
 }
 
 std::string Interpreter::getBindingsJSON() {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     nlohmann::json out;
     out["content"]    = nlohmann::json::object();
     out["attributes"] = nlohmann::json::object();
@@ -559,6 +650,7 @@ std::string Interpreter::getBindingsJSON() {
 }
 
 std::string Interpreter::getStateJSON() {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     std::function<nlohmann::json(jtml::SemanticModuleId)> moduleIdToJson = [](jtml::SemanticModuleId id) {
         return id == jtml::InvalidSemanticModuleId ? nlohmann::json(nullptr) : nlohmann::json(id);
     };
@@ -1418,6 +1510,7 @@ std::string Interpreter::getStateJSON() {
 }
 
 std::string Interpreter::getComponentsJSON() {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     nlohmann::json out = nlohmann::json::array();
     if (!globalEnv) return out.dump();
     const auto state = nlohmann::json::parse(getStateJSON());
@@ -1426,6 +1519,7 @@ std::string Interpreter::getComponentsJSON() {
 }
 
 std::string Interpreter::getComponentDefinitionsJSON() {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     std::function<nlohmann::json(jtml::SemanticModuleId)> moduleIdToJson = [](jtml::SemanticModuleId id) {
         return id == jtml::InvalidSemanticModuleId ? nlohmann::json(nullptr) : nlohmann::json(id);
     };
@@ -1491,6 +1585,7 @@ bool Interpreter::dispatchEvent(const std::string& elementId,
                                 const nlohmann::json& args,
                                 std::string& updatedBindingsJSON,
                                 std::string& errorOut) {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     if (!globalEnv) {
         errorOut = "No active program";
         return false;
@@ -1550,6 +1645,7 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
                                           const nlohmann::json& args,
                                           std::string& updatedBindingsJSON,
                                           std::string& errorOut) {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     if (!globalEnv) {
         errorOut = "No active program";
         return false;
@@ -2366,6 +2462,7 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
 // In jtml_interpreter.cpp
 
 void Interpreter::populateBindings(websocketpp::connection_hdl hdl) {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     try {
         // Debug log: Starting the populateBindings process
         std::cout << "[DEBUG] Starting populateBindings for WebSocket connection.\n";
@@ -2425,6 +2522,7 @@ struct ContinueException : public std::exception {
 };
 
 void Interpreter::handleFrontendMessage(const std::string& msg, websocketpp::connection_hdl hdl) {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     try {
         // Parse the incoming message as JSON
         auto parsedMessage = nlohmann::json::parse(msg);
@@ -2555,11 +2653,13 @@ void Interpreter::handleFrontendMessage(const std::string& msg, websocketpp::con
 
 
 std::shared_ptr<JTML::Environment> Interpreter::getCurrentEnvironment() const {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     return currentEnv;
 }
 
 
 void Interpreter::interpret(const JtmlElementNode& root) {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     // Recursively process the JtmlElementNode
     std::cout << "Interpreting element: " << root.tagName << "\n";
 
@@ -2576,11 +2676,13 @@ void Interpreter::interpret(const JtmlElementNode& root) {
 
 // Interpret a single AST node (e.g., JtmlElementNode)
 void Interpreter::interpret(const ASTNode& node) {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     interpretNode(node);
 }
 
 // Interpret a vector of AST nodes (e.g., the entire program)
 void Interpreter::interpret(const std::vector<std::unique_ptr<ASTNode>>& program) {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     registerComponentInstances(program);
     for (const auto& node : program) {
             std::cout << " " << node->toString() << "\n";
@@ -2594,6 +2696,7 @@ void Interpreter::interpret(const std::vector<std::unique_ptr<ASTNode>>& program
 
 // Interpret directly from code (string)
 void Interpreter::interpret(const std::string& code) {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     try {
         Lexer lexer(jtml::normalizeSourceSyntax(code));
         auto tokens = lexer.tokenize();
@@ -4359,16 +4462,7 @@ std::shared_ptr<JTML::VarValue> Interpreter::executeFunction(
     bool dispatchAsync
 ) {
     if (dispatchAsync && func->isAsync) {
-        auto asyncFunc = func;
-        auto asyncArgs = args;
-        auto asyncThis = thisPtr;
-        std::thread([this, asyncFunc, asyncArgs, asyncThis]() {
-            try {
-                executeFunction(asyncFunc, asyncArgs, asyncThis, false);
-            } catch (const std::exception& e) {
-                handleError("Async Function Execution Error: " + std::string(e.what()));
-            }
-        }).detach();
+        enqueueAsync(func, args, thisPtr);
         return std::make_shared<JTML::VarValue>(JTML::ValueVariant{""});
     }
 
@@ -4597,6 +4691,15 @@ bool Interpreter::evaluateCondition(const ExpressionStatementNode* condition, st
 
 // (F) Evaluate an expression and return its string value
 std::shared_ptr<JTML::VarValue> Interpreter::evaluateExpression(const ExpressionStatementNode* exprNode, std::shared_ptr<JTML::Environment> env) {
+    // Preserve PR14's explicit rejection of overlapping raw function entries.
+    // Adapter callbacks/snapshots instead wait at their outer execution guard.
+    {
+        std::lock_guard<std::mutex> lock(functionCallMutex);
+        if (functionCallDepth && functionCallOwner != std::this_thread::get_id())
+            throw FunctionCallError("Concurrent function execution on the same Interpreter is unsupported");
+    }
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
+
 
     if (!exprNode) {
         throw std::runtime_error("Null expression node encountered.");
@@ -5321,6 +5424,7 @@ void Interpreter::updateVariable(JTML::VarID varID, std::shared_ptr<JTML::Enviro
 
 
 double Interpreter::getNumericValue(const std::shared_ptr<JTML::VarValue>& valPtr) {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     if (!valPtr) throw std::runtime_error("Null VarValue");
     if (valPtr->isNumber()) {
         return valPtr->getNumber();
@@ -5342,6 +5446,7 @@ double Interpreter::getNumericValue(const std::shared_ptr<JTML::VarValue>& valPt
 }
 
 std::string Interpreter::getStringValue(const std::shared_ptr<JTML::VarValue>& valPtr) {
+    std::lock_guard<JTML::LocalServerExecutionMutex> executionLock(executionMutex);
     if (!valPtr) throw std::runtime_error("Null VarValue");
     if (valPtr->isString()) {
         return valPtr->getString();
@@ -5388,6 +5493,10 @@ std::string Interpreter::getStringValue(const std::shared_ptr<JTML::VarValue>& v
 
 // Handle and report errors
 void Interpreter::handleError(const std::string& message) {
+    if (executingAsyncInterpreter == this) {
+        std::lock_guard<std::mutex> lock(asyncMutex);
+        asyncErrors.push_back(message);
+    }
     std::cerr << "Interpreter Error: " << message << "\n";
     // Depending on requirements, you might throw exceptions or handle errors differently
 }

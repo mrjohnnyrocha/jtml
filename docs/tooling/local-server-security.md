@@ -63,17 +63,17 @@ function execution by another thread. The adapter lock precedes this short
 bookkeeping lock; no user callback or broadcast runs while that bookkeeping
 lock is held. This does not turn PR #14's ownership check into a scheduler.
 
-Detached async function workers remain outside adapter serialization. They
-capture the interpreter by raw `this`, are not cancelled/joined before reload
-or destruction, and may read/write environments or stdout concurrently with
-requests. Function-entry ownership rejection does not cover those accesses or
-worker lifetime. Async code must not be considered safely synchronized by this
-PR. Fixing worker ownership and lifecycle requires a separate focused change;
-`Interpreter::executeFunction()` and browser string decoding are unchanged here.
+Async functions now use Interpreter-owned queued execution under the same live
+adapter lock. Reset/reload waits for active execution and invalidates pending
+old-program tasks; destruction drains without holding execution locks. This
+supersedes PR #15's detached-worker limitation. See the
+[async lifetime contract](../architecture/async-worker-lifetime.md) for lock
+ordering, cancellation/failure reporting, finite-drain and embedding boundaries.
+It does not establish arbitrary concurrent access through escaped mutable handles.
 
 SIGINT/SIGTERM termination and immediate reuse of both listener ports are
 integration-tested. The test accepts the OS signal exit status; it does not
-prove graceful draining of active requests or detached workers.
+prove graceful draining of active requests or async work on process termination.
 
 ## Reproducible evidence
 

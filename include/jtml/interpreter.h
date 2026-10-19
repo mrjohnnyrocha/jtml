@@ -22,6 +22,8 @@
 #include <vector>
 #include <memory>
 #include <mutex>
+#include <condition_variable>
+#include <deque>
 #include <thread>
 #include <iostream>
 #include "json.hpp"
@@ -39,14 +41,19 @@ struct InterpreterConfig {
     bool startWebSocket = true;
 };
 
-// Public operations require external serialization and a live Interpreter.
-// Function-entry ownership checks reject overlapping calls; they do not make
-// environments, callbacks, reset, or detached async lifetime thread-safe.
+// Public state operations serialize with owned async execution. Borrowed mutable
+// environments/values still require external serialization. Callers must keep
+// this object alive for all external calls; destruction from a callback is invalid.
 // Interpreter class
 class Interpreter {
 public:
     explicit Interpreter(JtmlTranspiler& transpiler, InterpreterConfig config = {});
-    ~Interpreter(); // Default destructor
+    ~Interpreter();
+
+    // Wait for all admitted work, including nested async calls; throw a combined
+    // diagnostic for worker failures/cancellations since the previous wait.
+    // Never call while holding an execution lock or from a worker/callback.
+    void waitForAsync();
 
     void handleFrontendMessage(const std::string& msg, websocketpp::connection_hdl hdl);
     void populateBindings(websocketpp::connection_hdl hdl);
@@ -107,7 +114,29 @@ public:
     // Error handling
 
 private:
+    friend struct InterpreterAsyncProbe; // deterministic lifecycle barriers in subprocess tests
     JtmlTranspiler& transpiler;
+    JTML::LocalServerExecutionMutex headlessExecutionMutex;
+    JTML::LocalServerExecutionMutex& executionMutex;
+    struct AsyncTask {
+        std::shared_ptr<JTML::Function> function;
+        std::vector<std::shared_ptr<JTML::VarValue>> args;
+        std::shared_ptr<JTML::VarValue> thisPtr;
+        size_t generation;
+    };
+    std::mutex asyncMutex;
+    std::condition_variable asyncCondition;
+    std::deque<AsyncTask> asyncTasks;
+    std::vector<std::string> asyncErrors;
+    std::thread asyncWorker;
+    bool asyncStopping = false;
+    bool asyncRunning = false;
+    size_t asyncGeneration = 0; // executionMutex
+    void enqueueAsync(const std::shared_ptr<JTML::Function>& function,
+                      const std::vector<std::shared_ptr<JTML::VarValue>>& args,
+                      const std::shared_ptr<JTML::VarValue>& thisPtr);
+    void runAsyncTasks();
+    void rejectReentrantReset();
     std::shared_ptr<JTML::Environment> globalEnv;
     std::shared_ptr<JTML::Environment> currentEnv;
     bool inFunctionContext = false;

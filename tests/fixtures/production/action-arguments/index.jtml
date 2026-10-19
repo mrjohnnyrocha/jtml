@@ -1,0 +1,15 @@
+jtml 2
+make Arguments
+  let result = "Before"
+  let calls = 0
+  when receive batch suffix
+    result = batch[0].text + suffix
+    calls += 1
+  box class "arguments"
+    button "Send structured arguments" click receive([{ "text": "quoted ' & <雪>", "nested": [1, 2] }], " done")
+    box class "result"
+      show result
+    box class "calls"
+      show calls
+page
+  Arguments

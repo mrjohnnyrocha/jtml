@@ -1,0 +1,12 @@
+jtml 2
+
+# Padding is intentional: original Friendly line/column is independently known.
+make Candidate incoming
+  let alias = {}
+  when mutate
+    let nested = { inner: incoming }
+    alias = nested
+    alias.inner.score = 1
+  p "Candidate"
+page
+  p "Rejected"

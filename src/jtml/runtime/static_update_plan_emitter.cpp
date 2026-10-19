@@ -202,6 +202,7 @@ std::vector<std::string> splitStaticComponentWords(const std::string& source) {
     std::vector<std::string> words;
     std::string current;
     char quote = '\0';
+    int depth = 0;
     for (size_t i = 0; i < source.size(); ++i) {
         const char ch = source[i];
         if (quote != '\0') {
@@ -218,7 +219,9 @@ std::vector<std::string> splitStaticComponentWords(const std::string& source) {
             current += ch;
             continue;
         }
-        if (std::isspace(static_cast<unsigned char>(ch))) {
+        if (ch == '{' || ch == '[' || ch == '(') ++depth;
+        if (ch == '}' || ch == ']' || ch == ')') --depth;
+        if (depth == 0 && std::isspace(static_cast<unsigned char>(ch))) {
             if (!current.empty()) {
                 words.push_back(current);
                 current.clear();
@@ -1564,24 +1567,22 @@ std::string directStaticForCreateExpression(const nlohmann::json& componentPlan,
         << "else values = [values]; "
         << "} "
         << "const rendered = []; "
-        << "function jtml_static_key_segment(value, fallback) { "
-        << "const raw = value == null || value === '' ? fallback : value; "
-        << "return String(raw).replace(/[^A-Za-z0-9_.:-]/g, '_'); "
-        << "} "
         << "for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1) { "
         << "const childScope = Object.assign({}, scope); "
         << "childScope[" << jsStringLiteral(itemName) << "] = values[itemIndex]; "
-        << "const keySegment = jtml_static_key_segment(";
+        << "const keySegment = h.componentPathSegment(";
     if (keyExpression.empty()) {
         out << "itemIndex";
     } else {
         out << "(function(scope){ return " << jsDirectExpressionCall(keyPlan)
             << "; })(childScope)";
     }
-    out << ", itemIndex); "
-        << "const innerHtml = (function(scope){ const children = [];";
+    // Match reconciliation's scoped loop identity while creating nested children.
+    out << "); "
+        << "const innerHtml = h.withComponentRenderPath('for" << nodeIndex
+        << "_' + keySegment, function(){ return (function(scope){ const children = [];";
     appendDirectRenderedChildrenStatements(out, childExpressions, "children");
-    out << " return children.join(''); })(childScope); "
+    out << " return children.join(''); })(childScope); }); "
         << "if (typeof innerHtml !== 'string') return null; "
         << "rendered.push('<span data-jtml-direct-list-item=\""
         << nodeIndex

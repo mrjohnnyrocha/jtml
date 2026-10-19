@@ -434,7 +434,10 @@ void Interpreter::enqueueAsync(const std::shared_ptr<JTML::Function>& function,
     // while holding asyncMutex; drain/destruction never hold executionMutex.
     std::lock_guard<std::mutex> lock(asyncMutex);
     if (asyncStopping && executingAsyncInterpreter != this) throw FunctionCallError("Interpreter is shutting down; async admission is closed");
-    if (!asyncWorker.joinable()) asyncWorker = std::thread([this] { runAsyncTasks(); });
+    // During drain only the existing worker can admit descendants. Do not
+    // inspect its std::thread handle concurrently with the owner's join().
+    if (!asyncStopping && !asyncWorker.joinable())
+        asyncWorker = std::thread([this] { runAsyncTasks(); });
     asyncTasks.push_back({function, args, thisPtr, asyncGeneration});
     asyncCondition.notify_all();
 }

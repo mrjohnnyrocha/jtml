@@ -75,6 +75,32 @@ from an execution callback or while holding an adapter/execution lock is rejecte
 Admission concurrent with wait has normal queue linearization: work admitted
 after the empty observation belongs to a later wait.
 
+## C API resource ownership
+
+C API replacement drains its current interpreter before compiling/interpreting
+another program, and destroys that interpreter before releasing its referenced
+transpiler. Worker failures at this completion boundary return through the
+existing `jtml_load` error result; the old context is retained and the diagnostic
+is consumed once. New-program async calls remain deferred. The native renderer
+no longer logs from its destructor: that shared-output write could overlap the
+replacement runtime’s worker even after old work had drained.
+
+The added C API subprocess exercises queued native rendering, repeated load,
+destruction and failure propagation. A saved ASan-instrumented owned-worker
+candidate retaining the old C API assignment order aborted with heap-use-after-
+free in `JtmlTranspiler::getNodeBinding`; the corrected probe passes ASan/UBSan.
+The extended TSan probe also exposed the old/new-runtime diagnostic overlap,
+which the replacement fence and quiet native teardown remove. No sanitizer
+suppression hides either failure. These C API checks extend the original 18
+probes to 19.
+
+Hosts must externally serialize opaque-context API calls and keep a context alive
+for the complete call. Concurrent pointer replacement/destruction versus context
+access is not covered by per-interpreter state locking. Unrestricted parallel
+embedding of unrelated headless runtimes (including shared diagnostic output)
+remains outside this verified matrix; independence of function frames is not a
+claim of unrestricted process-wide concurrency safety.
+
 ## Lock ordering
 
 1. Execution lock, then short function-frame bookkeeping or async queue lock.
@@ -119,7 +145,7 @@ it to this defect; failures must not be hidden by retries or skips.
 
 ## Validation record (macOS, Apple Clang 15)
 
-The final ASan/UBSan and separate TSan runs each passed all 18 async/function
+The final ASan/UBSan and separate TSan runs each passed all 19 async/function
 probes with `halt_on_error=1`; UBSan also enabled stack traces. No sanitizer
 suppression, timeout increase or retry loop was added. Sanitizer results cover
 these isolated probes, not arbitrary embedding code or a complete network-stack

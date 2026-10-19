@@ -534,8 +534,8 @@ lifecycle replacement/drain and self/locked destruction are explicitly rejected;
 borrowed mutable environments/values still require host serialization/lifetime
 coordination. See the [lifetime and public-operation audit](docs/architecture/async-worker-lifetime.md).
 
-Local evidence on frozen implementation: 373/373 CTests; ASan/UBSan 18/18 and
-separate TSan 18/18 with halt-on-error; actual HTTP/WS async execution in serve,
+Local evidence on frozen implementation: 374/374 CTests; ASan/UBSan 19/19 and
+separate TSan 19/19 with halt-on-error; actual HTTP/WS async execution in serve,
 Studio and watch; full local gate including all nine clean-exit browser
 benchmarks, production references, Taskboard C01–C14, security/lifecycle/literal
 regressions, package/site/LSP checks and live smoke 8/8. No validation skipped or
@@ -545,3 +545,11 @@ finalization timeout remain documented rather than counted as passes. The native
 store crash remains unresolved and did not occur in the final gate. Hosted CI
 is separate final-head PR evidence. No Taskboard/browser rendering implementation
 changed; N01–N08 remain outside this work.
+
+The owner audit also fixes C API replacement: it drains previous work before
+new compilation, surfaces old worker errors through the existing error result,
+and destroys the previous Interpreter before releasing its transpiler. A saved
+old-owner-order candidate reproduces ASan heap-use-after-free in
+`getNodeBinding`; the bounded C API regression now passes both sanitizers.
+Native renderer teardown no longer writes shared diagnostic output, fixing the
+TSan-proven overlap with a replacement runtime. Browser rendering is unchanged.

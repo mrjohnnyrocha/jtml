@@ -75,6 +75,22 @@ jtml_destroy(ctx);
 `jtml_component_definitions` return the same JSON shapes as the HTTP runtime
 API.
 
+## Async completion and ownership
+
+Async calls remain deferred. Before replacement, `jtml_load` drains the previous
+runtime without execution locks held. Queued worker failures return through its
+existing error result and leave that context in place; the reported errors are
+consumed, so a subsequent load can replace it. The previous interpreter is
+destroyed before its referenced transpiler is released. `jtml_destroy` also
+drains admitted work and finite descendants before releasing owned resources.
+Draining requires finite tasks and a finite descendant task graph.
+
+Hosts must serialize calls on each opaque context and keep it alive throughout
+each call. Context replacement/destruction must not race context access or be
+invoked from an execution callback/while holding framework execution locks.
+Per-interpreter locks do not establish unrestricted parallel embedding safety.
+See the [async lifetime contract](../architecture/async-worker-lifetime.md).
+
 ## Dispatch
 
 Events mirror `POST /api/event`:

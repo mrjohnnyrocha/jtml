@@ -21,10 +21,9 @@ namespace JTMLInterpreter {
 
             }
 
-        // Destructor
-        ~Renderer() {
-            std::cout << "[DEBUG] Renderer destroyed\n";
-        }
+        // Teardown can overlap another headless runtime's deferred execution;
+        // avoid an unsynchronized write to shared std::cout formatting state.
+        ~Renderer() = default;
         // Set the callback to communicate with the frontend (e.g., WebSocket sender)
         void setFrontendCallback(std::function<void(const std::string&)> callback) {
             sendToFrontend = callback;

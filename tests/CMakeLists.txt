@@ -90,3 +90,8 @@ foreach(mode execute cancel reset reload snapshots callbacks errors shutdown rep
     add_test(NAME InterpreterAsync.${mode} COMMAND jtml_async_probe ${mode})
     set_tests_properties(InterpreterAsync.${mode} PROPERTIES TIMEOUT 20 LABELS "unit;interpreter;async")
 endforeach()
+
+add_executable(jtml_async_c_api_probe c_api_async_probe.cpp)
+target_link_libraries(jtml_async_c_api_probe PRIVATE jtml_c)
+add_test(NAME InterpreterAsync.c_api_lifetime COMMAND jtml_async_c_api_probe)
+set_tests_properties(InterpreterAsync.c_api_lifetime PROPERTIES TIMEOUT 20 LABELS "unit;interpreter;async")

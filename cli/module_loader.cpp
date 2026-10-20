@@ -229,8 +229,8 @@ std::runtime_error importResolutionError(const std::string& specifier,
 }
 
 struct FriendlyLoad {
-    std::string classicPrefix;
-    std::string friendlySource;
+    MappedSource classicPrefix;
+    MappedSource friendlySource;
 };
 
 struct ExportDecl {
@@ -329,7 +329,7 @@ FriendlyLoad loadFriendlyDependency(const std::filesystem::path& inputFile,
     if (!isFriendlySyntax(source) && !looksLikeFriendlySyntax(source)) {
         visited.insert(key);
         files.push_back(file);
-        return {normalizeSourceSyntax(source, SyntaxMode::Auto), ""};
+        return {MappedSource::original(file.string(), source), {}};
     }
 
     visited.insert(key);
@@ -341,7 +341,17 @@ FriendlyLoad loadFriendlyDependency(const std::filesystem::path& inputFile,
     return loaded;
 }
 
-std::string loadCompilationUnit(const std::filesystem::path& inputFile,
+// Lowered text is deliberately synthetic until the lowering stage composes its
+// own origin mapping. Never represent generated Classic columns as originals.
+MappedSource normalizedCompilationSource(const CompilationSource& unit) {
+    MappedSource result = unit.classicPrefix;
+    if (unit.syntax == SyntaxMode::Friendly)
+        result.appendSynthetic(normalizeSourceSyntax(unit.source.text(), unit.syntax));
+    else result.append(unit.source);
+    return result;
+}
+
+CompilationSource loadCompilationSource(const std::filesystem::path& inputFile,
                                 SyntaxMode syntax,
                                 std::set<std::string>& visited,
                                 std::set<std::string>& privateImplEmitted,
@@ -356,46 +366,48 @@ std::string loadCompilationUnit(const std::filesystem::path& inputFile,
         throw std::runtime_error(cycle.str());
     }
     const std::string key = moduleVisitKey(file);
-    if (visited.count(key)) return "";
+    if (visited.count(key)) return {};
     visited.insert(key);
     files.push_back(file);
     stack.push_back(file);
 
-    std::string rawSource = readFile(file.string());
+    const auto original = std::make_shared<const OriginalSource>(file.string(), readFile(file.string()));
     const bool friendly =
         syntax == SyntaxMode::Friendly ||
         (syntax == SyntaxMode::Auto &&
-         (isFriendlySyntax(rawSource) || looksLikeFriendlySyntax(rawSource)));
+         (isFriendlySyntax(original->text) || looksLikeFriendlySyntax(original->text)));
     if (friendly) {
         FriendlyLoad loaded = loadFriendlyCompilationUnit(file, visited, privateImplEmitted,
                                                           stack, files);
         stack.pop_back();
-        return loaded.classicPrefix +
-               normalizeSourceSyntax(loaded.friendlySource, SyntaxMode::Friendly);
+        return {std::move(loaded.classicPrefix), std::move(loaded.friendlySource), SyntaxMode::Friendly};
     }
 
-    std::string source = normalizeSourceSyntax(rawSource, syntax);
-    std::istringstream in(source);
-    std::ostringstream out;
-    std::string line;
-    while (std::getline(in, line)) {
-        if (!line.empty() && line.back() == '\r') line.pop_back();
+    MappedSource out;
+    const auto lines = readLines(original->text);
+    for (size_t i = 0; i < lines.size(); ++i) {
+        const auto& line = lines[i];
         std::string importPath;
         if (parseImportLine(line, importPath)) {
             auto resolved = resolveJtmlModulePath(importPath, file);
             try {
-                out << loadCompilationUnit(resolved, SyntaxMode::Auto, visited,
-                                           privateImplEmitted, stack, files);
+                out.append(normalizedCompilationSource(loadCompilationSource(
+                    resolved, SyntaxMode::Auto, visited, privateImplEmitted, stack, files)));
             } catch (const std::exception& e) {
                 throw importResolutionError(importPath, file, resolved, e);
             }
             continue;
         }
-        out << line << "\n";
+        out.appendOriginal(original, original->lineStarts[i], line.size());
+        const size_t newline = original->lineStarts[i] + line.size();
+        if (newline < original->text.size()) {
+            const size_t lf = original->text[newline] == '\r' ? newline + 1 : newline;
+            if (lf < original->text.size()) out.appendOriginal(original, lf, 1);
+            else out.appendSynthetic("\n");
+        } else out.appendSynthetic("\n");
     }
-
     stack.pop_back();
-    return out.str();
+    return {{}, std::move(out), SyntaxMode::Classic};
 }
 
 void validateNamedImport(const std::filesystem::path& file,
@@ -494,6 +506,7 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
                                          const std::vector<std::string>& selectedExports) {
     const std::string source = readFile(file.string());
     const auto sourceLines = readLines(source);
+    const auto original = std::make_shared<const OriginalSource>(file.string(), source);
     const bool namedImport = !selectedExports.empty();
     const auto exports = collectExports(file, sourceLines);
     validateNamedImport(file, exports, selectedExports);
@@ -502,7 +515,18 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
     const std::set<std::string> selected(selectedExports.begin(), selectedExports.end());
 
     FriendlyLoad result;
-    std::ostringstream friendly;
+    MappedSource friendly;
+    auto appendLine = [&](size_t index, size_t skip = 0, size_t count = std::string::npos,
+                          size_t syntheticIndent = 0) {
+        const auto& raw = sourceLines[index];
+        count = std::min(count, raw.size() - skip);
+        if (syntheticIndent) friendly.appendSynthetic(std::string(syntheticIndent, ' '));
+        friendly.appendOriginal(original, original->lineStarts[index] + skip, count);
+        const size_t end = original->lineStarts[index] + raw.size();
+        const size_t lf = end < source.size() && source[end] == '\r' ? end + 1 : end;
+        if (lf < source.size() && source[lf] == '\n') friendly.appendOriginal(original, lf, 1);
+        else friendly.appendSynthetic("\n");
+    };
     bool includingSelectedExportBlock = false;
     int selectedExportIndent = -1;
     std::set<std::string> importedNamedSymbols;
@@ -511,6 +535,7 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
 
     for (size_t i = 0; i < sourceLines.size(); ++i) {
         std::string line = sourceLines[i];
+        size_t exportedBegin = 0, exportedLength = 0, exportIndent = 0;
         const std::string text = trimCopy(stripLineComment(line));
         if (text == "jtml 2" || text == "jtl 1") continue;
 
@@ -533,15 +558,15 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
             } catch (const std::exception& e) {
                 throw importResolutionError(use.path, file, resolved, e);
             }
-            result.classicPrefix += dependency.classicPrefix;
-            friendly << dependency.friendlySource;
+            result.classicPrefix.append(dependency.classicPrefix);
+            friendly.append(dependency.friendlySource);
             continue;
         }
 
         if (namedImport && moduleUsesExports) {
             const int indent = leadingSpaces(line);
             if (includingSelectedExportBlock && indent > selectedExportIndent) {
-                friendly << line << "\n";
+                appendLine(i);
                 continue;
             }
             includingSelectedExportBlock = false;
@@ -550,11 +575,11 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
             if (indent != 0) continue;
             if (!startsWithWord(text, "export")) {
                 if (isPrivateImplementationDeclaration(text)) {
-                    if (emitPrivateImpl) friendly << line << "\n";
+                    if (emitPrivateImpl) appendLine(i);
                     while (i + 1 < sourceLines.size() &&
                            leadingSpaces(sourceLines[i + 1]) > indent) {
                         ++i;
-                        if (emitPrivateImpl) friendly << sourceLines[i] << "\n";
+                        if (emitPrivateImpl) appendLine(i);
                     }
                     continue;
                 }
@@ -580,8 +605,8 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
                         FriendlyLoad dependency = loadReexport(
                             reexport, wanted, file, visited, privateImplEmitted,
                             stack, files);
-                        result.classicPrefix += dependency.classicPrefix;
-                        friendly << dependency.friendlySource;
+                        result.classicPrefix.append(dependency.classicPrefix);
+                        friendly.append(dependency.friendlySource);
                     }
                 }
                 continue;
@@ -595,7 +620,11 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
                 }
                 continue;
             }
-            line = std::string(static_cast<size_t>(indent), ' ') + stripped;
+            exportedBegin = exportPos + std::string("export").size();
+            while (exportedBegin < line.size() && std::isspace(static_cast<unsigned char>(line[exportedBegin]))) ++exportedBegin;
+            exportedLength = stripped.size();
+            exportIndent = static_cast<size_t>(indent);
+            line = std::string(exportIndent, ' ') + stripped;
             includingSelectedExportBlock = true;
             selectedExportIndent = indent;
         } else if (startsWithWord(text, "export")) {
@@ -608,32 +637,42 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
                 FriendlyLoad dependency = loadReexport(
                     reexport, reexport.names, file, visited, privateImplEmitted,
                     stack, files);
-                result.classicPrefix += dependency.classicPrefix;
-                friendly << dependency.friendlySource;
+                result.classicPrefix.append(dependency.classicPrefix);
+                friendly.append(dependency.friendlySource);
                 continue;
             }
-            line = std::string(static_cast<size_t>(indent), ' ') + stripped;
+            exportedBegin = exportPos + std::string("export").size();
+            while (exportedBegin < line.size() && std::isspace(static_cast<unsigned char>(line[exportedBegin]))) ++exportedBegin;
+            exportedLength = stripped.size();
+            exportIndent = static_cast<size_t>(indent);
+            line = std::string(exportIndent, ' ') + stripped;
         }
 
-        friendly << line << "\n";
+        if (exportedLength) appendLine(i, exportedBegin, exportedLength, exportIndent);
+        else appendLine(i);
     }
-    result.friendlySource = friendly.str();
+    result.friendlySource = std::move(friendly);
     return result;
 }
 
 } // namespace
 
-std::string loadCompilationUnit(const std::string& inputFile,
+CompilationSource loadCompilationSource(const std::string& inputFile,
                                 SyntaxMode syntax,
                                 std::vector<std::filesystem::path>* filesOut) {
     std::set<std::string> visited;
     std::set<std::string> privateImplEmitted;
     std::vector<std::filesystem::path> stack;
     std::vector<std::filesystem::path> files;
-    std::string source = loadCompilationUnit(inputFile, syntax, visited,
+    auto source = loadCompilationSource(inputFile, syntax, visited,
                                              privateImplEmitted, stack, files);
     if (filesOut) *filesOut = std::move(files);
     return source;
+}
+
+std::string loadCompilationUnit(const std::string& inputFile, SyntaxMode syntax,
+                                std::vector<std::filesystem::path>* filesOut) {
+    return normalizedCompilationSource(loadCompilationSource(inputFile, syntax, filesOut)).text();
 }
 
 std::vector<std::filesystem::path>

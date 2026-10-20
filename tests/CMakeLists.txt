@@ -28,6 +28,7 @@ set(JTML_TEST_SOURCES
     test_formatter.cpp
     test_friendly.cpp
     test_linter.cpp
+    test_source_origin.cpp
     test_module_resolver.cpp
     test_refactor.cpp
     test_semantic.cpp

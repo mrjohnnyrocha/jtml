@@ -46,7 +46,7 @@ Old AST negative control exits 1: `FAIL original AST clone loses 9:5 source span
 
 
 Frozen source `d888bcd`: full local gate PASS after the asset repair, including
-386/386 CTests and nine clean-exit browser benchmarks. Fully instrumented
+388/388 CTests and nine clean-exit browser benchmarks. Fully instrumented
 ASan/UBSan provenance probes pass 13/13 with halt-on-error. The mixed Release/
 instrumented probe reported a libc++ container-overflow; this did not reproduce
 in the fully instrumented build, and the original report remains preserved.
@@ -54,3 +54,12 @@ No sanitizer detection was disabled. Full TSan build and preserved async/call
 sanitizer probes are still running; this stage is not final until they pass.
 CI pull-request branch filters now include the staged provenance bases so each
 focused stacked PR receives the same Ubuntu/macOS gates as main-target PRs.
+
+
+Final fully instrumented ASan/UBSan and separate TSan runs each pass **32/32**:
+13 provenance/asset tests plus the 19 preserved Interpreter call/async probes.
+All use halt-on-error; existing subprocess timeouts remain unchanged. Full
+instrumentation removes the partial-build ambiguity without a suppression or
+runtime source workaround. Logs: `/tmp/jtml-propagation-asan-full-all.log`,
+`/tmp/jtml-propagation-tsan-full-all.log`. The source is unchanged from `d888bcd`;
+subsequent changes are CI branch filters and this evidence record.

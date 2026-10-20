@@ -3,6 +3,7 @@
 #include "jtml/parser.h"
 #include "jtml/expression_ir.h"
 #include "jtml/runtime_plan.h"
+#include "jtml/runtime/static_update_plan_emitter.h"
 #include "cli/util.h"
 
 namespace {
@@ -115,4 +116,14 @@ TEST(SourcePropagation, InterpolationDerivedOperationsNeverClaimExactAuthoredExp
     expectOrigin(ir->sourceSpan, "interpolation.jtml", 1, 16, false);
     ASSERT_EQ(ir->children.size(), 2);
     expectOrigin(ir->children[1]->sourceSpan, "interpolation.jtml", 1, 16, false);
+}
+
+TEST(SourcePropagation, CompilerSpansDoNotLeakIntoStaticExecutionAssets) {
+    const auto file = (std::filesystem::path(JTML_SOURCE_DIR) /
+        "tests/fixtures/production/taskboard-core/index.jtml").string();
+    auto program = jtml::cli::parseProgramFromFile(file);
+    jtml::RuntimeProjectPlan project;
+    project.linkedPlan = jtml::buildRuntimePlan(program, jtml::analyzeSemanticProgram(program));
+    EXPECT_EQ(jtml::emitStaticUpdatePlanAsset(project).find("\"sourceSpan\""), std::string::npos);
+    EXPECT_EQ(jtml::emitStaticComponentModuleAsset(project).find("\"sourceSpan\""), std::string::npos);
 }

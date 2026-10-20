@@ -2518,7 +2518,10 @@ std::string staticUpdateFunctionBody(size_t componentIndex,
 
 std::string emitStaticComponentAsset(const RuntimeProjectPlan& plan,
                                      bool componentModule) {
-    const auto fullComponents = assignComponentIdsAndChildIds(collectComponentPlans(plan));
+    auto fullComponents = assignComponentIdsAndChildIds(collectComponentPlans(plan));
+    // Source provenance belongs to compiler diagnostics, not shipped execution
+    // records (including explicit compatibility assets).
+    eraseJsonKeyRecursive(fullComponents, "sourceSpan");
     const auto components = componentModule
         ? componentModulePlansPayload(fullComponents)
         : fullComponents;

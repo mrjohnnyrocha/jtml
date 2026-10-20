@@ -33,3 +33,13 @@ IR operations inherit explicit attribution and cannot claim exact authored
 expression spans. Added repeated nested-expression and interpolation oracles.
 Rebuild required after these edits. Earlier 10/10 focused PASS predates this
 expanded nested-expression fix and is not final validation.
+
+Full gate on `8d75dcf` failed compatibility `large_keyed_reorder` asset budget:
+190857 > 180000 bytes. Populating nested spans exposed an emission leak of
+compiler-only spans. The static-asset emission boundary now removes `sourceSpan`
+for both module and compatibility records; a dedicated test pins exclusion.
+Budgets are unchanged. Focused tests now 13/13 PASS. Final gate is rerunning in
+`/tmp/jtml-propagation-assets-final-gate.log`; the earlier failed log is retained
+at `/tmp/jtml-propagation-final-gate.log`. Sanitizers require a refreshed final
+probe including the new emitter translation unit and asset-exclusion test.
+Old AST negative control exits 1: `FAIL original AST clone loses 9:5 source span`.

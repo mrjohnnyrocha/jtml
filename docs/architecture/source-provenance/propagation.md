@@ -43,3 +43,14 @@ Budgets are unchanged. Focused tests now 13/13 PASS. Final gate is rerunning in
 at `/tmp/jtml-propagation-final-gate.log`. Sanitizers require a refreshed final
 probe including the new emitter translation unit and asset-exclusion test.
 Old AST negative control exits 1: `FAIL original AST clone loses 9:5 source span`.
+
+
+Frozen source `d888bcd`: full local gate PASS after the asset repair, including
+386/386 CTests and nine clean-exit browser benchmarks. Fully instrumented
+ASan/UBSan provenance probes pass 13/13 with halt-on-error. The mixed Release/
+instrumented probe reported a libc++ container-overflow; this did not reproduce
+in the fully instrumented build, and the original report remains preserved.
+No sanitizer detection was disabled. Full TSan build and preserved async/call
+sanitizer probes are still running; this stage is not final until they pass.
+CI pull-request branch filters now include the staged provenance bases so each
+focused stacked PR receives the same Ubuntu/macOS gates as main-target PRs.

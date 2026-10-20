@@ -4,7 +4,8 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
+    # Keep each staged provenance PR subject to Ubuntu/macOS gates.
+    branches: [ main, 'codex/original-source-provenance', 'codex/source-provenance-*' ]
 
 # Cancel in-progress runs when a new commit lands on the same ref.
 concurrency:

@@ -28,3 +28,12 @@ exclusion in both static assets requires a focused rebuild before final commit.
 This proves these diagnostic paths; it does not claim every legacy string-based
 compiler/runtime diagnostic has been migrated. Fine-grained Friendly expression
 origins remain generated attribution when lowering does not preserve exact bytes.
+
+ASan/UBSan and separate TSan each PASS unchanged strict N04 plus seven adversarial
+cases, with halt-on-error and isolated subprocess timeouts. Changed frontend/
+emitter/main units were recompiled and linked over fully instrumented unchanged
+compiler archives from Stage 2; no Release/instrumented mixing or suppressions.
+Logs: `/tmp/jtml-diagnostics-sanitizers.log`; per-run directories are printed there.
+The asset-exclusion extension passes all 13 focused CTests. Parent CI/evidence
+commits were merged without runtime changes; the combined diff has no budget,
+Taskboard contract, browser runtime, interpreter or local-security changes.

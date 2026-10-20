@@ -86,6 +86,9 @@ jobs:
       - name: Taskboard negatives and diagnostic provenance audit (browser required)
         run: scripts/test_taskboard_negative.sh
 
+      - name: Strict original-source provenance
+        run: scripts/test_source_provenance.sh
+
       - name: Nested keyed lifecycle regressions (browser required)
         run: scripts/test_keyed_lifecycle.sh
 

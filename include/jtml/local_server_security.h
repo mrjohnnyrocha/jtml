@@ -6,13 +6,27 @@
 #include <initializer_list>
 #include <mutex>
 #include <string>
+#include <thread>
 
 namespace JTMLInterpreter {
 
-// CLI HTTP handlers, source reloads and WebSocket callbacks share this lock.
-// This does not make arbitrary external Interpreter callers thread-safe.
-inline std::recursive_mutex& localServerExecutionMutex() {
-    static std::recursive_mutex mutex;
+// Track recursive ownership so blocking lifecycle operations can reject a
+// caller holding the lock instead of deadlocking a worker's broadcast.
+class LocalServerExecutionMutex {
+    std::recursive_mutex mutex;
+    // Count all framework execution locks on this thread, including locks for
+    // other headless interpreters: their callbacks can depend on this worker.
+    inline static thread_local size_t heldDepth = 0;
+public:
+    void lock() { mutex.lock(); ++heldDepth; }
+    bool try_lock() { if (!mutex.try_lock()) return false; ++heldDepth; return true; }
+    void unlock() { --heldDepth; mutex.unlock(); }
+    static bool heldByCurrentThread() { return heldDepth != 0; }
+};
+
+// Live interpreters, CLI HTTP handlers and WebSocket callbacks share this lock.
+inline LocalServerExecutionMutex& localServerExecutionMutex() {
+    static LocalServerExecutionMutex mutex;
     return mutex;
 }
 

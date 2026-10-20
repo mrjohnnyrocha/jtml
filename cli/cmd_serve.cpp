@@ -71,7 +71,7 @@ void installLocalServerPolicy(httplib::Server& server, int port) {
 
 httplib::Server::Handler serializedLocalHandler(httplib::Server::Handler handler) {
     return [handler = std::move(handler)](const httplib::Request& req, httplib::Response& res) {
-        std::lock_guard<std::recursive_mutex> lock(JTML::localServerExecutionMutex());
+        std::lock_guard<JTMLInterpreter::LocalServerExecutionMutex> lock(JTML::localServerExecutionMutex());
         SilenceStdout silence;
         handler(req, res);
     };
@@ -784,7 +784,7 @@ static void serveOnce(const std::vector<std::unique_ptr<ASTNode>>& program,
 
     std::unique_ptr<Interpreter> interpreter;
     {
-        std::lock_guard<std::recursive_mutex> lock(JTML::localServerExecutionMutex());
+        std::lock_guard<JTMLInterpreter::LocalServerExecutionMutex> lock(JTML::localServerExecutionMutex());
         SilenceStdout silence;
         interpreter = std::make_unique<Interpreter>(transpiler, cfg);
         interpreter->interpret(program);
@@ -825,13 +825,13 @@ static void serveWatching(const std::string& inputFile, int port, SyntaxMode syn
     transpiler.setWebSocketPort(cfg.wsPort);
     std::unique_ptr<Interpreter> interpreter;
     {
-        std::lock_guard<std::recursive_mutex> lock(JTML::localServerExecutionMutex());
+        std::lock_guard<JTMLInterpreter::LocalServerExecutionMutex> lock(JTML::localServerExecutionMutex());
         SilenceStdout silence;
         interpreter = std::make_unique<Interpreter>(transpiler, cfg);
     }
 
     auto rebuild = [&](bool firstLoad) {
-        std::lock_guard<std::recursive_mutex> lock(JTML::localServerExecutionMutex());
+        std::lock_guard<JTMLInterpreter::LocalServerExecutionMutex> lock(JTML::localServerExecutionMutex());
         try {
             auto program = parseProgramFromFile(inputFile, syntax);
             std::string html = transpiler.transpile(program);
@@ -914,7 +914,7 @@ static void serveStudio(int port) {
     transpiler.setWebSocketPort(cfg.wsPort);
     std::unique_ptr<Interpreter> interpreter;
     if (!interpreter) {
-        std::lock_guard<std::recursive_mutex> lock(JTML::localServerExecutionMutex());
+        std::lock_guard<JTMLInterpreter::LocalServerExecutionMutex> lock(JTML::localServerExecutionMutex());
         SilenceStdout silence;
         interpreter = std::make_unique<Interpreter>(transpiler, cfg);
     }

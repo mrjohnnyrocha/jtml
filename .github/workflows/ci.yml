@@ -92,6 +92,9 @@ jobs:
       - name: Local HTTP and WebSocket security (browser required)
         run: scripts/test_local_server_security.sh
 
+      - name: Owned async HTTP and WebSocket runtime
+        run: scripts/test_async_runtime.sh
+
       - name: Browser literal fidelity (clean and compatibility)
         run: scripts/test_literal_fidelity.sh
 

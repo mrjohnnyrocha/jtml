@@ -153,6 +153,14 @@ int jtml_load(jtml_context* ctx, const char* source, char** html_out, char** err
     if (error_out) *error_out = nullptr;
     if (!ctx) return fail(nullptr, "context is null", error_out);
 
+    // Replacement owns the old runtime's completion boundary. Do not compile
+    // or interpret the next program concurrently with old deferred rendering.
+    try {
+        if (ctx->interpreter) ctx->interpreter->waitForAsync();
+    } catch (const std::exception& error) {
+        return fail(ctx, error.what(), error_out);
+    }
+
     auto transpiler = std::make_unique<JtmlTranspiler>();
     std::vector<std::unique_ptr<ASTNode>> program;
     std::string html;
@@ -170,8 +178,10 @@ int jtml_load(jtml_context* ctx, const char* source, char** html_out, char** err
         return fail(ctx, e.what(), error_out);
     }
 
-    ctx->transpiler = std::move(transpiler);
+    // Drain the old interpreter while its referenced transpiler is still alive.
+    // The new interpreter references the local new transpiler until transfer.
     ctx->interpreter = std::move(interpreter);
+    ctx->transpiler = std::move(transpiler);
     ctx->lastHtml = html;
     ctx->lastError.clear();
     setOut(html_out, html);

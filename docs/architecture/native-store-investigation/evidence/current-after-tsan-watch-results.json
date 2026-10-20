@@ -1,0 +1,29 @@
+[
+  {
+    "mode": "watch",
+    "attempt": 1,
+    "ready": true,
+    "startupExit": null,
+    "finalExit": -15,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-znr0fcwj/startup-00.log",
+    "logSha256": "2d8978b3a144fe38de4da12f0159224d90ebd361127878f23af6f60b07bd8121"
+  },
+  {
+    "mode": "watch",
+    "attempt": 2,
+    "ready": true,
+    "startupExit": null,
+    "finalExit": -15,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-znr0fcwj/startup-01.log",
+    "logSha256": "f6184ff340123c0a2d2e290234277ec4a1c2513e9b41f82e0df1ef5db483106d"
+  },
+  {
+    "mode": "watch",
+    "attempt": 3,
+    "ready": true,
+    "startupExit": null,
+    "finalExit": -15,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-znr0fcwj/startup-02.log",
+    "logSha256": "9d9de9a0342438045188864a4f04d0c5da03a6eeba852be415c968b334edc73d"
+  }
+]

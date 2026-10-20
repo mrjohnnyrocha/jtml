@@ -1,0 +1,98 @@
+[
+  {
+    "attempt": 1,
+    "ready": false,
+    "startupExit": -6,
+    "finalExit": -6,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-jxo0_rlv/startup-00.log",
+    "logSha256": "249065827d4aa0ad78ed228cc5f9dcca5bf3da6915c4a1466897e26e0fe1be66"
+  },
+  {
+    "attempt": 2,
+    "ready": false,
+    "startupExit": -6,
+    "finalExit": -6,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-jxo0_rlv/startup-01.log",
+    "logSha256": "47549135430cfeec6df8d3bfd3f7f88c134fb16411f1058429be05c3dc1ed3d9"
+  },
+  {
+    "attempt": 3,
+    "ready": false,
+    "startupExit": -6,
+    "finalExit": -6,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-jxo0_rlv/startup-02.log",
+    "logSha256": "df996ec406135b7ae92513899ecda8222434a43f7b1cfe82cbe51bde43c6b40e"
+  },
+  {
+    "attempt": 4,
+    "ready": false,
+    "startupExit": -6,
+    "finalExit": -6,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-jxo0_rlv/startup-03.log",
+    "logSha256": "6db5a6aafc3c363c2d63afef5c1a07f6fa6534b5aa8f63fbbb3bb413c7411478"
+  },
+  {
+    "attempt": 5,
+    "ready": false,
+    "startupExit": -6,
+    "finalExit": -6,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-jxo0_rlv/startup-04.log",
+    "logSha256": "e8c842d5160e2cdae32f0c42186f49ae98602717904fedb4c7e798d027b545ba"
+  },
+  {
+    "attempt": 6,
+    "ready": false,
+    "startupExit": -6,
+    "finalExit": -6,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-jxo0_rlv/startup-05.log",
+    "logSha256": "efa16ab1a41f16f43307f2848877588ef32bbda3a8cf753c885c34a7ba826969"
+  },
+  {
+    "attempt": 7,
+    "ready": false,
+    "startupExit": -6,
+    "finalExit": -6,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-jxo0_rlv/startup-06.log",
+    "logSha256": "3624a879f0d59dab257ab56bf4f8885c84890303b488c7fdf3a2ee2eb4178650"
+  },
+  {
+    "attempt": 8,
+    "ready": false,
+    "startupExit": -6,
+    "finalExit": -6,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-jxo0_rlv/startup-07.log",
+    "logSha256": "e6ddc3a1278556fdb9136ef509bc51614d761b8951d55527f8ee5e027453aaed"
+  },
+  {
+    "attempt": 9,
+    "ready": false,
+    "startupExit": -6,
+    "finalExit": -6,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-jxo0_rlv/startup-08.log",
+    "logSha256": "2362c02a08ddf8f0a22988f7972e43562f05a5851f6bd3aafa209861fa1dac74"
+  },
+  {
+    "attempt": 10,
+    "ready": false,
+    "startupExit": -6,
+    "finalExit": -6,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-jxo0_rlv/startup-09.log",
+    "logSha256": "ccb2770f1694bfa6aa367e59c7690a7360ed6308352ff353f44c6467c97a7408"
+  },
+  {
+    "attempt": 11,
+    "ready": false,
+    "startupExit": -6,
+    "finalExit": -6,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-jxo0_rlv/startup-10.log",
+    "logSha256": "00dc0f03174bc5e69621400480f6611d3e7821eb2a12d55cba9a43504ae59012"
+  },
+  {
+    "attempt": 12,
+    "ready": false,
+    "startupExit": -6,
+    "finalExit": -6,
+    "log": "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-native-store-startups-jxo0_rlv/startup-11.log",
+    "logSha256": "09be0660ce640f0bee24eeda6044acf6d44bd1e7975c4affe3b1fdc800570f3f"
+  }
+]

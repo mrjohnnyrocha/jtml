@@ -1,0 +1,46 @@
+=================================================================
+==57495==ERROR: AddressSanitizer: attempting double-free on 0x000106b06280 in thread T0:
+    #0 0x103addb8c in wrap__ZdlPv+0x74 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x61b8c)
+    #1 0x1991d7f0c in std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>::__grow_by(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long)+0xdc (libc++.1.dylib:arm64e+0x1bf0c)
+    #2 0x1991d7fa8 in std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>::push_back(char)+0x68 (libc++.1.dylib:arm64e+0x1bfa8)
+    #3 0x1991ef4b4 in std::__1::basic_stringbuf<char, std::__1::char_traits<char>, std::__1::allocator<char>>::overflow(int)+0x70 (libc++.1.dylib:arm64e+0x334b4)
+    #4 0x1991e0bcc in std::__1::basic_streambuf<char, std::__1::char_traits<char>>::xsputn(char const*, long)+0x9c (libc++.1.dylib:arm64e+0x24bcc)
+    #5 0x102e9d8a4 in std::__1::ostreambuf_iterator<char, std::__1::char_traits<char>> std::__1::__pad_and_output[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::ostreambuf_iterator<char, std::__1::char_traits<char>>, char const*, char const*, char const*, std::__1::ios_base&, char) locale:1448
+    #6 0x102e9ce84 in std::__1::basic_ostream<char, std::__1::char_traits<char>>& std::__1::__put_character_sequence[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::basic_ostream<char, std::__1::char_traits<char>>&, char const*, unsigned long) ostream:770
+    #7 0x102e9c004 in main::$_0::operator()() const logging_probe.cpp:31
+    #8 0x102e9b868 in main logging_probe.cpp:35
+    #9 0x198f1e0dc  (<unknown module>)
+
+0x000106b06280 is located 0 bytes inside of 3072-byte region [0x000106b06280,0x000106b06e80)
+freed by thread T1 here:
+    #0 0x103addb8c in wrap__ZdlPv+0x74 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x61b8c)
+    #1 0x1991d7f0c in std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>::__grow_by(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long)+0xdc (libc++.1.dylib:arm64e+0x1bf0c)
+    #2 0x1991d7fa8 in std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>::push_back(char)+0x68 (libc++.1.dylib:arm64e+0x1bfa8)
+    #3 0x1991ef4b4 in std::__1::basic_stringbuf<char, std::__1::char_traits<char>, std::__1::allocator<char>>::overflow(int)+0x70 (libc++.1.dylib:arm64e+0x334b4)
+    #4 0x1991e0bcc in std::__1::basic_streambuf<char, std::__1::char_traits<char>>::xsputn(char const*, long)+0x9c (libc++.1.dylib:arm64e+0x24bcc)
+    #5 0x102e9d8a4 in std::__1::ostreambuf_iterator<char, std::__1::char_traits<char>> std::__1::__pad_and_output[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::ostreambuf_iterator<char, std::__1::char_traits<char>>, char const*, char const*, char const*, std::__1::ios_base&, char) locale:1448
+    #6 0x102e9ce84 in std::__1::basic_ostream<char, std::__1::char_traits<char>>& std::__1::__put_character_sequence[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::basic_ostream<char, std::__1::char_traits<char>>&, char const*, unsigned long) ostream:770
+    #7 0x102e9c004 in main::$_0::operator()() const logging_probe.cpp:31
+    #8 0x102e9f254 in void* std::__1::__thread_proxy[abi:ue170006]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, main::$_0>>(void*) thread.h:238
+    #9 0x1992a6f90 in _pthread_start+0x84 (libsystem_pthread.dylib:arm64e+0x6f90)
+    #10 0x1992a1d30 in thread_start+0x4 (libsystem_pthread.dylib:arm64e+0x1d30)
+
+previously allocated by thread T0 here:
+    #0 0x103add74c in wrap__Znwm+0x74 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x6174c)
+    #1 0x1991d7ec0 in std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>::__grow_by(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long)+0x90 (libc++.1.dylib:arm64e+0x1bec0)
+    #2 0x1991d7fa8 in std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>::push_back(char)+0x68 (libc++.1.dylib:arm64e+0x1bfa8)
+    #3 0x1991ef4b4 in std::__1::basic_stringbuf<char, std::__1::char_traits<char>, std::__1::allocator<char>>::overflow(int)+0x70 (libc++.1.dylib:arm64e+0x334b4)
+    #4 0x1991e0bcc in std::__1::basic_streambuf<char, std::__1::char_traits<char>>::xsputn(char const*, long)+0x9c (libc++.1.dylib:arm64e+0x24bcc)
+    #5 0x102e9d8a4 in std::__1::ostreambuf_iterator<char, std::__1::char_traits<char>> std::__1::__pad_and_output[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::ostreambuf_iterator<char, std::__1::char_traits<char>>, char const*, char const*, char const*, std::__1::ios_base&, char) locale:1448
+    #6 0x102e9ce84 in std::__1::basic_ostream<char, std::__1::char_traits<char>>& std::__1::__put_character_sequence[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::basic_ostream<char, std::__1::char_traits<char>>&, char const*, unsigned long) ostream:770
+    #7 0x102e9c004 in main::$_0::operator()() const logging_probe.cpp:31
+    #8 0x102e9b868 in main logging_probe.cpp:35
+    #9 0x198f1e0dc  (<unknown module>)
+
+Thread T1 created by T0 here:
+    #0 0x103ac7d6c in wrap_pthread_create+0x54 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x4bd6c)
+    #1 0x102e9b81c in main logging_probe.cpp:34
+    #2 0x198f1e0dc  (<unknown module>)
+
+SUMMARY: AddressSanitizer: double-free (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x61b8c) in wrap__ZdlPv+0x74
+==57495==ABORTING

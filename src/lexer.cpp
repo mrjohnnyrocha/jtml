@@ -388,7 +388,11 @@ std::vector<Token> Lexer::tokenize() {
                 break;
             case '"':
             case '\'':
-                tokens.push_back(consumeStringLiteral(c));
+                {
+                    auto token = consumeStringLiteral(c);
+                    token.endPosition = static_cast<int>(m_pos);
+                    tokens.push_back(std::move(token));
+                }
                 break;
             default:
                 if (std::isalpha(static_cast<unsigned char>(c)) || c == '_') {
@@ -440,6 +444,11 @@ std::vector<Token> Lexer::tokenize() {
         }
     }
     tokens.push_back(Token{TokenType::END_OF_FILE, "<EOF>", static_cast<int>(m_pos), m_line, m_column});
+    for (auto& token : tokens) {
+        token.provenance = m_provenance;
+        if (token.endPosition < 0) token.endPosition = token.position +
+            (token.type == TokenType::END_OF_FILE ? 0 : static_cast<int>(token.text.size()));
+    }
     return tokens;
 }
 

@@ -3082,11 +3082,14 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
             const int level = static_cast<int>(stack.size()) - 1;
             const auto close = stack.back().close;
             const auto afterClose = stack.back().afterClose;
+            const int previousSourceLine = activeFriendlySourceLine;
+            activeFriendlySourceLine = stack.back().sourceLine;
             emitLine(out, level, close);
             stack.pop_back();
             for (const auto& line : afterClose) {
                 emitLine(out, level, line);
             }
+            activeFriendlySourceLine = previousSourceLine;
         }
     };
 
@@ -3613,6 +3616,15 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
     }
 
     result.classicSource = out.str();
+    return result;
+}
+
+FriendlyClassicResult friendlyToClassicWithSourceMap(const MappedSource& source) {
+    auto result = friendlyToClassicWithSourceMap(source.text());
+    MappedSource generated;
+    generated.appendSynthetic(result.classicSource);
+    result.provenance = std::make_shared<const SourceProvenance>(
+        std::move(generated), source, result.classicLineToFriendlyLine, SourceProvenance::Kind::FriendlyLowering);
     return result;
 }
 

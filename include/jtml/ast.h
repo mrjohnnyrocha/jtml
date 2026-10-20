@@ -55,6 +55,9 @@ struct SourceSpan {
     int endColumn = 0;
     int startOffset = 0;
     int endOffset = 0;
+    std::shared_ptr<const jtml::SourceProvenance> provenance;
+    std::optional<jtml::OriginalRange> original;
+    bool originalExact = false;
 
     bool valid() const {
         return startLine > 0 && startColumn > 0;

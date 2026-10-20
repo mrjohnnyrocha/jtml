@@ -111,6 +111,7 @@ struct SemanticComponentDefinition {
     int rootTemplateNodeCount = 0;
     int slotCount = 0;
     int sourceLine = 0;
+    std::shared_ptr<const SourceProvenance> provenance;
 };
 
 struct SemanticComponentInstance {
@@ -122,6 +123,7 @@ struct SemanticComponentInstance {
     std::vector<SemanticProperty> locals;
     std::string slotHex;
     int sourceLine = 0;
+    std::shared_ptr<const SourceProvenance> provenance;
 };
 
 struct SemanticProgram {

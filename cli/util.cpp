@@ -43,9 +43,9 @@ parseProgramFromFile(const std::string& inputFile) {
 
 std::vector<std::unique_ptr<ASTNode>>
 parseProgramFromFile(const std::string& inputFile, SyntaxMode syntax) {
-    std::string inputText = loadCompilationUnit(inputFile, syntax, nullptr);
+    auto input = normalizeCompilationSource(loadCompilationSource(inputFile, syntax, nullptr));
 
-    Lexer lexer(inputText);
+    Lexer lexer(input.text, input.provenance);
     auto tokens = lexer.tokenize();
 
     const auto& lexErrors = lexer.getErrors();

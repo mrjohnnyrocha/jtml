@@ -3,6 +3,13 @@
 
 #include <utility> // for std::move
 
+namespace {
+template <class T> std::unique_ptr<T> preserveSpan(const SourceSpan& span, std::unique_ptr<T> node) {
+    node->sourceSpan = span;
+    return node;
+}
+}
+
 // ------------------- Expression Nodes Implementations -------------------
 
 BinaryExpressionStatementNode::BinaryExpressionStatementNode(const Token& opToken,
@@ -17,11 +24,11 @@ ExpressionStatementNodeType BinaryExpressionStatementNode::getExprType() const {
 }
 
 std::unique_ptr<ExpressionStatementNode> BinaryExpressionStatementNode::clone() const {
-    return std::make_unique<BinaryExpressionStatementNode>(
+    return preserveSpan(sourceSpan, std::make_unique<BinaryExpressionStatementNode>(
         Token{getTokenTypeForOperator(op), op, 0, 0, 0},
         left ? left->clone() : nullptr,
         right ? right->clone() : nullptr
-    );
+    ));
 }
 
 std::string BinaryExpressionStatementNode::toString() const {
@@ -38,10 +45,10 @@ ExpressionStatementNodeType UnaryExpressionStatementNode::getExprType() const {
     return ExpressionStatementNodeType::Unary;
 }
 std::unique_ptr<ExpressionStatementNode> UnaryExpressionStatementNode::clone() const {
-    return std::make_unique<UnaryExpressionStatementNode>(
+    return preserveSpan(sourceSpan, std::make_unique<UnaryExpressionStatementNode>(
         Token{getTokenTypeForOperator(op), op, 0, 0, 0},
         right ? right->clone() : nullptr
-    );
+    ));
 }
 
 std::string UnaryExpressionStatementNode::toString() const {
@@ -57,7 +64,7 @@ ExpressionStatementNodeType VariableExpressionStatementNode::getExprType() const
 std::unique_ptr<ExpressionStatementNode> VariableExpressionStatementNode::clone() const {
     // Recreate a Token for the variable name
     Token token{TokenType::IDENTIFIER, name, 0, 0, 0}; // Dummy position, line, column
-    return std::make_unique<VariableExpressionStatementNode>(token);
+    return preserveSpan(sourceSpan, std::make_unique<VariableExpressionStatementNode>(token));
 }
 
 std::string VariableExpressionStatementNode::toString() const {
@@ -74,7 +81,7 @@ ExpressionStatementNodeType StringLiteralExpressionStatementNode::getExprType() 
 std::unique_ptr<ExpressionStatementNode> StringLiteralExpressionStatementNode::clone() const {
     // Recreate a Token for the string literal
     Token token{TokenType::STRING_LITERAL, value, 0, 0, 0}; // Dummy position, line, column
-    return std::make_unique<StringLiteralExpressionStatementNode>(token);
+    return preserveSpan(sourceSpan, std::make_unique<StringLiteralExpressionStatementNode>(token));
 }
 
 std::string StringLiteralExpressionStatementNode::toString() const {
@@ -92,8 +99,8 @@ ExpressionStatementNodeType EmbeddedVariableExpressionStatementNode::getExprType
 }
 
 std::unique_ptr<ExpressionStatementNode> EmbeddedVariableExpressionStatementNode::clone() const {
-    return std::make_unique<EmbeddedVariableExpressionStatementNode>(
-        embeddedExpression ? embeddedExpression->clone() : nullptr);
+    return preserveSpan(sourceSpan, std::make_unique<EmbeddedVariableExpressionStatementNode>(
+        embeddedExpression ? embeddedExpression->clone() : nullptr));
 }
 
 std::string EmbeddedVariableExpressionStatementNode::toString() const {
@@ -115,7 +122,7 @@ std::unique_ptr<ExpressionStatementNode> CompositeStringExpressionStatementNode:
     for (const auto& part : parts) {
         clonedParts.push_back(part->clone());
     }
-    return std::make_unique<CompositeStringExpressionStatementNode>(std::move(clonedParts));
+    return preserveSpan(sourceSpan, std::make_unique<CompositeStringExpressionStatementNode>(std::move(clonedParts)));
 }
 
 std::string CompositeStringExpressionStatementNode::toString() const {
@@ -178,7 +185,7 @@ std::unique_ptr<ExpressionStatementNode> NumberLiteralExpressionStatementNode::c
     // Recreate a Token for the number literal
     Token token{TokenType::NUMBER_LITERAL, valueStr, 0, 0, 0}; // Dummy position, line, column
 
-    return std::make_unique<NumberLiteralExpressionStatementNode>(token);
+    return preserveSpan(sourceSpan, std::make_unique<NumberLiteralExpressionStatementNode>(token));
 }
 std::string NumberLiteralExpressionStatementNode::toString() const {
     // Convert the double value back to a string with proper formatting
@@ -198,7 +205,7 @@ ExpressionStatementNodeType BooleanLiteralExpressionStatementNode::getExprType()
 }
 
 std::unique_ptr<ExpressionStatementNode> BooleanLiteralExpressionStatementNode::clone() const {
-    return std::make_unique<BooleanLiteralExpressionStatementNode>(value);
+    return preserveSpan(sourceSpan, std::make_unique<BooleanLiteralExpressionStatementNode>(value));
 }
 
 std::string BooleanLiteralExpressionStatementNode::toString() const {
@@ -218,10 +225,10 @@ ExpressionStatementNodeType ConditionalExpressionStatementNode::getExprType() co
 }
 
 std::unique_ptr<ExpressionStatementNode> ConditionalExpressionStatementNode::clone() const {
-    return std::make_unique<ConditionalExpressionStatementNode>(
+    return preserveSpan(sourceSpan, std::make_unique<ConditionalExpressionStatementNode>(
         condition ? condition->clone() : nullptr,
         whenTrue ? whenTrue->clone() : nullptr,
-        whenFalse ? whenFalse->clone() : nullptr);
+        whenFalse ? whenFalse->clone() : nullptr));
 }
 
 std::string ConditionalExpressionStatementNode::toString() const {
@@ -245,9 +252,9 @@ ExpressionStatementNodeType RangeExpressionStatementNode::getExprType() const {
 }
 
 std::unique_ptr<ExpressionStatementNode> RangeExpressionStatementNode::clone() const {
-    return std::make_unique<RangeExpressionStatementNode>(
+    return preserveSpan(sourceSpan, std::make_unique<RangeExpressionStatementNode>(
         start ? start->clone() : nullptr,
-        end ? end->clone() : nullptr);
+        end ? end->clone() : nullptr));
 }
 
 std::string RangeExpressionStatementNode::toString() const {
@@ -271,8 +278,8 @@ std::unique_ptr<ExpressionStatementNode> ArrayLiteralExpressionStatementNode::cl
     for (const auto& element : elements) {
         clonedElements.push_back(element->clone());
     }
-    return std::make_unique<ArrayLiteralExpressionStatementNode>(
-        std::move(clonedElements));
+    return preserveSpan(sourceSpan, std::make_unique<ArrayLiteralExpressionStatementNode>(
+        std::move(clonedElements)));
 }
 
 std::string ArrayLiteralExpressionStatementNode::toString() const {
@@ -304,8 +311,8 @@ std::unique_ptr<ExpressionStatementNode> DictionaryLiteralExpressionStatementNod
         }
         clonedEntries.push_back(std::move(newEntry));
     }
-    return std::make_unique<DictionaryLiteralExpressionStatementNode>(
-        std::move(clonedEntries));
+    return preserveSpan(sourceSpan, std::make_unique<DictionaryLiteralExpressionStatementNode>(
+        std::move(clonedEntries)));
 }
 
 std::string DictionaryLiteralExpressionStatementNode::toString() const {
@@ -338,9 +345,9 @@ std::unique_ptr<ExpressionStatementNode>
 SubscriptExpressionStatementNode::clone() const {
     auto newBase = base ? base->clone() : nullptr;
     auto newIndex = index ? index->clone() : nullptr;
-    return std::make_unique<SubscriptExpressionStatementNode>(
+    return preserveSpan(sourceSpan, std::make_unique<SubscriptExpressionStatementNode>(
         std::move(newBase), std::move(newIndex), isSlice
-    );
+    ));
 }
 
 std::string SubscriptExpressionStatementNode::toString() const {
@@ -370,7 +377,7 @@ ASTNodeType JtmlElementNode::getType() const {
         for (const auto& child : content) {
             newNode->content.push_back(child->clone());
         }
-        return newNode;
+        return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string JtmlElementNode::toString() const {
@@ -395,7 +402,7 @@ std::unique_ptr<ASTNode> BlockStatementNode::clone() const {
         for (const auto& stmt : statements) {
             newNode->statements.push_back(stmt->clone());
         }
-        return newNode;
+        return preserveSpan(sourceSpan, std::move(newNode));
 }
 
  std::string BlockStatementNode::toString() const  {
@@ -415,7 +422,7 @@ ASTNodeType ReturnStatementNode::getType() const {
 std::unique_ptr<ASTNode> ReturnStatementNode::clone() const {
         auto newNode = std::make_unique<ReturnStatementNode>();
         newNode->expr = expr ? expr->clone() : nullptr;
-        return newNode;
+        return preserveSpan(sourceSpan, std::move(newNode));
 }
 std::string ReturnStatementNode::toString() const {
     std::ostringstream oss;
@@ -442,7 +449,7 @@ ASTNodeType ShowStatementNode::getType() const {
 std::unique_ptr<ASTNode> ShowStatementNode::clone() const {
     auto newNode = std::make_unique<ShowStatementNode>();
     newNode->expr = expr ? expr->clone() : nullptr;
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string ShowStatementNode::toString() const {
@@ -467,7 +474,7 @@ std::unique_ptr<ASTNode> DefineStatementNode::clone() const {
     newNode->declaredType = declaredType;
     newNode->expression = expression ? expression->clone() : nullptr;
     newNode->isConst = isConst;
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
  std::string DefineStatementNode::toString() const {
@@ -494,7 +501,7 @@ std::unique_ptr<ASTNode> AssignmentStatementNode::clone() const {
     newNode->lhs = lhs ? lhs->clone() : nullptr;
     // Clone the right-hand side (rhs) expression
     newNode->rhs = rhs ? rhs->clone() : nullptr;
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string AssignmentStatementNode::toString() const {
@@ -524,7 +531,7 @@ std::unique_ptr<ASTNode> ExpressionNode::clone() const {
 
     newNode->expression = expression ? expression->clone() : nullptr;
 
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string ExpressionNode::toString() const {
@@ -548,7 +555,7 @@ std::unique_ptr<ASTNode> DeriveStatementNode::clone() const {
         newNode->identifier = identifier;
         newNode->declaredType = declaredType;
         newNode->expression = expression ? expression->clone() : nullptr;
-        return newNode;
+        return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string DeriveStatementNode::toString() const {
@@ -570,7 +577,7 @@ ASTNodeType UnbindStatementNode::getType() const {
 std::unique_ptr<ASTNode> UnbindStatementNode::clone() const {
     auto newNode = std::make_unique<UnbindStatementNode>();
     newNode->identifier = identifier;
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string UnbindStatementNode::toString() const {
@@ -586,7 +593,7 @@ std::unique_ptr<ASTNode> StoreStatementNode::clone() const {
     auto newNode = std::make_unique<StoreStatementNode>();
     newNode->targetScope = targetScope;
     newNode->variableName = variableName;
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string StoreStatementNode::toString() const {
@@ -603,7 +610,7 @@ ASTNodeType ImportStatementNode::getType() const {
 std::unique_ptr<ASTNode> ImportStatementNode::clone() const {
     auto newNode = std::make_unique<ImportStatementNode>();
     newNode->path = path;
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string ImportStatementNode::toString() const {
@@ -619,7 +626,7 @@ ASTNodeType ThrowStatementNode::getType() const {
 std::unique_ptr<ASTNode> ThrowStatementNode::clone() const  {
     auto newNode = std::make_unique<ThrowStatementNode>();
     newNode->expression = expression ? expression->clone() : nullptr;
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string ThrowStatementNode::toString() const {
@@ -646,7 +653,7 @@ std::unique_ptr<ASTNode> IfStatementNode::clone() const {
     for (const auto& stmt : elseStatements) {
         newNode->elseStatements.push_back(stmt->clone());
     }
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string IfStatementNode::toString() const {
@@ -679,7 +686,7 @@ std::unique_ptr<ASTNode> WhileStatementNode::clone() const {
     for (const auto& stmt : body) {
         newNode->body.push_back(stmt->clone());
     }
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string WhileStatementNode::toString() const {
@@ -704,7 +711,7 @@ ASTNodeType BreakStatementNode::getType() const {
 
 std::unique_ptr<ASTNode> BreakStatementNode::clone() const {
     auto newNode = std::make_unique<BreakStatementNode>();
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string BreakStatementNode::toString() const {
@@ -719,7 +726,7 @@ ASTNodeType ContinueStatementNode::getType() const {
 
 std::unique_ptr<ASTNode> ContinueStatementNode::clone() const {
     auto newNode = std::make_unique<ContinueStatementNode>();
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string ContinueStatementNode::toString() const {
@@ -741,7 +748,7 @@ std::unique_ptr<ASTNode> ForStatementNode::clone() const {
     for (const auto& stmt : body) {
         newNode->body.push_back(stmt->clone());
     }
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string ForStatementNode::toString() const {
@@ -785,7 +792,7 @@ std::unique_ptr<ASTNode> TryExceptThenNode::clone() const {
     for (const auto& stmt : finallyBlock) {
         newNode->finallyBlock.push_back(stmt->clone());
     }
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 
 std::string TryExceptThenNode::toString() const {
@@ -826,7 +833,7 @@ std::unique_ptr<ASTNode> FunctionDeclarationNode::clone() const {
     for (const auto& stmt : body) {
         clonedBody.push_back(stmt->clone());
     }
-    return std::make_unique<FunctionDeclarationNode>(name, parameters, returnType, std::move(clonedBody), isAsync);
+    return preserveSpan(sourceSpan, std::make_unique<FunctionDeclarationNode>(name, parameters, returnType, std::move(clonedBody), isAsync));
 }
 std::string FunctionDeclarationNode::toString() const {
     std::ostringstream oss;
@@ -851,7 +858,7 @@ std::unique_ptr<ASTNode> SubscribeStatementNode::clone() const {
     auto newNode = std::make_unique<SubscribeStatementNode>();
     newNode->functionName = functionName;
     newNode->variableName = variableName;
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 std::string SubscribeStatementNode::toString() const {
     std::ostringstream oss;
@@ -867,7 +874,7 @@ std::unique_ptr<ASTNode> UnsubscribeStatementNode::clone() const {
     auto newNode = std::make_unique<UnsubscribeStatementNode>();
     newNode->functionName = functionName;
     newNode->variableName = variableName;
-    return newNode;
+    return preserveSpan(sourceSpan, std::move(newNode));
 }
 std::string UnsubscribeStatementNode::toString() const {
     std::ostringstream oss;
@@ -886,7 +893,7 @@ std::string NoOpStatementNode::toString() const {
 
 
 std::unique_ptr<ASTNode> NoOpStatementNode::clone() const {
-    return std::make_unique<NoOpStatementNode>(*this);
+    return preserveSpan(sourceSpan, std::make_unique<NoOpStatementNode>(*this));
 }
 
 ASTNodeType ClassDeclarationNode::getType() const {
@@ -915,7 +922,7 @@ std::unique_ptr<ASTNode> ClassDeclarationNode::clone() const {
     for (const auto& stmt : members) {
         clonedMembers.push_back(stmt->clone());
     }
-    return std::make_unique<ClassDeclarationNode>(name, parentName, std::move(clonedMembers));
+    return preserveSpan(sourceSpan, std::make_unique<ClassDeclarationNode>(name, parentName, std::move(clonedMembers)));
 }
 
 FunctionCallExpressionStatementNode::FunctionCallExpressionStatementNode(
@@ -938,7 +945,7 @@ std::unique_ptr<ExpressionStatementNode> FunctionCallExpressionStatementNode::cl
             clonedArgs.push_back(nullptr); // Handle unexpected null arguments gracefully
         }
     }
-    return std::make_unique<FunctionCallExpressionStatementNode>(functionName, std::move(clonedArgs));
+    return preserveSpan(sourceSpan, std::make_unique<FunctionCallExpressionStatementNode>(functionName, std::move(clonedArgs)));
 }
 
 
@@ -979,7 +986,7 @@ std::unique_ptr<ExpressionStatementNode> ObjectPropertyAccessExpressionNode ::cl
     auto copy = std::make_unique<ObjectPropertyAccessExpressionNode>(
         std::move(clonedBase), propertyName
     );
-    return copy;
+    return preserveSpan(sourceSpan, std::move(copy));
 }
 
 ObjectMethodCallExpressionNode::ObjectMethodCallExpressionNode(std::unique_ptr<ExpressionStatementNode> baseExpr,
@@ -1013,7 +1020,7 @@ std::unique_ptr<ExpressionStatementNode> ObjectMethodCallExpressionNode::clone()
     auto copy = std::make_unique<ObjectMethodCallExpressionNode>(
         std::move(clonedBase), methodName, std::move(clonedArgs)
     );
-    return copy;
+    return preserveSpan(sourceSpan, std::move(copy));
 }
 
 

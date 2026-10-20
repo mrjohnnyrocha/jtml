@@ -148,6 +148,11 @@ private:
         size_t& m_posRef;
         Parser& m_parentParser;
 
+        template<class T> std::unique_ptr<T> withSpan(std::unique_ptr<T> node, size_t begin) {
+            m_parentParser.attachExpressionSpan(*node, begin, m_posRef);
+            return node;
+        }
+
         std::unique_ptr<ExpressionStatementNode> parseRange();
         std::unique_ptr<ExpressionStatementNode> parseConditional();
         std::unique_ptr<ExpressionStatementNode> parseLogicalOr();

@@ -436,9 +436,19 @@ std::vector<Token> Lexer::tokenize() {
                     continue;
                 }
                 else {
-                    errors.emplace_back("Error at line " +
-                                std::to_string(m_line) + ", column " +
-                                std::to_string(m_column) + ": " + ": Unexpected character '" + c + "'");
+                    std::string location = "line " + std::to_string(m_line) + ", column " + std::to_string(m_column);
+                    if (m_provenance) {
+                        auto origin = m_provenance->generated.exactRange(m_pos, m_pos + 1);
+                        const bool exact = origin.has_value();
+                        if (!origin) origin = m_provenance->attribution(m_line);
+                        if (origin) {
+                            const auto position = origin->source->coordinates(origin->begin);
+                            location = (exact ? "" : "generated code attributed to ") + origin->source->file + ":" +
+                                std::to_string(position.first) + ":" + std::to_string(position.second) +
+                                " (line " + std::to_string(position.first) + ", column " + std::to_string(position.second) + ")";
+                        } else location = "lowered " + location;
+                    }
+                    errors.emplace_back("Error at " + location + ": Unexpected character '" + c + "'");
                     recoverFromError();
                 }
         }

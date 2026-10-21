@@ -634,6 +634,15 @@ std::string staticPatchOperationKind(
     return node.childIndices.empty() ? "element" : "container-attrs";
 }
 
+nlohmann::json originalLocation(const RuntimePlanComponentBodyNode& node) {
+    if (!node.sourceSpan.original) return nullptr;
+    const auto& range = *node.sourceSpan.original;
+    const auto start = range.source->coordinates(range.begin);
+    const auto end = range.source->coordinates(range.end);
+    return {{"file", range.source->file}, {"line", start.first}, {"column", start.second},
+            {"endLine", end.first}, {"endColumn", end.second}, {"exact", node.sourceSpan.originalExact}};
+}
+
 nlohmann::json staticPatchOperation(
         const std::string& kind,
         const RuntimePlanComponentBodyNode& node,
@@ -649,6 +658,7 @@ nlohmann::json staticPatchOperation(
         {"words", words},
         {"sourceLine", node.sourceLine},
         {"sourceColumn", node.sourceColumn},
+        {"originalLocation", originalLocation(node)},
         {"expression", node.expression},
         {"expressionPlan", compileRuntimeExpressionPlan(node.expression, environment)},
         {"keyExpression", node.keyExpression},
@@ -704,6 +714,7 @@ nlohmann::json compileStaticComponentUpdatePlan(
                     {"kind", componentNodeHead(node)},
                     {"sourceLine", node.sourceLine},
                     {"sourceColumn", node.sourceColumn},
+        {"originalLocation", originalLocation(node)},
                 });
             } else {
                 const auto childKey = rootOperationKind == "nested-component"
@@ -726,6 +737,7 @@ nlohmann::json compileStaticComponentUpdatePlan(
                 {"kind", componentNodeHead(node)},
                 {"sourceLine", node.sourceLine},
                 {"sourceColumn", node.sourceColumn},
+        {"originalLocation", originalLocation(node)},
             });
             continue;
         }
@@ -739,6 +751,7 @@ nlohmann::json compileStaticComponentUpdatePlan(
             {"kind", componentNodeHead(node)},
             {"sourceLine", node.sourceLine},
             {"sourceColumn", node.sourceColumn},
+        {"originalLocation", originalLocation(node)},
             {"operation", staticPatchOperation(
                 operationKind, node, i, nodeEnvironment, childKey)},
         };
@@ -755,6 +768,7 @@ nlohmann::json compileStaticComponentUpdatePlan(
     eraseJsonKeyRecursive(bodyPlanJson, "astKind");
     if (bodyPlanJson.is_array()) {
         for (size_t i = 0; i < definition.bodyPlan.size() && i < bodyPlanJson.size(); ++i) {
+            bodyPlanJson[i]["originalLocation"] = originalLocation(definition.bodyPlan[i]);
             const auto childKey = nestedComponentPlanKey(definitions, definition, definition.bodyPlan[i]);
             if (!childKey.empty()) bodyPlanJson[i]["childComponentKey"] = childKey;
         }
@@ -2522,6 +2536,7 @@ std::string emitStaticComponentAsset(const RuntimeProjectPlan& plan,
     // Source provenance belongs to compiler diagnostics, not shipped execution
     // records (including explicit compatibility assets).
     eraseJsonKeyRecursive(fullComponents, "sourceSpan");
+    eraseJsonKeyRecursive(fullComponents, "originalLocation");
     const auto components = componentModule
         ? componentModulePlansPayload(fullComponents)
         : fullComponents;
@@ -2614,35 +2629,25 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
 
     auto sourceLabelFor = [&](const nlohmann::json& component,
                               const nlohmann::json& entry) {
+        const auto original = entry.value("originalLocation", nlohmann::json());
+        if (original.is_object()) {
+            std::ostringstream out;
+            if (!original.value("exact", false)) out << "generated code attributed to ";
+            out << original.value("file", "") << ":" << original.value("line", 0)
+                << ":" << original.value("column", 0);
+            return out.str();
+        }
+        // Compatibility/manual plans have no authoritative original range.
+        // Preserve useful generated coordinates, explicitly labelled as such.
         std::ostringstream out;
-        bool emitted = false;
+        out << "lowered line " << entry.value("sourceLine", 0);
+        if (entry.value("sourceColumn", 0) > 0) out << ":" << entry.value("sourceColumn", 0);
         if (component.contains("moduleId") && component["moduleId"].is_number_integer()) {
             const auto id = static_cast<SemanticModuleId>(component["moduleId"].get<int>());
             const auto found = modulePaths.find(id);
-            if (found != modulePaths.end() && !found->second.empty()) {
-                out << found->second;
-                emitted = true;
-            }
+            if (found != modulePaths.end()) out << " (module " << found->second << ")";
         }
-        int line = entry.value("sourceLine", 0);
-        const int componentLine = component.value("sourceLine", 0);
-        // Current body-plan nodes may carry either component-body-relative
-        // lines or already-absolute lines, depending on which bridge produced
-        // them. Prefer the absolute-looking value and only adjust relative
-        // lines until parser/AST source spans are carried end-to-end.
-        if (line > 0 && componentLine > 0 && line < componentLine) {
-            line += componentLine;
-        }
-        if (line > 0) {
-            if (emitted) out << ":";
-            else out << "line ";
-            out << line;
-            if (entry.value("sourceColumn", 0) > 0) {
-                out << ":" << entry.value("sourceColumn", 0);
-            }
-            emitted = true;
-        }
-        return emitted ? out.str() : std::string();
+        return out.str();
     };
 
     const auto components = assignComponentIdsAndChildIds(collectComponentPlans(plan));

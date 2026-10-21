@@ -125,5 +125,7 @@ TEST(SourcePropagation, CompilerSpansDoNotLeakIntoStaticExecutionAssets) {
     jtml::RuntimeProjectPlan project;
     project.linkedPlan = jtml::buildRuntimePlan(program, jtml::analyzeSemanticProgram(program));
     EXPECT_EQ(jtml::emitStaticUpdatePlanAsset(project).find("\"sourceSpan\""), std::string::npos);
+    EXPECT_EQ(jtml::emitStaticUpdatePlanAsset(project).find("\"originalLocation\""), std::string::npos);
+    EXPECT_EQ(jtml::emitStaticComponentModuleAsset(project).find("\"originalLocation\""), std::string::npos);
     EXPECT_EQ(jtml::emitStaticComponentModuleAsset(project).find("\"sourceSpan\""), std::string::npos);
 }

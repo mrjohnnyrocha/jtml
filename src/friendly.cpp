@@ -477,7 +477,7 @@ std::vector<Line> collectLines(const std::string& source) {
             if (ch == ' ') {
                 ++indent;
             } else if (ch == '\t') {
-                throw std::runtime_error("Tabs are not allowed for friendly JTML indentation at line " + std::to_string(lineNumber));
+                throw FriendlySourceError("Tabs are not allowed for friendly JTML indentation", lineNumber, indent + 1);
             } else {
                 break;
             }
@@ -3620,7 +3620,14 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
 }
 
 FriendlyClassicResult friendlyToClassicWithSourceMap(const MappedSource& source) {
-    auto result = friendlyToClassicWithSourceMap(source.text());
+    FriendlyClassicResult result;
+    try {
+        result = friendlyToClassicWithSourceMap(source.text());
+    } catch (const FriendlySourceError& error) {
+        SourceProvenance input({}, source);
+        throw FriendlySourceError(error.description, error.line, error.column,
+                                  input.inputRange(error.line, error.column, 1));
+    }
     MappedSource generated;
     generated.appendSynthetic(result.classicSource);
     result.provenance = std::make_shared<const SourceProvenance>(

@@ -79,6 +79,7 @@ std::unique_ptr<ExpressionIr> makeStringConcatenationIr(std::unique_ptr<Expressi
                                                         std::unique_ptr<ExpressionIr> right,
                                                         const ExpressionStatementNode* expression) {
     auto ir = makeIr(ExpressionIrKind::Binary, expression);
+    ir->sourceSpan.originalExact = false;
     ir->op = "+";
     ir->children.push_back(std::move(left));
     ir->children.push_back(std::move(right));
@@ -113,6 +114,13 @@ size_t findInterpolationClose(const std::string& value, size_t open) {
         }
     }
     return std::string::npos;
+}
+
+void attributeGeneratedExpression(ExpressionIr& ir, const SourceSpan& source) {
+    ir.sourceSpan = source;
+    ir.sourceSpan.originalExact = false;
+    for (auto& child : ir.children) if (child) attributeGeneratedExpression(*child, source);
+    for (auto& entry : ir.entries) if (entry.value) attributeGeneratedExpression(*entry.value, source);
 }
 
 std::unique_ptr<ExpressionIr> buildInterpolatedStringIr(const std::string& value,
@@ -153,6 +161,7 @@ std::unique_ptr<ExpressionIr> buildInterpolatedStringIr(const std::string& value
             i = close + 1;
             continue;
         }
+        if (expression) attributeGeneratedExpression(*expressionPart, expression->sourceSpan);
         parts.push_back(std::move(expressionPart));
         sawInterpolation = true;
         i = close + 1;

@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <cctype>
+#include "jtml/source_origin.h"
 
 // ------------------- Token Types Enumeration -------------------
 enum class TokenType {
@@ -93,12 +94,16 @@ struct Token {
     int position;
     int line;
     int column;
+    std::shared_ptr<const jtml::SourceProvenance> provenance;
+    int endPosition = -1;
 };
 
 // ------------------- Lexer Class -------------------
 class Lexer {
 public:
     explicit Lexer(const std::string& input);
+    Lexer(const std::string& input, std::shared_ptr<const jtml::SourceProvenance> provenance)
+        : Lexer(input) { m_provenance = std::move(provenance); }
 
     // Tokenize the input string and return a vector of tokens
     std::vector<Token> tokenize();
@@ -108,6 +113,7 @@ public:
 
 private:
     std::string m_input;
+    std::shared_ptr<const jtml::SourceProvenance> m_provenance;
     size_t m_pos;
     int m_line;
     int m_column;

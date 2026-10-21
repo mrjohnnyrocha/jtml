@@ -16,6 +16,12 @@ struct CompilationSource {
     MappedSource source;
     SyntaxMode syntax = SyntaxMode::Classic;
 };
+struct NormalizedCompilationSource {
+    std::string text;
+    std::shared_ptr<const SourceProvenance> provenance;
+};
+NormalizedCompilationSource normalizeCompilationSource(const CompilationSource& source);
+
 CompilationSource loadCompilationSource(const std::string& inputFile,
                                        SyntaxMode syntax,
                                        std::vector<std::filesystem::path>* filesOut = nullptr);

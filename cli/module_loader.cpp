@@ -344,11 +344,8 @@ FriendlyLoad loadFriendlyDependency(const std::filesystem::path& inputFile,
 // Lowered text is deliberately synthetic until the lowering stage composes its
 // own origin mapping. Never represent generated Classic columns as originals.
 MappedSource normalizedCompilationSource(const CompilationSource& unit) {
-    MappedSource result = unit.classicPrefix;
-    if (unit.syntax == SyntaxMode::Friendly)
-        result.appendSynthetic(normalizeSourceSyntax(unit.source.text(), unit.syntax));
-    else result.append(unit.source);
-    return result;
+    const auto normalized = normalizeCompilationSource(unit);
+    return normalized.provenance->generated;
 }
 
 CompilationSource loadCompilationSource(const std::filesystem::path& inputFile,
@@ -657,6 +654,27 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
 
 } // namespace
 
+NormalizedCompilationSource normalizeCompilationSource(const CompilationSource& unit) {
+    MappedSource generated = unit.classicPrefix;
+    std::vector<int> lineMap(1, 0);
+    for (const char ch : unit.classicPrefix.text()) if (ch == '\n') lineMap.push_back(0);
+    if (unit.syntax == SyntaxMode::Friendly) {
+        auto lowered = friendlyToClassicWithSourceMap(unit.source);
+        generated.appendSynthetic(lowered.classicSource);
+        lineMap.insert(lineMap.end(), lowered.classicLineToFriendlyLine.begin() + 1,
+                       lowered.classicLineToFriendlyLine.end());
+    } else generated.append(unit.source);
+    // An unterminated Classic prefix shares an output line with the first
+    // lowered line. Do not attribute that mixed line to the Friendly file.
+    if (!unit.classicPrefix.text().empty() && unit.classicPrefix.text().back() != '\n') {
+        const size_t mixedLine = std::count(unit.classicPrefix.text().begin(), unit.classicPrefix.text().end(), '\n') + 1;
+        if (mixedLine < lineMap.size()) lineMap[mixedLine] = 0;
+    }
+    auto provenance = std::make_shared<const SourceProvenance>(generated, unit.source, std::move(lineMap),
+        unit.syntax == SyntaxMode::Friendly ? SourceProvenance::Kind::FriendlyLowering : SourceProvenance::Kind::Identity);
+    return {generated.text(), std::move(provenance)};
+}
+
 CompilationSource loadCompilationSource(const std::string& inputFile,
                                 SyntaxMode syntax,
                                 std::vector<std::filesystem::path>* filesOut) {
@@ -672,7 +690,7 @@ CompilationSource loadCompilationSource(const std::string& inputFile,
 
 std::string loadCompilationUnit(const std::string& inputFile, SyntaxMode syntax,
                                 std::vector<std::filesystem::path>* filesOut) {
-    return normalizedCompilationSource(loadCompilationSource(inputFile, syntax, filesOut)).text();
+    return normalizeCompilationSource(loadCompilationSource(inputFile, syntax, filesOut)).text;
 }
 
 std::vector<std::filesystem::path>

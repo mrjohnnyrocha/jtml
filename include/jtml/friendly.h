@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include "jtml/source_origin.h"
 
 namespace jtml {
 
@@ -19,10 +20,12 @@ struct FriendlyClassicResult {
     // 1-based classic output line -> 1-based original Friendly source line.
     // Entry 0 is unused so callers can index with a diagnostic line directly.
     std::vector<int> classicLineToFriendlyLine;
+    std::shared_ptr<const SourceProvenance> provenance;
 };
 
 std::string friendlyToClassic(const std::string& source);
 FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source);
+FriendlyClassicResult friendlyToClassicWithSourceMap(const MappedSource& source);
 std::string formatFriendlySource(const std::string& source);
 std::string normalizeSourceSyntax(const std::string& source);
 std::string normalizeSourceSyntax(const std::string& source, SyntaxMode mode);

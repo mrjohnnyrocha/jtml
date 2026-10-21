@@ -1079,7 +1079,13 @@ SourceSpan Parser::spanFromTokenRange(size_t begin, size_t endExclusive) const {
     span.startOffset = first.position;
     span.endLine = last.line;
     span.endColumn = last.column + utf8ColumnWidth(last.text);
-    span.endOffset = last.position + static_cast<int>(last.text.size());
+    span.endOffset = last.endPosition >= 0 ? last.endPosition : last.position + static_cast<int>(last.text.size());
+    span.provenance = first.provenance;
+    if (span.provenance) {
+        span.original = span.provenance->generated.exactRange(span.startOffset, span.endOffset);
+        span.originalExact = span.original.has_value();
+        if (!span.original) span.original = span.provenance->attribution(first.line);
+    }
     return span;
 }
 
@@ -1153,18 +1159,20 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseExpressi
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseRange() {
+    const size_t expressionStart = m_posRef;
     auto start = parseConditional();
     if (!match(TokenType::DOTS)) {
         return start;
     }
 
     auto end = parseConditional();
-    return std::make_unique<RangeExpressionStatementNode>(
+    return withSpan(std::make_unique<RangeExpressionStatementNode>(
         std::move(start),
-        std::move(end));
+        std::move(end)), expressionStart);
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseConditional() {
+    const size_t expressionStart = m_posRef;
     auto condition = parseLogicalOr();
     if (!match(TokenType::QUESTION)) {
         return condition;
@@ -1174,54 +1182,58 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseConditio
     m_parentParser.consume(TokenType::COLON, "Expected ':' in conditional expression");
     auto whenFalse = parseConditional();
 
-    return std::make_unique<ConditionalExpressionStatementNode>(
+    return withSpan(std::make_unique<ConditionalExpressionStatementNode>(
         std::move(condition),
         std::move(whenTrue),
-        std::move(whenFalse));
+        std::move(whenFalse)), expressionStart);
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseLogicalOr() {
+    const size_t expressionStart = m_posRef;
     auto left = parseLogicalAnd();
     while (match(TokenType::OR)) {
         Token opTok = previous();
         auto right = parseLogicalAnd();
-        left = std::make_unique<BinaryExpressionStatementNode>(
-            opTok, std::move(left), std::move(right));
+        left = withSpan(std::make_unique<BinaryExpressionStatementNode>(
+            opTok, std::move(left), std::move(right)), expressionStart);
     }
     return left;
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseLogicalAnd() {
+    const size_t expressionStart = m_posRef;
     auto left = parseEquality();
     while (match(TokenType::AND)) {
         Token opTok = previous();
         auto right = parseEquality();
-        left = std::make_unique<BinaryExpressionStatementNode>(
-            opTok, std::move(left), std::move(right));
+        left = withSpan(std::make_unique<BinaryExpressionStatementNode>(
+            opTok, std::move(left), std::move(right)), expressionStart);
     }
     return left;
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseEquality() {
+    const size_t expressionStart = m_posRef;
     auto left = parseComparison();
     while (check(TokenType::EQ) || check(TokenType::NEQ)) {
         Token opTok = advance();
         auto right = parseComparison();
-        left = std::make_unique<BinaryExpressionStatementNode>(
-            opTok, std::move(left), std::move(right));
+        left = withSpan(std::make_unique<BinaryExpressionStatementNode>(
+            opTok, std::move(left), std::move(right)), expressionStart);
     }
     return left;
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseComparison() {
+    const size_t expressionStart = m_posRef;
     auto left = parseAddition();
     while (true) {
         if (match(TokenType::LT) || match(TokenType::LTEQ) ||
             match(TokenType::GT) || match(TokenType::GTEQ)) {
             Token opTok = previous();
             auto right = parseAddition();
-            left = std::make_unique<BinaryExpressionStatementNode>(
-                opTok, std::move(left), std::move(right));
+            left = withSpan(std::make_unique<BinaryExpressionStatementNode>(
+                opTok, std::move(left), std::move(right)), expressionStart);
         } else {
             break;
         }
@@ -1230,13 +1242,14 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseComparis
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseAddition() {
+    const size_t expressionStart = m_posRef;
     auto left = parseMultiplication();
         while (true) {
         if (match(TokenType::PLUS) || match(TokenType::MINUS)) {
             Token opTok = previous();
             auto right = parseMultiplication();
-            left = std::make_unique<BinaryExpressionStatementNode>(
-                opTok, std::move(left), std::move(right));
+            left = withSpan(std::make_unique<BinaryExpressionStatementNode>(
+                opTok, std::move(left), std::move(right)), expressionStart);
         } else {
             break;
         }
@@ -1245,13 +1258,14 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseAddition
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseMultiplication() {
+    const size_t expressionStart = m_posRef;
     auto left = parseUnary();
     while (true) {
         if (match(TokenType::MULTIPLY) || match(TokenType::DIVIDE) || match(TokenType::MODULUS)) {
             Token opTok = previous();
             auto right = parseUnary();
-            left = std::make_unique<BinaryExpressionStatementNode>(
-                opTok, std::move(left), std::move(right));
+            left = withSpan(std::make_unique<BinaryExpressionStatementNode>(
+                opTok, std::move(left), std::move(right)), expressionStart);
         } else {
             break;
         }
@@ -1260,28 +1274,30 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseMultipli
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseUnary() {
+    const size_t expressionStart = m_posRef;
     if (match(TokenType::NOT) || match(TokenType::MINUS)) {
         Token opTok = previous();
         auto right = parseUnary();
-        return std::make_unique<UnaryExpressionStatementNode>(
-            opTok, std::move(right));
+        return withSpan(std::make_unique<UnaryExpressionStatementNode>(
+            opTok, std::move(right)), expressionStart);
     }
     return parsePrimary();
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parsePrimary() {
+    const size_t expressionStart = m_posRef;
     if (match(TokenType::IDENTIFIER)) {
         Token identifierToken = previous();
         JTML_PARSER_DEBUG << "[DEBUG] Parsing identifier: " << identifierToken.text << "\n";
 
         if (check(TokenType::LPAREN)) {
             // parseFunctionCall can do the real work
-            return parseFunctionCall(identifierToken);
+            return withSpan(parseFunctionCall(identifierToken), expressionStart);
         }
 
         // Start with the base variable
         std::unique_ptr<ExpressionStatementNode> expr;
-        expr = std::make_unique<VariableExpressionStatementNode>(identifierToken);
+        expr = withSpan(std::make_unique<VariableExpressionStatementNode>(identifierToken), expressionStart);
 
         // Handle chained accesses (dot, subscript)
         while (true) {
@@ -1298,20 +1314,20 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parsePrimary(
                     }
                     m_parentParser.consume(TokenType::RPAREN, "Expected ')' after method arguments.");
 
-                    expr = std::make_unique<ObjectMethodCallExpressionNode>(
+                    expr = withSpan(std::make_unique<ObjectMethodCallExpressionNode>(
                         std::move(expr),
                         memberToken.text,
                         std::move(methodArgs)
-                    );
+                    ), expressionStart);
 
                     JTML_PARSER_DEBUG << "[DEBUG] Parsed method call: " << memberToken.text << "\n";
                 }
                 else {
                     // Property Access
-                    expr = std::make_unique<ObjectPropertyAccessExpressionNode>(
+                    expr = withSpan(std::make_unique<ObjectPropertyAccessExpressionNode>(
                         std::move(expr),
                         memberToken.text
-                    );
+                    ), expressionStart);
 
                     JTML_PARSER_DEBUG << "[DEBUG] Parsed property access: " << memberToken.text << "\n";
                 }
@@ -1321,10 +1337,10 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parsePrimary(
                 std::unique_ptr<ExpressionStatementNode> indexExpr = parseExpression();
                 m_parentParser.consume(TokenType::RBRACKET, "Expected ']' after subscript.");
 
-                expr = std::make_unique<SubscriptExpressionStatementNode>(
+                expr = withSpan(std::make_unique<SubscriptExpressionStatementNode>(
                     std::move(expr),
                     std::move(indexExpr)
-                );
+                ), expressionStart);
 
                 JTML_PARSER_DEBUG << "[DEBUG] Parsed subscript access.\n";
             }
@@ -1334,18 +1350,18 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parsePrimary(
             }
         }
 
-        return expr;
+        return withSpan(std::move(expr), expressionStart);
     }
     if (match(TokenType::LBRACKET)) {
-        return parseArrayLiteral();
+        return withSpan(parseArrayLiteral(), expressionStart);
     }
     if (match(TokenType::LBRACE)) {
-        return parseDictionaryLiteral();
+        return withSpan(parseDictionaryLiteral(), expressionStart);
     }
     if (match(TokenType::BOOLEAN_LITERAL)) {
         Token boolTok = previous();
         bool value = (boolTok.text == "true");  // Convert string to boolean value
-        return std::make_unique<BooleanLiteralExpressionStatementNode>(value);
+        return withSpan(std::make_unique<BooleanLiteralExpressionStatementNode>(value), expressionStart);
     }
     if (match(TokenType::STRING_LITERAL)) {
         Token strTok = previous();
@@ -1354,12 +1370,12 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parsePrimary(
             throw std::runtime_error("String interpolation with '#(...)' is not supported; use expression concatenation instead");
         }
 
-        return std::make_unique<StringLiteralExpressionStatementNode>(strTok);
+        return withSpan(std::make_unique<StringLiteralExpressionStatementNode>(strTok), expressionStart);
     }
 
     if (matchNumberLiteral()) {
         Token tk = previous();
-        return std::make_unique<NumberLiteralExpressionStatementNode>(tk);
+        return withSpan(std::make_unique<NumberLiteralExpressionStatementNode>(tk), expressionStart);
     }
     if (match(TokenType::LPAREN)) {
 
@@ -1371,7 +1387,7 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parsePrimary(
             throw std::runtime_error("Expected ')' after expression");
         }
         JTML_PARSER_DEBUG << "Parsing expression inside parens " << expr->toString() << "\n";
-        return expr;
+        return withSpan(std::move(expr), expressionStart);
     }
     // Error handling
     Token bad = peek();
@@ -1382,6 +1398,7 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parsePrimary(
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseFunctionCall(const Token& nameToken) {
+    const size_t expressionStart = m_posRef - 1;
 
     m_parentParser.consume(TokenType::LPAREN, "Expected '(' after function name");
 
@@ -1396,11 +1413,12 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseFunction
 
     m_parentParser.consume(TokenType::RPAREN, "Expected ')' after function arguments");
 
-    return std::make_unique<FunctionCallExpressionStatementNode>(
-        nameToken.text, std::move(arguments));
+    return withSpan(std::make_unique<FunctionCallExpressionStatementNode>(
+        nameToken.text, std::move(arguments)), expressionStart);
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseArrayLiteral() {
+    const size_t expressionStart = m_posRef - 1;
     // We matched '['
     std::vector<std::unique_ptr<ExpressionStatementNode>> elements;
 
@@ -1412,9 +1430,10 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseArrayLit
     }
 
     m_parentParser.consume(TokenType::RBRACKET, "Expected ']' after array literal");
-    return std::make_unique<ArrayLiteralExpressionStatementNode>(std::move(elements));
+    return withSpan(std::make_unique<ArrayLiteralExpressionStatementNode>(std::move(elements)), expressionStart);
 }
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseDictionaryLiteral() {
+    const size_t expressionStart = m_posRef - 1;
     // We matched '{'
     std::vector<DictionaryEntry> dictEntries;
 
@@ -1439,7 +1458,7 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseDictiona
     }
 
     m_parentParser.consume(TokenType::RBRACE, "Expected '}' after dictionary literal");
-    return std::make_unique<DictionaryLiteralExpressionStatementNode>(std::move(dictEntries));
+    return withSpan(std::make_unique<DictionaryLiteralExpressionStatementNode>(std::move(dictEntries)), expressionStart);
 }
 
 

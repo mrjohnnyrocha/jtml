@@ -464,8 +464,8 @@ struct SemanticSets {
     std::set<std::string> components;
     std::set<std::tuple<std::string, std::string, std::string, std::string, std::string,
                         std::string, std::string, std::string, std::string, std::string,
-                        std::string, std::string, std::string, bool, int, int, int, int>> componentDefinitions;
-    std::set<std::tuple<std::string, std::string, int, std::string, std::string, std::string, std::string, int>> componentInstances;
+                        std::string, std::string, std::string, bool, int, int, int, int, std::shared_ptr<const SourceProvenance>>> componentDefinitions;
+    std::set<std::tuple<std::string, std::string, int, std::string, std::string, std::string, std::string, int, std::shared_ptr<const SourceProvenance>>> componentInstances;
     std::set<std::string> routes;
     std::set<std::tuple<std::string, std::string, std::string, std::string>> routeRecords;
     std::set<std::string> fetches;
@@ -844,7 +844,8 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
             summary.bodyNodeCount,
             summary.rootTemplateNodeCount,
             summary.slotCount,
-            parseIntLiteral(sourceLine)
+            parseIntLiteral(sourceLine),
+            elem.sourceSpan.provenance
         });
     } else if (attributeLiteral(elem, "data-jtml-component", value)) {
         insertSorted(out.components, value);
@@ -863,7 +864,7 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
         attributeLiteral(elem, "data-jtml-component-slot-hex", slotHex);
         attributeLiteral(elem, "data-jtml-source-line", sourceLine);
         out.componentInstances.insert({id, value, parseIntLiteral(instanceId), role.empty() ? "component" : role,
-                                       params, locals, slotHex, parseIntLiteral(sourceLine)});
+                                       params, locals, slotHex, parseIntLiteral(sourceLine), elem.sourceSpan.provenance});
     }
     if (attributeLiteral(elem, "data-jtml-timeline", value)) {
         ++out.timelineCount;
@@ -1325,7 +1326,7 @@ std::vector<SemanticExport> exportsToVector(
 std::vector<SemanticComponentDefinition> componentDefinitionsToVector(
     const std::set<std::tuple<std::string, std::string, std::string, std::string, std::string,
                               std::string, std::string, std::string, std::string, std::string,
-                              std::string, std::string, std::string, bool, int, int, int, int>>& values) {
+                              std::string, std::string, std::string, bool, int, int, int, int, std::shared_ptr<const SourceProvenance>>>& values) {
     std::vector<SemanticComponentDefinition> definitions;
     for (const auto& definition : values) {
         definitions.push_back({
@@ -1347,13 +1348,14 @@ std::vector<SemanticComponentDefinition> componentDefinitionsToVector(
             std::get<15>(definition),
             std::get<16>(definition),
             std::get<17>(definition),
+            std::get<18>(definition),
         });
     }
     return definitions;
 }
 
 std::vector<SemanticComponentInstance> componentInstancesToVector(
-    const std::set<std::tuple<std::string, std::string, int, std::string, std::string, std::string, std::string, int>>& values) {
+    const std::set<std::tuple<std::string, std::string, int, std::string, std::string, std::string, std::string, int, std::shared_ptr<const SourceProvenance>>>& values) {
     std::vector<SemanticComponentInstance> instances;
     for (const auto& instance : values) {
         instances.push_back({
@@ -1365,6 +1367,7 @@ std::vector<SemanticComponentInstance> componentInstancesToVector(
             splitPropertyMap(std::get<5>(instance)),
             std::get<6>(instance),
             std::get<7>(instance),
+            std::get<8>(instance),
         });
     }
     return instances;

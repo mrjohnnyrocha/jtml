@@ -49,6 +49,7 @@ struct RuntimePlanComponentBodyNode {
     std::vector<std::string> reads;
     std::vector<std::string> writes;
     bool renderRoot = false;
+    SourceSpan sourceSpan;
 };
 
 struct RuntimePlanComponentDefinition {

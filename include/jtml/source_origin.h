@@ -115,4 +115,42 @@ private:
     }
 };
 
+// A lowering result keeps exact copied bytes separately from attribution of
+// generated lines to their triggering input construct. These are different
+// guarantees: an attributed generated token is never an exact original token.
+struct SourceProvenance {
+    enum class Kind { Identity, FriendlyLowering };
+    Kind kind;
+    MappedSource generated;
+    MappedSource input;
+    std::vector<int> generatedLineToInputLine;
+    std::vector<size_t> inputLineStarts{0};
+
+    SourceProvenance(MappedSource output, MappedSource originalInput,
+                     std::vector<int> lines = {}, Kind sourceKind = Kind::Identity)
+        : kind(sourceKind), generated(std::move(output)), input(std::move(originalInput)),
+          generatedLineToInputLine(std::move(lines)) {
+        for (size_t i = 0; i < input.size(); ++i)
+            if (input.text()[i] == '\n') inputLineStarts.push_back(i + 1);
+    }
+    std::optional<OriginalRange> inputRange(int line, int column, size_t count) const {
+        if (line < 1 || static_cast<size_t>(line) > inputLineStarts.size() || column < 1) return {};
+        const size_t begin = inputLineStarts[line - 1] + static_cast<size_t>(column - 1);
+        if (begin > input.size() || count > input.size() - begin) return {};
+        return input.exactRange(begin, begin + count);
+    }
+    std::optional<OriginalRange> inputConstruct(int line) const {
+        if (line < 1 || static_cast<size_t>(line) > inputLineStarts.size()) return {};
+        size_t begin = inputLineStarts[line - 1];
+        size_t end = static_cast<size_t>(line) < inputLineStarts.size() ? inputLineStarts[line] : input.size();
+        while (begin < end && (input.text()[begin] == ' ' || input.text()[begin] == '\t')) ++begin;
+        while (end > begin && (input.text()[end-1] == '\r' || input.text()[end-1] == '\n')) --end;
+        return input.exactRange(begin, end);
+    }
+    std::optional<OriginalRange> attribution(int generatedLine) const {
+        if (generatedLine < 1 || static_cast<size_t>(generatedLine) >= generatedLineToInputLine.size()) return {};
+        return inputConstruct(generatedLineToInputLine[generatedLine]);
+    }
+};
+
 } // namespace jtml

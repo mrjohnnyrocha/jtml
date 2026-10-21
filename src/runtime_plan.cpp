@@ -682,6 +682,22 @@ void absolutizeBodyPlanSourceLines(std::vector<RuntimePlanComponentBodyNode>& bo
 
 } // namespace
 
+void attachBodyOrigins(std::vector<RuntimePlanComponentBodyNode>& body,
+                       const std::shared_ptr<const SourceProvenance>& provenance) {
+    if (!provenance || provenance->kind != SourceProvenance::Kind::FriendlyLowering) return;
+    for (auto& node : body) {
+        // Relative compatibility metadata is not an original coordinate.
+        if (!node.sourceLineAbsolute) continue;
+        node.sourceSpan.provenance = provenance;
+        node.sourceSpan.original = provenance->inputRange(node.sourceLine, node.sourceColumn, node.text.size());
+        if (node.sourceSpan.original) {
+            const auto& origin = *node.sourceSpan.original;
+            node.sourceSpan.originalExact = origin.source->text.substr(origin.begin, origin.end - origin.begin) == node.text;
+        }
+        if (!node.sourceSpan.originalExact) node.sourceSpan.original = provenance->inputConstruct(node.sourceLine);
+    }
+}
+
 RuntimePlanComponentDefinition planComponentDefinition(
         const SemanticComponentDefinition& semantic,
         SemanticModuleId moduleId = InvalidSemanticModuleId) {
@@ -702,6 +718,7 @@ RuntimePlanComponentDefinition planComponentDefinition(
     planned.bodySource = hexDecode(semantic.bodyHex);
     planned.bodyPlan = buildComponentBodyPlan(planned.bodySource);
     absolutizeBodyPlanSourceLines(planned.bodyPlan, semantic.sourceLine);
+    attachBodyOrigins(planned.bodyPlan, semantic.provenance);
     planned.hasSlot = semantic.hasSlot;
     planned.bodyNodeCount = semantic.bodyNodeCount;
     planned.rootTemplateNodeCount = semantic.rootTemplateNodeCount;
@@ -727,6 +744,7 @@ RuntimePlanComponentInstance planComponentInstance(
     planned.slotSource = hexDecode(semantic.slotHex);
     planned.slotPlan = buildComponentBodyPlan(planned.slotSource);
     absolutizeBodyPlanSourceLines(planned.slotPlan, semantic.sourceLine);
+    attachBodyOrigins(planned.slotPlan, semantic.provenance);
     planned.sourceLine = semantic.sourceLine;
     return planned;
 }

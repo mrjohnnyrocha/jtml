@@ -159,8 +159,9 @@ std::string importedComponentStubsForBrowserBuild(const std::string& source) {
     return out.str();
 }
 
-std::vector<std::unique_ptr<ASTNode>> parseStandaloneNormalizedSource(const std::string& source) {
-    Lexer lexer(source);
+std::vector<std::unique_ptr<ASTNode>> parseStandaloneNormalizedSource(const std::string& source,
+        std::shared_ptr<const SourceProvenance> provenance = {}) {
+    Lexer lexer(source, std::move(provenance));
     auto tokens = lexer.tokenize();
     const auto& lexErrors = lexer.getErrors();
     if (!lexErrors.empty()) {
@@ -182,18 +183,26 @@ std::vector<std::unique_ptr<ASTNode>> parseStandaloneNormalizedSource(const std:
 
 ParsedModuleForBrowserBuild parseStandaloneModuleForBrowserBuild(const std::string& source,
                                                                  SyntaxMode syntax,
-                                                                 bool allowImportStubs) {
+                                                                 bool allowImportStubs,
+                                                                 const std::string& file) {
     const bool friendly =
         syntax == SyntaxMode::Friendly ||
         (syntax == SyntaxMode::Auto &&
          (isFriendlySyntax(source) || looksLikeFriendlySyntax(source)));
+    auto parseMapped = [&](MappedSource bytes, SyntaxMode mode) {
+        CompilationSource input;
+        input.source = std::move(bytes);
+        input.syntax = mode;
+        auto normalized = normalizeCompilationSource(input);
+        return parseStandaloneNormalizedSource(normalized.text, normalized.provenance);
+    };
     if (!friendly) {
-        return {parseStandaloneNormalizedSource(normalizeSourceSyntax(source, SyntaxMode::Classic)),
+        return {parseMapped(MappedSource::original(file, source), SyntaxMode::Classic),
                 "classic"};
     }
 
     try {
-        return {parseStandaloneNormalizedSource(normalizeSourceSyntax(source, SyntaxMode::Friendly)),
+        return {parseMapped(MappedSource::original(file, source), SyntaxMode::Friendly),
                 "friendly"};
     } catch (const std::exception& firstError) {
         if (!allowImportStubs) {
@@ -202,8 +211,9 @@ ParsedModuleForBrowserBuild parseStandaloneModuleForBrowserBuild(const std::stri
         const auto stubs = importedComponentStubsForBrowserBuild(source);
         if (stubs.empty()) throw;
         try {
-            return {parseStandaloneNormalizedSource(
-                        normalizeSourceSyntax(source + stubs, SyntaxMode::Friendly)),
+            auto withStubs = MappedSource::original(file, source);
+            withStubs.appendSynthetic(stubs);
+            return {parseMapped(std::move(withStubs), SyntaxMode::Friendly),
                     "friendly+import-stubs"};
         } catch (...) {
             throw firstError;
@@ -232,7 +242,7 @@ jtml::RuntimeProjectPlan buildRuntimeProjectPlanForInput(
         try {
             SilenceStdout silence;
             auto parsedModule =
-                parseStandaloneModuleForBrowserBuild(moduleSource, syntax, allowImportStubs);
+                parseStandaloneModuleForBrowserBuild(moduleSource, syntax, allowImportStubs, path);
             ir = jtml::summarizeSemanticAst(parsedModule.program, parsedModule.syntax);
             moduleAst = jtml::cloneSemanticAst(parsedModule.program, parsedModule.syntax);
             moduleSemantic = parsedModule.syntax == "friendly+import-stubs"

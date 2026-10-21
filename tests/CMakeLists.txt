@@ -29,6 +29,7 @@ set(JTML_TEST_SOURCES
     test_friendly.cpp
     test_linter.cpp
     test_source_origin.cpp
+    test_source_propagation.cpp
     test_module_resolver.cpp
     test_refactor.cpp
     test_semantic.cpp

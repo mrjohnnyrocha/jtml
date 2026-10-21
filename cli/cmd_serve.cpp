@@ -805,8 +805,13 @@ static void serveOnce(const std::vector<std::unique_ptr<ASTNode>>& program,
             res.set_content("Not found", "text/plain");
         }
     });
-    std::cout << "jtml serve: http://localhost:" << port
-              << "  (WebSocket on " << cfg.wsPort << ")\n" << std::flush;
+    {
+        // The WS startup thread and runtime callbacks use this same lock;
+        // ostream state and redirected string buffers require both producers.
+        std::lock_guard<JTMLInterpreter::LocalServerExecutionMutex> lock(JTML::localServerExecutionMutex());
+        std::cout << "jtml serve: http://localhost:" << port
+                  << "  (WebSocket on " << cfg.wsPort << ")\n" << std::flush;
+    }
     if (!svr.listen("127.0.0.1", port)) {
         throw std::runtime_error("jtml serve cannot start: HTTP listener failed on 127.0.0.1:" +
                                  std::to_string(port));
@@ -887,9 +892,14 @@ static void serveWatching(const std::string& inputFile, int port, SyntaxMode syn
         }
     });
 
-    std::cout << "jtml serve --watch: http://localhost:" << port
-              << "  (WebSocket on " << cfg.wsPort << ")\n"
-              << "Watching: " << inputFile << "\n" << std::flush;
+    {
+        // The WS startup thread and runtime callbacks use this same lock;
+        // ostream state and redirected string buffers require both producers.
+        std::lock_guard<JTMLInterpreter::LocalServerExecutionMutex> lock(JTML::localServerExecutionMutex());
+        std::cout << "jtml serve --watch: http://localhost:" << port
+                  << "  (WebSocket on " << cfg.wsPort << ")\n"
+                  << "Watching: " << inputFile << "\n" << std::flush;
+    }
     if (!svr.listen("127.0.0.1", port)) {
         throw std::runtime_error("jtml serve --watch cannot start: HTTP listener failed on 127.0.0.1:" +
                                  std::to_string(port));
@@ -1150,16 +1160,20 @@ static void serveStudio(int port) {
         }
     }));
 
-    std::cout << "JTML Studio: http://localhost:" << port
-              << "  (WebSocket on " << cfg.wsPort << ")\n";
-    if (!lessons.empty())
-        std::cout << "Tutorial: " << lessons.size() << " lesson(s) from ./tutorial/\n";
-    if (!docs.empty())
-        std::cout << "Docs: " << docs.size() << " guide(s) from ./docs/\n";
-    else
-        std::cout << "Tutorial: no ./tutorial/ found (run from the repo root to include it)\n";
-    std::cout << std::flush;
-
+    {
+        // The WS startup thread and runtime callbacks use this same lock;
+        // ostream state and redirected string buffers require both producers.
+        std::lock_guard<JTMLInterpreter::LocalServerExecutionMutex> lock(JTML::localServerExecutionMutex());
+        std::cout << "JTML Studio: http://localhost:" << port
+                  << "  (WebSocket on " << cfg.wsPort << ")\n";
+        if (!lessons.empty())
+            std::cout << "Tutorial: " << lessons.size() << " lesson(s) from ./tutorial/\n";
+        if (!docs.empty())
+            std::cout << "Docs: " << docs.size() << " guide(s) from ./docs/\n";
+        else
+            std::cout << "Tutorial: no ./tutorial/ found (run from the repo root to include it)\n";
+        std::cout << std::flush;
+    }
     if (!svr.listen("127.0.0.1", port)) {
         throw std::runtime_error("jtml studio cannot start: HTTP listener failed on 127.0.0.1:" +
                                  std::to_string(port));

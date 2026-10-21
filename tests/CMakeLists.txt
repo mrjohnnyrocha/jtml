@@ -97,3 +97,12 @@ add_executable(jtml_async_c_api_probe c_api_async_probe.cpp)
 target_link_libraries(jtml_async_c_api_probe PRIVATE jtml_c)
 add_test(NAME InterpreterAsync.c_api_lifetime COMMAND jtml_async_c_api_probe)
 set_tests_properties(InterpreterAsync.c_api_lifetime PROPERTIES TIMEOUT 20 LABELS "unit;interpreter;async")
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_executable(jtml_startup_logging_probe server_startup_logging_probe.cpp)
+target_link_libraries(jtml_startup_logging_probe PRIVATE jtml_cli_lib)
+target_include_directories(jtml_startup_logging_probe PRIVATE ${CMAKE_SOURCE_DIR})
+add_test(NAME LocalServerStartup.BannerSynchronization
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_server_startup_logging.py
+            $<TARGET_FILE:jtml_startup_logging_probe>)
+set_tests_properties(LocalServerStartup.BannerSynchronization PROPERTIES TIMEOUT 50 LABELS "unit;interpreter;security")

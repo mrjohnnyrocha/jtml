@@ -1,0 +1,26 @@
+[
+  {
+    "sanitizer": "asan",
+    "mode": "unguarded",
+    "exit": -6,
+    "log": "/Users/joaorocha/.codex/worktrees/native-store-safety/jtml-v1/docs/architecture/native-store-investigation/evidence/asan-logging-unguarded.log"
+  },
+  {
+    "sanitizer": "asan",
+    "mode": "guarded",
+    "exit": 0,
+    "log": "/Users/joaorocha/.codex/worktrees/native-store-safety/jtml-v1/docs/architecture/native-store-investigation/evidence/asan-logging-guarded.log"
+  },
+  {
+    "sanitizer": "tsan",
+    "mode": "unguarded",
+    "exit": -6,
+    "log": "/Users/joaorocha/.codex/worktrees/native-store-safety/jtml-v1/docs/architecture/native-store-investigation/evidence/tsan-logging-unguarded.log"
+  },
+  {
+    "sanitizer": "tsan",
+    "mode": "guarded",
+    "exit": 0,
+    "log": "/Users/joaorocha/.codex/worktrees/native-store-safety/jtml-v1/docs/architecture/native-store-investigation/evidence/tsan-logging-guarded.log"
+  }
+]

@@ -1,0 +1,31 @@
+==================
+WARNING: ThreadSanitizer: data race (pid=58124)
+  Read of size 8 at 0x000200fbdcf8 by main thread:
+    #0 std::__1::ostreambuf_iterator<char, std::__1::char_traits<char>> std::__1::__pad_and_output[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::ostreambuf_iterator<char, std::__1::char_traits<char>>, char const*, char const*, char const*, std::__1::ios_base&, char) locale:1422 (jtml:arm64+0x1000066b0)
+    #1 std::__1::basic_ostream<char, std::__1::char_traits<char>>& std::__1::__put_character_sequence[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::basic_ostream<char, std::__1::char_traits<char>>&, char const*, unsigned long) ostream:770 (jtml:arm64+0x100006590)
+    #2 jtml::cli::cmdServe(jtml::cli::Options const&) cmd_serve.cpp:1177 (jtml:arm64+0x1000ee298)
+    #3 main main.cpp:152 (jtml:arm64+0x100005b20)
+
+  Previous write of size 8 at 0x000200fbdcf8 by thread T1 (mutexes: write M0):
+    #0 std::__1::ostreambuf_iterator<char, std::__1::char_traits<char>> std::__1::__pad_and_output[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::ostreambuf_iterator<char, std::__1::char_traits<char>>, char const*, char const*, char const*, std::__1::ios_base&, char) locale:1454 (jtml:arm64+0x100006808)
+    #1 std::__1::basic_ostream<char, std::__1::char_traits<char>>& std::__1::__put_character_sequence[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::basic_ostream<char, std::__1::char_traits<char>>&, char const*, unsigned long) ostream:770 (jtml:arm64+0x100006590)
+    #2 JTMLInterpreter::WebSocketServer::run(unsigned short) websocket_server.h:77 (jtml:arm64+0x10035371c)
+    #3 void* std::__1::__thread_proxy[abi:ue170006]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, Interpreter::Interpreter(JtmlTranspiler&, InterpreterConfig)::$_6>>(void*) thread.h:238 (jtml:arm64+0x1003534ec)
+
+  Location is global 'std::__1::cout' at 0x000200fbdcd8 (libc++.1.dylib+0x67e01cf8)
+
+  Mutex M0 (0x000102dfc098) created at:
+    #0 pthread_mutex_init <null>:58248836 (libclang_rt.tsan_osx_dynamic.dylib:arm64e+0x31470)
+    #1 std::__1::recursive_mutex::recursive_mutex() <null>:58248836 (libc++.1.dylib:arm64e+0x167b8)
+    #2 main main.cpp:152 (jtml:arm64+0x100005b20)
+
+  Thread T1 (tid=197688, running) created by main thread at:
+    #0 pthread_create <null>:58248836 (libclang_rt.tsan_osx_dynamic.dylib:arm64e+0x3062c)
+    #1 Interpreter::Interpreter(JtmlTranspiler&, InterpreterConfig) interpreter.cpp:563 (jtml:arm64+0x1002e22c8)
+    #2 Interpreter::Interpreter(JtmlTranspiler&, InterpreterConfig) interpreter.cpp:525 (jtml:arm64+0x1002e25c8)
+    #3 jtml::cli::cmdServe(jtml::cli::Options const&) cmd_serve.cpp:1177 (jtml:arm64+0x1000ed240)
+    #4 main main.cpp:152 (jtml:arm64+0x100005b20)
+
+SUMMARY: ThreadSanitizer: data race locale:1422 in std::__1::ostreambuf_iterator<char, std::__1::char_traits<char>> std::__1::__pad_and_output[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::ostreambuf_iterator<char, std::__1::char_traits<char>>, char const*, char const*, char const*, std::__1::ios_base&, char)
+==================
+[WebSocket] Server started on 127.0.0.1:56801

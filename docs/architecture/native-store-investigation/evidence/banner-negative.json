@@ -1,0 +1,17 @@
+[
+  {
+    "mode": "serve",
+    "exit": 86,
+    "diagnostic": "FAIL startup banner bypasses runtime execution lock"
+  },
+  {
+    "mode": "watch",
+    "exit": 86,
+    "diagnostic": "[watch] built /Users/joaorocha/.codex/worktrees/native-store-safety/jtml-v1/examples/friendly_store.jtml\nFAIL startup banner bypasses runtime execution lock"
+  },
+  {
+    "mode": "studio",
+    "exit": 86,
+    "diagnostic": "FAIL startup banner bypasses runtime execution lock"
+  }
+]

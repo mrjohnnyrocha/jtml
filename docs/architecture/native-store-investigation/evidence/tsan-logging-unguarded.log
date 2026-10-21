@@ -1,0 +1,20 @@
+==================
+WARNING: ThreadSanitizer: data race (pid=57504)
+  Read of size 4 at 0x000200fbdd70 by thread T1:
+    #0 std::__1::basic_ostream<char, std::__1::char_traits<char>>& std::__1::__put_character_sequence[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::basic_ostream<char, std::__1::char_traits<char>>&, char const*, unsigned long) ostream:777 (jtml-native-logging-tsan:arm64+0x100002210)
+    #1 main::$_0::operator()() const logging_probe.cpp:31 (jtml-native-logging-tsan:arm64+0x100001fb4)
+    #2 void* std::__1::__thread_proxy[abi:ue170006]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, main::$_0>>(void*) thread.h:238 (jtml-native-logging-tsan:arm64+0x1000025f8)
+
+  Previous write of size 4 at 0x000200fbdd70 by main thread:
+    #0 std::__1::basic_ostream<char, std::__1::char_traits<char>>& std::__1::__put_character_sequence[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::basic_ostream<char, std::__1::char_traits<char>>&, char const*, unsigned long) ostream:777 (jtml-native-logging-tsan:arm64+0x100002268)
+    #1 main::$_0::operator()() const logging_probe.cpp:31 (jtml-native-logging-tsan:arm64+0x100001fb4)
+    #2 main logging_probe.cpp:35 (jtml-native-logging-tsan:arm64+0x100001bd8)
+
+  Location is global 'std::__1::cout' at 0x000200fbdcd8 (libc++.1.dylib+0x67e01d70)
+
+  Thread T1 (tid=196396, running) created by main thread at:
+    #0 pthread_create <null>:90459780 (libclang_rt.tsan_osx_dynamic.dylib:arm64e+0x3062c)
+    #1 main logging_probe.cpp:34 (jtml-native-logging-tsan:arm64+0x100001bcc)
+
+SUMMARY: ThreadSanitizer: data race ostream:777 in std::__1::basic_ostream<char, std::__1::char_traits<char>>& std::__1::__put_character_sequence[abi:ue170006]<char, std::__1::char_traits<char>>(std::__1::basic_ostream<char, std::__1::char_traits<char>>&, char const*, unsigned long)
+==================

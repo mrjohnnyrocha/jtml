@@ -4,7 +4,7 @@
   "entries": {
     "branch-dependencies": {
       "sourceSha256": "835a1485b06cd3ac12b0724de086661dcdd98244eab011769e4547d2158ce2b7",
-      "classification": "native-dependency-collection",
+      "classification": "native-boolean-result-construction-after-dependency-repair",
       "failures": [
         {
           "layer": "native",
@@ -28,35 +28,35 @@
               {
                 "x": 5,
                 "y": 11,
-                "result": 2
+                "result": 5
               }
             ],
             [
               {
                 "x": 5,
                 "y": 11,
-                "result": 2
+                "result": 5
               }
             ],
             [
               {
                 "x": 8,
                 "y": 11,
-                "result": 2
+                "result": 8
               }
             ],
             [
               {
                 "x": 8,
                 "y": 13,
-                "result": 2
+                "result": 8
               }
             ],
             [
               {
                 "x": 8,
                 "y": 13,
-                "result": 2
+                "result": 8
               }
             ]
           ]
@@ -83,35 +83,35 @@
               {
                 "x": "5",
                 "y": "11",
-                "result": "2"
+                "result": "5"
               }
             ],
             [
               {
                 "x": "5",
                 "y": "11",
-                "result": "2"
+                "result": "5"
               }
             ],
             [
               {
                 "x": "8",
                 "y": "11",
-                "result": "2"
+                "result": "8"
               }
             ],
             [
               {
                 "x": "8",
                 "y": "13",
-                "result": "2"
+                "result": "8"
               }
             ],
             [
               {
                 "x": "8",
                 "y": "13",
-                "result": "2"
+                "result": "8"
               }
             ]
           ]
@@ -121,7 +121,7 @@
     },
     "boolean-comparison": {
       "sourceSha256": "75386b5f26e4c07a0a4ec300452f7ae4bd4f7f2bd3e972ec8125eab21a0d4c23",
-      "classification": "native-dependency-collection",
+      "classification": "native-boolean-result-construction",
       "failures": [
         {
           "layer": "native",
@@ -246,45 +246,6 @@
         }
       ],
       "expectedSha256": "7d31e77b719b4ff8f5168d3099305257d3efd536385724b5fed72976299326ea"
-    },
-    "ternary-minimal": {
-      "sourceSha256": "8f3639fc5a11b342d99346540744f59a0b9076215156e917b4fdfe6cb3416a44",
-      "classification": "native-dependency-collection",
-      "failures": [
-        {
-          "layer": "native",
-          "observation": "state",
-          "actual": [
-            [
-              {
-                "result": 1
-              }
-            ],
-            [
-              {
-                "result": 1
-              }
-            ]
-          ]
-        },
-        {
-          "layer": "native",
-          "observation": "visible",
-          "actual": [
-            [
-              {
-                "result": "1"
-              }
-            ],
-            [
-              {
-                "result": "1"
-              }
-            ]
-          ]
-        }
-      ],
-      "expectedSha256": "a99cf754b8243e98c8ca9be47cdd25f5e994055e83d74aa8c5e3a4d3e2403f69"
     },
     "nested-parameter-retention": {
       "sourceSha256": "1a5436763a48b0b0949a7ea0ca0666d7b74b0e05975fed2e37f3206b1d204ec6",

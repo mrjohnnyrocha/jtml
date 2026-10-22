@@ -1,0 +1,28 @@
+jtml 2
+
+make Probe
+  let enabled = true
+  let index = 0
+  let other = 1
+  let items = [2, 5]
+  get result = items[(enabled ? index : other)]
+  when index
+    index = 1 - index
+  when other
+    other = 1 - other
+  when disable
+    enabled = false
+  when enable
+    enabled = true
+  when write
+    items[other] += 1
+  box class "probe"
+    p class "out-result" result
+    button "index" click index
+    button "other" click other
+    button "disable" click disable
+    button "enable" click enable
+    button "write" click write
+
+page
+  Probe

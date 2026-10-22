@@ -1,0 +1,1071 @@
+{
+  "baselineCommit": "a7ade6f998ad7654ef9cc3a3c599cd836de039ae",
+  "baseline": {
+    "equivalent": 13,
+    "knownDefects": 9
+  },
+  "after": {
+    "equivalent": 14,
+    "knownDefects": 8
+  },
+  "fullyResolved": [
+    "ternary-minimal"
+  ],
+  "traces": {
+    "ternary-minimal": {
+      "sourceSha256": "8f3639fc5a11b342d99346540744f59a0b9076215156e917b4fdfe6cb3416a44",
+      "expected": [
+        [
+          {
+            "result": 1
+          }
+        ],
+        [
+          {
+            "result": 2
+          }
+        ]
+      ],
+      "beforeNative": {
+        "state": [
+          [
+            {
+              "result": 1
+            }
+          ],
+          [
+            {
+              "result": 1
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "result": "1"
+            }
+          ],
+          [
+            {
+              "result": "1"
+            }
+          ]
+        ]
+      },
+      "afterNative": {
+        "state": [
+          [
+            {
+              "result": 1
+            }
+          ],
+          [
+            {
+              "result": 2
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "result": "1"
+            }
+          ],
+          [
+            {
+              "result": "2"
+            }
+          ]
+        ]
+      },
+      "browser": {
+        "state": [
+          [
+            {
+              "result": 1
+            }
+          ],
+          [
+            {
+              "result": 2
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "result": "1"
+            }
+          ],
+          [
+            {
+              "result": "2"
+            }
+          ]
+        ]
+      },
+      "remainingFailure": false
+    },
+    "branch-dependencies": {
+      "sourceSha256": "835a1485b06cd3ac12b0724de086661dcdd98244eab011769e4547d2158ce2b7",
+      "expected": [
+        [
+          {
+            "x": 2,
+            "y": 9,
+            "result": 2
+          }
+        ],
+        [
+          {
+            "x": 2,
+            "y": 11,
+            "result": 2
+          }
+        ],
+        [
+          {
+            "x": 5,
+            "y": 11,
+            "result": 5
+          }
+        ],
+        [
+          {
+            "x": 5,
+            "y": 11,
+            "result": 11
+          }
+        ],
+        [
+          {
+            "x": 8,
+            "y": 11,
+            "result": 11
+          }
+        ],
+        [
+          {
+            "x": 8,
+            "y": 13,
+            "result": 13
+          }
+        ],
+        [
+          {
+            "x": 8,
+            "y": 13,
+            "result": 8
+          }
+        ]
+      ],
+      "beforeNative": {
+        "state": [
+          [
+            {
+              "x": 2,
+              "y": 9,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 11,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 5,
+              "y": 11,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 5,
+              "y": 11,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 11,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 13,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 13,
+              "result": 2
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "x": "2",
+              "y": "9",
+              "result": "2"
+            }
+          ],
+          [
+            {
+              "x": "2",
+              "y": "11",
+              "result": "2"
+            }
+          ],
+          [
+            {
+              "x": "5",
+              "y": "11",
+              "result": "2"
+            }
+          ],
+          [
+            {
+              "x": "5",
+              "y": "11",
+              "result": "2"
+            }
+          ],
+          [
+            {
+              "x": "8",
+              "y": "11",
+              "result": "2"
+            }
+          ],
+          [
+            {
+              "x": "8",
+              "y": "13",
+              "result": "2"
+            }
+          ],
+          [
+            {
+              "x": "8",
+              "y": "13",
+              "result": "2"
+            }
+          ]
+        ]
+      },
+      "afterNative": {
+        "state": [
+          [
+            {
+              "x": 2,
+              "y": 9,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 11,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 5,
+              "y": 11,
+              "result": 5
+            }
+          ],
+          [
+            {
+              "x": 5,
+              "y": 11,
+              "result": 5
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 11,
+              "result": 8
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 13,
+              "result": 8
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 13,
+              "result": 8
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "x": "2",
+              "y": "9",
+              "result": "2"
+            }
+          ],
+          [
+            {
+              "x": "2",
+              "y": "11",
+              "result": "2"
+            }
+          ],
+          [
+            {
+              "x": "5",
+              "y": "11",
+              "result": "5"
+            }
+          ],
+          [
+            {
+              "x": "5",
+              "y": "11",
+              "result": "5"
+            }
+          ],
+          [
+            {
+              "x": "8",
+              "y": "11",
+              "result": "8"
+            }
+          ],
+          [
+            {
+              "x": "8",
+              "y": "13",
+              "result": "8"
+            }
+          ],
+          [
+            {
+              "x": "8",
+              "y": "13",
+              "result": "8"
+            }
+          ]
+        ]
+      },
+      "browser": {
+        "state": [
+          [
+            {
+              "x": 2,
+              "y": 9,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 11,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 5,
+              "y": 11,
+              "result": 5
+            }
+          ],
+          [
+            {
+              "x": 5,
+              "y": 11,
+              "result": 11
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 11,
+              "result": 11
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 13,
+              "result": 13
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 13,
+              "result": 8
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "x": "2",
+              "y": "9",
+              "result": "2"
+            }
+          ],
+          [
+            {
+              "x": "2",
+              "y": "11",
+              "result": "2"
+            }
+          ],
+          [
+            {
+              "x": "5",
+              "y": "11",
+              "result": "5"
+            }
+          ],
+          [
+            {
+              "x": "5",
+              "y": "11",
+              "result": "11"
+            }
+          ],
+          [
+            {
+              "x": "8",
+              "y": "11",
+              "result": "11"
+            }
+          ],
+          [
+            {
+              "x": "8",
+              "y": "13",
+              "result": "13"
+            }
+          ],
+          [
+            {
+              "x": "8",
+              "y": "13",
+              "result": "8"
+            }
+          ]
+        ]
+      },
+      "remainingFailure": true
+    },
+    "boolean-comparison": {
+      "sourceSha256": "75386b5f26e4c07a0a4ec300452f7ae4bd4f7f2bd3e972ec8125eab21a0d4c23",
+      "expected": [
+        [
+          {
+            "x": 0,
+            "y": 3,
+            "result": "no"
+          }
+        ],
+        [
+          {
+            "x": 1,
+            "y": 3,
+            "result": "no"
+          }
+        ],
+        [
+          {
+            "x": 2,
+            "y": 3,
+            "result": "yes"
+          }
+        ],
+        [
+          {
+            "x": 2,
+            "y": 6,
+            "result": "no"
+          }
+        ],
+        [
+          {
+            "x": 3,
+            "y": 6,
+            "result": "no"
+          }
+        ]
+      ],
+      "beforeNative": {
+        "state": [
+          [
+            {
+              "x": 0,
+              "y": 3,
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": 1,
+              "y": 3,
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 3,
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 6,
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": 3,
+              "y": 6,
+              "result": "yes"
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "x": "0",
+              "y": "3",
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": "1",
+              "y": "3",
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": "2",
+              "y": "3",
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": "2",
+              "y": "6",
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": "3",
+              "y": "6",
+              "result": "yes"
+            }
+          ]
+        ]
+      },
+      "afterNative": {
+        "state": [
+          [
+            {
+              "x": 0,
+              "y": 3,
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": 1,
+              "y": 3,
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 3,
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 6,
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": 3,
+              "y": 6,
+              "result": "yes"
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "x": "0",
+              "y": "3",
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": "1",
+              "y": "3",
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": "2",
+              "y": "3",
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": "2",
+              "y": "6",
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": "3",
+              "y": "6",
+              "result": "yes"
+            }
+          ]
+        ]
+      },
+      "browser": {
+        "state": [
+          [
+            {
+              "x": 0,
+              "y": 3,
+              "result": "no"
+            }
+          ],
+          [
+            {
+              "x": 1,
+              "y": 3,
+              "result": "no"
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 3,
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 6,
+              "result": "no"
+            }
+          ],
+          [
+            {
+              "x": 3,
+              "y": 6,
+              "result": "no"
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "x": "0",
+              "y": "3",
+              "result": "no"
+            }
+          ],
+          [
+            {
+              "x": "1",
+              "y": "3",
+              "result": "no"
+            }
+          ],
+          [
+            {
+              "x": "2",
+              "y": "3",
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": "2",
+              "y": "6",
+              "result": "no"
+            }
+          ],
+          [
+            {
+              "x": "3",
+              "y": "6",
+              "result": "no"
+            }
+          ]
+        ]
+      },
+      "remainingFailure": true
+    },
+    "ungrouped-local-control": {
+      "sourceSha256": "21ed0ec92ff747ad0f8e0c5c11c88b38a8cd1c29f2c7158e2c88bc0f62269310",
+      "expected": [
+        [
+          {
+            "result": 0
+          }
+        ]
+      ],
+      "beforeNative": {
+        "state": [
+          [
+            {
+              "result": 0
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "result": "0"
+            }
+          ]
+        ]
+      },
+      "afterNative": {
+        "state": [
+          [
+            {
+              "result": 0
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "result": "0"
+            }
+          ]
+        ]
+      },
+      "browser": {
+        "state": [
+          [
+            {
+              "result": 0
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "result": "0"
+            }
+          ]
+        ]
+      },
+      "remainingFailure": false
+    }
+  },
+  "minimalOriginalFriendlySource": "jtml 2\n\nmake Probe\n  let x = 1\n  get result = true ? x : 0\n  when step\n    x += 1\n  box class \"probe\"\n    p class \"out-result\" result\n    button \"step\" click step\n\npage\n  Probe\n",
+  "booleanControls": [
+    {
+      "source": "jtml 2\n\nmake Probe\n  get result = !true\n\n  box class \"probe\"\n    p class \"out-result\" result\n\n\npage\n  Probe\n",
+      "expected": [
+        [
+          {
+            "result": false
+          }
+        ]
+      ],
+      "actualNative": {
+        "state": [
+          [
+            {
+              "result": true
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "result": "true"
+            }
+          ]
+        ]
+      },
+      "actualBrowser": {
+        "state": [
+          [
+            {
+              "result": false
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "result": "false"
+            }
+          ]
+        ]
+      },
+      "status": "FAIL / SEPARATE KNOWN BOOLEAN DEFECT; unchanged by this PR"
+    },
+    {
+      "source": "jtml 2\n\nmake Probe\n  get result = false && true\n\n  box class \"probe\"\n    p class \"out-result\" result\n\n\npage\n  Probe\n",
+      "expected": [
+        [
+          {
+            "result": false
+          }
+        ]
+      ],
+      "actualNative": {
+        "state": [
+          [
+            {
+              "result": true
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "result": "true"
+            }
+          ]
+        ]
+      },
+      "actualBrowser": {
+        "state": [
+          [
+            {
+              "result": false
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "result": "false"
+            }
+          ]
+        ]
+      },
+      "status": "FAIL / SEPARATE KNOWN BOOLEAN DEFECT; unchanged by this PR"
+    },
+    {
+      "source": "jtml 2\n\nmake Probe\n  get result = false || false\n\n  box class \"probe\"\n    p class \"out-result\" result\n\n\npage\n  Probe\n",
+      "expected": [
+        [
+          {
+            "result": false
+          }
+        ]
+      ],
+      "actualNative": {
+        "state": [
+          [
+            {
+              "result": true
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "result": "true"
+            }
+          ]
+        ]
+      },
+      "actualBrowser": {
+        "state": [
+          [
+            {
+              "result": false
+            }
+          ]
+        ],
+        "visible": [
+          [
+            {
+              "result": "false"
+            }
+          ]
+        ]
+      },
+      "status": "FAIL / SEPARATE KNOWN BOOLEAN DEFECT; unchanged by this PR"
+    }
+  ],
+  "adversarial": [
+    {
+      "id": "ternary-nested-branches",
+      "sourceSha256": "34983bb2acf4c3c37dd70807bd6bb152b3807318d362c847a5c8f7cc0e2d7e48",
+      "expectedSha256": "f96e7775f881db70f01b3f706da99bb7244e865fc17675807b9fc59f54678dd8",
+      "beforeFailures": [
+        {
+          "layer": "native",
+          "observation": "state"
+        },
+        {
+          "layer": "native",
+          "observation": "visible"
+        }
+      ],
+      "afterFailures": []
+    },
+    {
+      "id": "ternary-computed-index",
+      "sourceSha256": "25501593c821f70d2a662df3a902e54a3a3895358e44aca15a8ab0060f273bea",
+      "expectedSha256": "fb2d831a259d812bce9f8af80f003661326a41880ea5a018165bd5eeabce5016",
+      "beforeFailures": [
+        {
+          "layer": "native",
+          "observation": "state"
+        },
+        {
+          "layer": "native",
+          "observation": "visible"
+        }
+      ],
+      "afterFailures": []
+    },
+    {
+      "id": "ternary-owned-member-alias",
+      "sourceSha256": "a79e32bf8cac68106c44b49902c069a999eab997c84358504920d55e5e32c766",
+      "expectedSha256": "58a17b3519fb5b12944b70fc09084d1fbb46350f469bdcd86ae130540b09eac0",
+      "beforeFailures": [
+        {
+          "layer": "native",
+          "observation": "state"
+        },
+        {
+          "layer": "native",
+          "observation": "visible"
+        }
+      ],
+      "afterFailures": []
+    },
+    {
+      "id": "ternary-indexed-branches",
+      "sourceSha256": "a78290878e10c162a97664ba8c5bbb241c8c75299c2e63a6e20aa60ed69033e4",
+      "expectedSha256": "04c6f00d60d11099f0109141f862218158edb526fe747661857fd3534a1c9073",
+      "beforeFailures": [
+        {
+          "layer": "native",
+          "observation": "state"
+        },
+        {
+          "layer": "native",
+          "observation": "visible"
+        }
+      ],
+      "afterFailures": []
+    },
+    {
+      "id": "ternary-derived-chain",
+      "sourceSha256": "62d5f662df4489657a15da1d00169704f443606e486ce0a711c523d38e27dc19",
+      "expectedSha256": "cc2b63afa8c927ed147ca386dc012b463c7022ee2009b1e811add4cae8941850",
+      "beforeFailures": [
+        {
+          "layer": "native",
+          "observation": "state"
+        },
+        {
+          "layer": "native",
+          "observation": "visible"
+        }
+      ],
+      "afterFailures": []
+    },
+    {
+      "id": "ternary-boolean-condition",
+      "sourceSha256": "9f110160666853b4910dc661474130acde49ebd9151999df81f820adcc2658f3",
+      "expectedSha256": "a56ef5c8b66ba40497793f012baa82db34916a19e030051ac6dae9d0f20340c1",
+      "beforeFailures": [
+        {
+          "layer": "native",
+          "observation": "state"
+        },
+        {
+          "layer": "native",
+          "observation": "visible"
+        }
+      ],
+      "afterFailures": []
+    },
+    {
+      "id": "ternary-sibling-isolation",
+      "sourceSha256": "6591efa5495162af525db50f8c72cad8ed8aae53571088b1b0ab8758d4ad5e74",
+      "expectedSha256": "313fbc6703136e8faf3225ef52716cf1355c1ed9c420a244db038330a3c34a03",
+      "beforeFailures": [
+        {
+          "layer": "native",
+          "observation": "state"
+        },
+        {
+          "layer": "native",
+          "observation": "visible"
+        }
+      ],
+      "afterFailures": []
+    },
+    {
+      "id": "ternary-parameter-isolation",
+      "sourceSha256": "a7e8903c5674731c16b87e4cda05f56876cc09ee16ec7610e3db280773905116",
+      "expectedSha256": "e1115a9eed0743bf31467464ca5fb2daae48859f129f05fed07cd76e853c46f9",
+      "beforeFailures": [
+        {
+          "layer": "native",
+          "observation": "state"
+        },
+        {
+          "layer": "native",
+          "observation": "visible"
+        }
+      ],
+      "afterFailures": []
+    }
+  ],
+  "savedBinarySha256": {
+    "/tmp/jtml-ternary-before/bin/jtml": "6ebf793bb0eb80d4286792b49d1d6354ee621032cd2070a652d21f0e14532a49",
+    "/tmp/jtml-ternary-before/bin/tests/jtml_conformance_probe": "20ac83ad26669072f227a712bcf9d67019d1e1e43fe05b6a4ceb7d01e5a8a956"
+  }
+}

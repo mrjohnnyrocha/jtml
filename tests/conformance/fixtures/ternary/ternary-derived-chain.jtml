@@ -1,0 +1,26 @@
+jtml 2
+
+make Probe
+  let enabled = true
+  let x = 2
+  let y = 9
+  get choice = enabled ? x : y
+  get result = choice * 2
+  when left
+    x += 1
+  when right
+    y += 1
+  when disable
+    enabled = false
+  when enable
+    enabled = true
+  box class "probe"
+    p class "out-choice" choice
+    p class "out-result" result
+    button "left" click left
+    button "right" click right
+    button "disable" click disable
+    button "enable" click enable
+
+page
+  Probe

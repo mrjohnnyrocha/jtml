@@ -1,0 +1,35 @@
+jtml 2
+
+make Probe
+  let enabled = true
+  let inner = false
+  let x = 2
+  let y = 4
+  let z = 9
+  get result = (enabled ? ((inner ? (x) : (y))) : (z))
+  when x
+    x += 1
+  when y
+    y += 1
+  when z
+    z += 1
+  when outerOff
+    enabled = false
+  when outerOn
+    enabled = true
+  when innerOn
+    inner = true
+  when innerOff
+    inner = false
+  box class "probe"
+    p class "out-result" result
+    button "x" click x
+    button "y" click y
+    button "z" click z
+    button "outerOff" click outerOff
+    button "outerOn" click outerOn
+    button "innerOn" click innerOn
+    button "innerOff" click innerOff
+
+page
+  Probe

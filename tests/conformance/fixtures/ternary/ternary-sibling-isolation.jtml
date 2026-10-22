@@ -1,0 +1,22 @@
+jtml 2
+
+make Probe
+  let x = 1
+  let enabled = true
+  get result = enabled ? x : 0
+  when step
+    x += 1
+  when disable
+    enabled = false
+  when enable
+    enabled = true
+  box class "probe"
+    p class "out-x" x
+    p class "out-result" result
+    button "step" click step
+    button "disable" click disable
+    button "enable" click enable
+
+page
+  Probe
+  Probe

@@ -20,6 +20,7 @@ set(JTML_TEST_SOURCES
     test_lexer.cpp
     test_attribute_classifier.cpp
     test_parser.cpp
+    test_interpreter_dependencies.cpp
     test_diagnostics.cpp
     test_c_api.cpp
     test_cli_commands.cpp

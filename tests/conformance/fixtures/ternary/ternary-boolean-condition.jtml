@@ -1,0 +1,27 @@
+jtml 2
+
+make Probe
+  let x = 1
+  let y = 3
+  let enabled = true
+  get result = ((x >= 2) ? ((y < 5) ? (enabled ? 7 : 9) : 1) : 1)
+  when x
+    x += 1
+  when raise
+    y = 6
+  when lower
+    y = 3
+  when disable
+    enabled = false
+  when enable
+    enabled = true
+  box class "probe"
+    p class "out-result" result
+    button "x" click x
+    button "raise" click raise
+    button "lower" click lower
+    button "disable" click disable
+    button "enable" click enable
+
+page
+  Probe

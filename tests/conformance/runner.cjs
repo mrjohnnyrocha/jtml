@@ -86,7 +86,7 @@ function prepare(fixture) {
 }
 async function runCase(browser,fixture) {
  const {dir,source,request,result,dist}=prepare(fixture);
- fixture={...fixture,sourceFile:source};
+ fixture={...fixture,sourceFile:fs.realpathSync(source)};
  command(probe,[source,request,result],path.join(dir,'native.log'));
  const native=JSON.parse(fs.readFileSync(result));
  assert(native.dispatch.every(d=>d.ok),JSON.stringify(native.dispatch));
@@ -131,6 +131,8 @@ async function main() {
       && report.failures.some(f=>f.layer==='native-diagnostics'&&f.details.some(d=>d.includes('Undefined variable: <instance>.x')))
       && !report.failures.some(f=>!['native','native-diagnostics'].includes(f.layer));
    });
+   assert.equal(reduction.value.form,'group','reduction must reach grouped-local mechanism');
+   assert.deepEqual(reduction.value.deltas,[],'startup discrepancy requires no events');
    fs.writeFileSync(path.join(output,'minimization.json'),JSON.stringify(reduction,null,2));
    fs.writeFileSync(path.join(output,'minimal.jtml'),algebra('minimal',reduction.value).source);
    console.log('MINIMIZED',JSON.stringify(reduction));

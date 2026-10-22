@@ -1,0 +1,18 @@
+jtml 2
+
+make Probe
+  let x = 2
+  let y = 3
+  get result = x + y * 2
+  when step
+    x += 1
+    y = y + x
+  box class "probe"
+    p class "out-x" x
+    p class "out-y" y
+    p class "out-result" result
+    button "step" click step
+
+page
+  Probe
+  Probe

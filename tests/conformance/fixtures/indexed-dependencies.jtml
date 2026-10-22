@@ -1,0 +1,17 @@
+jtml 2
+
+make Probe
+  let items = [2, 5]
+  let index = 0
+  get result = items[index] * 2
+  when toggle
+    index = 1 - index
+  when step
+    items[index] += 1
+  box class "probe"
+    p class "out-result" result
+    button "toggle" click toggle
+    button "step" click step
+
+page
+  Probe

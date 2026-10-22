@@ -90,6 +90,19 @@ jobs:
       - name: Strict original-source provenance
         run: scripts/test_source_provenance.sh
 
+      - name: Differential semantic conformance (reviewed discrepancies explicit)
+        run: scripts/test_semantic_conformance.sh
+
+      - name: Preserve semantic conformance evidence
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: semantic-conformance-${{ matrix.os }}
+          path: dist/conformance
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Nested keyed lifecycle regressions (browser required)
         run: scripts/test_keyed_lifecycle.sh
 

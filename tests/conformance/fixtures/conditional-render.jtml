@@ -1,0 +1,16 @@
+jtml 2
+
+make Probe
+  let x = 0
+  when step
+    x += 1
+  box class "probe"
+    p class "out-x" x
+    if x >= 2
+      p class "flag" "high"
+    else
+      p class "flag" "low"
+    button "step" click step
+
+page
+  Probe

@@ -1,0 +1,14 @@
+jtml 2
+
+make Probe
+  let item = { "score": 1 }
+  let alias = item
+  get result = alias.score + item.score
+  when step
+    item.score += 1
+  box class "probe"
+    p class "out-result" result
+    button "step" click step
+
+page
+  Probe

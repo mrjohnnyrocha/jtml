@@ -1,0 +1,14 @@
+jtml 2
+
+make Child value
+  get result = value * 2
+  p class "child-value" result
+
+make Probe
+  let x = 2
+  box class "probe"
+    p class "out-x" x
+    Child x
+
+page
+  Probe

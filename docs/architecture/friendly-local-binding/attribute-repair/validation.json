@@ -1,0 +1,43 @@
+{
+  "fullGate": {
+    "status": "PASS",
+    "log": "/tmp/jtml-pr25-attribute-final-gate-v4.log",
+    "sha256": "2d6b9e01b6a5552dc7e77ef5b6c8e2f03379f9ada019c407eb75302208c550a5"
+  },
+  "ctest": {
+    "pass": 399,
+    "fail": 0
+  },
+  "browserBenchmarks": {
+    "pass": 9,
+    "cleanExitRequired": true
+  },
+  "productionReference": "PASS",
+  "strictN04": "PASS",
+  "bundledExampleLint": "PASS with the four unchanged CI exclusions",
+  "originalMatrix": {
+    "resolved": 7,
+    "equivalent": 13,
+    "knownDefects": 9,
+    "normativeOraclesChanged": false
+  },
+  "supplementalMatrix": {
+    "equivalent": 35,
+    "knownDefectObservations": 5,
+    "distinctAdditionalExistingNativeDefects": 1,
+    "loweringLintDiagnosticsBrowser": 40
+  },
+  "strictMode": {
+    "expectedExit": 2,
+    "status": "FAIL as required for unresolved defects"
+  },
+  "runtimeBytes": 271564,
+  "runtimeBudget": 272000,
+  "largeKeyedReorderUpdatePlanBytes": 170617,
+  "updatePlanBudget": 180000,
+  "historicalClassicReset": {
+    "status": "UNVERIFIED",
+    "issue": "https://github.com/mrjohnnyrocha/jtml/issues/26"
+  },
+  "ci": "PENDING final published head"
+}

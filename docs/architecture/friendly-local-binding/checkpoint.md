@@ -50,3 +50,12 @@ The binder now recognizes a bound inline-content name before an unbound trailing
 attribute keyword. Added direct two-parameter/trailing-style regression; all
 three binding tests and friendly_components lint pass. Final full gate and fresh
 head CI are required; no rerun of the failing head is a repair.
+
+## Attribute/content review correction (after 342da37)
+
+The final review found a real trailing data-/ARIA regression at the published
+head. The follow-up uses the actual Friendly element parser to assign token
+roles, also consumed by production generation. See attribute-repair/README.md
+and evidence.json for saved-head/main/repaired lowering, the independent native
+complete-attribute rendering limitation, and exact validation commands. Earlier
+checkpoint statements above are historical, not the final verification status.

@@ -1,0 +1,22 @@
+{
+  "savedHead": {
+    "heading": "marker",
+    "attributes": {
+      "title": "NaN",
+      "data-jtml-direct-node": "h2",
+      "data-jtml-direct-body-node": "0",
+      "data-jtml-direct-managed-attrs": "title,data-jtml-direct-node,data-jtml-direct-body-node"
+    },
+    "errors": []
+  },
+  "repaired": {
+    "heading": "Revenue",
+    "attributes": {
+      "data-label": "marker",
+      "data-jtml-direct-node": "h2",
+      "data-jtml-direct-body-node": "0",
+      "data-jtml-direct-managed-attrs": "data-label,data-jtml-direct-node,data-jtml-direct-body-node"
+    },
+    "errors": []
+  }
+}

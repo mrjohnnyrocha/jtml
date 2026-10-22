@@ -4960,3 +4960,76 @@ TEST(FriendlyBinding, ParameterInlineContentPrecedesTrailingAttributes) {
     EXPECT_NE(lowered.find("show \"42\""), std::string::npos);
     EXPECT_NE(lowered.find("style=\"color: red\""), std::string::npos);
 }
+
+TEST(FriendlyBinding, ParserRolesPreserveBoundContentAndAllAttributeBoundaries) {
+    for (const auto& trailing : {"data-label \"marker\"", "aria-label \"marker\"",
+                                "style \"color: red\"", "disabled", "click step",
+                                "data-label=\"marker\" aria-label \"accessible\""}) {
+        SCOPED_TRACE(trailing);
+        const auto lowered = normalizeOk(std::string("jtml 2\nmake Card title\n  when step\n    return 1\n  h2 title ") + trailing + "\npage\n  Card \"Revenue\"\n");
+        EXPECT_NE(lowered.find("show \"Revenue\""), std::string::npos);
+        EXPECT_EQ(lowered.find("title=data-"), std::string::npos);
+    }
+}
+
+TEST(FriendlyBinding, AttributeNamesAndValuesUseDifferentParserRoles) {
+    for (const auto& name : {"title", "style", "class", "value", "id"}) {
+        SCOPED_TRACE(name);
+        const std::string source = std::string("jtml 2\nmake Probe\n  let ") + name +
+            " = \"local\"\n  h2 " + name + " data-label \"marker\" aria-label \"accessible\"\n  input " + name + " " + name + "\npage\n  Probe\n";
+        const auto lowered = normalizeOk(source);
+        EXPECT_NE(lowered.find(std::string("show __Probe_1_") + name), std::string::npos);
+        EXPECT_NE(lowered.find(std::string(name) + "=__Probe_1_" + name), std::string::npos);
+    }
+}
+
+TEST(FriendlyBinding, ParserRolesDistinguishComparisonsRepeatedKeysAndPrimitiveModifiers) {
+    const auto lowered = normalizeOk(R"(jtml 2
+make Probe label
+  let style = "Revenue"
+  let x = 1
+  let record = { title: x }
+  h2 style style "color: red"
+  p (x==1) data-label "comparison"
+  p record.title aria-label "property"
+  badge label tone "good" title label
+  p data-label="literal {style}" "after"
+page
+  Probe "Total"
+)");
+    EXPECT_NE(lowered.find("show __Probe_1_style"), std::string::npos);
+    EXPECT_NE(lowered.find("show (__Probe_1_x==1)"), std::string::npos);
+    EXPECT_NE(lowered.find("show __Probe_1_record.title"), std::string::npos);
+    EXPECT_NE(lowered.find("style=\"color: red\""), std::string::npos);
+    EXPECT_NE(lowered.find("show \"Total\""), std::string::npos);
+    EXPECT_NE(lowered.find("show \"after\""), std::string::npos);
+    EXPECT_NE(lowered.find("data-label=\"literal {__Probe_1_style}\""), std::string::npos);
+}
+
+TEST(FriendlyBinding, BindingParserErrorsKeepAuthoredComponentLine) {
+    try {
+        (void)jtml::friendlyToClassic("jtml 2\nmake Card title\n  h2 title click\npage\n  Card \"Revenue\"\n");
+        FAIL() << "missing event action must be rejected";
+    } catch (const std::runtime_error& error) {
+        EXPECT_NE(std::string(error.what()).find("line 3"), std::string::npos) << error.what();
+        EXPECT_EQ(std::string(error.what()).find("line 0"), std::string::npos) << error.what();
+    }
+}
+
+TEST(FriendlyBinding, SpecializedElementParsersKeepOptionNamesAndChartFieldsLiteral) {
+    const auto lowered = normalizeOk(R"(jtml 2
+make Probe
+  let value = 7
+  let title = "Total"
+  let rows = [{ label: "A", value: 7 }]
+  metric title value tone good id title
+  chart bar data rows by label value value label title id title
+page
+  Probe
+)");
+    EXPECT_NE(lowered.find("data-jtml-chart-data=\"__Probe_1_rows\""), std::string::npos);
+    EXPECT_NE(lowered.find("data-jtml-chart-value=\"value\""), std::string::npos);
+    EXPECT_NE(lowered.find("aria-label=__Probe_1_title"), std::string::npos);
+    EXPECT_NE(lowered.find("id=__Probe_1_title"), std::string::npos);
+    EXPECT_NE(lowered.find("show __Probe_1_value"), std::string::npos);
+}

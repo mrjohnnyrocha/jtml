@@ -1308,21 +1308,52 @@ std::string friendlyRouteHref(const std::string& target, int lineNumber) {
     return quote(value);
 }
 
+// A complete attribute has an HTML name and one assignment separator. Equality,
+// comparison and grouped-expression tokens are expression syntax, not attributes.
+bool isCompleteElementAttribute(const std::string& token) {
+    const auto equal = token.find('=');
+    if (equal == std::string::npos || equal == 0 ||
+        (equal + 1 < token.size() && token[equal + 1] == '=')) return false;
+    if (!std::isalpha(static_cast<unsigned char>(token.front())) && token.front() != '_' && token.front() != ':') return false;
+    return std::all_of(token.begin(), token.begin() + equal, [](unsigned char ch) {
+        return std::isalnum(ch) || ch == '_' || ch == '-' || ch == ':';
+    });
+}
+
+// Attribute boundaries shared by inline-content parsing and binding classification.
+bool isElementAttributeBoundary(const std::string& token) {
+    return commonAttributes().count(token) || eventNames().count(token) ||
+        booleanAttributes().count(token) || token == "into" ||
+        startsWith(token, "data-") || startsWith(token, "aria-") ||
+        isCompleteElementAttribute(token);
+}
+
+bool beginsValuedElementAttribute(const std::vector<std::string>& tokens, size_t index, int lineNumber);
+
 bool shouldTreatAsInlineText(const std::string& tag,
                              const std::vector<std::string>& tokens,
-                             size_t index) {
+                             size_t index,
+                             const std::map<std::string, std::string>* bindings = nullptr, int lineNumber = 0) {
     if (index >= tokens.size()) return false;
     const std::string& token = tokens[index];
+    // A bound name is content before an attribute boundary, but a key when
+    // followed by an explicit value. This is decided before names are lowered.
+    if (bindings && bindings->count(token) && tag != "input" && tag != "textarea" &&
+        (index + 1 == tokens.size() ||
+         ((!bindings->count(tokens[index + 1]) || beginsValuedElementAttribute(tokens, index + 1, lineNumber)) &&
+          (isElementAttributeBoundary(tokens[index + 1]) ||
+           (isUiPrimitive(tokens.front()) && isUtilityModifier(tokens[index + 1])))))) return true;
     if (eventNames().count(token) || token == "into" ||
         booleanAttributes().count(token) || commonAttributes().count(token)) {
         return false;
     }
     // key=value tokens are HTML attributes, not inline text
-    if (token.find('=') != std::string::npos) return false;
+    if (isCompleteElementAttribute(token)) return false;
     if (isQuoted(token)) return true;
     if (tag == "input" || tag == "textarea") return false;
     if (index + 1 >= tokens.size()) return true;
-    return eventNames().count(tokens[index + 1]) || tokens[index + 1] == "into";
+    return isElementAttributeBoundary(tokens[index + 1]) ||
+        (isUiPrimitive(tokens.front()) && isUtilityModifier(tokens[index + 1]));
 }
 
 std::string makeIndent(int level) {
@@ -1859,27 +1890,27 @@ std::string substituteExpressionNames(const std::string& source,
     return output;
 }
 
+using ElementBindingRole = FriendlyElementRole;
+std::vector<ElementBindingRole> classifyElementBindings(
+    const std::vector<std::string>& tokens,
+    const std::map<std::string, std::string>& bindings, int lineNumber);
+
 std::string substituteIdentifiers(const std::string& text,
-                                  const std::map<std::string, std::string>& bindings) {
+                                  const std::map<std::string, std::string>& bindings, int lineNumber) {
     auto tokens = splitTokens(text);
     const bool expressionLine = tokens.empty() || isKnownLineKeyword(tokens.front()) || tokens.front() == "text" ||
         startsWith(tokens.front(), "__") ||
         (tokens.size() > 1 && isFriendlyAssignmentOperator(tokens[1]));
-    bool attributeValue = false;
+    const auto roles = expressionLine ? std::vector<ElementBindingRole>(tokens.size(), ElementBindingRole::Expression)
+                                      : classifyElementBindings(tokens, bindings, lineNumber);
     for (size_t tokenIndex = 0; tokenIndex < tokens.size(); ++tokenIndex) {
         auto& token = tokens[tokenIndex];
-        if (!expressionLine) {
-            if (tokenIndex == 0) continue; // tag/primitive namespace
-            if (attributeValue) attributeValue = false;
-            else if ((tokenIndex + 1 < tokens.size() && commonAttributes().count(token) &&
-                      !(bindings.count(token) && !bindings.count(tokens[tokenIndex + 1]) &&
-                        (commonAttributes().count(tokens[tokenIndex + 1]) ||
-                         eventNames().count(tokens[tokenIndex + 1]) ||
-                         booleanAttributes().count(tokens[tokenIndex + 1])))) || eventNames().count(token) ||
-                     startsWith(token, "data-") || startsWith(token, "aria-")) {
-                attributeValue = token.find('=') == std::string::npos;
-                continue;
-            } else if (booleanAttributes().count(token)) continue;
+        if (roles[tokenIndex] == ElementBindingRole::Syntax) continue;
+        if (roles[tokenIndex] == ElementBindingRole::CompleteAttribute) {
+            const auto equal = token.find('=');
+            token = token.substr(0, equal + 1) +
+                substituteIdentifiers("show " + token.substr(equal + 1), bindings, lineNumber).substr(5);
+            continue;
         }
         if (isQuoted(token)) {
             // Literal bytes, including escaped braces, remain unchanged. Only
@@ -1924,8 +1955,8 @@ std::string substituteIdentifiers(const std::string& text,
 }
 
 std::string substituteParams(const std::string& text,
-                             const std::map<std::string, std::string>& bindings) {
-    return substituteIdentifiers(text, bindings);
+                             const std::map<std::string, std::string>& bindings, int lineNumber) {
+    return substituteIdentifiers(text, bindings, lineNumber);
 }
 
 void collectComponentLocalNames(const std::vector<Line>& body,
@@ -2313,7 +2344,7 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
             for (const auto& bodyLine : body) {
                 Line copy = bodyLine;
                 copy.indent = bodyLine.indent;
-                copy.text = substituteIdentifiers(copy.text, localBindings);
+                copy.text = substituteIdentifiers(copy.text, localBindings, copy.number);
                 std::string markerHead;
                 if (isComponentLocalDeclaration(bodyLine, localBindings, markerHead)) {
                     copy.text = replaceFirstToken(copy.text, markerHead);
@@ -2367,7 +2398,7 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
                 }
                 Line copy = layoutLine;
                 copy.indent = lines[i].indent + 4 + layoutLine.indent;
-                copy.text = substituteIdentifiers(copy.text, layoutBindings);
+                copy.text = substituteIdentifiers(copy.text, layoutBindings, copy.number);
                 std::string markerHead;
                 if (isComponentLocalDeclaration(layoutLine, layoutBindings, markerHead)) {
                     copy.text = replaceFirstToken(copy.text, markerHead);
@@ -2434,8 +2465,8 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
 
             Line copy = bodyLine;
             copy.indent = lines[i].indent + 2 + bodyLine.indent;
-            copy.text = substituteParams(copy.text, bindings);
-            copy.text = substituteIdentifiers(copy.text, localBindings);
+            copy.text = substituteParams(copy.text, bindings, copy.number);
+            copy.text = substituteIdentifiers(copy.text, localBindings, copy.number);
             std::string markerHead;
             if (isComponentLocalDeclaration(bodyLine, localBindings, markerHead)) {
                 copy.text = replaceFirstToken(copy.text, markerHead);
@@ -2461,7 +2492,8 @@ struct ElementResult {
     bool isVoid = false;
 };
 
-ElementResult translateChartElement(const std::vector<std::string>& tokens, int lineNumber) {
+ElementResult translateChartElement(const std::vector<std::string>& tokens, int lineNumber,
+                                    std::vector<ElementBindingRole>* roles = nullptr) {
     ElementResult result;
     std::string type = "bar";
     std::string dataExpr;
@@ -2506,14 +2538,15 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
 
     while (i < tokens.size()) {
         const std::string key = tokens[i++];
-        auto requireValue = [&](const std::string& option) -> std::string {
+        auto requireValue = [&](const std::string& option, bool expression = false) -> std::string {
             if (i >= tokens.size()) {
                 throw std::runtime_error("Expected value after chart " + option + " at line " + std::to_string(lineNumber));
             }
+            if (roles && expression) (*roles)[i] = ElementBindingRole::Expression;
             return tokens[i++];
         };
 
-        if (key == "data") { dataExpr = requireValue("data"); continue; }
+        if (key == "data") { dataExpr = requireValue("data", true); continue; }
         if (key == "by")   { byField = requireValue("by"); continue; }
         if (key == "value") { valueField = requireValue("value"); continue; }
         if (key == "values") {
@@ -2546,19 +2579,19 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
             continue;
         }
         if (key == "label" || key == "aria-label") {
-            label = friendlyExpression(requireValue(key)); continue;
+            label = friendlyExpression(requireValue(key, true)); continue;
         }
-        if (key == "width")  { width  = friendlyExpression(requireValue("width")); continue; }
-        if (key == "height") { height = friendlyExpression(requireValue("height")); continue; }
+        if (key == "width")  { width  = friendlyExpression(requireValue("width", true)); continue; }
+        if (key == "height") { height = friendlyExpression(requireValue("height", true)); continue; }
         if (key == "viewBox" || key == "viewbox") {
-            viewBox = friendlyExpression(requireValue(key)); continue;
+            viewBox = friendlyExpression(requireValue(key, true)); continue;
         }
-        if (key == "color") { color = friendlyExpression(requireValue("color")); continue; }
+        if (key == "color") { color = friendlyExpression(requireValue("color", true)); continue; }
         if (key == "axis") {
             const std::string axis = (i < tokens.size()) ? tokens[i++] : "";
             if (i < tokens.size() && tokens[i] == "label") {
                 ++i;
-                const std::string val = requireValue("axis label");
+                const std::string val = requireValue("axis label", true);
                 if (axis == "x") axisXLabel = friendlyExpression(val);
                 else if (axis == "y") axisYLabel = friendlyExpression(val);
             }
@@ -2581,9 +2614,9 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
             continue;
         }
         if (key == "stacked") { stackedStr = "\"true\""; continue; }
-        if (key == "min") { minValue = friendlyExpression(requireValue("min")); continue; }
-        if (key == "max") { maxValue = friendlyExpression(requireValue("max")); continue; }
-        if (key == "ticks") { tickCount = friendlyExpression(requireValue("ticks")); continue; }
+        if (key == "min") { minValue = friendlyExpression(requireValue("min", true)); continue; }
+        if (key == "max") { maxValue = friendlyExpression(requireValue("max", true)); continue; }
+        if (key == "ticks") { tickCount = friendlyExpression(requireValue("ticks", true)); continue; }
         if (key == "export") {
             while (i < tokens.size() && !chartKeywords.count(tokens[i])) {
                 const std::string format = unquote(tokens[i++]);
@@ -2624,6 +2657,7 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
         if (i >= tokens.size()) {
             passthroughAttrs.push_back(key);
         } else {
+            if (roles) (*roles)[i] = ElementBindingRole::Expression;
             passthroughAttrs.push_back(key + "=" + friendlyExpression(tokens[i++]));
         }
     }
@@ -2692,7 +2726,12 @@ ElementResult translateChartElement(const std::vector<std::string>& tokens, int 
     return result;
 }
 
-ElementResult translateMetricElement(const std::vector<std::string>& tokens, int lineNumber) {
+ElementResult translateMetricElement(const std::vector<std::string>& tokens, int lineNumber,
+                                     std::vector<ElementBindingRole>* roles = nullptr) {
+    auto expressionToken = [&](size_t index) -> const std::string& {
+        if (roles) (*roles)[index] = ElementBindingRole::Expression;
+        return tokens[index];
+    };
     ElementResult result;
     if (tokens.size() < 3) {
         throw std::runtime_error("Expected 'metric \"Label\" value [caption] [tone good]' at line " +
@@ -2704,13 +2743,13 @@ ElementResult translateMetricElement(const std::vector<std::string>& tokens, int
         "class=\"jtml-metric\"",
         "data-jtml-ui=\"metric\""
     };
-    const std::string label = tokens[1];
-    const std::string value = tokens[2];
+    const std::string label = expressionToken(1);
+    const std::string value = expressionToken(2);
     size_t i = 3;
     std::string caption;
     if (i < tokens.size() && !isUtilityModifier(tokens[i]) &&
         !eventNames().count(tokens[i]) && tokens[i] != "class" && tokens[i] != "id") {
-        caption = tokens[i++];
+        caption = expressionToken(i++);
     }
 
     while (i < tokens.size()) {
@@ -2719,25 +2758,25 @@ ElementResult translateMetricElement(const std::vector<std::string>& tokens, int
             if (i >= tokens.size()) {
                 throw std::runtime_error("Expected value after '" + key + "' at line " + std::to_string(lineNumber));
             }
-            className = appendClassToken(className, utilityClass(key, tokens[i++]));
+            className = appendClassToken(className, utilityClass(key, expressionToken(i++)));
             continue;
         }
         if (eventNames().count(key)) {
             if (i >= tokens.size()) {
                 throw std::runtime_error("Expected action after event '" + key + "' at line " + std::to_string(lineNumber));
             }
-            attrs.push_back(classicEventName(key) + "=" + actionCall(tokens[i++]));
+            attrs.push_back(classicEventName(key) + "=" + actionCall(expressionToken(i++)));
             continue;
         }
         if (key == "class") {
             if (i >= tokens.size()) {
                 throw std::runtime_error("Expected class value after 'class' at line " + std::to_string(lineNumber));
             }
-            className = appendClassToken(className, unquote(tokens[i++]));
+            className = appendClassToken(className, unquote(expressionToken(i++)));
             continue;
         }
         if (i >= tokens.size()) attrs.push_back(key);
-        else attrs.push_back(key + "=" + friendlyExpression(tokens[i++]));
+        else attrs.push_back(key + "=" + friendlyExpression(expressionToken(i++)));
     }
 
     attrs.front() = "class=" + quote(className);
@@ -2762,16 +2801,22 @@ ElementResult translateMetricElement(const std::vector<std::string>& tokens, int
     return result;
 }
 
-ElementResult translateElement(const std::vector<std::string>& tokens, int lineNumber) {
+ElementResult translateElement(const std::vector<std::string>& tokens, int lineNumber,
+                               std::vector<ElementBindingRole>* roles = nullptr,
+                               const std::map<std::string, std::string>* bindings = nullptr) {
+    auto expressionToken = [&](size_t index) -> const std::string& {
+        if (roles) (*roles)[index] = ElementBindingRole::Expression;
+        return tokens[index];
+    };
     if (tokens.empty()) {
         throw std::runtime_error("Empty element line at line " + std::to_string(lineNumber));
     }
 
     if (tokens[0] == "chart") {
-        return translateChartElement(tokens, lineNumber);
+        return translateChartElement(tokens, lineNumber, roles);
     }
     if (tokens[0] == "metric") {
-        return translateMetricElement(tokens, lineNumber);
+        return translateMetricElement(tokens, lineNumber, roles);
     }
 
     ElementResult result;
@@ -2804,7 +2849,8 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
     const bool isScene3d = (friendlyTag == "scene3d");
     bool hasEventBinding = false;
 
-    if (shouldTreatAsInlineText(resolvedTag, tokens, i)) {
+    if (shouldTreatAsInlineText(resolvedTag, tokens, i, bindings, lineNumber)) {
+        if (roles) (*roles)[i] = ElementBindingRole::InlineContent;
         if (isFileLike || isScene3d) {
             attrs.push_back("aria-label=" + friendlyExpression(tokens[i]));
         } else if (isInputLike) {
@@ -2822,6 +2868,7 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
     }
 
     while (i < tokens.size()) {
+        const size_t keyIndex = i;
         const std::string key = tokens[i++];
 
         // Skip 'ordered' for list elements — it was already consumed by resolveTagName
@@ -2832,7 +2879,8 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
         // Internal expansion and shorthand authoring can produce complete
         // `key=value` tokens. Treat them as already-formed attributes so a
         // following attribute is not accidentally consumed as this value.
-        if (!isQuoted(key) && key.find('=') != std::string::npos) {
+        if (isCompleteElementAttribute(key)) {
+            if (roles) (*roles)[keyIndex] = ElementBindingRole::CompleteAttribute;
             attrs.push_back(key);
             continue;
         }
@@ -2842,14 +2890,14 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
                 throw std::runtime_error("Expected route target after 'to' at line " + std::to_string(lineNumber));
             }
             attrs.push_back("href=\"javascript:void(0)\"");
-            attrs.push_back("data-jtml-href=" + friendlyRouteHref(tokens[i++], lineNumber));
+            attrs.push_back("data-jtml-href=" + friendlyRouteHref(expressionToken(i++), lineNumber));
             attrs.push_back("data-jtml-link=\"true\"");
             if (i < tokens.size() && tokens[i] == "active-class") {
                 ++i;
                 if (i >= tokens.size()) {
                     throw std::runtime_error("Expected class name after 'active-class' at line " + std::to_string(lineNumber));
                 }
-                attrs.push_back("data-jtml-active-class=" + tokens[i++]);
+                attrs.push_back("data-jtml-active-class=" + expressionToken(i++));
             }
             continue;
         }
@@ -2859,14 +2907,14 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
                 throw std::runtime_error("Expected action after event '" + key + "' at line " + std::to_string(lineNumber));
             }
             hasEventBinding = true;
-            attrs.push_back(classicEventName(key) + "=" + actionCall(tokens[i++]));
+            attrs.push_back(classicEventName(key) + "=" + actionCall(expressionToken(i++)));
             continue;
         }
         if (primitive && isUtilityModifier(key)) {
             if (i >= tokens.size()) {
                 throw std::runtime_error("Expected value after '" + key + "' at line " + std::to_string(lineNumber));
             }
-            className = appendClassToken(className, utilityClass(key, tokens[i++]));
+            className = appendClassToken(className, utilityClass(key, expressionToken(i++)));
             continue;
         }
         if (primitive && key == "primary") {
@@ -2877,7 +2925,7 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
             if (i >= tokens.size()) {
                 throw std::runtime_error("Expected class value after 'class' at line " + std::to_string(lineNumber));
             }
-            className = appendClassToken(className, unquote(tokens[i++]));
+            className = appendClassToken(className, unquote(expressionToken(i++)));
             continue;
         }
         if (primitive && key == "title" && supportsPrimitiveTitle(friendlyTag)) {
@@ -2885,7 +2933,7 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
                 throw std::runtime_error("Expected title after '" + friendlyTag + " title' at line " + std::to_string(lineNumber));
             }
             result.bodyLines.push_back("@h2 class=\"jtml-panel-title\"\\\\");
-            result.bodyLines.push_back("    show " + friendlyExpression(tokens[i++]) + "\\\\");
+            result.bodyLines.push_back("    show " + friendlyExpression(expressionToken(i++)) + "\\\\");
             result.bodyLines.push_back("#");
             continue;
         }
@@ -2899,7 +2947,7 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
                 key == "camera" ? "data-jtml-camera" :
                 key == "controls" ? "data-jtml-controls" :
                 "data-jtml-renderer";
-            const std::string value = tokens[i++];
+            const std::string value = expressionToken(i++);
             attrs.push_back(dataKey + "=" + (isQuoted(value) ? friendlyExpression(value) : quote(value)));
             continue;
         }
@@ -2907,7 +2955,7 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
             if (i >= tokens.size()) {
                 throw std::runtime_error("Expected variable after 'into' at line " + std::to_string(lineNumber));
             }
-            const std::string variable = tokens[i++];
+            const std::string variable = expressionToken(i++);
             const std::string setter = setterNameFor(variable);
             if (isScene3d) {
                 attrs.push_back("data-jtml-scene3d-controller=" + quote(variable));
@@ -2942,7 +2990,7 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
             if (i >= tokens.size()) {
                 throw std::runtime_error("Expected value after 'type' at line " + std::to_string(lineNumber));
             }
-            attrs.push_back("type=" + friendlyExpression(tokens[i++]));
+            attrs.push_back("type=" + friendlyExpression(expressionToken(i++)));
             continue;
         }
         // A quoted literal that has no following attribute value is inline text,
@@ -2950,7 +2998,8 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
         if (isQuoted(key) &&
             (i >= tokens.size() || eventNames().count(tokens[i]) || tokens[i] == "into")) {
             if (!isInputLike) {
-                result.bodyLines.push_back("show " + friendlyExpression(key) + "\\\\");
+                if (roles) (*roles)[keyIndex] = ElementBindingRole::InlineContent;
+                result.bodyLines.push_back("show " + friendlyExpression(tokens[keyIndex]) + "\\\\");
             }
             continue;
         }
@@ -2958,7 +3007,7 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
             attrs.push_back(key);
             continue;
         }
-        attrs.push_back(key + "=" + friendlyExpression(tokens[i++]));
+        attrs.push_back(key + "=" + friendlyExpression(expressionToken(i++)));
     }
 
     if (resolvedTag == "button" && hasEventBinding && !hasAttributeNamed(attrs, "type")) {
@@ -2979,7 +3028,35 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
     return result;
 }
 
+bool beginsValuedElementAttribute(const std::vector<std::string>& tokens, size_t index, int lineNumber) {
+    if (index + 1 >= tokens.size()) return false;
+    std::vector<std::string> suffix{tokens.front()};
+    suffix.insert(suffix.end(), tokens.begin() + index, tokens.end());
+    std::vector<ElementBindingRole> roles(suffix.size(), ElementBindingRole::Syntax);
+    (void)translateElement(suffix, lineNumber, &roles);
+    return roles.size() > 2 && roles[1] == ElementBindingRole::Syntax &&
+        roles[2] == ElementBindingRole::Expression;
+}
+
+std::vector<ElementBindingRole> classifyElementBindings(
+        const std::vector<std::string>& tokens,
+        const std::map<std::string, std::string>& bindings, int lineNumber) {
+    std::vector<ElementBindingRole> roles(tokens.size(), ElementBindingRole::Syntax);
+    if (tokens.empty()) return roles;
+    (void)translateElement(tokens, lineNumber, &roles, &bindings);
+    return roles;
+}
+
 } // namespace
+
+std::vector<FriendlyElementRole> classifyFriendlyElement(
+        const std::vector<std::string>& tokens,
+        const std::map<std::string, std::string>& bindings) {
+    if (!tokens.empty() && isKnownLineKeyword(tokens.front())) {
+        return std::vector<FriendlyElementRole>(tokens.size(), FriendlyElementRole::Expression);
+    }
+    return classifyElementBindings(tokens, bindings, 0);
+}
 
 bool isFriendlySyntax(const std::string& source) {
     std::istringstream in(source);

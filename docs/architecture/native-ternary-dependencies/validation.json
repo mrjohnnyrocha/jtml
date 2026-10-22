@@ -1,0 +1,50 @@
+{
+  "baselineCommit": "a7ade6f998ad7654ef9cc3a3c599cd836de039ae",
+  "fullGate": {
+    "status": "PASS",
+    "log": "/tmp/jtml-ternary-full-gate.log",
+    "sha256": "9013be42a34d672ad75c5cfc21e12dff42103a2b2093c02cbf2d09c69347d414"
+  },
+  "focusedCpp": {
+    "pass": 8
+  },
+  "ctest": {
+    "pass": 407,
+    "fail": 0
+  },
+  "originalMatrix": {
+    "cases": 22,
+    "equivalentBefore": 13,
+    "knownBefore": 9,
+    "fullyResolved": 1,
+    "equivalentAfter": 14,
+    "knownAfter": 8,
+    "expectationsUnchanged": true
+  },
+  "adversarialTernary": {
+    "cases": 8,
+    "baselineNegativeControls": 8,
+    "fixedPass": 8
+  },
+  "priorAttributeMatrix": {
+    "equivalent": 35,
+    "knownNativeRendererObservations": 5
+  },
+  "strictMode": {
+    "exitCode": 2,
+    "status": "FAIL as required for remaining defects"
+  },
+  "strictN04": "PASS",
+  "sourceDiagnostics": "PASS (7 adversarial cases)",
+  "browserBenchmarks": {
+    "pass": 9,
+    "cleanExitRequired": true
+  },
+  "productionReference": "PASS",
+  "securityAndAsync": "PASS",
+  "runtimeBytes": 271564,
+  "runtimeBudget": 272000,
+  "budgetsChanged": false,
+  "catalogFaultInjection": "PASS",
+  "ci": "Final published-head results belong on the PR"
+}

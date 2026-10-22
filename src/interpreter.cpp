@@ -5245,6 +5245,16 @@ void Interpreter::gatherDeps(
             break;
         }
 
+        case ExpressionStatementNodeType::Conditional: {
+            const auto* conditional = static_cast<const ConditionalExpressionStatementNode*>(exprNode);
+            // Match the compiler's conservative AST/Expression IR traversal.
+            // Subscribe to all three subexpressions without evaluating branches.
+            gatherDeps(conditional->condition.get(), out, env);
+            gatherDeps(conditional->whenTrue.get(), out, env);
+            gatherDeps(conditional->whenFalse.get(), out, env);
+            break;
+        }
+
         case ExpressionStatementNodeType::Unary: {
             const auto* unaryExpr = static_cast<const UnaryExpressionStatementNode*>(exprNode);
             gatherDeps(unaryExpr->right.get(), out, env);

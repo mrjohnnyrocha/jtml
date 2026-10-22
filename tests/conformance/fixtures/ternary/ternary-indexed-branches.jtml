@@ -1,0 +1,25 @@
+jtml 2
+
+make Probe
+  let enabled = true
+  let index = 0
+  let items = [2, 5]
+  let fallback = [7, 9]
+  get result = (enabled ? items[(index)] : fallback[(1 - index)])
+  when index
+    index = 1 - index
+  when disable
+    enabled = false
+  when enable
+    enabled = true
+  when write
+    fallback[1 - index] += 1
+  box class "probe"
+    p class "out-result" result
+    button "index" click index
+    button "disable" click disable
+    button "enable" click enable
+    button "write" click write
+
+page
+  Probe

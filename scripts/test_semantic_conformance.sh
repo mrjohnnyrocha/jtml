@@ -8,6 +8,7 @@ root = pathlib.Path(sys.argv[1])
 commands = [
     ['node', str(root/'tests/conformance/runner.cjs'), sys.argv[2], '--minimize'],
     ['node', str(root/'tests/browser/friendly_attribute_binding.cjs')],
+    ['node', str(root/'tests/browser/ternary_dependencies.cjs')],
 ]
 for command in commands:
     process = subprocess.Popen(command, cwd=root, start_new_session=True)

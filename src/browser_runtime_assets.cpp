@@ -1184,10 +1184,10 @@ const char* browserRuntimePreludeChunk() {
           }
           return { found: true, value: values };
         }
-        if (plan.kind === 'unary' && plan.operator === '!') {
+        if (plan.kind === 'unary' && (plan.operator === '!' || plan.operator === '-')) {
           const argument = evaluateCompiledComponentExpressionResult(plan.argument, '', scope);
           return argument.found
-            ? { found: true, value: !argument.value }
+            ? { found: true, value: plan.operator === '!' ? !argument.value : -argument.value }
             : evaluateClientExpression(plan.source || fallbackExpr || '', scope);
         }
         if (plan.kind === 'binary') {

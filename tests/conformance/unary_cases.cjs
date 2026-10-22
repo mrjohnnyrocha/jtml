@@ -1,9 +1,8 @@
 // Exact integer/dyadic arithmetic tables authored independently of both backends.
 const {scalar,action}=require('./cases.cjs');
 const fs=require('node:fs'),path=require('node:path');
-// Unary-minus Expression IR is currently Source/Unknown: require Runtime Plan
-// reads and exact provenance without falsely asserting typed IR/path children.
-const check=(text,reads)=>[{text,reads}];
+// Require matching dependency roots in Runtime Plan and compiler-owned IR.
+const check=(text,reads)=>[{text,reads,irReads:reads}];
 const cases=[
  scalar('unary-initialized-reactivity', ['let x = -1.25','get result = x * 2 + 1'],
   [['step',['x += 0.25']]], ['x','result'], ['step','step'],
@@ -43,6 +42,11 @@ siblings.expected=[
 siblings.source=siblings.source.replace('get result = -x','get result = (-x) + 0');
 siblings.checks=check('get result = (-x) + 0',['x']);
 cases.push(siblings);
+// New boundary: numeric unary assignment now uses the same validated IR path.
+cases.push(scalar('unary-action', ['let x = 2','get result = -x'],
+ [['flip',['x = -x']]], ['x','result'], ['flip','flip','flip'],
+ [{x:2,result:-2},{x:-2,result:2},{x:2,result:-2},{x:-2,result:2}],
+ [...check('get result = -x',['x']),{text:'x = -x',reads:['x'],irReads:['x'],writes:['x']}]));
 for(const fixture of cases) {
  fixture.authoredSource=path.join(__dirname,'fixtures/unary',fixture.id+'.jtml');
  const authored=fs.readFileSync(fixture.authoredSource,'utf8');

@@ -1,0 +1,18 @@
+jtml 2
+
+make Probe
+  let x = 1
+  get inverted = -x
+  get result = inverted * 2 + 3
+  when step
+    x += 1
+  when flip
+    x = 0 - x
+  box class "probe"
+    p class "out-inverted" inverted
+    p class "out-result" result
+    button "step" click step
+    button "flip" click flip
+
+page
+  Probe

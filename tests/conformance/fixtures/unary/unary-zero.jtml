@@ -1,0 +1,14 @@
+jtml 2
+
+make Probe
+  get negative = -0
+  get restored = -(-0)
+  get result = (-0) + 0
+
+  box class "probe"
+    p class "out-result" result
+    p class "out-restored" restored
+
+
+page
+  Probe

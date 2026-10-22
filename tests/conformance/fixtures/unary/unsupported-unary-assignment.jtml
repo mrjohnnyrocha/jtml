@@ -1,0 +1,8 @@
+jtml 2
+make Probe
+  let x = 1
+  when flip
+    x = -x
+  button "flip" click flip
+page
+  Probe

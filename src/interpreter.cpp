@@ -4811,18 +4811,20 @@ std::shared_ptr<JTML::VarValue> Interpreter::evaluateExpression(const Expression
                 return std::make_shared<JTML::VarValue>(!val);
             }
             else if (op == "-") {
-                // numeric negation => warn or try convert
-                if (!operandVal->isNumber()) {
-                    std::cerr << "[Warning] Using unary '-' on a non-numeric value.\n";
-                }
+                // Keep numbers numeric: display formatting may round the operand.
                 double num = 0.0;
-                try {
-                    num = std::stod(operandVal->toString());
-                } catch (...) {
-                    throw std::runtime_error("Invalid numeric format in unary '-'");
+                if (operandVal->isNumber()) {
+                    num = operandVal->getNumber();
+                } else {
+                    // Preserve the existing compatibility conversion and diagnostics.
+                    std::cerr << "[Warning] Using unary '-' on a non-numeric value.\n";
+                    try {
+                        num = std::stod(operandVal->toString());
+                    } catch (...) {
+                        throw std::runtime_error("Invalid numeric format in unary '-'");
+                    }
                 }
-                double result = -num;
-                return std::make_shared<JTML::VarValue>(std::to_string(result));
+                return std::make_shared<JTML::VarValue>(-num);
             }
             else {
                 throw std::runtime_error("Unsupported unary operator: " + op);

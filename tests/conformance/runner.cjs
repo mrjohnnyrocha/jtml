@@ -126,17 +126,29 @@ async function main() {
    const grouped=await runCase(browser,algebra('resolved-grouped-control',{x:0,a:0,b:1,sign:1,deltas:[],form:'group'}));
    assert.deepEqual(grouped.failures,[],'grouped and ungrouped controls must now agree');
    const start=generated().find(f=>f.id==='generated-24-0');
-   let trial=0;
-   const reduction=await minimize(start.descriptor,algebraCandidates,async descriptor=>{
-    const report=await runCase(browser,algebra(`reduction-${trial++}`,descriptor));
-    return report.failures.some(f=>f.layer==='native'&&f.observation==='state'&&typeof f.actual[0][0].x==='string')
-      && !report.failures.some(f=>!['native','native-diagnostics'].includes(f.layer));
-   });
-   assert.equal(reduction.value.form,'identity','reduction must isolate remaining unary number-type defect');
-   assert.deepEqual(reduction.value.deltas,[],'startup discrepancy requires no events');
-   fs.writeFileSync(path.join(output,'minimization.json'),JSON.stringify(reduction,null,2));
-   fs.writeFileSync(path.join(output,'minimal.jtml'),algebra('minimal',reduction.value).source);
-   console.log('MINIMIZED',JSON.stringify(reduction));
+   const seedReport=reports.find(report=>report.id===start.id);
+   const preservesUnaryFailure=report=>report.failures.some(f=>f.layer==='native'&&f.observation==='state'&&typeof f.actual[0][0].x==='string')
+     && !report.failures.some(f=>!['native','native-diagnostics'].includes(f.layer));
+   if(seedReport.failures.length===0) {
+    // The reviewed unary repair resolves the seed. Still execute the original
+    // minimized source against its independent oracle; never report a fake reduction.
+    const descriptor={x:-2,a:0,b:1,sign:1,deltas:[],form:'identity'};
+    const control=await runCase(browser,algebra('resolved-unary-control',descriptor));
+    assert.deepEqual(control.failures,[],'resolved unary seed must also repair its original minimal control');
+    fs.writeFileSync(path.join(output,'minimization.json'),JSON.stringify({status:'RESOLVED',seed:start.id,control:control.id,descriptor},null,2));
+    fs.writeFileSync(path.join(output,'minimal.jtml'),algebra('minimal',descriptor).source);
+    console.log('PASS resolved unary seed and original minimized control (no active discrepancy to minimize)');
+   } else {
+    assert(preservesUnaryFailure(seedReport),'minimizer seed changed failure class; requires review');
+    let trial=0;
+    const reduction=await minimize(start.descriptor,algebraCandidates,async descriptor=>
+     preservesUnaryFailure(await runCase(browser,algebra(`reduction-${trial++}`,descriptor))));
+    assert.equal(reduction.value.form,'identity','reduction must isolate remaining unary number-type defect');
+    assert.deepEqual(reduction.value.deltas,[],'startup discrepancy requires no events');
+    fs.writeFileSync(path.join(output,'minimization.json'),JSON.stringify(reduction,null,2));
+    fs.writeFileSync(path.join(output,'minimal.jtml'),algebra('minimal',reduction.value).source);
+    console.log('MINIMIZED',JSON.stringify(reduction));
+   }
   }
  } finally {await browser.close();}
  const rejected=require('./rejections.cjs')(binary,root,output);

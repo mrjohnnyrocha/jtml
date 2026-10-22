@@ -1,0 +1,6842 @@
+{
+  "baseline": "44ef526790686c44ddf39530dc438f5ebd5e0064",
+  "baselineBinaries": {
+    "/tmp/jtml-unary-before/bin/jtml": "7a44399a8ebd296ad30d80de59fa66001f20c1cad56380074957013770b98134",
+    "/tmp/jtml-unary-before/bin/tests/jtml_conformance_probe": "a4250bd1e6f6761fe40db8c94ed9c228b1d8d782eff0764fbf999c7d91189c6a",
+    "/tmp/jtml-unary-before/libjtml_core.a": "049ad837037dc32d703188ab1994f5ab56023600f9f08d4a5f98788e86bebdb7"
+  },
+  "originalMatrix": {
+    "before": {
+      "semanticCases": 22,
+      "browserOnlyCases": 1,
+      "rejectionCases": 2,
+      "equivalentCases": 16,
+      "discrepancies": 6
+    },
+    "after": {
+      "semanticCases": 22,
+      "browserOnlyCases": 1,
+      "rejectionCases": 2,
+      "equivalentCases": 20,
+      "discrepancies": 2
+    }
+  },
+  "resolved": {
+    "unary-negative": {
+      "source": "jtml 2\n\nmake Probe\n  let x = -1\n  when step\n    x += 1\n  box class \"probe\"\n    p class \"out-x\" x\n    button \"step\" click step\n\npage\n  Probe\n",
+      "before": {
+        "id": "unary-negative",
+        "sha256": "e9ab33e71871d281f8569fe4a33cc1fc529fb031e315d06f85abbe3ad3a24d01",
+        "expected": [
+          [
+            {
+              "x": -1
+            }
+          ],
+          [
+            {
+              "x": 0
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": "-1.000000"
+                }
+              ],
+              [
+                {
+                  "x": "-1.0000001"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1.000000"
+                }
+              ],
+              [
+                {
+                  "x": "-1.0000001"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": -1
+                }
+              ],
+              [
+                {
+                  "x": 0
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "0"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "x": -1
+                }
+              ],
+              [
+                {
+                  "x": 0
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "-1.000000"
+                }
+              ],
+              [
+                {
+                  "x": "-1.0000001"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "x": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "0"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "-1.000000"
+                }
+              ],
+              [
+                {
+                  "x": "-1.0000001"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      "after": {
+        "id": "unary-negative",
+        "sha256": "e9ab33e71871d281f8569fe4a33cc1fc529fb031e315d06f85abbe3ad3a24d01",
+        "expected": [
+          [
+            {
+              "x": -1
+            }
+          ],
+          [
+            {
+              "x": 0
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": -1
+                }
+              ],
+              [
+                {
+                  "x": 0
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "0"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": -1
+                }
+              ],
+              [
+                {
+                  "x": 0
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "0"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      }
+    },
+    "generated-24-0": {
+      "source": "jtml 2\n\nmake Probe\n  let x = -2\n  get result = (x - 2) * 2\n  when s0\n    x += 2\n  when s1\n    x += 1\n  when s2\n    x += 2\n  box class \"probe\"\n    p class \"out-x\" x\n    p class \"out-result\" result\n    button \"s0\" click s0\n    button \"s1\" click s1\n    button \"s2\" click s2\n\npage\n  Probe\n",
+      "before": {
+        "id": "generated-24-0",
+        "sha256": "a56dc1119c275b6f365a0972a69aac88d4a6bb3e483e09b26d78e2461564fcc1",
+        "expected": [
+          [
+            {
+              "x": -2,
+              "result": -8
+            }
+          ],
+          [
+            {
+              "x": 0,
+              "result": -4
+            }
+          ],
+          [
+            {
+              "x": 1,
+              "result": -2
+            }
+          ],
+          [
+            {
+              "x": 3,
+              "result": 2
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": "-2.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-2.0000002",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-2.00000021",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-2.000000212",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-2.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-2.0000002",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-2.00000021",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-2.000000212",
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": -2,
+                  "result": -8
+                }
+              ],
+              [
+                {
+                  "x": 0,
+                  "result": -4
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": -2
+                }
+              ],
+              [
+                {
+                  "x": 3,
+                  "result": 2
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-2",
+                  "result": "-8"
+                }
+              ],
+              [
+                {
+                  "x": "0",
+                  "result": "-4"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "-2"
+                }
+              ],
+              [
+                {
+                  "x": "3",
+                  "result": "2"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "x": -2,
+                  "result": -8
+                }
+              ],
+              [
+                {
+                  "x": 0,
+                  "result": -4
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": -2
+                }
+              ],
+              [
+                {
+                  "x": 3,
+                  "result": 2
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "-2.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-2.0000002",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-2.00000021",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-2.000000212",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "x": "-2",
+                  "result": "-8"
+                }
+              ],
+              [
+                {
+                  "x": "0",
+                  "result": "-4"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "-2"
+                }
+              ],
+              [
+                {
+                  "x": "3",
+                  "result": "2"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "-2.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-2.0000002",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-2.00000021",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-2.000000212",
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native-diagnostics",
+            "details": [
+              "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Probe_1_result': Arithmetic operators require numeric types"
+            ]
+          }
+        ]
+      },
+      "after": {
+        "id": "generated-24-0",
+        "sha256": "a56dc1119c275b6f365a0972a69aac88d4a6bb3e483e09b26d78e2461564fcc1",
+        "expected": [
+          [
+            {
+              "x": -2,
+              "result": -8
+            }
+          ],
+          [
+            {
+              "x": 0,
+              "result": -4
+            }
+          ],
+          [
+            {
+              "x": 1,
+              "result": -2
+            }
+          ],
+          [
+            {
+              "x": 3,
+              "result": 2
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": -2,
+                  "result": -8
+                }
+              ],
+              [
+                {
+                  "x": 0,
+                  "result": -4
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": -2
+                }
+              ],
+              [
+                {
+                  "x": 3,
+                  "result": 2
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-2",
+                  "result": "-8"
+                }
+              ],
+              [
+                {
+                  "x": "0",
+                  "result": "-4"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "-2"
+                }
+              ],
+              [
+                {
+                  "x": "3",
+                  "result": "2"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": -2,
+                  "result": -8
+                }
+              ],
+              [
+                {
+                  "x": 0,
+                  "result": -4
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": -2
+                }
+              ],
+              [
+                {
+                  "x": 3,
+                  "result": 2
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-2",
+                  "result": "-8"
+                }
+              ],
+              [
+                {
+                  "x": "0",
+                  "result": "-4"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "-2"
+                }
+              ],
+              [
+                {
+                  "x": "3",
+                  "result": "2"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      }
+    },
+    "generated-24-1": {
+      "source": "jtml 2\n\nmake Probe\n  let x = -1\n  get result = (x + 4) * 2\n  when s0\n    x += 3\n  when s1\n    x += 3\n  when s2\n    x += 1\n  box class \"probe\"\n    p class \"out-x\" x\n    p class \"out-result\" result\n    button \"s0\" click s0\n    button \"s1\" click s1\n    button \"s2\" click s2\n\npage\n  Probe\n",
+      "before": {
+        "id": "generated-24-1",
+        "sha256": "aa7dfc8998cc47af41fab16b09c057b46e21a94509e888043ebdaeaffb51816b",
+        "expected": [
+          [
+            {
+              "x": -1,
+              "result": 6
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "result": 12
+            }
+          ],
+          [
+            {
+              "x": 5,
+              "result": 18
+            }
+          ],
+          [
+            {
+              "x": 6,
+              "result": 20
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": "-1.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.0000003",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.00000033",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.000000331",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.0000003",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.00000033",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.000000331",
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": -1,
+                  "result": 6
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": 12
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "result": 18
+                }
+              ],
+              [
+                {
+                  "x": 6,
+                  "result": 20
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1",
+                  "result": "6"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "12"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "result": "18"
+                }
+              ],
+              [
+                {
+                  "x": "6",
+                  "result": "20"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "x": -1,
+                  "result": 6
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": 12
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "result": 18
+                }
+              ],
+              [
+                {
+                  "x": 6,
+                  "result": 20
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "-1.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.0000003",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.00000033",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.000000331",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "x": "-1",
+                  "result": "6"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "12"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "result": "18"
+                }
+              ],
+              [
+                {
+                  "x": "6",
+                  "result": "20"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "-1.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.0000003",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.00000033",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.000000331",
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native-diagnostics",
+            "details": [
+              "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Probe_1_result': Arithmetic operators require numeric types"
+            ]
+          }
+        ]
+      },
+      "after": {
+        "id": "generated-24-1",
+        "sha256": "aa7dfc8998cc47af41fab16b09c057b46e21a94509e888043ebdaeaffb51816b",
+        "expected": [
+          [
+            {
+              "x": -1,
+              "result": 6
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "result": 12
+            }
+          ],
+          [
+            {
+              "x": 5,
+              "result": 18
+            }
+          ],
+          [
+            {
+              "x": 6,
+              "result": 20
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": -1,
+                  "result": 6
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": 12
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "result": 18
+                }
+              ],
+              [
+                {
+                  "x": 6,
+                  "result": 20
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1",
+                  "result": "6"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "12"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "result": "18"
+                }
+              ],
+              [
+                {
+                  "x": "6",
+                  "result": "20"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": -1,
+                  "result": 6
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": 12
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "result": 18
+                }
+              ],
+              [
+                {
+                  "x": 6,
+                  "result": 20
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1",
+                  "result": "6"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "12"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "result": "18"
+                }
+              ],
+              [
+                {
+                  "x": "6",
+                  "result": "20"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      }
+    },
+    "generated-24-7": {
+      "source": "jtml 2\n\nmake Probe\n  let x = -1\n  get result = (x - 2) * 3\n  when s0\n    x += 1\n  when s1\n    x += 2\n  when s2\n    x += 2\n  box class \"probe\"\n    p class \"out-x\" x\n    p class \"out-result\" result\n    button \"s0\" click s0\n    button \"s1\" click s1\n    button \"s2\" click s2\n\npage\n  Probe\n",
+      "before": {
+        "id": "generated-24-7",
+        "sha256": "e7f132596ea39fb8192652578aee6e5a20f49ec6a743f41eb24673203bee4782",
+        "expected": [
+          [
+            {
+              "x": -1,
+              "result": -9
+            }
+          ],
+          [
+            {
+              "x": 0,
+              "result": -6
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "result": 0
+            }
+          ],
+          [
+            {
+              "x": 4,
+              "result": 6
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": "-1.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.0000001",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.00000012",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.000000122",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.0000001",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.00000012",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.000000122",
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": -1,
+                  "result": -9
+                }
+              ],
+              [
+                {
+                  "x": 0,
+                  "result": -6
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": 0
+                }
+              ],
+              [
+                {
+                  "x": 4,
+                  "result": 6
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1",
+                  "result": "-9"
+                }
+              ],
+              [
+                {
+                  "x": "0",
+                  "result": "-6"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "0"
+                }
+              ],
+              [
+                {
+                  "x": "4",
+                  "result": "6"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "x": -1,
+                  "result": -9
+                }
+              ],
+              [
+                {
+                  "x": 0,
+                  "result": -6
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": 0
+                }
+              ],
+              [
+                {
+                  "x": 4,
+                  "result": 6
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "-1.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.0000001",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.00000012",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.000000122",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "x": "-1",
+                  "result": "-9"
+                }
+              ],
+              [
+                {
+                  "x": "0",
+                  "result": "-6"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "0"
+                }
+              ],
+              [
+                {
+                  "x": "4",
+                  "result": "6"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "-1.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.0000001",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.00000012",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.000000122",
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native-diagnostics",
+            "details": [
+              "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Probe_1_result': Arithmetic operators require numeric types"
+            ]
+          }
+        ]
+      },
+      "after": {
+        "id": "generated-24-7",
+        "sha256": "e7f132596ea39fb8192652578aee6e5a20f49ec6a743f41eb24673203bee4782",
+        "expected": [
+          [
+            {
+              "x": -1,
+              "result": -9
+            }
+          ],
+          [
+            {
+              "x": 0,
+              "result": -6
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "result": 0
+            }
+          ],
+          [
+            {
+              "x": 4,
+              "result": 6
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": -1,
+                  "result": -9
+                }
+              ],
+              [
+                {
+                  "x": 0,
+                  "result": -6
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": 0
+                }
+              ],
+              [
+                {
+                  "x": 4,
+                  "result": 6
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1",
+                  "result": "-9"
+                }
+              ],
+              [
+                {
+                  "x": "0",
+                  "result": "-6"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "0"
+                }
+              ],
+              [
+                {
+                  "x": "4",
+                  "result": "6"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": -1,
+                  "result": -9
+                }
+              ],
+              [
+                {
+                  "x": 0,
+                  "result": -6
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": 0
+                }
+              ],
+              [
+                {
+                  "x": 4,
+                  "result": 6
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1",
+                  "result": "-9"
+                }
+              ],
+              [
+                {
+                  "x": "0",
+                  "result": "-6"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "0"
+                }
+              ],
+              [
+                {
+                  "x": "4",
+                  "result": "6"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      }
+    }
+  },
+  "supplemental": {
+    "before": [
+      {
+        "id": "unary-initialized-reactivity",
+        "sha256": "86b9f961a8c3361d042343f7f23fb139267ade822ea4a06532785dc3024b8d4d",
+        "expected": [
+          [
+            {
+              "x": -1.25,
+              "result": -1.5
+            }
+          ],
+          [
+            {
+              "x": -1,
+              "result": -1
+            }
+          ],
+          [
+            {
+              "x": -0.75,
+              "result": -0.5
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": "-1.250000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.2500000.25",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.2500000.250.25",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1.250000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.2500000.25",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.2500000.250.25",
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": -1.25,
+                  "result": -1.5
+                }
+              ],
+              [
+                {
+                  "x": -1,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "x": -0.75,
+                  "result": -0.5
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1.25",
+                  "result": "-1.5"
+                }
+              ],
+              [
+                {
+                  "x": "-1",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "-0.75",
+                  "result": "-0.5"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "x": -1.25,
+                  "result": -1.5
+                }
+              ],
+              [
+                {
+                  "x": -1,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "x": -0.75,
+                  "result": -0.5
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "-1.250000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.2500000.25",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-1.2500000.250.25",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "x": "-1.25",
+                  "result": "-1.5"
+                }
+              ],
+              [
+                {
+                  "x": "-1",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "-0.75",
+                  "result": "-0.5"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "-1.250000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.2500000.25",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-1.2500000.250.25",
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native-diagnostics",
+            "details": [
+              "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Probe_1_result': Arithmetic operators require numeric types"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-negative-integers",
+        "sha256": "5536ca72ecdf2827d08442cc2aac938a9df71360d366db172eecd854882b1563",
+        "expected": [
+          [
+            {
+              "x": -2,
+              "y": -3,
+              "result": -10
+            }
+          ],
+          [
+            {
+              "x": -1,
+              "y": -3,
+              "result": -8
+            }
+          ],
+          [
+            {
+              "x": -1,
+              "y": -4,
+              "result": -10
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": "-2.000000",
+                  "y": "-3.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-2.0000001",
+                  "y": "-3.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-2.0000001",
+                  "y": -4,
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-2.000000",
+                  "y": "-3.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-2.0000001",
+                  "y": "-3.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-2.0000001",
+                  "y": "-4",
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": -2,
+                  "y": -3,
+                  "result": -10
+                }
+              ],
+              [
+                {
+                  "x": -1,
+                  "y": -3,
+                  "result": -8
+                }
+              ],
+              [
+                {
+                  "x": -1,
+                  "y": -4,
+                  "result": -10
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-2",
+                  "y": "-3",
+                  "result": "-10"
+                }
+              ],
+              [
+                {
+                  "x": "-1",
+                  "y": "-3",
+                  "result": "-8"
+                }
+              ],
+              [
+                {
+                  "x": "-1",
+                  "y": "-4",
+                  "result": "-10"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "x": -2,
+                  "y": -3,
+                  "result": -10
+                }
+              ],
+              [
+                {
+                  "x": -1,
+                  "y": -3,
+                  "result": -8
+                }
+              ],
+              [
+                {
+                  "x": -1,
+                  "y": -4,
+                  "result": -10
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "-2.000000",
+                  "y": "-3.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-2.0000001",
+                  "y": "-3.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "x": "-2.0000001",
+                  "y": -4,
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "x": "-2",
+                  "y": "-3",
+                  "result": "-10"
+                }
+              ],
+              [
+                {
+                  "x": "-1",
+                  "y": "-3",
+                  "result": "-8"
+                }
+              ],
+              [
+                {
+                  "x": "-1",
+                  "y": "-4",
+                  "result": "-10"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "-2.000000",
+                  "y": "-3.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-2.0000001",
+                  "y": "-3.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "x": "-2.0000001",
+                  "y": "-4",
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native-diagnostics",
+            "details": [
+              "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Probe_1_result': Arithmetic operators require numeric types"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-direct",
+        "sha256": "d53635c9417958fd026fd9e8cd997b3cfa6008850f9d83230dc6a7eac366973f",
+        "expected": [
+          [
+            {
+              "result": -1,
+              "repeated": 1,
+              "nested": -1,
+              "sum": 0
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": "-1.000000",
+                  "repeated": "1.000000",
+                  "nested": "-1.000000",
+                  "sum": "-1.0000001"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-1.000000",
+                  "repeated": "1.000000",
+                  "nested": "-1.000000",
+                  "sum": "-1.0000001"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": -1,
+                  "repeated": "--1.000000000000000",
+                  "nested": "---1.000000000000000",
+                  "sum": 0
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-1",
+                  "repeated": "--1.000000000000000",
+                  "nested": "---1.000000000000000",
+                  "sum": "0"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -1,
+                  "repeated": 1,
+                  "nested": -1,
+                  "sum": 0
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-1.000000",
+                  "repeated": "1.000000",
+                  "nested": "-1.000000",
+                  "sum": "-1.0000001"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-1",
+                  "repeated": "1",
+                  "nested": "-1",
+                  "sum": "0"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-1.000000",
+                  "repeated": "1.000000",
+                  "nested": "-1.000000",
+                  "sum": "-1.0000001"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -1,
+                  "repeated": 1,
+                  "nested": -1,
+                  "sum": 0
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": -1,
+                  "repeated": "--1.000000000000000",
+                  "nested": "---1.000000000000000",
+                  "sum": 0
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-1",
+                  "repeated": "1",
+                  "nested": "-1",
+                  "sum": "0"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-1",
+                  "repeated": "--1.000000000000000",
+                  "nested": "---1.000000000000000",
+                  "sum": "0"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-fractions",
+        "sha256": "89e7eace2eaa05efc3b29f59e5d8648b9fc0ca7b0f2ce52bd991cac3cddf943e",
+        "expected": [
+          [
+            {
+              "result": -1.25,
+              "repeated": 0.125
+            }
+          ],
+          [
+            {
+              "result": -2.5,
+              "repeated": 0.125
+            }
+          ],
+          [
+            {
+              "result": 0.5,
+              "repeated": 0.125
+            }
+          ],
+          [
+            {
+              "result": -0.5,
+              "repeated": 0.125
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": "-1.250000",
+                  "repeated": "0.125000"
+                }
+              ],
+              [
+                {
+                  "result": "-2.500000",
+                  "repeated": "0.125000"
+                }
+              ],
+              [
+                {
+                  "result": "0.500000",
+                  "repeated": "0.125000"
+                }
+              ],
+              [
+                {
+                  "result": "-0.500000",
+                  "repeated": "0.125000"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-1.250000",
+                  "repeated": "0.125000"
+                }
+              ],
+              [
+                {
+                  "result": "-2.500000",
+                  "repeated": "0.125000"
+                }
+              ],
+              [
+                {
+                  "result": "0.500000",
+                  "repeated": "0.125000"
+                }
+              ],
+              [
+                {
+                  "result": "-0.500000",
+                  "repeated": "0.125000"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "compiler-plan",
+            "details": [
+              "get result = -x: missing reads x"
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -1.25,
+                  "repeated": 0.125
+                }
+              ],
+              [
+                {
+                  "result": -2.5,
+                  "repeated": 0.125
+                }
+              ],
+              [
+                {
+                  "result": 0.5,
+                  "repeated": 0.125
+                }
+              ],
+              [
+                {
+                  "result": -0.5,
+                  "repeated": 0.125
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-1.250000",
+                  "repeated": "0.125000"
+                }
+              ],
+              [
+                {
+                  "result": "-2.500000",
+                  "repeated": "0.125000"
+                }
+              ],
+              [
+                {
+                  "result": "0.500000",
+                  "repeated": "0.125000"
+                }
+              ],
+              [
+                {
+                  "result": "-0.500000",
+                  "repeated": "0.125000"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-1.25",
+                  "repeated": "0.125"
+                }
+              ],
+              [
+                {
+                  "result": "-2.5",
+                  "repeated": "0.125"
+                }
+              ],
+              [
+                {
+                  "result": "0.5",
+                  "repeated": "0.125"
+                }
+              ],
+              [
+                {
+                  "result": "-0.5",
+                  "repeated": "0.125"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-1.250000",
+                  "repeated": "0.125000"
+                }
+              ],
+              [
+                {
+                  "result": "-2.500000",
+                  "repeated": "0.125000"
+                }
+              ],
+              [
+                {
+                  "result": "0.500000",
+                  "repeated": "0.125000"
+                }
+              ],
+              [
+                {
+                  "result": "-0.500000",
+                  "repeated": "0.125000"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -1.25,
+                  "repeated": 0.125
+                }
+              ],
+              [
+                {
+                  "result": -2.5,
+                  "repeated": 0.125
+                }
+              ],
+              [
+                {
+                  "result": 0.5,
+                  "repeated": 0.125
+                }
+              ],
+              [
+                {
+                  "result": -0.5,
+                  "repeated": 0.125
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-1.25",
+                  "repeated": "0.125"
+                }
+              ],
+              [
+                {
+                  "result": "-2.5",
+                  "repeated": "0.125"
+                }
+              ],
+              [
+                {
+                  "result": "0.5",
+                  "repeated": "0.125"
+                }
+              ],
+              [
+                {
+                  "result": "-0.5",
+                  "repeated": "0.125"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-grouped-arithmetic",
+        "sha256": "f5eb8754e3c9b9b71793e0692a9753afa1b5548366f2e268ad64cb9ab2b52445",
+        "expected": [
+          [
+            {
+              "result": -15
+            }
+          ],
+          [
+            {
+              "result": -17
+            }
+          ],
+          [
+            {
+              "result": -13
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "result": null
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "result": "NaN"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "compiler-plan",
+            "details": [
+              "get result = -(x + (y * 2)) * 2 + 1: missing reads x",
+              "get result = -(x + (y * 2)) * 2 + 1: missing reads y"
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -15
+                }
+              ],
+              [
+                {
+                  "result": -17
+                }
+              ],
+              [
+                {
+                  "result": -13
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-15"
+                }
+              ],
+              [
+                {
+                  "result": "-17"
+                }
+              ],
+              [
+                {
+                  "result": "-13"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -15
+                }
+              ],
+              [
+                {
+                  "result": -17
+                }
+              ],
+              [
+                {
+                  "result": -13
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "result": null
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-15"
+                }
+              ],
+              [
+                {
+                  "result": "-17"
+                }
+              ],
+              [
+                {
+                  "result": "-13"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "result": "NaN"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native-diagnostics",
+            "details": [
+              "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Probe_1_result': Arithmetic operators require numeric types"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-derived-chain",
+        "sha256": "85145d8f97eef0cafe11a23f9bb4ef2a3bc7d278813af5b9b603f3ada5ef8366",
+        "expected": [
+          [
+            {
+              "inverted": -1,
+              "result": 1
+            }
+          ],
+          [
+            {
+              "inverted": -2,
+              "result": -1
+            }
+          ],
+          [
+            {
+              "inverted": 2,
+              "result": 7
+            }
+          ],
+          [
+            {
+              "inverted": 1,
+              "result": 5
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "inverted": "-1.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "inverted": "-2.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "inverted": "2.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "inverted": "1.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "inverted": "-1.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "inverted": "-2.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "inverted": "2.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "inverted": "1.000000",
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "compiler-plan",
+            "details": [
+              "get inverted = -x: missing reads x"
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "inverted": -1,
+                  "result": 1
+                }
+              ],
+              [
+                {
+                  "inverted": -2,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "inverted": 2,
+                  "result": 7
+                }
+              ],
+              [
+                {
+                  "inverted": 1,
+                  "result": 5
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "inverted": "-1.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "inverted": "-2.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "inverted": "2.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "inverted": "1.000000",
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "inverted": "-1",
+                  "result": "1"
+                }
+              ],
+              [
+                {
+                  "inverted": "-2",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "inverted": "2",
+                  "result": "7"
+                }
+              ],
+              [
+                {
+                  "inverted": "1",
+                  "result": "5"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "inverted": "-1.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "inverted": "-2.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "inverted": "2.000000",
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "inverted": "1.000000",
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "inverted": -1,
+                  "result": 1
+                }
+              ],
+              [
+                {
+                  "inverted": -2,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "inverted": 2,
+                  "result": 7
+                }
+              ],
+              [
+                {
+                  "inverted": 1,
+                  "result": 5
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "inverted": "-1",
+                  "result": "1"
+                }
+              ],
+              [
+                {
+                  "inverted": "-2",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "inverted": "2",
+                  "result": "7"
+                }
+              ],
+              [
+                {
+                  "inverted": "1",
+                  "result": "5"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native-diagnostics",
+            "details": [
+              "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Probe_1_result': Arithmetic operators require numeric types"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-ternary-logical",
+        "sha256": "a6c7676111a4dbf45bcab3dcb756371c9e7a2a1f9061d46b4ceadde6c9e1853f",
+        "expected": [
+          [
+            {
+              "result": -2,
+              "positive": false
+            }
+          ],
+          [
+            {
+              "result": 2,
+              "positive": true
+            }
+          ],
+          [
+            {
+              "result": 3,
+              "positive": true
+            }
+          ],
+          [
+            {
+              "result": -3,
+              "positive": false
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": "-2.000000",
+                  "positive": false
+                }
+              ],
+              [
+                {
+                  "result": "2.000000",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "3.000000",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "-3.000000",
+                  "positive": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-2.000000",
+                  "positive": "false"
+                }
+              ],
+              [
+                {
+                  "result": "2.000000",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "3.000000",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "-3.000000",
+                  "positive": "false"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": "-x",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "positive": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-x",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "positive": "true"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "compiler-plan",
+            "details": [
+              "get result = enabled ? -x : -(-x): missing reads x"
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -2,
+                  "positive": false
+                }
+              ],
+              [
+                {
+                  "result": 2,
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": 3,
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": -3,
+                  "positive": false
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-2.000000",
+                  "positive": false
+                }
+              ],
+              [
+                {
+                  "result": "2.000000",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "3.000000",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "-3.000000",
+                  "positive": false
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-2",
+                  "positive": "false"
+                }
+              ],
+              [
+                {
+                  "result": "2",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "3",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "-3",
+                  "positive": "false"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-2.000000",
+                  "positive": "false"
+                }
+              ],
+              [
+                {
+                  "result": "2.000000",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "3.000000",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "-3.000000",
+                  "positive": "false"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -2,
+                  "positive": false
+                }
+              ],
+              [
+                {
+                  "result": 2,
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": 3,
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": -3,
+                  "positive": false
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-x",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "positive": true
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-2",
+                  "positive": "false"
+                }
+              ],
+              [
+                {
+                  "result": "2",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "3",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "-3",
+                  "positive": "false"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-x",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "positive": "true"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-owned-index",
+        "sha256": "ec6e0a7d38ed5d1f6ec45491a1434b3b9eccafbb2015a4846175040e3dfdf280",
+        "expected": [
+          [
+            {
+              "result": -3.25
+            }
+          ],
+          [
+            {
+              "result": -3.5
+            }
+          ],
+          [
+            {
+              "result": -6.5
+            }
+          ],
+          [
+            {
+              "result": -0.5
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": "-3.250000"
+                }
+              ],
+              [
+                {
+                  "result": "-3.500000"
+                }
+              ],
+              [
+                {
+                  "result": "-6.500000"
+                }
+              ],
+              [
+                {
+                  "result": "-0.500000"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-3.250000"
+                }
+              ],
+              [
+                {
+                  "result": "-3.500000"
+                }
+              ],
+              [
+                {
+                  "result": "-6.500000"
+                }
+              ],
+              [
+                {
+                  "result": "-0.500000"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "compiler-plan",
+            "details": [
+              "get result = -(alias.score + items[index]): missing reads alias",
+              "get result = -(alias.score + items[index]): missing reads items",
+              "get result = -(alias.score + items[index]): missing reads index"
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -3.25
+                }
+              ],
+              [
+                {
+                  "result": -3.5
+                }
+              ],
+              [
+                {
+                  "result": -6.5
+                }
+              ],
+              [
+                {
+                  "result": -0.5
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-3.250000"
+                }
+              ],
+              [
+                {
+                  "result": "-3.500000"
+                }
+              ],
+              [
+                {
+                  "result": "-6.500000"
+                }
+              ],
+              [
+                {
+                  "result": "-0.500000"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-3.25"
+                }
+              ],
+              [
+                {
+                  "result": "-3.5"
+                }
+              ],
+              [
+                {
+                  "result": "-6.5"
+                }
+              ],
+              [
+                {
+                  "result": "-0.5"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-3.250000"
+                }
+              ],
+              [
+                {
+                  "result": "-3.500000"
+                }
+              ],
+              [
+                {
+                  "result": "-6.500000"
+                }
+              ],
+              [
+                {
+                  "result": "-0.500000"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -3.25
+                }
+              ],
+              [
+                {
+                  "result": -3.5
+                }
+              ],
+              [
+                {
+                  "result": -6.5
+                }
+              ],
+              [
+                {
+                  "result": -0.5
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-3.25"
+                }
+              ],
+              [
+                {
+                  "result": "-3.5"
+                }
+              ],
+              [
+                {
+                  "result": "-6.5"
+                }
+              ],
+              [
+                {
+                  "result": "-0.5"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-zero",
+        "sha256": "d3a9985e9b60b7f21a4607c2efae94510a3a9ca2436784b85aa075aaab0c6896",
+        "expected": [
+          [
+            {
+              "result": 0,
+              "restored": 0
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": "-0.0000000",
+                  "restored": "0.000000"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-0.0000000",
+                  "restored": "0.000000"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": 0,
+                  "restored": "--0.000000000000000"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "0",
+                  "restored": "--0.000000000000000"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": 0,
+                  "restored": 0
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-0.0000000",
+                  "restored": "0.000000"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "0",
+                  "restored": "0"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-0.0000000",
+                  "restored": "0.000000"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": 0,
+                  "restored": 0
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": 0,
+                  "restored": "--0.000000000000000"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "0",
+                  "restored": "0"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "0",
+                  "restored": "--0.000000000000000"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-sibling-isolation",
+        "sha256": "7ea100cb4822eccc0010f744993e215c25b224d60ef8abdc9bf8cdd93bf19bff",
+        "expected": [
+          [
+            {
+              "x": 1,
+              "result": -1
+            },
+            {
+              "x": 1,
+              "result": -1
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "result": -2
+            },
+            {
+              "x": 1,
+              "result": -1
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "result": -2
+            },
+            {
+              "x": -1,
+              "result": 1
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "result": -2
+            },
+            {
+              "x": 0,
+              "result": 0
+            }
+          ],
+          [
+            {
+              "x": -2,
+              "result": 2
+            },
+            {
+              "x": 0,
+              "result": 0
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": 1,
+                  "result": "-1.0000000"
+                },
+                {
+                  "x": 1,
+                  "result": "-1.0000000"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-2.0000000"
+                },
+                {
+                  "x": 1,
+                  "result": "-1.0000000"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-2.0000000"
+                },
+                {
+                  "x": -1,
+                  "result": "1.0000000"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-2.0000000"
+                },
+                {
+                  "x": 0,
+                  "result": "-0.0000000"
+                }
+              ],
+              [
+                {
+                  "x": -2,
+                  "result": "2.0000000"
+                },
+                {
+                  "x": 0,
+                  "result": "-0.0000000"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "1",
+                  "result": "-1.0000000"
+                },
+                {
+                  "x": "1",
+                  "result": "-1.0000000"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2.0000000"
+                },
+                {
+                  "x": "1",
+                  "result": "-1.0000000"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2.0000000"
+                },
+                {
+                  "x": "-1",
+                  "result": "1.0000000"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2.0000000"
+                },
+                {
+                  "x": "0",
+                  "result": "-0.0000000"
+                }
+              ],
+              [
+                {
+                  "x": "-2",
+                  "result": "2.0000000"
+                },
+                {
+                  "x": "0",
+                  "result": "-0.0000000"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": 1,
+                  "result": "-x0"
+                },
+                {
+                  "x": 1,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-x0"
+                },
+                {
+                  "x": 1,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-x0"
+                },
+                {
+                  "x": -1,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-x0"
+                },
+                {
+                  "x": 0,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": -2,
+                  "result": "-x0"
+                },
+                {
+                  "x": 0,
+                  "result": "-x0"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "1",
+                  "result": "-x0"
+                },
+                {
+                  "x": "1",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "1",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "-1",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "0",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "-2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "0",
+                  "result": "-x0"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "compiler-plan",
+            "details": [
+              "get result = (-x) + 0: missing reads x"
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "x": 1,
+                  "result": -1
+                },
+                {
+                  "x": 1,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": -2
+                },
+                {
+                  "x": 1,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": -2
+                },
+                {
+                  "x": -1,
+                  "result": 1
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": -2
+                },
+                {
+                  "x": 0,
+                  "result": 0
+                }
+              ],
+              [
+                {
+                  "x": -2,
+                  "result": 2
+                },
+                {
+                  "x": 0,
+                  "result": 0
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": 1,
+                  "result": "-1.0000000"
+                },
+                {
+                  "x": 1,
+                  "result": "-1.0000000"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-2.0000000"
+                },
+                {
+                  "x": 1,
+                  "result": "-1.0000000"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-2.0000000"
+                },
+                {
+                  "x": -1,
+                  "result": "1.0000000"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-2.0000000"
+                },
+                {
+                  "x": 0,
+                  "result": "-0.0000000"
+                }
+              ],
+              [
+                {
+                  "x": -2,
+                  "result": "2.0000000"
+                },
+                {
+                  "x": 0,
+                  "result": "-0.0000000"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "x": "1",
+                  "result": "-1"
+                },
+                {
+                  "x": "1",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2"
+                },
+                {
+                  "x": "1",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2"
+                },
+                {
+                  "x": "-1",
+                  "result": "1"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2"
+                },
+                {
+                  "x": "0",
+                  "result": "0"
+                }
+              ],
+              [
+                {
+                  "x": "-2",
+                  "result": "2"
+                },
+                {
+                  "x": "0",
+                  "result": "0"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "1",
+                  "result": "-1.0000000"
+                },
+                {
+                  "x": "1",
+                  "result": "-1.0000000"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2.0000000"
+                },
+                {
+                  "x": "1",
+                  "result": "-1.0000000"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2.0000000"
+                },
+                {
+                  "x": "-1",
+                  "result": "1.0000000"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2.0000000"
+                },
+                {
+                  "x": "0",
+                  "result": "-0.0000000"
+                }
+              ],
+              [
+                {
+                  "x": "-2",
+                  "result": "2.0000000"
+                },
+                {
+                  "x": "0",
+                  "result": "-0.0000000"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "x": 1,
+                  "result": -1
+                },
+                {
+                  "x": 1,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": -2
+                },
+                {
+                  "x": 1,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": -2
+                },
+                {
+                  "x": -1,
+                  "result": 1
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": -2
+                },
+                {
+                  "x": 0,
+                  "result": 0
+                }
+              ],
+              [
+                {
+                  "x": -2,
+                  "result": 2
+                },
+                {
+                  "x": 0,
+                  "result": 0
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": 1,
+                  "result": "-x0"
+                },
+                {
+                  "x": 1,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-x0"
+                },
+                {
+                  "x": 1,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-x0"
+                },
+                {
+                  "x": -1,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-x0"
+                },
+                {
+                  "x": 0,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": -2,
+                  "result": "-x0"
+                },
+                {
+                  "x": 0,
+                  "result": "-x0"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "x": "1",
+                  "result": "-1"
+                },
+                {
+                  "x": "1",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2"
+                },
+                {
+                  "x": "1",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2"
+                },
+                {
+                  "x": "-1",
+                  "result": "1"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2"
+                },
+                {
+                  "x": "0",
+                  "result": "0"
+                }
+              ],
+              [
+                {
+                  "x": "-2",
+                  "result": "2"
+                },
+                {
+                  "x": "0",
+                  "result": "0"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "1",
+                  "result": "-x0"
+                },
+                {
+                  "x": "1",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "1",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "-1",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "0",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "-2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "0",
+                  "result": "-x0"
+                }
+              ]
+            ]
+          }
+        ]
+      }
+    ],
+    "after": [
+      {
+        "id": "unary-initialized-reactivity",
+        "sha256": "86b9f961a8c3361d042343f7f23fb139267ade822ea4a06532785dc3024b8d4d",
+        "expected": [
+          [
+            {
+              "x": -1.25,
+              "result": -1.5
+            }
+          ],
+          [
+            {
+              "x": -1,
+              "result": -1
+            }
+          ],
+          [
+            {
+              "x": -0.75,
+              "result": -0.5
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": -1.25,
+                  "result": -1.5
+                }
+              ],
+              [
+                {
+                  "x": -1,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "x": -0.75,
+                  "result": -0.5
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1.25",
+                  "result": "-1.5"
+                }
+              ],
+              [
+                {
+                  "x": "-1",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "-0.75",
+                  "result": "-0.5"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": -1.25,
+                  "result": -1.5
+                }
+              ],
+              [
+                {
+                  "x": -1,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "x": -0.75,
+                  "result": -0.5
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-1.25",
+                  "result": "-1.5"
+                }
+              ],
+              [
+                {
+                  "x": "-1",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "-0.75",
+                  "result": "-0.5"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      },
+      {
+        "id": "unary-negative-integers",
+        "sha256": "5536ca72ecdf2827d08442cc2aac938a9df71360d366db172eecd854882b1563",
+        "expected": [
+          [
+            {
+              "x": -2,
+              "y": -3,
+              "result": -10
+            }
+          ],
+          [
+            {
+              "x": -1,
+              "y": -3,
+              "result": -8
+            }
+          ],
+          [
+            {
+              "x": -1,
+              "y": -4,
+              "result": -10
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": -2,
+                  "y": -3,
+                  "result": -10
+                }
+              ],
+              [
+                {
+                  "x": -1,
+                  "y": -3,
+                  "result": -8
+                }
+              ],
+              [
+                {
+                  "x": -1,
+                  "y": -4,
+                  "result": -10
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-2",
+                  "y": "-3",
+                  "result": "-10"
+                }
+              ],
+              [
+                {
+                  "x": "-1",
+                  "y": "-3",
+                  "result": "-8"
+                }
+              ],
+              [
+                {
+                  "x": "-1",
+                  "y": "-4",
+                  "result": "-10"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": -2,
+                  "y": -3,
+                  "result": -10
+                }
+              ],
+              [
+                {
+                  "x": -1,
+                  "y": -3,
+                  "result": -8
+                }
+              ],
+              [
+                {
+                  "x": -1,
+                  "y": -4,
+                  "result": -10
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "-2",
+                  "y": "-3",
+                  "result": "-10"
+                }
+              ],
+              [
+                {
+                  "x": "-1",
+                  "y": "-3",
+                  "result": "-8"
+                }
+              ],
+              [
+                {
+                  "x": "-1",
+                  "y": "-4",
+                  "result": "-10"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      },
+      {
+        "id": "unary-direct",
+        "sha256": "d53635c9417958fd026fd9e8cd997b3cfa6008850f9d83230dc6a7eac366973f",
+        "expected": [
+          [
+            {
+              "result": -1,
+              "repeated": 1,
+              "nested": -1,
+              "sum": 0
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": -1,
+                  "repeated": 1,
+                  "nested": -1,
+                  "sum": 0
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-1",
+                  "repeated": "1",
+                  "nested": "-1",
+                  "sum": "0"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": -1,
+                  "repeated": "--1.000000000000000",
+                  "nested": "---1.000000000000000",
+                  "sum": 0
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-1",
+                  "repeated": "--1.000000000000000",
+                  "nested": "---1.000000000000000",
+                  "sum": "0"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -1,
+                  "repeated": 1,
+                  "nested": -1,
+                  "sum": 0
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": -1,
+                  "repeated": "--1.000000000000000",
+                  "nested": "---1.000000000000000",
+                  "sum": 0
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-1",
+                  "repeated": "1",
+                  "nested": "-1",
+                  "sum": "0"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-1",
+                  "repeated": "--1.000000000000000",
+                  "nested": "---1.000000000000000",
+                  "sum": "0"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-fractions",
+        "sha256": "89e7eace2eaa05efc3b29f59e5d8648b9fc0ca7b0f2ce52bd991cac3cddf943e",
+        "expected": [
+          [
+            {
+              "result": -1.25,
+              "repeated": 0.125
+            }
+          ],
+          [
+            {
+              "result": -2.5,
+              "repeated": 0.125
+            }
+          ],
+          [
+            {
+              "result": 0.5,
+              "repeated": 0.125
+            }
+          ],
+          [
+            {
+              "result": -0.5,
+              "repeated": 0.125
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": -1.25,
+                  "repeated": 0.125
+                }
+              ],
+              [
+                {
+                  "result": -2.5,
+                  "repeated": 0.125
+                }
+              ],
+              [
+                {
+                  "result": 0.5,
+                  "repeated": 0.125
+                }
+              ],
+              [
+                {
+                  "result": -0.5,
+                  "repeated": 0.125
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-1.25",
+                  "repeated": "0.125"
+                }
+              ],
+              [
+                {
+                  "result": "-2.5",
+                  "repeated": "0.125"
+                }
+              ],
+              [
+                {
+                  "result": "0.5",
+                  "repeated": "0.125"
+                }
+              ],
+              [
+                {
+                  "result": "-0.5",
+                  "repeated": "0.125"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "compiler-plan",
+            "details": [
+              "get result = -x: missing reads x"
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -1.25,
+                  "repeated": 0.125
+                }
+              ],
+              [
+                {
+                  "result": -2.5,
+                  "repeated": 0.125
+                }
+              ],
+              [
+                {
+                  "result": 0.5,
+                  "repeated": 0.125
+                }
+              ],
+              [
+                {
+                  "result": -0.5,
+                  "repeated": 0.125
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-1.25",
+                  "repeated": "0.125"
+                }
+              ],
+              [
+                {
+                  "result": "-2.5",
+                  "repeated": "0.125"
+                }
+              ],
+              [
+                {
+                  "result": "0.5",
+                  "repeated": "0.125"
+                }
+              ],
+              [
+                {
+                  "result": "-0.5",
+                  "repeated": "0.125"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "repeated": "--0.125000000000000"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-grouped-arithmetic",
+        "sha256": "f5eb8754e3c9b9b71793e0692a9753afa1b5548366f2e268ad64cb9ab2b52445",
+        "expected": [
+          [
+            {
+              "result": -15
+            }
+          ],
+          [
+            {
+              "result": -17
+            }
+          ],
+          [
+            {
+              "result": -13
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": -15
+                }
+              ],
+              [
+                {
+                  "result": -17
+                }
+              ],
+              [
+                {
+                  "result": -13
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-15"
+                }
+              ],
+              [
+                {
+                  "result": "-17"
+                }
+              ],
+              [
+                {
+                  "result": "-13"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "result": null
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "result": "NaN"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "compiler-plan",
+            "details": [
+              "get result = -(x + (y * 2)) * 2 + 1: missing reads x",
+              "get result = -(x + (y * 2)) * 2 + 1: missing reads y"
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -15
+                }
+              ],
+              [
+                {
+                  "result": -17
+                }
+              ],
+              [
+                {
+                  "result": -13
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "result": null
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-15"
+                }
+              ],
+              [
+                {
+                  "result": "-17"
+                }
+              ],
+              [
+                {
+                  "result": "-13"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "result": "NaN"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-derived-chain",
+        "sha256": "85145d8f97eef0cafe11a23f9bb4ef2a3bc7d278813af5b9b603f3ada5ef8366",
+        "expected": [
+          [
+            {
+              "inverted": -1,
+              "result": 1
+            }
+          ],
+          [
+            {
+              "inverted": -2,
+              "result": -1
+            }
+          ],
+          [
+            {
+              "inverted": 2,
+              "result": 7
+            }
+          ],
+          [
+            {
+              "inverted": 1,
+              "result": 5
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "inverted": -1,
+                  "result": 1
+                }
+              ],
+              [
+                {
+                  "inverted": -2,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "inverted": 2,
+                  "result": 7
+                }
+              ],
+              [
+                {
+                  "inverted": 1,
+                  "result": 5
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "inverted": "-1",
+                  "result": "1"
+                }
+              ],
+              [
+                {
+                  "inverted": "-2",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "inverted": "2",
+                  "result": "7"
+                }
+              ],
+              [
+                {
+                  "inverted": "1",
+                  "result": "5"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "compiler-plan",
+            "details": [
+              "get inverted = -x: missing reads x"
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "inverted": -1,
+                  "result": 1
+                }
+              ],
+              [
+                {
+                  "inverted": -2,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "inverted": 2,
+                  "result": 7
+                }
+              ],
+              [
+                {
+                  "inverted": 1,
+                  "result": 5
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": null
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "inverted": "-1",
+                  "result": "1"
+                }
+              ],
+              [
+                {
+                  "inverted": "-2",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "inverted": "2",
+                  "result": "7"
+                }
+              ],
+              [
+                {
+                  "inverted": "1",
+                  "result": "5"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ],
+              [
+                {
+                  "inverted": "-x",
+                  "result": "NaN"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-ternary-logical",
+        "sha256": "a6c7676111a4dbf45bcab3dcb756371c9e7a2a1f9061d46b4ceadde6c9e1853f",
+        "expected": [
+          [
+            {
+              "result": -2,
+              "positive": false
+            }
+          ],
+          [
+            {
+              "result": 2,
+              "positive": true
+            }
+          ],
+          [
+            {
+              "result": 3,
+              "positive": true
+            }
+          ],
+          [
+            {
+              "result": -3,
+              "positive": false
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": -2,
+                  "positive": false
+                }
+              ],
+              [
+                {
+                  "result": 2,
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": 3,
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": -3,
+                  "positive": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-2",
+                  "positive": "false"
+                }
+              ],
+              [
+                {
+                  "result": "2",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "3",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "-3",
+                  "positive": "false"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": "-x",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "positive": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-x",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "positive": "true"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "compiler-plan",
+            "details": [
+              "get result = enabled ? -x : -(-x): missing reads x"
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -2,
+                  "positive": false
+                }
+              ],
+              [
+                {
+                  "result": 2,
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": 3,
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": -3,
+                  "positive": false
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-x",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": true
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "positive": true
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-2",
+                  "positive": "false"
+                }
+              ],
+              [
+                {
+                  "result": "2",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "3",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "-3",
+                  "positive": "false"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-x",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "--x",
+                  "positive": "true"
+                }
+              ],
+              [
+                {
+                  "result": "-x",
+                  "positive": "true"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-owned-index",
+        "sha256": "ec6e0a7d38ed5d1f6ec45491a1434b3b9eccafbb2015a4846175040e3dfdf280",
+        "expected": [
+          [
+            {
+              "result": -3.25
+            }
+          ],
+          [
+            {
+              "result": -3.5
+            }
+          ],
+          [
+            {
+              "result": -6.5
+            }
+          ],
+          [
+            {
+              "result": -0.5
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": -3.25
+                }
+              ],
+              [
+                {
+                  "result": -3.5
+                }
+              ],
+              [
+                {
+                  "result": -6.5
+                }
+              ],
+              [
+                {
+                  "result": -0.5
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-3.25"
+                }
+              ],
+              [
+                {
+                  "result": "-3.5"
+                }
+              ],
+              [
+                {
+                  "result": "-6.5"
+                }
+              ],
+              [
+                {
+                  "result": "-0.5"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "compiler-plan",
+            "details": [
+              "get result = -(alias.score + items[index]): missing reads alias",
+              "get result = -(alias.score + items[index]): missing reads items",
+              "get result = -(alias.score + items[index]): missing reads index"
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": -3.25
+                }
+              ],
+              [
+                {
+                  "result": -3.5
+                }
+              ],
+              [
+                {
+                  "result": -6.5
+                }
+              ],
+              [
+                {
+                  "result": -0.5
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "-3.25"
+                }
+              ],
+              [
+                {
+                  "result": "-3.5"
+                }
+              ],
+              [
+                {
+                  "result": "-6.5"
+                }
+              ],
+              [
+                {
+                  "result": "-0.5"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ],
+              [
+                {
+                  "result": "-(alias.score + items[index])"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-zero",
+        "sha256": "d3a9985e9b60b7f21a4607c2efae94510a3a9ca2436784b85aa075aaab0c6896",
+        "expected": [
+          [
+            {
+              "result": 0,
+              "restored": 0
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": 0,
+                  "restored": 0
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "0",
+                  "restored": "0"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": 0,
+                  "restored": "--0.000000000000000"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "0",
+                  "restored": "--0.000000000000000"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": 0,
+                  "restored": 0
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": 0,
+                  "restored": "--0.000000000000000"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "0",
+                  "restored": "0"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "0",
+                  "restored": "--0.000000000000000"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-sibling-isolation",
+        "sha256": "7ea100cb4822eccc0010f744993e215c25b224d60ef8abdc9bf8cdd93bf19bff",
+        "expected": [
+          [
+            {
+              "x": 1,
+              "result": -1
+            },
+            {
+              "x": 1,
+              "result": -1
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "result": -2
+            },
+            {
+              "x": 1,
+              "result": -1
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "result": -2
+            },
+            {
+              "x": -1,
+              "result": 1
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "result": -2
+            },
+            {
+              "x": 0,
+              "result": 0
+            }
+          ],
+          [
+            {
+              "x": -2,
+              "result": 2
+            },
+            {
+              "x": 0,
+              "result": 0
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": 1,
+                  "result": -1
+                },
+                {
+                  "x": 1,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": -2
+                },
+                {
+                  "x": 1,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": -2
+                },
+                {
+                  "x": -1,
+                  "result": 1
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": -2
+                },
+                {
+                  "x": 0,
+                  "result": 0
+                }
+              ],
+              [
+                {
+                  "x": -2,
+                  "result": 2
+                },
+                {
+                  "x": 0,
+                  "result": 0
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "1",
+                  "result": "-1"
+                },
+                {
+                  "x": "1",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2"
+                },
+                {
+                  "x": "1",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2"
+                },
+                {
+                  "x": "-1",
+                  "result": "1"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2"
+                },
+                {
+                  "x": "0",
+                  "result": "0"
+                }
+              ],
+              [
+                {
+                  "x": "-2",
+                  "result": "2"
+                },
+                {
+                  "x": "0",
+                  "result": "0"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": 1,
+                  "result": "-x0"
+                },
+                {
+                  "x": 1,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-x0"
+                },
+                {
+                  "x": 1,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-x0"
+                },
+                {
+                  "x": -1,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-x0"
+                },
+                {
+                  "x": 0,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": -2,
+                  "result": "-x0"
+                },
+                {
+                  "x": 0,
+                  "result": "-x0"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "1",
+                  "result": "-x0"
+                },
+                {
+                  "x": "1",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "1",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "-1",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "0",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "-2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "0",
+                  "result": "-x0"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "compiler-plan",
+            "details": [
+              "get result = (-x) + 0: missing reads x"
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "x": 1,
+                  "result": -1
+                },
+                {
+                  "x": 1,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": -2
+                },
+                {
+                  "x": 1,
+                  "result": -1
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": -2
+                },
+                {
+                  "x": -1,
+                  "result": 1
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": -2
+                },
+                {
+                  "x": 0,
+                  "result": 0
+                }
+              ],
+              [
+                {
+                  "x": -2,
+                  "result": 2
+                },
+                {
+                  "x": 0,
+                  "result": 0
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": 1,
+                  "result": "-x0"
+                },
+                {
+                  "x": 1,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-x0"
+                },
+                {
+                  "x": 1,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-x0"
+                },
+                {
+                  "x": -1,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": "-x0"
+                },
+                {
+                  "x": 0,
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": -2,
+                  "result": "-x0"
+                },
+                {
+                  "x": 0,
+                  "result": "-x0"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "browser",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "x": "1",
+                  "result": "-1"
+                },
+                {
+                  "x": "1",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2"
+                },
+                {
+                  "x": "1",
+                  "result": "-1"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2"
+                },
+                {
+                  "x": "-1",
+                  "result": "1"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-2"
+                },
+                {
+                  "x": "0",
+                  "result": "0"
+                }
+              ],
+              [
+                {
+                  "x": "-2",
+                  "result": "2"
+                },
+                {
+                  "x": "0",
+                  "result": "0"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "1",
+                  "result": "-x0"
+                },
+                {
+                  "x": "1",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "1",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "-1",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "0",
+                  "result": "-x0"
+                }
+              ],
+              [
+                {
+                  "x": "-2",
+                  "result": "-x0"
+                },
+                {
+                  "x": "0",
+                  "result": "-x0"
+                }
+              ]
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "originalMinimization": {
+    "value": {
+      "x": -2,
+      "a": 0,
+      "b": 1,
+      "sign": 1,
+      "deltas": [],
+      "form": "identity"
+    },
+    "attempts": 16,
+    "accepted": 9
+  },
+  "negativeControls": {
+    "cppBefore": {
+      "pass": 1,
+      "fail": 6
+    },
+    "cppAfter": {
+      "pass": 7,
+      "fail": 0
+    },
+    "originalUnchangedCatalogAfterFix": "exit 1: four unexpected resolutions require review",
+    "finalSupplementalOnFrozenMain": "exit 1: native failures cannot hide behind browser-only signatures",
+    "originalStrictAfterFix": "exit 2: two nested-scope diagnostics remain",
+    "actualReportFaultInjection": "PASS actual-report fault injection: resolved native regression, changed oracle and new failure beside known browser defects all rejected\n"
+  },
+  "focusedBeforeLog": "Running main() from /Users/joaorocha/.codex/worktrees/async-worker-lifetime/jtml-v1/build/_deps/googletest-src/googletest/src/gtest_main.cc\n[==========] Running 7 tests from 1 test suite.\n[----------] Global test environment set-up.\n[----------] 7 tests from NativeUnaryNumeric\n[ RUN      ] NativeUnaryNumeric.DirectRepeatedGroupedAndNestedArithmetic\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:37: Failure\nValue of: actual && actual->isNumber()\n  Actual: false\nExpected: true\n-1\n\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:37: Failure\nValue of: actual && actual->isNumber()\n  Actual: false\nExpected: true\n-(-1)\n\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:37: Failure\nValue of: actual && actual->isNumber()\n  Actual: false\nExpected: true\n-(-(-1))\n\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:37: Failure\nValue of: actual && actual->isNumber()\n  Actual: false\nExpected: true\n-(2 + 3)\n\nunknown file: Failure\nC++ exception with description \"Arithmetic operators require numeric types\" thrown in the test body.\n\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:21: Failure\nValue of: errors.str().empty()\n  Actual: false\nExpected: true\n[Warning] Using unary '-' on a non-numeric value.\n[Warning] Using unary '-' on a non-numeric value.\n[Warning] Using unary '-' on a non-numeric value.\n\n\n[  FAILED  ] NativeUnaryNumeric.DirectRepeatedGroupedAndNestedArithmetic (3 ms)\n[ RUN      ] NativeUnaryNumeric.PositiveAndNegativeZeroRetainNumericSign\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:63: Failure\nValue of: negative->isNumber()\n  Actual: false\nExpected: true\n\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:21: Failure\nValue of: errors.str().empty()\n  Actual: false\nExpected: true\n[Warning] Using unary '-' on a non-numeric value.\n\n\n[  FAILED  ] NativeUnaryNumeric.PositiveAndNegativeZeroRetainNumericSign (0 ms)\n[ RUN      ] NativeUnaryNumeric.NumericOperandsNeverRoundTripThroughDisplayText\n DefineStatementNode(identifier=input, declaredType=, isConst=false, expression=0.000000000000000)\nInterpreting node DefineStatementNode(identifier=input, declaredType=, isConst=false, expression=0.000000000000000)\n[DEBUG] Defined variable '0.input' = 0\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEFINE] 0.input = 0 (Number)\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[MARK DIRTY] Variable: 0.input (ID: 0, Priority: 1)\n[DEBUG] Set variable '0.input' = 1.23457\n[EVAL] Variable 0.input (InstanceID: 0) = 1.23457\n[SKIP] Normal variable 'input' does not require updates.\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:37: Failure\nValue of: actual && actual->isNumber()\n  Actual: false\nExpected: true\n-input\n\n[EVAL] Variable 0.input (InstanceID: 0) = 1.23457\n[SKIP] Normal variable 'input' does not require updates.\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:37: Failure\nValue of: actual && actual->isNumber()\n  Actual: false\nExpected: true\n-(-input)\n\n[DEBUG] Set variable '0.input' = 1.23457e-07\n[EVAL] Variable 0.input (InstanceID: 0) = 1.23457e-07\n[SKIP] Normal variable 'input' does not require updates.\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:37: Failure\nValue of: actual && actual->isNumber()\n  Actual: false\nExpected: true\n-input\n\n[EVAL] Variable 0.input (InstanceID: 0) = 1.23457e-07\n[SKIP] Normal variable 'input' does not require updates.\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:37: Failure\nValue of: actual && actual->isNumber()\n  Actual: false\nExpected: true\n-(-input)\n\n[DEBUG] Set variable '0.input' = 1.23457e+14\n[EVAL] Variable 0.input (InstanceID: 0) = 1.23457e+14\n[SKIP] Normal variable 'input' does not require updates.\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:37: Failure\nValue of: actual && actual->isNumber()\n  Actual: false\nExpected: true\n-input\n\n[EVAL] Variable 0.input (InstanceID: 0) = 1.23457e+14\n[SKIP] Normal variable 'input' does not require updates.\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:37: Failure\nValue of: actual && actual->isNumber()\n  Actual: false\nExpected: true\n-(-input)\n\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:21: Failure\nValue of: errors.str().empty()\n  Actual: false\nExpected: true\n[Warning] Using unary '-' on a non-numeric value.\n[Warning] Using unary '-' on a non-numeric value.\n[Warning] Using unary '-' on a non-numeric value.\n\n\n[  FAILED  ] NativeUnaryNumeric.NumericOperandsNeverRoundTripThroughDisplayText (0 ms)\n[ RUN      ] NativeUnaryNumeric.DerivedUpdatesAndTernaryBranchesRemainNumeric\n DefineStatementNode(identifier=x, declaredType=, isConst=false, expression=1.250000000000000)\nInterpreting node DefineStatementNode(identifier=x, declaredType=, isConst=false, expression=1.250000000000000)\n[DEBUG] Defined variable '0.x' = 1.25\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEFINE] 0.x = 1.25 (Number)\n DefineStatementNode(identifier=enabled, declaredType=, isConst=false, expression=true)\nInterpreting node DefineStatementNode(identifier=enabled, declaredType=, isConst=false, expression=true)\n[DEBUG] Defined variable '0.enabled' = true\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEFINE] 0.enabled = true (String)\n DeriveStatementNode(identifier=inverted, declaredType=, expression=(- x))\nInterpreting node DeriveStatementNode(identifier=inverted, declaredType=, expression=(- x))\n[DEBUG 0] gatherDeps Element: <(- x)>\n[DEBUG 0] gatherDeps Element: <x>\n[GATHER_DEPS] Dependency found: 0.x\n[DEBUG] About to rum derive on 0.inverted derived from dependencies: 0.x \n[DEBUG] Derived variable expression: (- x)\n[EVAL] Variable 0.x (InstanceID: 0) = 1.25\n[MARK DIRTY] Variable: 0.inverted (ID: 0, Priority: 1)\n[DERIVE] 0.inverted = -1.250000\n[DERIVE] 0.inverted derived from dependencies: x \n DeriveStatementNode(identifier=result, declaredType=, expression=(enabled ? (inverted + 1.000000000000000) : (- (- x))))\nInterpreting node DeriveStatementNode(identifier=result, declaredType=, expression=(enabled ? (inverted + 1.000000000000000) : (- (- x))))\n[DEBUG 0] gatherDeps Element: <(enabled ? (inverted + 1.000000000000000) : (- (- x)))>\n[DEBUG 0] gatherDeps Element: <enabled>\n[GATHER_DEPS] Dependency found: 0.enabled\n[DEBUG 0] gatherDeps Element: <(inverted + 1.000000000000000)>\n[DEBUG 0] gatherDeps Element: <inverted>\n[GATHER_DEPS] Dependency found: 0.inverted\n[DEBUG 0] gatherDeps Element: <1.000000000000000>\n[DEBUG 0] gatherDeps Element: <(- (- x))>\n[DEBUG 0] gatherDeps Element: <(- x)>\n[DEBUG 0] gatherDeps Element: <x>\n[GATHER_DEPS] Dependency found: 0.x\n[DEBUG] About to rum derive on 0.result derived from dependencies: 0.enabled 0.inverted 0.x \n[DEBUG] Derived variable expression: (enabled ? (inverted + 1.000000000000000) : (- (- x)))\n[EVAL] Variable 0.enabled (InstanceID: 0) = true\n[EVAL] Variable 0.inverted (InstanceID: 0) = -1.250000\n[EVAL] Variable 0.x (InstanceID: 0) = 1.25\n[UPDATE] Evaluated inverted = -1.250000\n[MARK DIRTY] Variable: 0.result (ID: 2, Priority: 1)\n[DERIVE] 0.result = -1.2500001\n[DERIVE] 0.result derived from dependencies: enabled inverted x \n[RECALC_DIRTY] Dirty Set: (0, inverted) (0, result) \n[RECALC_DIRTY] Sorted Vars: (0, inverted) (0, result) \n[RECALC_DIRTY] Updating variable: (0, inverted)\n[EVAL] Variable 0.x (InstanceID: 0) = 1.25\n[UPDATE] Evaluated inverted = -1.250000\n[RECALC_DIRTY] Updating variable: (0, result)\n[EVAL] Variable 0.enabled (InstanceID: 0) = true\n[EVAL] Variable 0.inverted (InstanceID: 0) = -1.250000\n[EVAL] Variable 0.x (InstanceID: 0) = 1.25\n[UPDATE] Evaluated inverted = -1.250000\n[UPDATE] Evaluated result = -1.2500001\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:82: Failure\nValue of: value(\"inverted\")->isNumber()\n  Actual: false\nExpected: true\n\n[  FAILED  ] NativeUnaryNumeric.DerivedUpdatesAndTernaryBranchesRemainNumeric (0 ms)\n[ RUN      ] NativeUnaryNumeric.AstAndIrTypeBoundariesAreExplicit\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:37: Failure\nValue of: actual && actual->isNumber()\n  Actual: false\nExpected: true\n-1.25\n\n[  FAILED  ] NativeUnaryNumeric.AstAndIrTypeBoundariesAreExplicit (0 ms)\n[ RUN      ] NativeUnaryNumeric.InvalidOperandDiagnosticsRemainExplicit\n[       OK ] NativeUnaryNumeric.InvalidOperandDiagnosticsRemainExplicit (0 ms)\n[ RUN      ] NativeUnaryNumeric.ExistingNumericStringConversionRetainsWarning\n/Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/tests/test_interpreter_unary.cpp:37: Failure\nValue of: actual && actual->isNumber()\n  Actual: false\nExpected: true\n-\"1.25\"\n\n[  FAILED  ] NativeUnaryNumeric.ExistingNumericStringConversionRetainsWarning (0 ms)\n[----------] 7 tests from NativeUnaryNumeric (4 ms total)\n\n[----------] Global test environment tear-down\n[==========] 7 tests from 1 test suite ran. (5 ms total)\n[  PASSED  ] 1 test.\n[  FAILED  ] 6 tests, listed below:\n[  FAILED  ] NativeUnaryNumeric.DirectRepeatedGroupedAndNestedArithmetic\n[  FAILED  ] NativeUnaryNumeric.PositiveAndNegativeZeroRetainNumericSign\n[  FAILED  ] NativeUnaryNumeric.NumericOperandsNeverRoundTripThroughDisplayText\n[  FAILED  ] NativeUnaryNumeric.DerivedUpdatesAndTernaryBranchesRemainNumeric\n[  FAILED  ] NativeUnaryNumeric.AstAndIrTypeBoundariesAreExplicit\n[  FAILED  ] NativeUnaryNumeric.ExistingNumericStringConversionRetainsWarning\n\n 6 FAILED TESTS\n",
+  "focusedAfterLog": "Internal ctest changing into directory: /Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/build\nTest project /Users/joaorocha/.codex/worktrees/native-unary-numeric/jtml-v1/build\n      Start  22: NativeTernaryDependencies.MinimalAndNonconditionalControl\n 1/28 Test  #22: NativeTernaryDependencies.MinimalAndNonconditionalControl ...............   Passed    0.01 sec\n      Start  23: NativeTernaryDependencies.BothBranchesAndConditionRemainSubscribed\n 2/28 Test  #23: NativeTernaryDependencies.BothBranchesAndConditionRemainSubscribed ......   Passed    0.01 sec\n      Start  24: NativeTernaryDependencies.NestedGroupingAndDerivedInvalidationChain\n 3/28 Test  #24: NativeTernaryDependencies.NestedGroupingAndDerivedInvalidationChain .....   Passed    0.01 sec\n      Start  25: NativeTernaryDependencies.MemberRootsAndComputedConditionalIndices\n 4/28 Test  #25: NativeTernaryDependencies.MemberRootsAndComputedConditionalIndices ......   Passed    0.00 sec\n      Start  26: NativeTernaryDependencies.GatheringNeverExecutesInactiveBranches\n 5/28 Test  #26: NativeTernaryDependencies.GatheringNeverExecutesInactiveBranches ........   Passed    0.00 sec\n      Start  27: NativeTernaryDependencies.InactiveIndexExpressionsAreNotEvaluated\n 6/28 Test  #27: NativeTernaryDependencies.InactiveIndexExpressionsAreNotEvaluated .......   Passed    0.01 sec\n      Start  28: NativeTernaryDependencies.CompilerAndNativeAgreeOnRequiredRoots\n 7/28 Test  #28: NativeTernaryDependencies.CompilerAndNativeAgreeOnRequiredRoots .........   Passed    0.01 sec\n      Start  29: NativeTernaryDependencies.GatheringNeverExecutesInactiveTrueBranch\n 8/28 Test  #29: NativeTernaryDependencies.GatheringNeverExecutesInactiveTrueBranch ......   Passed    0.00 sec\n      Start  30: NativeLogical.ConstructorOverloadControl\n 9/28 Test  #30: NativeLogical.ConstructorOverloadControl ................................   Passed    0.00 sec\n      Start  31: NativeLogical.BooleanTruthTablesAndType\n10/28 Test  #31: NativeLogical.BooleanTruthTablesAndType .................................   Passed    0.00 sec\n      Start  32: NativeLogical.ExistingNativeTruthinessIsPreserved\n11/28 Test  #32: NativeLogical.ExistingNativeTruthinessIsPreserved .......................   Passed    0.00 sec\n      Start  33: NativeLogical.InactiveErrorsAreSkippedAndActiveErrorsStillThrow\n12/28 Test  #33: NativeLogical.InactiveErrorsAreSkippedAndActiveErrorsStillThrow .........   Passed    0.00 sec\n      Start  34: NativeLogical.SideEffectsAreLazyOrderedAndExactlyOnce\n13/28 Test  #34: NativeLogical.SideEffectsAreLazyOrderedAndExactlyOnce ...................   Passed    0.01 sec\n      Start  35: NativeLogical.DependencyCollectionRemainsConservativeWithoutExecution\n14/28 Test  #35: NativeLogical.DependencyCollectionRemainsConservativeWithoutExecution ...   Passed    0.00 sec\n      Start  36: NativeLogical.InactiveComputedIndexIsCollectedWithoutEvaluation\n15/28 Test  #36: NativeLogical.InactiveComputedIndexIsCollectedWithoutEvaluation .........   Passed    0.00 sec\n      Start  37: NativeUnaryNumeric.DirectRepeatedGroupedAndNestedArithmetic\n16/28 Test  #37: NativeUnaryNumeric.DirectRepeatedGroupedAndNestedArithmetic .............   Passed    0.00 sec\n      Start  38: NativeUnaryNumeric.PositiveAndNegativeZeroRetainNumericSign\n17/28 Test  #38: NativeUnaryNumeric.PositiveAndNegativeZeroRetainNumericSign .............   Passed    0.00 sec\n      Start  39: NativeUnaryNumeric.NumericOperandsNeverRoundTripThroughDisplayText\n18/28 Test  #39: NativeUnaryNumeric.NumericOperandsNeverRoundTripThroughDisplayText ......   Passed    0.00 sec\n      Start  40: NativeUnaryNumeric.DerivedUpdatesAndTernaryBranchesRemainNumeric\n19/28 Test  #40: NativeUnaryNumeric.DerivedUpdatesAndTernaryBranchesRemainNumeric ........   Passed    0.00 sec\n      Start  41: NativeUnaryNumeric.AstAndIrTypeBoundariesAreExplicit\n20/28 Test  #41: NativeUnaryNumeric.AstAndIrTypeBoundariesAreExplicit ....................   Passed    0.01 sec\n      Start  42: NativeUnaryNumeric.InvalidOperandDiagnosticsRemainExplicit\n21/28 Test  #42: NativeUnaryNumeric.InvalidOperandDiagnosticsRemainExplicit ..............   Passed    0.00 sec\n      Start  43: NativeUnaryNumeric.ExistingNumericStringConversionRetainsWarning\n22/28 Test  #43: NativeUnaryNumeric.ExistingNumericStringConversionRetainsWarning ........   Passed    0.00 sec\n      Start 401: InterpreterCalls.simple\n23/28 Test #401: InterpreterCalls.simple .................................................   Passed    0.01 sec\n      Start 402: InterpreterCalls.nested\n24/28 Test #402: InterpreterCalls.nested .................................................   Passed    0.00 sec\n      Start 403: InterpreterCalls.recursion\n25/28 Test #403: InterpreterCalls.recursion ..............................................   Passed    0.00 sec\n      Start 404: InterpreterCalls.excessive\n26/28 Test #404: InterpreterCalls.excessive ..............................................   Passed    0.05 sec\n      Start 405: InterpreterCalls.independent\n27/28 Test #405: InterpreterCalls.independent ............................................   Passed    0.00 sec\n      Start 406: InterpreterCalls.concurrent\n28/28 Test #406: InterpreterCalls.concurrent .............................................   Passed    0.00 sec\n\n100% tests passed, 0 tests failed out of 28\n\nLabel Time Summary:\ninterpreter    =   0.07 sec*proc (6 tests)\nunit           =   0.18 sec*proc (28 tests)\n\nTotal Test time (real) =   0.21 sec\n",
+  "initialProbeFailures": {
+    "undeclaredNativeInput": "Initial precision probe assigned an undeclared input; fixed by declaring it before host writes. Corrected identical regression object linked with frozen pre-fix core reproduces six genuine failures. Initial setup failure is not evidence for the runtime defect.",
+    "unsupportedActionAssignment": "Initial new browser fixture included x=-x and x=-0.5 action assignments; baseline rejected them. Originals remain in /tmp/jtml-unary-new-before and a permanent exact-provenance rejection is now required. Shared reactive cases use existing supported 0-x arithmetic writes without changing original oracle cases."
+  }
+}

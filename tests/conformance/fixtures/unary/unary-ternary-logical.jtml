@@ -1,0 +1,19 @@
+jtml 2
+
+make Probe
+  let enabled = true
+  let x = 2
+  get result = enabled ? -x : -(-x)
+  get positive = !(result < 0)
+  when toggle
+    enabled = !enabled
+  when step
+    x += 1
+  box class "probe"
+    p class "out-result" result
+    p class "out-positive" positive
+    button "toggle" click toggle
+    button "step" click step
+
+page
+  Probe

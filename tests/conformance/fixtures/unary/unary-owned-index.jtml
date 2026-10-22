@@ -1,0 +1,22 @@
+jtml 2
+
+make Probe
+  let item = { score: 1.25 }
+  let alias = item
+  let index = 0
+  let items = [2, 5]
+  get result = -(alias.score + items[index])
+  when member
+    item.score += 0.25
+  when index
+    index = 1 - index
+  when write
+    items[index] = 0 - 1
+  box class "probe"
+    p class "out-result" result
+    button "member" click member
+    button "index" click index
+    button "write" click write
+
+page
+  Probe

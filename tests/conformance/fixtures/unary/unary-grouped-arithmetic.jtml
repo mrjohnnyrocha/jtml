@@ -1,0 +1,17 @@
+jtml 2
+
+make Probe
+  let x = 2
+  let y = 3
+  get result = -(x + (y * 2)) * 2 + 1
+  when left
+    x += 1
+  when right
+    y -= 1
+  box class "probe"
+    p class "out-result" result
+    button "left" click left
+    button "right" click right
+
+page
+  Probe

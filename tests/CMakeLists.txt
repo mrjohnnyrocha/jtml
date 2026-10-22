@@ -22,6 +22,7 @@ set(JTML_TEST_SOURCES
     test_parser.cpp
     test_interpreter_dependencies.cpp
     test_interpreter_logical.cpp
+    test_interpreter_unary.cpp
     test_diagnostics.cpp
     test_c_api.cpp
     test_cli_commands.cpp

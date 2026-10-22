@@ -1,0 +1,100 @@
+{
+  "baseline": "44ef526",
+  "fullGate": {
+    "status": "PASS",
+    "log": "/tmp/jtml-unary-full-gate.log",
+    "sha256": "cfcf7250707a6351d2f9e8162637b839084714ad05f258f679ea03037abeaf44",
+    "bytes": 144500
+  },
+  "ctests": {
+    "pass": 421,
+    "fail": 0
+  },
+  "focused": {
+    "pass": 28,
+    "newUnaryTests": 7
+  },
+  "originalConformance": {
+    "cases": 22,
+    "beforeEquivalent": 16,
+    "beforeKnownDefects": 6,
+    "resolved": 4,
+    "afterEquivalent": 20,
+    "afterKnownDefects": 2,
+    "strictExit": 2
+  },
+  "newUnaryMatrix": {
+    "cases": 10,
+    "frozenBaselineNativeFailures": 10,
+    "fixedNativePasses": 10,
+    "fullyEquivalent": 2,
+    "existingCompilerBrowserKnownFailures": 8,
+    "strictExit": 2
+  },
+  "unchangedAttributeRenderer": {
+    "equivalent": 35,
+    "knownFailureObservations": 5
+  },
+  "unchangedLogicalCases": 8,
+  "unchangedTernaryCases": 8,
+  "benchmarks": [
+    {
+      "name": "static_counter",
+      "exit": "clean"
+    },
+    {
+      "name": "keyed_list",
+      "exit": "clean"
+    },
+    {
+      "name": "control_flow",
+      "exit": "clean"
+    },
+    {
+      "name": "composition",
+      "exit": "clean"
+    },
+    {
+      "name": "large_keyed_updates",
+      "exit": "clean"
+    },
+    {
+      "name": "large_keyed_reorder",
+      "exit": "clean"
+    },
+    {
+      "name": "nested_component_update",
+      "exit": "clean"
+    },
+    {
+      "name": "lifecycle_cleanup",
+      "exit": "clean"
+    },
+    {
+      "name": "form_focus",
+      "exit": "clean"
+    },
+    {
+      "name": "reference-app",
+      "exit": "clean"
+    }
+  ],
+  "strictN04": "PASS",
+  "securityAsyncLifecycle": "PASS",
+  "liveSmokePasses": 8,
+  "verificationSkips": 0,
+  "runtimeAsset": {
+    "bytes": 271564,
+    "budget": 272000,
+    "identical": true,
+    "sha256": "e8ff5f35ac6ce187abfc9ce5686da8b47af5b4bea4949336ef5985ae0fb84b17"
+  },
+  "hostedCI": "Exact final-head results recorded on the PR separately",
+  "limitations": [
+    "Eight supplemental existing compiler/browser unary observations remain known failures",
+    "Unary-minus Expression IR Source/Unknown; production unary assignments reject",
+    "Native/browser signed-zero raw display and nonnumeric coercion parity unverified",
+    "Two nested-scope diagnostics and five attribute-renderer failure observations remain",
+    "Historical Classic HTTP reset issue26 remains UNVERIFIED"
+  ]
+}

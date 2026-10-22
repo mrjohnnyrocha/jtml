@@ -1,0 +1,21 @@
+jtml 2
+
+make Probe
+  let x = 1.25
+  get result = -x
+  get repeated = -(-0.125)
+  when double
+    x = x * 2
+  when replace
+    x = 0 - 0.5
+  when flip
+    x = 0 - x
+  box class "probe"
+    p class "out-result" result
+    p class "out-repeated" repeated
+    button "double" click double
+    button "replace" click replace
+    button "flip" click flip
+
+page
+  Probe

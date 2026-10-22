@@ -1,0 +1,17 @@
+jtml 2
+
+make Probe
+  get result = -1
+  get repeated = -(-1)
+  get nested = -(-(-1))
+  get sum = -1 + 1
+
+  box class "probe"
+    p class "out-result" result
+    p class "out-repeated" repeated
+    p class "out-nested" nested
+    p class "out-sum" sum
+
+
+page
+  Probe

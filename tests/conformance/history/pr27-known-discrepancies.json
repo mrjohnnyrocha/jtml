@@ -1,0 +1,528 @@
+{
+  "version": 1,
+  "meaning": "Reviewed counterexamples, not semantic passes. No automatic blessing command. A changed signature or resolved discrepancy requires review.",
+  "entries": {
+    "branch-dependencies": {
+      "sourceSha256": "835a1485b06cd3ac12b0724de086661dcdd98244eab011769e4547d2158ce2b7",
+      "classification": "native-boolean-result-construction-after-dependency-repair",
+      "failures": [
+        {
+          "layer": "native",
+          "observation": "state",
+          "actual": [
+            [
+              {
+                "x": 2,
+                "y": 9,
+                "result": 2
+              }
+            ],
+            [
+              {
+                "x": 2,
+                "y": 11,
+                "result": 2
+              }
+            ],
+            [
+              {
+                "x": 5,
+                "y": 11,
+                "result": 5
+              }
+            ],
+            [
+              {
+                "x": 5,
+                "y": 11,
+                "result": 5
+              }
+            ],
+            [
+              {
+                "x": 8,
+                "y": 11,
+                "result": 8
+              }
+            ],
+            [
+              {
+                "x": 8,
+                "y": 13,
+                "result": 8
+              }
+            ],
+            [
+              {
+                "x": 8,
+                "y": 13,
+                "result": 8
+              }
+            ]
+          ]
+        },
+        {
+          "layer": "native",
+          "observation": "visible",
+          "actual": [
+            [
+              {
+                "x": "2",
+                "y": "9",
+                "result": "2"
+              }
+            ],
+            [
+              {
+                "x": "2",
+                "y": "11",
+                "result": "2"
+              }
+            ],
+            [
+              {
+                "x": "5",
+                "y": "11",
+                "result": "5"
+              }
+            ],
+            [
+              {
+                "x": "5",
+                "y": "11",
+                "result": "5"
+              }
+            ],
+            [
+              {
+                "x": "8",
+                "y": "11",
+                "result": "8"
+              }
+            ],
+            [
+              {
+                "x": "8",
+                "y": "13",
+                "result": "8"
+              }
+            ],
+            [
+              {
+                "x": "8",
+                "y": "13",
+                "result": "8"
+              }
+            ]
+          ]
+        }
+      ],
+      "expectedSha256": "035d7a13e37e41f8faacb1f1548fbdc24fcafe953197e352adea42678a74d911"
+    },
+    "boolean-comparison": {
+      "sourceSha256": "75386b5f26e4c07a0a4ec300452f7ae4bd4f7f2bd3e972ec8125eab21a0d4c23",
+      "classification": "native-boolean-result-construction",
+      "failures": [
+        {
+          "layer": "native",
+          "observation": "state",
+          "actual": [
+            [
+              {
+                "x": 0,
+                "y": 3,
+                "result": "yes"
+              }
+            ],
+            [
+              {
+                "x": 1,
+                "y": 3,
+                "result": "yes"
+              }
+            ],
+            [
+              {
+                "x": 2,
+                "y": 3,
+                "result": "yes"
+              }
+            ],
+            [
+              {
+                "x": 2,
+                "y": 6,
+                "result": "yes"
+              }
+            ],
+            [
+              {
+                "x": 3,
+                "y": 6,
+                "result": "yes"
+              }
+            ]
+          ]
+        },
+        {
+          "layer": "native",
+          "observation": "visible",
+          "actual": [
+            [
+              {
+                "x": "0",
+                "y": "3",
+                "result": "yes"
+              }
+            ],
+            [
+              {
+                "x": "1",
+                "y": "3",
+                "result": "yes"
+              }
+            ],
+            [
+              {
+                "x": "2",
+                "y": "3",
+                "result": "yes"
+              }
+            ],
+            [
+              {
+                "x": "2",
+                "y": "6",
+                "result": "yes"
+              }
+            ],
+            [
+              {
+                "x": "3",
+                "y": "6",
+                "result": "yes"
+              }
+            ]
+          ]
+        }
+      ],
+      "expectedSha256": "1c805886584e26aace35be86a36581d0e943ae351d184579c8f407e8fb26a204"
+    },
+    "unary-negative": {
+      "sourceSha256": "e9ab33e71871d281f8569fe4a33cc1fc529fb031e315d06f85abbe3ad3a24d01",
+      "classification": "native-unary-number-type",
+      "failures": [
+        {
+          "layer": "native",
+          "observation": "state",
+          "actual": [
+            [
+              {
+                "x": "-1.000000"
+              }
+            ],
+            [
+              {
+                "x": "-1.0000001"
+              }
+            ]
+          ]
+        },
+        {
+          "layer": "native",
+          "observation": "visible",
+          "actual": [
+            [
+              {
+                "x": "-1.000000"
+              }
+            ],
+            [
+              {
+                "x": "-1.0000001"
+              }
+            ]
+          ]
+        }
+      ],
+      "expectedSha256": "7d31e77b719b4ff8f5168d3099305257d3efd536385724b5fed72976299326ea"
+    },
+    "nested-parameter-retention": {
+      "sourceSha256": "1a5436763a48b0b0949a7ea0ca0666d7b74b0e05975fed2e37f3206b1d204ec6",
+      "classification": "native-component-environment",
+      "failures": [
+        {
+          "layer": "native-diagnostics",
+          "details": [
+            "Interpreter Error: Dependency Gathering Error: Undefined variable: <instance>.__Probe_2_x",
+            "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Child_1_result': Undefined variable: <instance>.__Probe_2_x",
+            "Interpreter Error: Dependency Gathering Error: Undefined variable: <instance>.__Probe_4_x",
+            "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Child_3_result': Undefined variable: <instance>.__Probe_4_x",
+            "Interpreter Error: Attempted to update undefined variable '<instance>.result' in InstanceID <instance>",
+            "Interpreter Error: Attempted to update undefined variable '<instance>.result' in InstanceID <instance>",
+            "Interpreter Error: Attempted to update undefined variable '<instance>.result' in InstanceID <instance>",
+            "Interpreter Error: Attempted to update undefined variable '<instance>.result' in InstanceID <instance>"
+          ]
+        }
+      ],
+      "expectedSha256": "04984955eec7d01faae570e093a899e68777a381b3fb56452dd5a3d5b6c763de"
+    },
+    "generated-24-0": {
+      "sourceSha256": "a56dc1119c275b6f365a0972a69aac88d4a6bb3e483e09b26d78e2461564fcc1",
+      "classification": "native-unary-number-type",
+      "failures": [
+        {
+          "layer": "native",
+          "observation": "state",
+          "actual": [
+            [
+              {
+                "x": "-2.000000",
+                "result": {
+                  "$missing": true
+                }
+              }
+            ],
+            [
+              {
+                "x": "-2.0000002",
+                "result": {
+                  "$missing": true
+                }
+              }
+            ],
+            [
+              {
+                "x": "-2.00000021",
+                "result": {
+                  "$missing": true
+                }
+              }
+            ],
+            [
+              {
+                "x": "-2.000000212",
+                "result": {
+                  "$missing": true
+                }
+              }
+            ]
+          ]
+        },
+        {
+          "layer": "native",
+          "observation": "visible",
+          "actual": [
+            [
+              {
+                "x": "-2.000000",
+                "result": "result"
+              }
+            ],
+            [
+              {
+                "x": "-2.0000002",
+                "result": "result"
+              }
+            ],
+            [
+              {
+                "x": "-2.00000021",
+                "result": "result"
+              }
+            ],
+            [
+              {
+                "x": "-2.000000212",
+                "result": "result"
+              }
+            ]
+          ]
+        },
+        {
+          "layer": "native-diagnostics",
+          "details": [
+            "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Probe_1_result': Arithmetic operators require numeric types"
+          ]
+        }
+      ],
+      "expectedSha256": "3ee5083aeb9c3d402d90e0f0a6eb941796471ec5a60c95f5f8554407e1b24525"
+    },
+    "generated-24-1": {
+      "sourceSha256": "aa7dfc8998cc47af41fab16b09c057b46e21a94509e888043ebdaeaffb51816b",
+      "classification": "native-unary-number-type",
+      "failures": [
+        {
+          "layer": "native",
+          "observation": "state",
+          "actual": [
+            [
+              {
+                "x": "-1.000000",
+                "result": {
+                  "$missing": true
+                }
+              }
+            ],
+            [
+              {
+                "x": "-1.0000003",
+                "result": {
+                  "$missing": true
+                }
+              }
+            ],
+            [
+              {
+                "x": "-1.00000033",
+                "result": {
+                  "$missing": true
+                }
+              }
+            ],
+            [
+              {
+                "x": "-1.000000331",
+                "result": {
+                  "$missing": true
+                }
+              }
+            ]
+          ]
+        },
+        {
+          "layer": "native",
+          "observation": "visible",
+          "actual": [
+            [
+              {
+                "x": "-1.000000",
+                "result": "result"
+              }
+            ],
+            [
+              {
+                "x": "-1.0000003",
+                "result": "result"
+              }
+            ],
+            [
+              {
+                "x": "-1.00000033",
+                "result": "result"
+              }
+            ],
+            [
+              {
+                "x": "-1.000000331",
+                "result": "result"
+              }
+            ]
+          ]
+        },
+        {
+          "layer": "native-diagnostics",
+          "details": [
+            "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Probe_1_result': Arithmetic operators require numeric types"
+          ]
+        }
+      ],
+      "expectedSha256": "227ee91254c2db698b01d40fbb11815e5e34d8156bdf91e4dc5f0914504ac50e"
+    },
+    "generated-24-7": {
+      "sourceSha256": "e7f132596ea39fb8192652578aee6e5a20f49ec6a743f41eb24673203bee4782",
+      "classification": "native-unary-number-type",
+      "failures": [
+        {
+          "layer": "native",
+          "observation": "state",
+          "actual": [
+            [
+              {
+                "x": "-1.000000",
+                "result": {
+                  "$missing": true
+                }
+              }
+            ],
+            [
+              {
+                "x": "-1.0000001",
+                "result": {
+                  "$missing": true
+                }
+              }
+            ],
+            [
+              {
+                "x": "-1.00000012",
+                "result": {
+                  "$missing": true
+                }
+              }
+            ],
+            [
+              {
+                "x": "-1.000000122",
+                "result": {
+                  "$missing": true
+                }
+              }
+            ]
+          ]
+        },
+        {
+          "layer": "native",
+          "observation": "visible",
+          "actual": [
+            [
+              {
+                "x": "-1.000000",
+                "result": "result"
+              }
+            ],
+            [
+              {
+                "x": "-1.0000001",
+                "result": "result"
+              }
+            ],
+            [
+              {
+                "x": "-1.00000012",
+                "result": "result"
+              }
+            ],
+            [
+              {
+                "x": "-1.000000122",
+                "result": "result"
+              }
+            ]
+          ]
+        },
+        {
+          "layer": "native-diagnostics",
+          "details": [
+            "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Probe_1_result': Arithmetic operators require numeric types"
+          ]
+        }
+      ],
+      "expectedSha256": "cc47c4649676595c699f16ac9c6163a27e98b5c207083c0d9f71b5e62cb4b5e4"
+    },
+    "nested-parameter-minimal": {
+      "sourceSha256": "39c78dd56c207673d039030587a80f9034ed9b49f8e2c1d30934c76a91ed3835",
+      "classification": "native-component-environment",
+      "expectedSha256": "5d7b82f4b31fc0a07d175c4d96e8693db7f0e4c3c6329b87ab0ebfb9199d5b0b",
+      "failures": [
+        {
+          "layer": "native-diagnostics",
+          "details": [
+            "Interpreter Error: Dependency Gathering Error: Undefined variable: <instance>.__Probe_2_x",
+            "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Child_1_result': Undefined variable: <instance>.__Probe_2_x"
+          ]
+        }
+      ]
+    }
+  }
+}

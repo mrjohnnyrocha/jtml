@@ -1,0 +1,26 @@
+jtml 2
+
+make Probe
+  let enabled = true
+  let index = 0
+  let items = [2, 5]
+  let item = { limit: 3 }
+  let alias = item
+  get result = enabled ? ((items[index] > alias.limit) || !(item.limit > 0)) : ((items[index] > 0) && false)
+  when index
+    index = 1 - index
+  when limit
+    item.limit = 6
+  when off
+    enabled = false
+  when on
+    enabled = true
+  box class "probe"
+    p class "out-result" result
+    button "index" click index
+    button "limit" click limit
+    button "off" click off
+    button "on" click on
+
+page
+  Probe

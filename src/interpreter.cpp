@@ -4712,22 +4712,19 @@ std::shared_ptr<JTML::VarValue> Interpreter::evaluateExpression(const Expression
         case ExpressionStatementNodeType::Binary: {
             const auto* binExpr = static_cast<const BinaryExpressionStatementNode*>(exprNode);
             std::shared_ptr<JTML::VarValue> leftVal  = evaluateExpression(binExpr->left.get(), env);
-            std::shared_ptr<JTML::VarValue> rightVal = evaluateExpression(binExpr->right.get(), env);
             const std::string& op = binExpr->op;
 
-            // For logical ops "&&" and "||", etc...
+            // Execution is lazy; gatherDeps independently visits both operands.
+            // Construct bool values directly: C string pointers select VarValue(bool).
             if (op == "&&" || op == "||") {
-                bool leftBool  = isTruthy(leftVal->toString());
-                bool rightBool = isTruthy(rightVal->toString());
-                if (op == "&&") {
-                    return std::make_shared<JTML::VarValue>(leftBool && rightBool ? "true" : "false");
+                const bool leftBool = isTruthy(leftVal->toString());
+                if ((op == "&&" && !leftBool) || (op == "||" && leftBool)) {
+                    return std::make_shared<JTML::VarValue>(leftBool);
                 }
-                else {
-                    // op == "||"
-                    bool resultBool = (leftBool || rightBool);
-                    return std::make_shared<JTML::VarValue>(resultBool ? "true" : "false");
-                }
+                const auto rightVal = evaluateExpression(binExpr->right.get(), env);
+                return std::make_shared<JTML::VarValue>(isTruthy(rightVal->toString()));
             }
+            std::shared_ptr<JTML::VarValue> rightVal = evaluateExpression(binExpr->right.get(), env);
              if (binExpr->op == "==" || binExpr->op == "!=" ||
                 binExpr->op == "<"  || binExpr->op == "<=" ||
                 binExpr->op == ">"  || binExpr->op == ">=" )
@@ -4811,7 +4808,7 @@ std::shared_ptr<JTML::VarValue> Interpreter::evaluateExpression(const Expression
             if (op == "!") {
                 // logical NOT => just interpret truthiness
                 bool val = isTruthy(operandVal->toString());
-                return std::make_shared<JTML::VarValue>(val ? "false" : "true");
+                return std::make_shared<JTML::VarValue>(!val);
             }
             else if (op == "-") {
                 // numeric negation => warn or try convert

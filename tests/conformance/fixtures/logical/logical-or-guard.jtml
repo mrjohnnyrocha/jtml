@@ -1,0 +1,23 @@
+jtml 2
+
+make Probe
+  let enabled = true
+  let divisor = 0
+  get result = enabled || ((1 / divisor) > 0)
+  when safe
+    divisor = 2
+  when disable
+    enabled = false
+  when enable
+    enabled = true
+  when zero
+    divisor = 0
+  box class "probe"
+    p class "out-result" result
+    button "safe" click safe
+    button "disable" click disable
+    button "enable" click enable
+    button "zero" click zero
+
+page
+  Probe

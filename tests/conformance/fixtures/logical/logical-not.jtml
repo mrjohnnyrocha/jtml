@@ -1,0 +1,15 @@
+jtml 2
+
+make Probe
+  get result = !true
+  get inverse = !false
+  get nested = !!false
+
+  box class "probe"
+    p class "out-result" result
+    p class "out-inverse" inverse
+    p class "out-nested" nested
+
+
+page
+  Probe

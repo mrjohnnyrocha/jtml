@@ -1,0 +1,98 @@
+{
+  "localGate": {
+    "status": "PASS",
+    "log": "/tmp/jtml-logical-full-gate.log",
+    "sha256": "9ed643056f3424860def362166ce632d3019da0a72ab9a9d7c198a4ef8512ba6",
+    "bytes": 143357
+  },
+  "ctests": {
+    "pass": 414,
+    "fail": 0
+  },
+  "focused": {
+    "pass": 21,
+    "logical": 7,
+    "ternary": 8,
+    "functionCalls": 6
+  },
+  "originalConformance": {
+    "cases": 22,
+    "equivalent": 16,
+    "knownDefects": 6,
+    "resolved": 2,
+    "strictExit": 2
+  },
+  "newLogicalCases": {
+    "pass": 8,
+    "fail": 0,
+    "baselineFailures": 8
+  },
+  "existingTernaryCases": {
+    "pass": 8,
+    "fail": 0
+  },
+  "attributes": {
+    "cases": 40,
+    "equivalent": 35,
+    "knownRendererFailureObservations": 5
+  },
+  "benchmarks": [
+    {
+      "name": "static_counter",
+      "exit": "clean"
+    },
+    {
+      "name": "keyed_list",
+      "exit": "clean"
+    },
+    {
+      "name": "control_flow",
+      "exit": "clean"
+    },
+    {
+      "name": "composition",
+      "exit": "clean"
+    },
+    {
+      "name": "large_keyed_updates",
+      "exit": "clean"
+    },
+    {
+      "name": "large_keyed_reorder",
+      "exit": "clean"
+    },
+    {
+      "name": "nested_component_update",
+      "exit": "clean"
+    },
+    {
+      "name": "lifecycle_cleanup",
+      "exit": "clean"
+    },
+    {
+      "name": "form_focus",
+      "exit": "clean"
+    },
+    {
+      "name": "reference-app",
+      "exit": "clean"
+    }
+  ],
+  "strictN04": "PASS",
+  "securityAsyncLifecycle": "PASS",
+  "liveSmoke": {
+    "pass": 8,
+    "fail": 0
+  },
+  "verificationSkips": 0,
+  "runtimeBytes": 271564,
+  "runtimeBudget": 272000,
+  "runtimeAssetIdentical": true,
+  "hostedCI": "Pending exact final head; recorded on PR separately",
+  "limitations": [
+    "Mixed-type native/JavaScript coercion and literal type parity UNVERIFIED",
+    "Function-body dependency inference not certified",
+    "Unary-negative, nested-scope diagnostics and attribute native-renderer failures remain",
+    "Historical Classic HTTP reset issue #26 remains UNVERIFIED"
+  ]
+}

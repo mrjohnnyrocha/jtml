@@ -1,0 +1,17 @@
+jtml 2
+
+make Probe
+  get ff = false || false
+  get ft = false || true
+  get tf = true || false
+  get tt = true || true
+
+  box class "probe"
+    p class "out-ff" ff
+    p class "out-ft" ft
+    p class "out-tf" tf
+    p class "out-tt" tt
+
+
+page
+  Probe

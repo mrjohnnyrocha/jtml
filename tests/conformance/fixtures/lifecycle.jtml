@@ -1,0 +1,30 @@
+jtml 2
+
+make Child keyValue
+  let count = 0
+  when increment
+    count += 1
+  box class "row" data-key keyValue
+    p class "child-count" count
+    input class "draft" value "seed"
+    button "+" click increment
+
+make Probe
+  let order = [1, 2]
+  let visible = true
+  when reorder
+    order = [2, 1]
+  when hide
+    visible = false
+  when reveal
+    visible = true
+  box class "probe"
+    if visible
+      for keyValue in order key keyValue
+        Child keyValue
+    button "reorder" click reorder
+    button "hide" click hide
+    button "reveal" click reveal
+
+page
+  Probe

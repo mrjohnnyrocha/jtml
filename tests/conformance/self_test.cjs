@@ -1,0 +1,24 @@
+const assert=require('node:assert/strict');
+const {compare,checkPlans}=require('./oracle.cjs');
+const {minimize}=require('./minimize.cjs');
+const fixture={fields:['x'],expected:[[{x:2}]],source:'get x = a + b',checks:[{text:'get x = a + b',reads:['a','b']}]};
+const wrong={state:[[{x:3}]],visible:[[{x:'3'}]]};
+assert.equal(compare(fixture,{native:wrong,browser:wrong},[]).length,4,'backend agreement must not override expected outcome');
+assert.equal(compare(fixture,{native:{state:[[{x:'2'}]],visible:[[{x:'2'}]]}},[]).length,1,'numeric strings must remain distinguishable');
+assert.equal(compare(fixture,{native:{state:[[{x:{$missing:true}}]],visible:[[{x:null}]]}},[]).length,2,'missing values cannot become zero/empty');
+const plan={plan:{componentDefinitions:[{name:'Probe',localState:['x'],localDerived:[],bodyPlan:[{text:'get x = a + b',reads:['a'],writes:[]}]}]},semanticComponents:[{name:'Probe',state:['x'],derived:[]}],origins:[{component:'Probe',text:'get x = a + b',origin:{line:1,column:1,exact:true}}]};
+assert.deepEqual(checkPlans(fixture,plan),['get x = a + b: missing reads b'],'missing dependency negative control');
+(async()=>{
+ const reduced=await minimize([1,2,3],value=>value.map((_,i)=>value.filter((_,j)=>j!==i)),async value=>value.includes(2));
+ assert.deepEqual(reduced.value,[2]);
+ assert(reduced.attempts>reduced.accepted,'must test rejecting reductions too');
+ console.log('PASS oracle controls: shared wrong answer, type drift, missing values, incomplete reads, deterministic minimization');
+})().catch(error=>{console.error(error);process.exitCode=1;});
+const {verify,hash}=require('./catalog.cjs');
+const reviewed={id:'fault',sha256:'source',expected:[[{x:2}]],failures:[{layer:'native',observation:'state',actual:[[{x:3}]]}]};
+const catalog={fault:{sourceSha256:'source',expectedSha256:hash(reviewed.expected),failures:reviewed.failures}};
+verify([reviewed],catalog);
+assert.throws(()=>verify([{...reviewed,expected:[[{x:3}]]}],catalog),/oracle changed/,'expectation injection must not be masked');
+assert.throws(()=>verify([{...reviewed,failures:[]}],catalog),/resolved/);
+assert.throws(()=>verify([{...reviewed,failures:[...reviewed.failures,{layer:'browser',observation:'visible',actual:[]}]}],catalog),/discrepancy changed/);
+console.log('PASS catalog fault injection: changed expectations, new browser defect, unexpected resolution');

@@ -1,0 +1,23 @@
+jtml 2
+
+make Probe
+  let x = 2
+  let y = 9
+  let enabled = true
+  get result = enabled ? x : y
+  when left
+    x += 3
+  when right
+    y += 2
+  when toggle
+    enabled = !enabled
+  box class "probe"
+    p class "out-x" x
+    p class "out-y" y
+    p class "out-result" result
+    button "left" click left
+    button "right" click right
+    button "toggle" click toggle
+
+page
+  Probe

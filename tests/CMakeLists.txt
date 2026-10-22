@@ -106,3 +106,10 @@ add_test(NAME LocalServerStartup.BannerSynchronization
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_server_startup_logging.py
             $<TARGET_FILE:jtml_startup_logging_probe>)
 set_tests_properties(LocalServerStartup.BannerSynchronization PROPERTIES TIMEOUT 50 LABELS "unit;interpreter;security")
+
+add_executable(jtml_conformance_probe conformance_probe.cpp)
+target_link_libraries(jtml_conformance_probe PRIVATE jtml_cli_lib)
+target_include_directories(jtml_conformance_probe PRIVATE ${CMAKE_SOURCE_DIR})
+add_test(NAME SemanticConformance.OracleControls
+    COMMAND node ${CMAKE_CURRENT_SOURCE_DIR}/conformance/self_test.cjs)
+set_tests_properties(SemanticConformance.OracleControls PROPERTIES TIMEOUT 15 LABELS "unit;conformance")

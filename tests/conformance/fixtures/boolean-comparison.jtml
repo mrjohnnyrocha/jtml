@@ -1,0 +1,19 @@
+jtml 2
+
+make Probe
+  let x = 0
+  let y = 3
+  get result = (x >= 2 && y < 5) ? "yes" : "no"
+  when step
+    x += 1
+  when raise
+    y += 3
+  box class "probe"
+    p class "out-x" x
+    p class "out-y" y
+    p class "out-result" result
+    button "step" click step
+    button "raise" click raise
+
+page
+  Probe

@@ -1,0 +1,20 @@
+jtml 2
+
+make Child value
+  get result = value * 2
+  p class "child-value" result
+
+make Probe
+  let x = 2
+  get result = x + 1
+  when step
+    x += 1
+  box class "probe"
+    p class "out-x" x
+    p class "out-result" result
+    Child x
+    button "step" click step
+
+page
+  Probe
+  Probe

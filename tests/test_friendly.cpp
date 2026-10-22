@@ -4903,3 +4903,133 @@ page
     EXPECT_NE(std::find(strings.begin(), strings.end(), "literal \\n"), strings.end());
     EXPECT_NE(std::find(strings.begin(), strings.end(), "metric "), strings.end());
 }
+
+TEST(FriendlyBinding, LexerReferencesPreserveMembersKeysAndLiteralBytes) {
+    const auto source = std::string(R"(jtml 2
+make Probe
+  let x = 1
+  let y = 2
+  let z = 3
+  let items = [1, 2]
+  let index = 0
+  get grouped = (x + (y)) * z
+  get indexed = items[index]
+  get object = { x: x, value: items[index] }
+  get member = object.x
+  get literal = "x items[index]"
+  get escaped = "\\x"
+  get interpolated = "value {(x + y)}"
+  p grouped
+page
+  Probe
+  Probe
+)");
+    const auto lowered = normalizeOk(source);
+    EXPECT_NE(lowered.find("(__Probe_1_x + (__Probe_1_y)) * __Probe_1_z"), std::string::npos);
+    EXPECT_NE(lowered.find("__Probe_1_items[__Probe_1_index]"), std::string::npos);
+    EXPECT_NE(lowered.find("x: __Probe_1_x"), std::string::npos);
+    EXPECT_NE(lowered.find("__Probe_1_object.x"), std::string::npos);
+    EXPECT_NE(lowered.find("x items[index]"), std::string::npos);
+    EXPECT_NE(lowered.find("__Probe_2_items[__Probe_2_index]"), std::string::npos);
+}
+
+TEST(FriendlyBinding, ReferencesDoNotRenamePropertyKeysSubstringsOrExternalNames) {
+    const auto lowered = normalizeOk(R"(jtml 2
+make Probe external
+  let x = 2
+  let xx = 3
+  let items = [1, 2]
+  let index = 0
+  let record = { x: x, xx: xx }
+  when choose x
+    return external(x, items[(index + 1)], record.x)
+  get result = ((x + xx))
+  p data-x "x" title "literal x xx" result
+page
+  Probe outside
+)");
+    EXPECT_NE(lowered.find("outside(__Probe_1_x, __Probe_1_items[(__Probe_1_index + 1)], __Probe_1_record.x)"), std::string::npos);
+    EXPECT_NE(lowered.find("{ x: __Probe_1_x, xx: __Probe_1_xx }"), std::string::npos);
+    EXPECT_NE(lowered.find("data-x=\"x\""), std::string::npos);
+    EXPECT_NE(lowered.find("literal x xx"), std::string::npos);
+}
+
+TEST(FriendlyBinding, ParameterInlineContentPrecedesTrailingAttributes) {
+    const auto lowered = normalizeOk("jtml 2\nmake Card title value\n  h2 title style \"color: red\"\n  strong value style \"color: blue\"\npage\n  Card \"Revenue\" \"42\"\n");
+    EXPECT_NE(lowered.find("show \"Revenue\""), std::string::npos);
+    EXPECT_NE(lowered.find("show \"42\""), std::string::npos);
+    EXPECT_NE(lowered.find("style=\"color: red\""), std::string::npos);
+}
+
+TEST(FriendlyBinding, ParserRolesPreserveBoundContentAndAllAttributeBoundaries) {
+    for (const auto& trailing : {"data-label \"marker\"", "aria-label \"marker\"",
+                                "style \"color: red\"", "disabled", "click step",
+                                "data-label=\"marker\" aria-label \"accessible\""}) {
+        SCOPED_TRACE(trailing);
+        const auto lowered = normalizeOk(std::string("jtml 2\nmake Card title\n  when step\n    return 1\n  h2 title ") + trailing + "\npage\n  Card \"Revenue\"\n");
+        EXPECT_NE(lowered.find("show \"Revenue\""), std::string::npos);
+        EXPECT_EQ(lowered.find("title=data-"), std::string::npos);
+    }
+}
+
+TEST(FriendlyBinding, AttributeNamesAndValuesUseDifferentParserRoles) {
+    for (const auto& name : {"title", "style", "class", "value", "id"}) {
+        SCOPED_TRACE(name);
+        const std::string source = std::string("jtml 2\nmake Probe\n  let ") + name +
+            " = \"local\"\n  h2 " + name + " data-label \"marker\" aria-label \"accessible\"\n  input " + name + " " + name + "\npage\n  Probe\n";
+        const auto lowered = normalizeOk(source);
+        EXPECT_NE(lowered.find(std::string("show __Probe_1_") + name), std::string::npos);
+        EXPECT_NE(lowered.find(std::string(name) + "=__Probe_1_" + name), std::string::npos);
+    }
+}
+
+TEST(FriendlyBinding, ParserRolesDistinguishComparisonsRepeatedKeysAndPrimitiveModifiers) {
+    const auto lowered = normalizeOk(R"(jtml 2
+make Probe label
+  let style = "Revenue"
+  let x = 1
+  let record = { title: x }
+  h2 style style "color: red"
+  p (x==1) data-label "comparison"
+  p record.title aria-label "property"
+  badge label tone "good" title label
+  p data-label="literal {style}" "after"
+page
+  Probe "Total"
+)");
+    EXPECT_NE(lowered.find("show __Probe_1_style"), std::string::npos);
+    EXPECT_NE(lowered.find("show (__Probe_1_x==1)"), std::string::npos);
+    EXPECT_NE(lowered.find("show __Probe_1_record.title"), std::string::npos);
+    EXPECT_NE(lowered.find("style=\"color: red\""), std::string::npos);
+    EXPECT_NE(lowered.find("show \"Total\""), std::string::npos);
+    EXPECT_NE(lowered.find("show \"after\""), std::string::npos);
+    EXPECT_NE(lowered.find("data-label=\"literal {__Probe_1_style}\""), std::string::npos);
+}
+
+TEST(FriendlyBinding, BindingParserErrorsKeepAuthoredComponentLine) {
+    try {
+        (void)jtml::friendlyToClassic("jtml 2\nmake Card title\n  h2 title click\npage\n  Card \"Revenue\"\n");
+        FAIL() << "missing event action must be rejected";
+    } catch (const std::runtime_error& error) {
+        EXPECT_NE(std::string(error.what()).find("line 3"), std::string::npos) << error.what();
+        EXPECT_EQ(std::string(error.what()).find("line 0"), std::string::npos) << error.what();
+    }
+}
+
+TEST(FriendlyBinding, SpecializedElementParsersKeepOptionNamesAndChartFieldsLiteral) {
+    const auto lowered = normalizeOk(R"(jtml 2
+make Probe
+  let value = 7
+  let title = "Total"
+  let rows = [{ label: "A", value: 7 }]
+  metric title value tone good id title
+  chart bar data rows by label value value label title id title
+page
+  Probe
+)");
+    EXPECT_NE(lowered.find("data-jtml-chart-data=\"__Probe_1_rows\""), std::string::npos);
+    EXPECT_NE(lowered.find("data-jtml-chart-value=\"value\""), std::string::npos);
+    EXPECT_NE(lowered.find("aria-label=__Probe_1_title"), std::string::npos);
+    EXPECT_NE(lowered.find("id=__Probe_1_title"), std::string::npos);
+    EXPECT_NE(lowered.find("show __Probe_1_value"), std::string::npos);
+}

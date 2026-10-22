@@ -123,15 +123,16 @@ async function main() {
   console.log('PASS keyed-lifecycle (browser-only; native identity UNKNOWN)');
   if(process.argv.includes('--minimize')) {
    const {minimize,algebraCandidates}=require('./minimize.cjs');
+   const grouped=await runCase(browser,algebra('resolved-grouped-control',{x:0,a:0,b:1,sign:1,deltas:[],form:'group'}));
+   assert.deepEqual(grouped.failures,[],'grouped and ungrouped controls must now agree');
    const start=generated().find(f=>f.id==='generated-24-0');
    let trial=0;
    const reduction=await minimize(start.descriptor,algebraCandidates,async descriptor=>{
     const report=await runCase(browser,algebra(`reduction-${trial++}`,descriptor));
-    return report.failures.some(f=>f.layer==='native'&&f.observation==='state'&&f.actual[0][0].result?.$missing===true)
-      && report.failures.some(f=>f.layer==='native-diagnostics'&&f.details.some(d=>d.includes('Undefined variable: <instance>.x')))
+    return report.failures.some(f=>f.layer==='native'&&f.observation==='state'&&typeof f.actual[0][0].x==='string')
       && !report.failures.some(f=>!['native','native-diagnostics'].includes(f.layer));
    });
-   assert.equal(reduction.value.form,'group','reduction must reach grouped-local mechanism');
+   assert.equal(reduction.value.form,'identity','reduction must isolate remaining unary number-type defect');
    assert.deepEqual(reduction.value.deltas,[],'startup discrepancy requires no events');
    fs.writeFileSync(path.join(output,'minimization.json'),JSON.stringify(reduction,null,2));
    fs.writeFileSync(path.join(output,'minimal.jtml'),algebra('minimal',reduction.value).source);

@@ -1,0 +1,7 @@
+docs/architecture/friendly-local-binding/attribute-repair/loop-title-investigation.jtml: error[JTML_UNDEFINED_NAME]: undefined variable 'data'
+  hint: Declare the value with `let` before using it, import it, or pass it as a component parameter.
+docs/architecture/friendly-local-binding/attribute-repair/loop-title-investigation.jtml: error[JTML_UNDEFINED_NAME]: undefined variable 'label'
+  hint: Declare the value with `let` before using it, import it, or pass it as a component parameter.
+docs/architecture/friendly-local-binding/attribute-repair/loop-title-investigation.jtml: warning[JTML_DEAD_STATE]: "__Probe_1_result" is never observed in UI output; remove it or bind it to a text, attribute, or condition
+
+3 issue(s), 2 error(s)

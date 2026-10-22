@@ -2650,3 +2650,13 @@ TEST(RuntimePlan, AdversarialTaskboardDependenciesCoverDynamicOperands) {
         }
     }
 }
+
+TEST(RuntimePlan, CompilerElementClassificationIsNotSerializedAsRuntimeMetadata) {
+    auto program = parseFriendly("jtml 2\nmake Card title\n  h2 title data-label \"marker\"\npage\n  Card \"Revenue\"\n");
+    jtml::RuntimeProjectPlan project;
+    project.linkedPlan = jtml::buildRuntimePlan(program);
+    const auto legacy = jtml::emitStaticUpdatePlanAsset(project);
+    const auto production = jtml::emitStaticComponentModuleAsset(project);
+    EXPECT_EQ(legacy.find("compilerElementParts"), std::string::npos);
+    EXPECT_EQ(production.find("compilerElementParts"), std::string::npos);
+}

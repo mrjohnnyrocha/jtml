@@ -1,0 +1,41 @@
+{
+  "source": "jtml 2\nmake Card title\n  h2 title data-label \"marker\"\npage\n  Card \"Revenue\"\n",
+  "savedHead": "342da37d7b1a6cf48baf30f4e7366a48d836f642",
+  "main": "100c618508ca72f29bf21f59d32afc2af5546703",
+  "observations": {
+    "main": {
+      "fullEvidenceSha256": "0b09e568104ace4dad393b0fe3771283fd3ce726a95fefcd3e51a407112bd303",
+      "loweredElement": [
+        "        @h2 data-label=\"marker\"\\\\",
+        "            show \"Revenue\"\\\\"
+      ],
+      "nativeErrors": []
+    },
+    "pr": {
+      "fullEvidenceSha256": "d1238775efe6a29401b91c1a7037e7c259b52dc7ee5b88bdd5a7ccace0818849",
+      "loweredElement": [
+        "        @h2 title=data-label\\\\",
+        "            show \"marker\"\\\\"
+      ],
+      "nativeErrors": [
+        "Interpreter Error: Dependency Gathering Error: Undefined variable: 0.data",
+        "Interpreter Error: Dependency Gathering Error: Undefined variable: 0.label",
+        "Interpreter Error: Node Interpretation Error: Error evaluating initial value for derived variable '1.attr_1': Undefined variable: 0.data"
+      ]
+    },
+    "repaired": {
+      "fullEvidenceSha256": "0b09e568104ace4dad393b0fe3771283fd3ce726a95fefcd3e51a407112bd303",
+      "loweredElement": [
+        "        @h2 data-label=\"marker\"\\\\",
+        "            show \"Revenue\"\\\\"
+      ],
+      "nativeErrors": []
+    }
+  },
+  "separateExistingMainNativeBodyPlanDefect": {
+    "source": "jtml 2\nmake Probe\n  box class \"probe\"\n    h2 \"Revenue\" data-label=\"marker\" aria-label \"accessible\"\npage\n  Probe\n",
+    "expectedHeading": "Revenue",
+    "actualHtml": "<div class=\"probe\" data-jtml-live-body-plan=\"box\"><h2 aria-label=\"accessible\" data-jtml-live-body-plan=\"h2\">Revenue&quot; data-label=&quot;marker</h2></div>",
+    "status": "FAIL / KNOWN DEFECT; not repaired by this PR"
+  }
+}

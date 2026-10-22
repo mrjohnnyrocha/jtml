@@ -1,6 +1,7 @@
 #include "jtml/runtime/static_update_plan_emitter.h"
 
 #include "jtml/expression_ir.h"
+#include "jtml/friendly.h"
 #include "jtml/runtime_plan_json.h"
 #include "json.hpp"
 
@@ -323,9 +324,23 @@ nlohmann::json compileStaticElementParts(
     nlohmann::json attrs = nlohmann::json::array();
     nlohmann::json modifiers = nlohmann::json::array();
     std::vector<std::string> content;
+    std::map<std::string, std::string> bindings;
+    for (const auto& symbol : environment.symbols) bindings.emplace(symbol.first, symbol.first);
+    const auto roles = classifyFriendlyElement(words, bindings);
     for (size_t i = start; i < words.size(); ++i) {
         const auto& token = words[i];
         if (stopWords.count(token)) break;
+        if (roles[i] == FriendlyElementRole::InlineContent) {
+            content.push_back(token);
+            continue;
+        }
+        if (roles[i] == FriendlyElementRole::CompleteAttribute) {
+            const auto equal = token.find('=');
+            const auto raw = token.substr(equal + 1);
+            attrs.push_back({{"name", token.substr(0, equal)}, {"raw", raw},
+                {"exprPlan", compileRuntimeExpressionPlan(raw, environment)}});
+            continue;
+        }
         if ((token == "keydown" || token == "key-down") && i + 1 < words.size()) {
             const auto action = words[++i];
             const bool valid = !action.empty() &&
@@ -769,6 +784,18 @@ nlohmann::json compileStaticComponentUpdatePlan(
     if (bodyPlanJson.is_array()) {
         for (size_t i = 0; i < definition.bodyPlan.size() && i < bodyPlanJson.size(); ++i) {
             bodyPlanJson[i]["originalLocation"] = originalLocation(definition.bodyPlan[i]);
+            const auto& node = definition.bodyPlan[i];
+            const auto head = componentNodeHead(node);
+            const auto operation = staticPatchOperationKind(definitionKeys, definition, node);
+            if (operation == "element" || operation == "container-attrs" || operation == "button") {
+                // Creation and updates must classify against the same lexical
+                // environment, including enclosing loop bindings.
+                bodyPlanJson[i]["compilerElementParts"] = compileStaticElementParts(
+                    splitStaticComponentWords(node.text), 1,
+                    staticEnvironmentForBodyNode(definition, i, environment),
+                    head == "button" ? std::set<std::string>{"click"} :
+                    head == "form" ? std::set<std::string>{"submit"} : std::set<std::string>{});
+            }
             const auto childKey = nestedComponentPlanKey(definitions, definition, definition.bodyPlan[i]);
             if (!childKey.empty()) bodyPlanJson[i]["childComponentKey"] = childKey;
         }
@@ -1780,8 +1807,7 @@ std::string directStaticNodeCreateExpression(const nlohmann::json& componentPlan
         return directStaticTextCreateExpression(nodeIndex, expressionPlan);
     }
     if (resolvedHead == "button") {
-        auto partsPlan = compileStaticElementParts(
-            words, 1, ExpressionTypeEnvironment{}, {"click"});
+        const auto& partsPlan = node.at("compilerElementParts");
         auto it = std::find(words.begin(), words.end(), "click");
         auto clickInvocation = it != words.end() && std::next(it) != words.end()
             ? compileStaticActionInvocation(*std::next(it))
@@ -1790,10 +1816,7 @@ std::string directStaticNodeCreateExpression(const nlohmann::json& componentPlan
             nodeIndex, resolvedHead, partsPlan, clickInvocation);
     }
 
-    auto partsPlan = compileStaticElementParts(
-        words, 1, ExpressionTypeEnvironment{},
-        resolvedHead == "form" ? std::set<std::string>{"submit"}
-                               : std::set<std::string>{});
+    const auto& partsPlan = node.at("compilerElementParts");
     const auto tag = componentTagName(resolvedHead);
     const auto children = node.value("childIndices", nlohmann::json::array());
     if (children.is_array() && !children.empty()) {
@@ -2537,9 +2560,12 @@ std::string emitStaticComponentAsset(const RuntimeProjectPlan& plan,
     // records (including explicit compatibility assets).
     eraseJsonKeyRecursive(fullComponents, "sourceSpan");
     eraseJsonKeyRecursive(fullComponents, "originalLocation");
-    const auto components = componentModule
+    auto components = componentModule
         ? componentModulePlansPayload(fullComponents)
         : fullComponents;
+    // Prepared compiler data is consumed while generating code, not shipped as
+    // another runtime body-plan payload (including compatibility assets).
+    eraseJsonKeyRecursive(components, "compilerElementParts");
     nlohmann::json asset = {
         {"version", 1},
         {"sourceOfTruth", "runtime client manifest"},
@@ -2812,9 +2838,8 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
         }
 
         for (const auto& node : component.value("bodyPlan", nlohmann::json::array())) {
-            if (node.value("kind", "") == "template") {
-                const auto words = splitStaticComponentWords(node.value("text", ""));
-                const auto parts = compileStaticElementParts(words, 1);
+            if (node.contains("compilerElementParts")) {
+                const auto& parts = node.at("compilerElementParts");
                 for (const auto& attr : parts.value("attrs", nlohmann::json::array())) {
                     if (attr.value("name", "") == "data-jtml-direct-component-keydown" &&
                         attr.value("exprPlan", nlohmann::json::object()).value("kind", "") == "source") {

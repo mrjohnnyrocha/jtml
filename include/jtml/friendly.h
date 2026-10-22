@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <map>
 #include <vector>
 #include "jtml/source_origin.h"
 
@@ -11,6 +12,13 @@ enum class SyntaxMode {
     Classic,
     Friendly,
 };
+
+// Token roles are assigned by the Friendly element parser, before binding.
+// Backends may consume them without maintaining another attribute grammar.
+enum class FriendlyElementRole { Syntax, Expression, InlineContent, CompleteAttribute };
+std::vector<FriendlyElementRole> classifyFriendlyElement(
+    const std::vector<std::string>& tokens,
+    const std::map<std::string, std::string>& bindings = {});
 
 bool isFriendlySyntax(const std::string& source);
 bool isJtlCoreSyntax(const std::string& source);

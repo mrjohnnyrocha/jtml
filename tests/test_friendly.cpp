@@ -4953,3 +4953,10 @@ page
     EXPECT_NE(lowered.find("data-x=\"x\""), std::string::npos);
     EXPECT_NE(lowered.find("literal x xx"), std::string::npos);
 }
+
+TEST(FriendlyBinding, ParameterInlineContentPrecedesTrailingAttributes) {
+    const auto lowered = normalizeOk("jtml 2\nmake Card title value\n  h2 title style \"color: red\"\n  strong value style \"color: blue\"\npage\n  Card \"Revenue\" \"42\"\n");
+    EXPECT_NE(lowered.find("show \"Revenue\""), std::string::npos);
+    EXPECT_NE(lowered.find("show \"42\""), std::string::npos);
+    EXPECT_NE(lowered.find("style=\"color: red\""), std::string::npos);
+}

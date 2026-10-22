@@ -1871,7 +1871,11 @@ std::string substituteIdentifiers(const std::string& text,
         if (!expressionLine) {
             if (tokenIndex == 0) continue; // tag/primitive namespace
             if (attributeValue) attributeValue = false;
-            else if ((tokenIndex + 1 < tokens.size() && commonAttributes().count(token)) || eventNames().count(token) ||
+            else if ((tokenIndex + 1 < tokens.size() && commonAttributes().count(token) &&
+                      !(bindings.count(token) && !bindings.count(tokens[tokenIndex + 1]) &&
+                        (commonAttributes().count(tokens[tokenIndex + 1]) ||
+                         eventNames().count(tokens[tokenIndex + 1]) ||
+                         booleanAttributes().count(tokens[tokenIndex + 1])))) || eventNames().count(token) ||
                      startsWith(token, "data-") || startsWith(token, "aria-")) {
                 attributeValue = token.find('=') == std::string::npos;
                 continue;

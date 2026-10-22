@@ -39,3 +39,14 @@ Required remaining work: review lexical scope/parameter and imported/nested
 adversarial coverage; re-run current catalog and strict nonzero; full CTests,
 nine clean-exit benchmarks and full verify_all; review asset/provenance deltas;
 commit/push/open focused PR and verify final Ubuntu/macOS CI. Do not merge.
+
+## Integration correction
+
+First PR head 11a19bb passed the local full gate (392 CTests), but hosted CI
+correctly failed examples lint: inline parameter `h2 title style "..."` was
+misclassified as a title attribute whose value was style. This is an actual
+binder regression, not infrastructure. Preserve /tmp/jtml-pr25-macos-job.log.
+The binder now recognizes a bound inline-content name before an unbound trailing
+attribute keyword. Added direct two-parameter/trailing-style regression; all
+three binding tests and friendly_components lint pass. Final full gate and fresh
+head CI are required; no rerun of the failing head is a repair.

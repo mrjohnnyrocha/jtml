@@ -1,0 +1,208 @@
+{
+  "original_log_sha256": "5a74a52efe93df02894b6863e8237fc8eb426570e9e83547b9f4c4089a1a3cfc",
+  "main": "100c618508ca72f29bf21f59d32afc2af5546703",
+  "pr25": "c7b3d990add4ac243cb6250d12b90edb758f97f9",
+  "build_type": "Release",
+  "schedule": "ABBA x4, predetermined finite series; no failed request retry",
+  "runs": [
+    {
+      "index": 0,
+      "label": "main",
+      "status": "PASS",
+      "port": 60521,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 1,
+      "label": "pr25",
+      "status": "PASS",
+      "port": 60618,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 2,
+      "label": "pr25",
+      "status": "PASS",
+      "port": 60709,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 3,
+      "label": "main",
+      "status": "PASS",
+      "port": 60800,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 4,
+      "label": "main",
+      "status": "PASS",
+      "port": 60891,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 5,
+      "label": "pr25",
+      "status": "PASS",
+      "port": 60982,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 6,
+      "label": "pr25",
+      "status": "PASS",
+      "port": 61073,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 7,
+      "label": "main",
+      "status": "PASS",
+      "port": 61164,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 8,
+      "label": "main",
+      "status": "PASS",
+      "port": 61256,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 9,
+      "label": "pr25",
+      "status": "PASS",
+      "port": 61347,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 10,
+      "label": "pr25",
+      "status": "PASS",
+      "port": 61438,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 11,
+      "label": "main",
+      "status": "PASS",
+      "port": 61529,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 12,
+      "label": "main",
+      "status": "PASS",
+      "port": 61620,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 13,
+      "label": "pr25",
+      "status": "PASS",
+      "port": 61711,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 14,
+      "label": "pr25",
+      "status": "PASS",
+      "port": 61802,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    },
+    {
+      "index": 15,
+      "label": "main",
+      "status": "PASS",
+      "port": 61893,
+      "state": 40.0,
+      "exit_status": -15,
+      "error": null,
+      "process_poll": null,
+      "snapshot_error": null
+    }
+  ],
+  "fault_control": [
+    {
+      "label": "main",
+      "purpose": "deliberate transport-reset control, NOT original-cause reproduction",
+      "snapshot_before_reset": 1.0,
+      "client_error": "ConnectionResetError(54, 'Connection reset by peer')",
+      "snapshot_after_reset": 1.0,
+      "http_status_after_reset": 200,
+      "status": "PASS control"
+    },
+    {
+      "label": "pr25",
+      "purpose": "deliberate transport-reset control, NOT original-cause reproduction",
+      "snapshot_before_reset": 1.0,
+      "client_error": "ConnectionResetError(54, 'Connection reset by peer')",
+      "snapshot_after_reset": 1.0,
+      "http_status_after_reset": 200,
+      "status": "PASS control"
+    }
+  ],
+  "original_cause": "UNVERIFIED",
+  "main_binary_sha256": "54283e7ab05de7a7155aef36f12d61eddb784b224a79dc5633b6aeab0762c992",
+  "pr25_binary_sha256": "6e54fab8ceb1002bb3de2eace5ac2e2852618bce3ed8c00c1655b5a73d5908b8"
+}

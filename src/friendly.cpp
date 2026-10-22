@@ -1,5 +1,6 @@
 #include "jtml/expression_source.h"
 #include "jtml/friendly.h"
+#include "jtml/lexer.h"
 
 #include <algorithm>
 #include <cctype>
@@ -1831,43 +1832,88 @@ std::string replaceAll(std::string text, const std::string& needle, const std::s
     return text;
 }
 
+// Substitute complete lexer identifiers, retaining authored bytes everywhere
+// else. Member names and dictionary keys are syntactic names, not references.
+std::string substituteExpressionNames(const std::string& source,
+                                     const std::map<std::string, std::string>& bindings) {
+    Lexer lexer(source);
+    const auto tokens = lexer.tokenize();
+    if (!lexer.getErrors().empty()) return source; // owning parser diagnoses syntax
+    std::string output;
+    size_t cursor = 0;
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        const auto& token = tokens[i];
+        if (token.type == TokenType::STRING_LITERAL || token.text.empty() ||
+            !(std::isalpha(static_cast<unsigned char>(token.text.front())) || token.text.front() == '_')) continue;
+        if (i && tokens[i - 1].type == TokenType::DOT) continue;
+        if (i + 1 < tokens.size() && tokens[i + 1].type == TokenType::COLON &&
+            i && (tokens[i - 1].type == TokenType::LBRACE || tokens[i - 1].type == TokenType::COMMA)) continue;
+        const auto binding = bindings.find(token.text);
+        if (binding == bindings.end()) continue;
+        const size_t begin = static_cast<size_t>(token.position);
+        output.append(source, cursor, begin - cursor);
+        output += binding->second;
+        cursor = begin + token.text.size();
+    }
+    output.append(source, cursor, source.size() - cursor);
+    return output;
+}
+
 std::string substituteIdentifiers(const std::string& text,
                                   const std::map<std::string, std::string>& bindings) {
     auto tokens = splitTokens(text);
-    for (auto& token : tokens) {
-        if (isQuoted(token)) {
-            for (const auto& [name, replacement] : bindings) {
-                token = replaceAll(token, "{" + name + "}", "{" + replacement + "}");
-                token = replaceAll(token, "{" + name + ".", "{" + replacement + ".");
-                token = replaceAll(token, "{" + name + "[", "{" + replacement + "[");
-            }
-            continue;
-        }
-        auto it = bindings.find(token);
-        if (it != bindings.end()) {
-            token = it->second;
-            continue;
-        }
-        if (token.size() > 1 && token.front() == '!') {
-            auto unaryIt = bindings.find(token.substr(1));
-            if (unaryIt != bindings.end()) {
-                token = "!" + unaryIt->second;
+    const bool expressionLine = tokens.empty() || isKnownLineKeyword(tokens.front()) || tokens.front() == "text" ||
+        startsWith(tokens.front(), "__") ||
+        (tokens.size() > 1 && isFriendlyAssignmentOperator(tokens[1]));
+    bool attributeValue = false;
+    for (size_t tokenIndex = 0; tokenIndex < tokens.size(); ++tokenIndex) {
+        auto& token = tokens[tokenIndex];
+        if (!expressionLine) {
+            if (tokenIndex == 0) continue; // tag/primitive namespace
+            if (attributeValue) attributeValue = false;
+            else if ((tokenIndex + 1 < tokens.size() && commonAttributes().count(token)) || eventNames().count(token) ||
+                     startsWith(token, "data-") || startsWith(token, "aria-")) {
+                attributeValue = token.find('=') == std::string::npos;
                 continue;
-            }
+            } else if (booleanAttributes().count(token)) continue;
         }
-        for (const auto& [name, replacement] : bindings) {
-            if (startsWith(token, name + ".") ||
-                startsWith(token, name + "[") ||
-                startsWith(token, name + "(")) {
-                token = replacement + token.substr(name.size());
-                break;
+        if (isQuoted(token)) {
+            // Literal bytes, including escaped braces, remain unchanged. Only
+            // balanced interpolation expressions are compiler identifier sites.
+            std::string output;
+            size_t cursor = 0;
+            for (size_t i = 1; i + 1 < token.size(); ++i) {
+                if (token[i] == '\\') { ++i; continue; }
+                if (token[i] != '{') continue;
+                const size_t begin = i + 1;
+                int depth = 1;
+                char quote = 0;
+                size_t end = begin;
+                for (; end + 1 < token.size(); ++end) {
+                    const char ch = token[end];
+                    if (ch == '\\') { ++end; continue; }
+                    if (quote) { if (ch == quote) quote = 0; continue; }
+                    if (ch == '\'' || ch == '"') { quote = ch; continue; }
+                    if (ch == '{') ++depth;
+                    if (ch == '}') { if (--depth == 0) break; }
+                }
+                if (depth) continue;
+                output.append(token, cursor, begin - cursor);
+                output += substituteExpressionNames(token.substr(begin, end - begin), bindings);
+                cursor = end;
+                i = end;
             }
+            output.append(token, cursor, token.size() - cursor);
+            token = std::move(output);
+        } else if (const auto binding = bindings.find(token); binding != bindings.end()) {
+            token = binding->second; // Friendly declaration/binding names may be Classic keywords.
+        } else {
+            token = substituteExpressionNames(token, bindings);
         }
     }
-
     std::ostringstream out;
     for (size_t i = 0; i < tokens.size(); ++i) {
-        if (i > 0) out << ' ';
+        if (i) out << ' ';
         out << tokens[i];
     }
     return out.str();

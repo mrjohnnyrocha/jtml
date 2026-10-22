@@ -4903,3 +4903,53 @@ page
     EXPECT_NE(std::find(strings.begin(), strings.end(), "literal \\n"), strings.end());
     EXPECT_NE(std::find(strings.begin(), strings.end(), "metric "), strings.end());
 }
+
+TEST(FriendlyBinding, LexerReferencesPreserveMembersKeysAndLiteralBytes) {
+    const auto source = std::string(R"(jtml 2
+make Probe
+  let x = 1
+  let y = 2
+  let z = 3
+  let items = [1, 2]
+  let index = 0
+  get grouped = (x + (y)) * z
+  get indexed = items[index]
+  get object = { x: x, value: items[index] }
+  get member = object.x
+  get literal = "x items[index]"
+  get escaped = "\\x"
+  get interpolated = "value {(x + y)}"
+  p grouped
+page
+  Probe
+  Probe
+)");
+    const auto lowered = normalizeOk(source);
+    EXPECT_NE(lowered.find("(__Probe_1_x + (__Probe_1_y)) * __Probe_1_z"), std::string::npos);
+    EXPECT_NE(lowered.find("__Probe_1_items[__Probe_1_index]"), std::string::npos);
+    EXPECT_NE(lowered.find("x: __Probe_1_x"), std::string::npos);
+    EXPECT_NE(lowered.find("__Probe_1_object.x"), std::string::npos);
+    EXPECT_NE(lowered.find("x items[index]"), std::string::npos);
+    EXPECT_NE(lowered.find("__Probe_2_items[__Probe_2_index]"), std::string::npos);
+}
+
+TEST(FriendlyBinding, ReferencesDoNotRenamePropertyKeysSubstringsOrExternalNames) {
+    const auto lowered = normalizeOk(R"(jtml 2
+make Probe external
+  let x = 2
+  let xx = 3
+  let items = [1, 2]
+  let index = 0
+  let record = { x: x, xx: xx }
+  when choose x
+    return external(x, items[(index + 1)], record.x)
+  get result = ((x + xx))
+  p data-x "x" title "literal x xx" result
+page
+  Probe outside
+)");
+    EXPECT_NE(lowered.find("outside(__Probe_1_x, __Probe_1_items[(__Probe_1_index + 1)], __Probe_1_record.x)"), std::string::npos);
+    EXPECT_NE(lowered.find("{ x: __Probe_1_x, xx: __Probe_1_xx }"), std::string::npos);
+    EXPECT_NE(lowered.find("data-x=\"x\""), std::string::npos);
+    EXPECT_NE(lowered.find("literal x xx"), std::string::npos);
+}

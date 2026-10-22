@@ -97,10 +97,8 @@ TEST_F(NativeUnaryNumeric, AstAndIrTypeBoundariesAreExplicit) {
     ASSERT_TRUE(operand); EXPECT_EQ(operand->valueType, jtml::ExpressionValueType::Number);
     auto ir = jtml::buildExpressionIr(ast.get());
     ASSERT_TRUE(ir);
-    // Existing IR does not type unary minus. Do not pretend Unknown means String,
-    // or add compiler support to a native evaluator repair.
-    EXPECT_EQ(ir->kind, jtml::ExpressionIrKind::Source);
-    EXPECT_EQ(ir->valueType, jtml::ExpressionValueType::Unknown);
+    EXPECT_EQ(ir->kind, jtml::ExpressionIrKind::Unary);
+    EXPECT_EQ(ir->valueType, jtml::ExpressionValueType::Number);
     auto control = jtml::buildExpressionIr(expression("0 - 1.25").get());
     ASSERT_TRUE(control); EXPECT_EQ(control->valueType, jtml::ExpressionValueType::Number);
     number("-1.25", -1.25); number("0 - 1.25", -1.25);

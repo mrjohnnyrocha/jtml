@@ -2660,3 +2660,33 @@ TEST(RuntimePlan, CompilerElementClassificationIsNotSerializedAsRuntimeMetadata)
     EXPECT_EQ(legacy.find("compilerElementParts"), std::string::npos);
     EXPECT_EQ(production.find("compilerElementParts"), std::string::npos);
 }
+
+TEST(RuntimePlan, UnaryMinusOwnsNumericTypeNestedReadsAndOperatorCodegen) {
+    auto ir = jtml::parseExpressionIr("-(items[index] + offset)");
+    ASSERT_TRUE(ir);
+    EXPECT_EQ(ir->kind, jtml::ExpressionIrKind::Unary);
+    EXPECT_EQ(ir->valueType, jtml::ExpressionValueType::Number);
+    const auto reads = jtml::expressionIrDependencies(*ir);
+    for (const auto& root : {"items", "index", "offset"}) {
+        EXPECT_NE(std::find(reads.begin(), reads.end(), root), reads.end());
+    }
+    const auto plan = jtml::expressionIrToRuntimePlanJson(*ir);
+    EXPECT_EQ(plan["kind"], "unary"); EXPECT_EQ(plan["operator"], "-");
+    EXPECT_EQ(plan["valueType"], "number"); EXPECT_EQ(plan["directJs"], true);
+    const auto js = jtml::expressionIrToJsExpression(*ir);
+    EXPECT_EQ(js.find("(-("), 0u); EXPECT_EQ(js.find("!("), std::string::npos);
+    auto logical = jtml::parseExpressionIr("!-(-x)");
+    ASSERT_TRUE(logical); EXPECT_EQ(logical->valueType, jtml::ExpressionValueType::Boolean);
+    EXPECT_EQ(jtml::expressionIrToJsExpression(*logical).find("(!("), 0u);
+}
+
+TEST(RuntimePlan, UnaryDirectJsRejectsUnknownOperatorsAndUnsupportedChildren) {
+    auto ir = jtml::parseExpressionIr("-x");
+    ASSERT_TRUE(ir); ASSERT_EQ(ir->kind, jtml::ExpressionIrKind::Unary);
+    ASSERT_TRUE(jtml::expressionIrSupportsDirectJs(*ir));
+    ir->op = "injected()";
+    EXPECT_FALSE(jtml::expressionIrSupportsDirectJs(*ir));
+    EXPECT_EQ(jtml::expressionIrToJsExpression(*ir), "undefined");
+    auto call = jtml::parseExpressionIr("-unknown(x)");
+    ASSERT_TRUE(call); EXPECT_FALSE(jtml::expressionIrSupportsDirectJs(*call));
+}

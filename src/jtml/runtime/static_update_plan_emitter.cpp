@@ -1050,10 +1050,12 @@ std::string jsExpressionPlanArgument(const nlohmann::json& plan) {
         out << "}; })";
         return out.str();
     }
-    if (kind == "unary" && plan.value("operator", "") == "!") {
+    if (kind == "unary" &&
+        (plan.value("operator", "") == "!" || plan.value("operator", "") == "-")) {
         const auto argument = plan.value("argument", nlohmann::json::object());
         if (!isDirectJsExpressionPlan(argument)) return plan.dump();
-        return "(function(scope){ return !" + jsExpressionPlanArgument(argument) + "(scope); })";
+        return "(function(scope){ return " + plan.value("operator", "") +
+               jsExpressionPlanArgument(argument) + "(scope); })";
     }
     if (kind == "binary") {
         const auto left = plan.value("left", nlohmann::json::object());
@@ -1119,7 +1121,7 @@ bool isDirectJsExpressionPlan(const nlohmann::json& plan) {
         return true;
     }
     if (kind == "unary") {
-        return plan.value("operator", "") == "!" &&
+        return (plan.value("operator", "") == "!" || plan.value("operator", "") == "-") &&
                isDirectJsExpressionPlan(plan.value("argument", nlohmann::json::object()));
     }
     if (kind == "binary") {

@@ -370,11 +370,12 @@ std::unique_ptr<ExpressionIr> buildExpressionIr(
         }
         case ExpressionStatementNodeType::Unary: {
             const auto* unary = static_cast<const UnaryExpressionStatementNode*>(expression);
-            if (unary->op != "!") return makeSourceIr(expression);
+            if (unary->op != "!" && unary->op != "-") return makeSourceIr(expression);
             auto ir = makeIr(ExpressionIrKind::Unary, expression);
             ir->op = unary->op;
             ir->children.push_back(buildExpressionIr(unary->right.get(), environment));
-            ir->valueType = ExpressionValueType::Boolean;
+            ir->valueType = unary->op == "!" ? ExpressionValueType::Boolean
+                                             : ExpressionValueType::Number;
             return ir;
         }
         case ExpressionStatementNodeType::Binary: {
@@ -668,9 +669,10 @@ bool expressionIrSupportsDirectJs(const ExpressionIr& ir) {
         case ExpressionIrKind::Literal:
         case ExpressionIrKind::Path:
             return true;
+        case ExpressionIrKind::Unary:
+            return (ir.op == "!" || ir.op == "-") && allChildrenSupportJs(ir);
         case ExpressionIrKind::Member:
         case ExpressionIrKind::Subscript:
-        case ExpressionIrKind::Unary:
         case ExpressionIrKind::Binary:
         case ExpressionIrKind::Conditional:
         case ExpressionIrKind::Range:
@@ -701,7 +703,8 @@ std::string expressionIrToJsExpression(const ExpressionIr& ir) {
                    "; const index = " + jsChild(ir, 1) +
                    "; return base == null ? undefined : base[index]; })()";
         case ExpressionIrKind::Unary:
-            return "(!(" + jsChild(ir, 0) + "))";
+            if (ir.op != "!" && ir.op != "-") return "undefined";
+            return "(" + ir.op + "(" + jsChild(ir, 0) + "))";
         case ExpressionIrKind::Binary:
             return "((" + jsChild(ir, 0) + ") " + ir.op + " (" + jsChild(ir, 1) + "))";
         case ExpressionIrKind::Conditional:

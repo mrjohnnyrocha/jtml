@@ -1,0 +1,14 @@
+jtml 2
+
+make Probe
+  let x = 2
+  get result = -x
+  when flip
+    x = -x
+  box class "probe"
+    p class "out-x" x
+    p class "out-result" result
+    button "flip" click flip
+
+page
+  Probe

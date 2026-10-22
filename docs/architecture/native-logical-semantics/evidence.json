@@ -1,0 +1,5184 @@
+{
+  "baseline": "8af2c95de8922a3f35543ddbd64221ba3ca7d1a9",
+  "baselineBinarySha256": "5106631be0441c06d543773d4813da16c40eb6407c63ce9c97d42029bbb16574",
+  "originalMatrix": {
+    "before": {
+      "semanticCases": 22,
+      "browserOnlyCases": 1,
+      "rejectionCases": 2,
+      "equivalentCases": 14,
+      "discrepancies": 8
+    },
+    "after": {
+      "semanticCases": 22,
+      "browserOnlyCases": 1,
+      "rejectionCases": 2,
+      "equivalentCases": 16,
+      "discrepancies": 6
+    }
+  },
+  "resolved": {
+    "branch-dependencies": {
+      "source": "jtml 2\n\nmake Probe\n  let x = 2\n  let y = 9\n  let enabled = true\n  get result = enabled ? x : y\n  when left\n    x += 3\n  when right\n    y += 2\n  when toggle\n    enabled = !enabled\n  box class \"probe\"\n    p class \"out-x\" x\n    p class \"out-y\" y\n    p class \"out-result\" result\n    button \"left\" click left\n    button \"right\" click right\n    button \"toggle\" click toggle\n\npage\n  Probe\n",
+      "before": {
+        "id": "branch-dependencies",
+        "sha256": "835a1485b06cd3ac12b0724de086661dcdd98244eab011769e4547d2158ce2b7",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "right",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "left",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "toggle",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "left",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "right",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "toggle",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "x": 2,
+              "y": 9,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 11,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 5,
+              "y": 11,
+              "result": 5
+            }
+          ],
+          [
+            {
+              "x": 5,
+              "y": 11,
+              "result": 11
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 11,
+              "result": 11
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 13,
+              "result": 13
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 13,
+              "result": 8
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": 2,
+                  "y": 9,
+                  "result": 2
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 11,
+                  "result": 2
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "y": 11,
+                  "result": 5
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "y": 11,
+                  "result": 5
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 11,
+                  "result": 8
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 13,
+                  "result": 8
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 13,
+                  "result": 8
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "2",
+                  "y": "9",
+                  "result": "2"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "11",
+                  "result": "2"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "y": "11",
+                  "result": "5"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "y": "11",
+                  "result": "5"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "11",
+                  "result": "8"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "13",
+                  "result": "8"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "13",
+                  "result": "8"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": 2,
+                  "y": 9,
+                  "result": 2
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 11,
+                  "result": 2
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "y": 11,
+                  "result": 5
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "y": 11,
+                  "result": 11
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 11,
+                  "result": 11
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 13,
+                  "result": 13
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 13,
+                  "result": 8
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "2",
+                  "y": "9",
+                  "result": "2"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "11",
+                  "result": "2"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "y": "11",
+                  "result": "5"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "y": "11",
+                  "result": "11"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "11",
+                  "result": "11"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "13",
+                  "result": "13"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "13",
+                  "result": "8"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "x": 2,
+                  "y": 9,
+                  "result": 2
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 11,
+                  "result": 2
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "y": 11,
+                  "result": 5
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "y": 11,
+                  "result": 11
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 11,
+                  "result": 11
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 13,
+                  "result": 13
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 13,
+                  "result": 8
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": 2,
+                  "y": 9,
+                  "result": 2
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 11,
+                  "result": 2
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "y": 11,
+                  "result": 5
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "y": 11,
+                  "result": 5
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 11,
+                  "result": 8
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 13,
+                  "result": 8
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 13,
+                  "result": 8
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "x": "2",
+                  "y": "9",
+                  "result": "2"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "11",
+                  "result": "2"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "y": "11",
+                  "result": "5"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "y": "11",
+                  "result": "11"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "11",
+                  "result": "11"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "13",
+                  "result": "13"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "13",
+                  "result": "8"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "2",
+                  "y": "9",
+                  "result": "2"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "11",
+                  "result": "2"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "y": "11",
+                  "result": "5"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "y": "11",
+                  "result": "5"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "11",
+                  "result": "8"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "13",
+                  "result": "8"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "13",
+                  "result": "8"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      "after": {
+        "id": "branch-dependencies",
+        "sha256": "835a1485b06cd3ac12b0724de086661dcdd98244eab011769e4547d2158ce2b7",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "right",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "left",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "toggle",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "left",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "right",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "toggle",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "x": 2,
+              "y": 9,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 11,
+              "result": 2
+            }
+          ],
+          [
+            {
+              "x": 5,
+              "y": 11,
+              "result": 5
+            }
+          ],
+          [
+            {
+              "x": 5,
+              "y": 11,
+              "result": 11
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 11,
+              "result": 11
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 13,
+              "result": 13
+            }
+          ],
+          [
+            {
+              "x": 8,
+              "y": 13,
+              "result": 8
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": 2,
+                  "y": 9,
+                  "result": 2
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 11,
+                  "result": 2
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "y": 11,
+                  "result": 5
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "y": 11,
+                  "result": 11
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 11,
+                  "result": 11
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 13,
+                  "result": 13
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 13,
+                  "result": 8
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "2",
+                  "y": "9",
+                  "result": "2"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "11",
+                  "result": "2"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "y": "11",
+                  "result": "5"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "y": "11",
+                  "result": "11"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "11",
+                  "result": "11"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "13",
+                  "result": "13"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "13",
+                  "result": "8"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": 2,
+                  "y": 9,
+                  "result": 2
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 11,
+                  "result": 2
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "y": 11,
+                  "result": 5
+                }
+              ],
+              [
+                {
+                  "x": 5,
+                  "y": 11,
+                  "result": 11
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 11,
+                  "result": 11
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 13,
+                  "result": 13
+                }
+              ],
+              [
+                {
+                  "x": 8,
+                  "y": 13,
+                  "result": 8
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "2",
+                  "y": "9",
+                  "result": "2"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "11",
+                  "result": "2"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "y": "11",
+                  "result": "5"
+                }
+              ],
+              [
+                {
+                  "x": "5",
+                  "y": "11",
+                  "result": "11"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "11",
+                  "result": "11"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "13",
+                  "result": "13"
+                }
+              ],
+              [
+                {
+                  "x": "8",
+                  "y": "13",
+                  "result": "8"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      }
+    },
+    "boolean-comparison": {
+      "source": "jtml 2\n\nmake Probe\n  let x = 0\n  let y = 3\n  get result = (x >= 2 && y < 5) ? \"yes\" : \"no\"\n  when step\n    x += 1\n  when raise\n    y += 3\n  box class \"probe\"\n    p class \"out-x\" x\n    p class \"out-y\" y\n    p class \"out-result\" result\n    button \"step\" click step\n    button \"raise\" click raise\n\npage\n  Probe\n",
+      "before": {
+        "id": "boolean-comparison",
+        "sha256": "75386b5f26e4c07a0a4ec300452f7ae4bd4f7f2bd3e972ec8125eab21a0d4c23",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "raise",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "x": 0,
+              "y": 3,
+              "result": "no"
+            }
+          ],
+          [
+            {
+              "x": 1,
+              "y": 3,
+              "result": "no"
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 3,
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 6,
+              "result": "no"
+            }
+          ],
+          [
+            {
+              "x": 3,
+              "y": 6,
+              "result": "no"
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": 0,
+                  "y": 3,
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "y": 3,
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 3,
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 6,
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": 3,
+                  "y": 6,
+                  "result": "yes"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "0",
+                  "y": "3",
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "y": "3",
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "3",
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "6",
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": "3",
+                  "y": "6",
+                  "result": "yes"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": 0,
+                  "y": 3,
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "y": 3,
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 3,
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 6,
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": 3,
+                  "y": 6,
+                  "result": "no"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "0",
+                  "y": "3",
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "y": "3",
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "3",
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "6",
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": "3",
+                  "y": "6",
+                  "result": "no"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "x": 0,
+                  "y": 3,
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "y": 3,
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 3,
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 6,
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": 3,
+                  "y": 6,
+                  "result": "no"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": 0,
+                  "y": 3,
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "y": 3,
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 3,
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 6,
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": 3,
+                  "y": 6,
+                  "result": "yes"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "x": "0",
+                  "y": "3",
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "y": "3",
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "3",
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "6",
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": "3",
+                  "y": "6",
+                  "result": "no"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "0",
+                  "y": "3",
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "y": "3",
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "3",
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "6",
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": "3",
+                  "y": "6",
+                  "result": "yes"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      "after": {
+        "id": "boolean-comparison",
+        "sha256": "75386b5f26e4c07a0a4ec300452f7ae4bd4f7f2bd3e972ec8125eab21a0d4c23",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "raise",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "x": 0,
+              "y": 3,
+              "result": "no"
+            }
+          ],
+          [
+            {
+              "x": 1,
+              "y": 3,
+              "result": "no"
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 3,
+              "result": "yes"
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "y": 6,
+              "result": "no"
+            }
+          ],
+          [
+            {
+              "x": 3,
+              "y": 6,
+              "result": "no"
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": 0,
+                  "y": 3,
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "y": 3,
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 3,
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 6,
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": 3,
+                  "y": 6,
+                  "result": "no"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "0",
+                  "y": "3",
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "y": "3",
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "3",
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "6",
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": "3",
+                  "y": "6",
+                  "result": "no"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": 0,
+                  "y": 3,
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "y": 3,
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 3,
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "y": 6,
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": 3,
+                  "y": 6,
+                  "result": "no"
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "0",
+                  "y": "3",
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "y": "3",
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "3",
+                  "result": "yes"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "y": "6",
+                  "result": "no"
+                }
+              ],
+              [
+                {
+                  "x": "3",
+                  "y": "6",
+                  "result": "no"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      }
+    }
+  },
+  "newCases": {
+    "before": [
+      {
+        "id": "logical-not",
+        "sha256": "cd2b8a90b09c239378bd3456510a92e221fd30d4b763102b78cccc5f60530d63",
+        "steps": [],
+        "expected": [
+          [
+            {
+              "result": false,
+              "inverse": true,
+              "nested": false
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": true,
+                  "inverse": true,
+                  "nested": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "true",
+                  "inverse": "true",
+                  "nested": "true"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": false,
+                  "inverse": true,
+                  "nested": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "false",
+                  "inverse": "true",
+                  "nested": "false"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": false,
+                  "inverse": true,
+                  "nested": false
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": true,
+                  "inverse": true,
+                  "nested": true
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "false",
+                  "inverse": "true",
+                  "nested": "false"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "true",
+                  "inverse": "true",
+                  "nested": "true"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "logical-and",
+        "sha256": "f982d24e35e65ccd69a0da3e3d99f0f8c257351d090724ea0bb322403d712898",
+        "steps": [],
+        "expected": [
+          [
+            {
+              "ff": false,
+              "ft": false,
+              "tf": false,
+              "tt": true
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "ff": true,
+                  "ft": true,
+                  "tf": true,
+                  "tt": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "ff": "true",
+                  "ft": "true",
+                  "tf": "true",
+                  "tt": "true"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "ff": false,
+                  "ft": false,
+                  "tf": false,
+                  "tt": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "ff": "false",
+                  "ft": "false",
+                  "tf": "false",
+                  "tt": "true"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "ff": false,
+                  "ft": false,
+                  "tf": false,
+                  "tt": true
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "ff": true,
+                  "ft": true,
+                  "tf": true,
+                  "tt": true
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "ff": "false",
+                  "ft": "false",
+                  "tf": "false",
+                  "tt": "true"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "ff": "true",
+                  "ft": "true",
+                  "tf": "true",
+                  "tt": "true"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "logical-or",
+        "sha256": "2213c26cfa17f361ccd548be7b71fd2ebf33509a46df24cf62b966e6b75a951b",
+        "steps": [],
+        "expected": [
+          [
+            {
+              "ff": false,
+              "ft": true,
+              "tf": true,
+              "tt": true
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "ff": true,
+                  "ft": true,
+                  "tf": true,
+                  "tt": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "ff": "true",
+                  "ft": "true",
+                  "tf": "true",
+                  "tt": "true"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "ff": false,
+                  "ft": true,
+                  "tf": true,
+                  "tt": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "ff": "false",
+                  "ft": "true",
+                  "tf": "true",
+                  "tt": "true"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "ff": false,
+                  "ft": true,
+                  "tf": true,
+                  "tt": true
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "ff": true,
+                  "ft": true,
+                  "tf": true,
+                  "tt": true
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "ff": "false",
+                  "ft": "true",
+                  "tf": "true",
+                  "tt": "true"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "ff": "true",
+                  "ft": "true",
+                  "tf": "true",
+                  "tt": "true"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "logical-reactive",
+        "sha256": "c39dd7e5f34d7073cbf1f04d299d4b96d91110219e7aa59ee3ae5a5bf5c80164",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "raise",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "lower",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "conjunction": false,
+              "disjunction": true,
+              "result": true
+            }
+          ],
+          [
+            {
+              "conjunction": false,
+              "disjunction": true,
+              "result": true
+            }
+          ],
+          [
+            {
+              "conjunction": true,
+              "disjunction": true,
+              "result": false
+            }
+          ],
+          [
+            {
+              "conjunction": false,
+              "disjunction": true,
+              "result": true
+            }
+          ],
+          [
+            {
+              "conjunction": false,
+              "disjunction": true,
+              "result": true
+            }
+          ],
+          [
+            {
+              "conjunction": true,
+              "disjunction": true,
+              "result": false
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "false"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": false
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": true
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "false"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "logical-and-guard",
+        "sha256": "f3ac5440cdfde1eb63b6019796788717c5b66f14ec3164b17bf33a52cad634a4",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "safe",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "enable",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "disable",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "zero",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "safe",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "enable",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native-diagnostics",
+            "details": [
+              "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Probe_1_result': Division by zero"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "logical-or-guard",
+        "sha256": "ef0ae9ca9b1e1e5512d3beca6e650596a45766a66d97f697a3ede04c07cab2a0",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "safe",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "disable",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "enable",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "zero",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "safe",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "disable",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ],
+              [
+                {
+                  "result": {
+                    "$missing": true
+                  }
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ],
+              [
+                {
+                  "result": "result"
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native-diagnostics",
+            "details": [
+              "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Probe_1_result': Division by zero"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "logical-nested-member-index",
+        "sha256": "14a0ba2985b74a1ae6a66ee8c84ccd6a9cefc0460c2f11a685846c8d8b5b80a1",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "index",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "limit",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "off",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "index",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "on",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "logical-sibling-isolation",
+        "sha256": "547dcb8e7f4b0f6dba00a839247fc92fc84ccd532435f67ea8fc404c77b056f8",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 1
+          },
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "x": 0,
+              "result": true
+            },
+            {
+              "x": 0,
+              "result": true
+            }
+          ],
+          [
+            {
+              "x": 1,
+              "result": false
+            },
+            {
+              "x": 0,
+              "result": true
+            }
+          ],
+          [
+            {
+              "x": 1,
+              "result": false
+            },
+            {
+              "x": 1,
+              "result": false
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "result": false
+            },
+            {
+              "x": 1,
+              "result": false
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": 0,
+                  "result": true
+                },
+                {
+                  "x": 0,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": true
+                },
+                {
+                  "x": 0,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": true
+                },
+                {
+                  "x": 1,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": true
+                },
+                {
+                  "x": 1,
+                  "result": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "0",
+                  "result": "true"
+                },
+                {
+                  "x": "0",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "true"
+                },
+                {
+                  "x": "0",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "true"
+                },
+                {
+                  "x": "1",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "true"
+                },
+                {
+                  "x": "1",
+                  "result": "true"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": 0,
+                  "result": true
+                },
+                {
+                  "x": 0,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": false
+                },
+                {
+                  "x": 0,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": false
+                },
+                {
+                  "x": 1,
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": false
+                },
+                {
+                  "x": 1,
+                  "result": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "0",
+                  "result": "true"
+                },
+                {
+                  "x": "0",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "false"
+                },
+                {
+                  "x": "0",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "false"
+                },
+                {
+                  "x": "1",
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "false"
+                },
+                {
+                  "x": "1",
+                  "result": "false"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": [
+          {
+            "layer": "native",
+            "observation": "state",
+            "expected": [
+              [
+                {
+                  "x": 0,
+                  "result": true
+                },
+                {
+                  "x": 0,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": false
+                },
+                {
+                  "x": 0,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": false
+                },
+                {
+                  "x": 1,
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": false
+                },
+                {
+                  "x": 1,
+                  "result": false
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": 0,
+                  "result": true
+                },
+                {
+                  "x": 0,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": true
+                },
+                {
+                  "x": 0,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": true
+                },
+                {
+                  "x": 1,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": true
+                },
+                {
+                  "x": 1,
+                  "result": true
+                }
+              ]
+            ]
+          },
+          {
+            "layer": "native",
+            "observation": "visible",
+            "expected": [
+              [
+                {
+                  "x": "0",
+                  "result": "true"
+                },
+                {
+                  "x": "0",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "false"
+                },
+                {
+                  "x": "0",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "false"
+                },
+                {
+                  "x": "1",
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "false"
+                },
+                {
+                  "x": "1",
+                  "result": "false"
+                }
+              ]
+            ],
+            "actual": [
+              [
+                {
+                  "x": "0",
+                  "result": "true"
+                },
+                {
+                  "x": "0",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "true"
+                },
+                {
+                  "x": "0",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "true"
+                },
+                {
+                  "x": "1",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "true"
+                },
+                {
+                  "x": "1",
+                  "result": "true"
+                }
+              ]
+            ]
+          }
+        ]
+      }
+    ],
+    "after": [
+      {
+        "id": "logical-not",
+        "sha256": "cd2b8a90b09c239378bd3456510a92e221fd30d4b763102b78cccc5f60530d63",
+        "steps": [],
+        "expected": [
+          [
+            {
+              "result": false,
+              "inverse": true,
+              "nested": false
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": false,
+                  "inverse": true,
+                  "nested": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "false",
+                  "inverse": "true",
+                  "nested": "false"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": false,
+                  "inverse": true,
+                  "nested": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "false",
+                  "inverse": "true",
+                  "nested": "false"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      },
+      {
+        "id": "logical-and",
+        "sha256": "f982d24e35e65ccd69a0da3e3d99f0f8c257351d090724ea0bb322403d712898",
+        "steps": [],
+        "expected": [
+          [
+            {
+              "ff": false,
+              "ft": false,
+              "tf": false,
+              "tt": true
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "ff": false,
+                  "ft": false,
+                  "tf": false,
+                  "tt": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "ff": "false",
+                  "ft": "false",
+                  "tf": "false",
+                  "tt": "true"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "ff": false,
+                  "ft": false,
+                  "tf": false,
+                  "tt": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "ff": "false",
+                  "ft": "false",
+                  "tf": "false",
+                  "tt": "true"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      },
+      {
+        "id": "logical-or",
+        "sha256": "2213c26cfa17f361ccd548be7b71fd2ebf33509a46df24cf62b966e6b75a951b",
+        "steps": [],
+        "expected": [
+          [
+            {
+              "ff": false,
+              "ft": true,
+              "tf": true,
+              "tt": true
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "ff": false,
+                  "ft": true,
+                  "tf": true,
+                  "tt": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "ff": "false",
+                  "ft": "true",
+                  "tf": "true",
+                  "tt": "true"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "ff": false,
+                  "ft": true,
+                  "tf": true,
+                  "tt": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "ff": "false",
+                  "ft": "true",
+                  "tf": "true",
+                  "tt": "true"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      },
+      {
+        "id": "logical-reactive",
+        "sha256": "c39dd7e5f34d7073cbf1f04d299d4b96d91110219e7aa59ee3ae5a5bf5c80164",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "raise",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "lower",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "conjunction": false,
+              "disjunction": true,
+              "result": true
+            }
+          ],
+          [
+            {
+              "conjunction": false,
+              "disjunction": true,
+              "result": true
+            }
+          ],
+          [
+            {
+              "conjunction": true,
+              "disjunction": true,
+              "result": false
+            }
+          ],
+          [
+            {
+              "conjunction": false,
+              "disjunction": true,
+              "result": true
+            }
+          ],
+          [
+            {
+              "conjunction": false,
+              "disjunction": true,
+              "result": true
+            }
+          ],
+          [
+            {
+              "conjunction": true,
+              "disjunction": true,
+              "result": false
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "false"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": false,
+                  "disjunction": true,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "conjunction": true,
+                  "disjunction": true,
+                  "result": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "false",
+                  "disjunction": "true",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "conjunction": "true",
+                  "disjunction": "true",
+                  "result": "false"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      },
+      {
+        "id": "logical-and-guard",
+        "sha256": "f3ac5440cdfde1eb63b6019796788717c5b66f14ec3164b17bf33a52cad634a4",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "safe",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "enable",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "disable",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "zero",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "safe",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "enable",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      },
+      {
+        "id": "logical-or-guard",
+        "sha256": "ef0ae9ca9b1e1e5512d3beca6e650596a45766a66d97f697a3ede04c07cab2a0",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "safe",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "disable",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "enable",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "zero",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "safe",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "disable",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      },
+      {
+        "id": "logical-nested-member-index",
+        "sha256": "14a0ba2985b74a1ae6a66ee8c84ccd6a9cefc0460c2f11a685846c8d8b5b80a1",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "index",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "limit",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "off",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "index",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "on",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": true
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ],
+          [
+            {
+              "result": false
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "result": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "result": "false"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      },
+      {
+        "id": "logical-sibling-isolation",
+        "sha256": "547dcb8e7f4b0f6dba00a839247fc92fc84ccd532435f67ea8fc404c77b056f8",
+        "steps": [
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          },
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 1
+          },
+          {
+            "component": "Probe",
+            "action": "step",
+            "ordinal": 0
+          }
+        ],
+        "expected": [
+          [
+            {
+              "x": 0,
+              "result": true
+            },
+            {
+              "x": 0,
+              "result": true
+            }
+          ],
+          [
+            {
+              "x": 1,
+              "result": false
+            },
+            {
+              "x": 0,
+              "result": true
+            }
+          ],
+          [
+            {
+              "x": 1,
+              "result": false
+            },
+            {
+              "x": 1,
+              "result": false
+            }
+          ],
+          [
+            {
+              "x": 2,
+              "result": false
+            },
+            {
+              "x": 1,
+              "result": false
+            }
+          ]
+        ],
+        "observed": {
+          "native": {
+            "state": [
+              [
+                {
+                  "x": 0,
+                  "result": true
+                },
+                {
+                  "x": 0,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": false
+                },
+                {
+                  "x": 0,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": false
+                },
+                {
+                  "x": 1,
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": false
+                },
+                {
+                  "x": 1,
+                  "result": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "0",
+                  "result": "true"
+                },
+                {
+                  "x": "0",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "false"
+                },
+                {
+                  "x": "0",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "false"
+                },
+                {
+                  "x": "1",
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "false"
+                },
+                {
+                  "x": "1",
+                  "result": "false"
+                }
+              ]
+            ]
+          },
+          "browser": {
+            "state": [
+              [
+                {
+                  "x": 0,
+                  "result": true
+                },
+                {
+                  "x": 0,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": false
+                },
+                {
+                  "x": 0,
+                  "result": true
+                }
+              ],
+              [
+                {
+                  "x": 1,
+                  "result": false
+                },
+                {
+                  "x": 1,
+                  "result": false
+                }
+              ],
+              [
+                {
+                  "x": 2,
+                  "result": false
+                },
+                {
+                  "x": 1,
+                  "result": false
+                }
+              ]
+            ],
+            "visible": [
+              [
+                {
+                  "x": "0",
+                  "result": "true"
+                },
+                {
+                  "x": "0",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "false"
+                },
+                {
+                  "x": "0",
+                  "result": "true"
+                }
+              ],
+              [
+                {
+                  "x": "1",
+                  "result": "false"
+                },
+                {
+                  "x": "1",
+                  "result": "false"
+                }
+              ],
+              [
+                {
+                  "x": "2",
+                  "result": "false"
+                },
+                {
+                  "x": "1",
+                  "result": "false"
+                }
+              ]
+            ]
+          }
+        },
+        "failures": []
+      }
+    ]
+  },
+  "logs": {
+    "/tmp/jtml-logical-baseline.log": {
+      "sha256": "62d184d3de197e7f2d10d9b616fbfc8b8534887e28f56c91eaf31036a98a64f8",
+      "bytes": 2074
+    },
+    "/tmp/jtml-logical-cpp-before.log": {
+      "sha256": "25beb7b15538e35f9a4f0fe7eb6c735b01672e23dca1b7761cea1171be79e563",
+      "bytes": 51440
+    },
+    "/tmp/jtml-logical-cpp-after.log": {
+      "sha256": "1d0e4444b7004af1ad03cf246edd1800a432c6a5cb32604c3a3a9f88fe83a1ff",
+      "bytes": 4162
+    },
+    "/tmp/jtml-logical-browser-before.log": {
+      "sha256": "9a7e7c385caaf679294c0b5ba3df34de82d404c09000c49ef9d68d572c9278dd",
+      "bytes": 21096
+    },
+    "/tmp/jtml-logical-browser-after.log": {
+      "sha256": "4dc2c89329a2ee044246282449d4a0c2fd9f48e0c4712eab543ee917ca29d373",
+      "bytes": 312
+    },
+    "/tmp/jtml-logical-after-unreviewed.log": {
+      "sha256": "ec7ed7d0352a14725a7ac6712c7af55ab365c98b3cf5ac2f0caefbc0f98c8a91",
+      "bytes": 1864
+    },
+    "/tmp/jtml-logical-self-test.log": {
+      "sha256": "02e9c9a4d6d0343746df26a8bda13b83b1db1a414083861c451b74fa2a9adf70",
+      "bytes": 210
+    },
+    "/tmp/jtml-logical-catalog-injection.log": {
+      "sha256": "9260f8c7f9c684246cb74e316bda8db4c9ae3cbe3170caed940f60d8e9a85b69",
+      "bytes": 105
+    }
+  },
+  "runtimeAsset": {
+    "beforeBytes": 271564,
+    "afterBytes": 271564,
+    "budgetBytes": 272000,
+    "identicalSha256": "e8ff5f35ac6ce187abfc9ce5686da8b47af5b4bea4949336ef5985ae0fb84b17"
+  },
+  "negativeControls": {
+    "constructor": "VarValue(\"false\") selects bool true; VarValue(false) is bool false",
+    "cppBaseline": {
+      "pass": 1,
+      "fail": 6
+    },
+    "cppFixed": {
+      "pass": 7,
+      "fail": 0
+    },
+    "unchangedCatalogAfterFix": {
+      "exit": 1,
+      "reason": "rejected two unexpected resolutions"
+    },
+    "strictFixed": {
+      "exit": 2,
+      "remainingKnownDefects": 6
+    },
+    "actualReportInjection": "new native failure in boolean-comparison rejected; changed independent unary-negative expectation rejected"
+  },
+  "focusedNativeBeforeLog": "Internal ctest changing into directory: /Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/build\nTest project /Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/build\n    Start 30: NativeLogical.ConstructorOverloadControl\n1/7 Test #30: NativeLogical.ConstructorOverloadControl ................................   Passed    0.01 sec\n    Start 31: NativeLogical.BooleanTruthTablesAndType\n2/7 Test #31: NativeLogical.BooleanTruthTablesAndType .................................***Failed    0.00 sec\nRunning main() from /Users/joaorocha/.codex/worktrees/async-worker-lifetime/jtml-v1/build/_deps/googletest-src/googletest/src/gtest_main.cc\nNote: Google Test filter = NativeLogical.BooleanTruthTablesAndType\n[==========] Running 1 test from 1 test suite.\n[----------] Global test environment set-up.\n[----------] 1 test from NativeLogical\n[ RUN      ] NativeLogical.BooleanTruthTablesAndType\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\n!true\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\n!true\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\n!!false\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\n!!false\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\nfalse && false\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\nfalse && false\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\nfalse || false\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\nfalse || false\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\nfalse && true\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\nfalse && true\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\ntrue && false\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\ntrue && false\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\n(2 < 1) || ((3 >= 2) && !(4 == 4))\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\n(2 < 1) || ((3 >= 2) && !(4 == 4))\n\n[  FAILED  ] NativeLogical.BooleanTruthTablesAndType (0 ms)\n[----------] 1 test from NativeLogical (0 ms total)\n\n[----------] Global test environment tear-down\n[==========] 1 test from 1 test suite ran. (0 ms total)\n[  PASSED  ] 0 tests.\n[  FAILED  ] 1 test, listed below:\n[  FAILED  ] NativeLogical.BooleanTruthTablesAndType\n\n 1 FAILED TEST\n\n    Start 32: NativeLogical.ExistingNativeTruthinessIsPreserved\n3/7 Test #32: NativeLogical.ExistingNativeTruthinessIsPreserved .......................***Failed    0.01 sec\nRunning main() from /Users/joaorocha/.codex/worktrees/async-worker-lifetime/jtml-v1/build/_deps/googletest-src/googletest/src/gtest_main.cc\nNote: Google Test filter = NativeLogical.ExistingNativeTruthinessIsPreserved\n[==========] Running 1 test from 1 test suite.\n[----------] Global test environment set-up.\n[----------] 1 test from NativeLogical\n[ RUN      ] NativeLogical.ExistingNativeTruthinessIsPreserved\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\n!(2)\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\n!(2)\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\n!(\"true\")\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\n!(\"true\")\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\n!(\"hello\")\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\n!(\"hello\")\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\n0 && 2\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\n0 && 2\n\n[  FAILED  ] NativeLogical.ExistingNativeTruthinessIsPreserved (1 ms)\n[----------] 1 test from NativeLogical (1 ms total)\n\n[----------] Global test environment tear-down\n[==========] 1 test from 1 test suite ran. (1 ms total)\n[  PASSED  ] 0 tests.\n[  FAILED  ] 1 test, listed below:\n[  FAILED  ] NativeLogical.ExistingNativeTruthinessIsPreserved\n\n 1 FAILED TEST\n\n    Start 33: NativeLogical.InactiveErrorsAreSkippedAndActiveErrorsStillThrow\n4/7 Test #33: NativeLogical.InactiveErrorsAreSkippedAndActiveErrorsStillThrow .........***Failed    0.00 sec\nRunning main() from /Users/joaorocha/.codex/worktrees/async-worker-lifetime/jtml-v1/build/_deps/googletest-src/googletest/src/gtest_main.cc\nNote: Google Test filter = NativeLogical.InactiveErrorsAreSkippedAndActiveErrorsStillThrow\n[==========] Running 1 test from 1 test suite.\n[----------] Global test environment set-up.\n[----------] 1 test from NativeLogical\n[ RUN      ] NativeLogical.InactiveErrorsAreSkippedAndActiveErrorsStillThrow\nunknown file: Failure\nC++ exception with description \"Division by zero\" thrown in the test body.\n\n[  FAILED  ] NativeLogical.InactiveErrorsAreSkippedAndActiveErrorsStillThrow (0 ms)\n[----------] 1 test from NativeLogical (0 ms total)\n\n[----------] Global test environment tear-down\n[==========] 1 test from 1 test suite ran. (0 ms total)\n[  PASSED  ] 0 tests.\n[  FAILED  ] 1 test, listed below:\n[  FAILED  ] NativeLogical.InactiveErrorsAreSkippedAndActiveErrorsStillThrow\n\n 1 FAILED TEST\n\n    Start 34: NativeLogical.SideEffectsAreLazyOrderedAndExactlyOnce\n5/7 Test #34: NativeLogical.SideEffectsAreLazyOrderedAndExactlyOnce ...................***Failed    0.01 sec\nRunning main() from /Users/joaorocha/.codex/worktrees/async-worker-lifetime/jtml-v1/build/_deps/googletest-src/googletest/src/gtest_main.cc\nNote: Google Test filter = NativeLogical.SideEffectsAreLazyOrderedAndExactlyOnce\n[==========] Running 1 test from 1 test suite.\n[----------] Global test environment set-up.\n[----------] 1 test from NativeLogical\n[ RUN      ] NativeLogical.SideEffectsAreLazyOrderedAndExactlyOnce\n DefineStatementNode(identifier=trace, declaredType=, isConst=false, expression=)\nInterpreting node DefineStatementNode(identifier=trace, declaredType=, isConst=false, expression=)\n[DEBUG] Defined variable '0.trace' = \n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEFINE] 0.trace =  (String)\n FunctionDeclarationNode(name=yes, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=trace, rhs=(trace + T)), ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000)), ])\nInterpreting node FunctionDeclarationNode(name=yes, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=trace, rhs=(trace + T)), ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000)), ])\n[DEBUG] Interpreting FunctionDeclarationNode: FunctionDeclarationNode(name=yes, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=trace, rhs=(trace + T)), ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000)), ])\n[DEBUG] Defined function 'yes' in InstanceID 0\n[DEBUG] Defined function 'yes' with 0 parameters:\nAssignmentStatementNode(lhs=trace, rhs=(trace + T)), ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000)), returning \n FunctionDeclarationNode(name=no, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=trace, rhs=(trace + F)), ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000)), ])\nInterpreting node FunctionDeclarationNode(name=no, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=trace, rhs=(trace + F)), ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000)), ])\n[DEBUG] Interpreting FunctionDeclarationNode: FunctionDeclarationNode(name=no, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=trace, rhs=(trace + F)), ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000)), ])\n[DEBUG] Defined function 'no' in InstanceID 0\n[DEBUG] Defined function 'no' with 0 parameters:\nAssignmentStatementNode(lhs=trace, rhs=(trace + F)), ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000)), returning \n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \nFunction call: no()\n[DEBUG] Calling function: no\n[DEBUG] Body of function no value: AssignmentStatementNode(lhs=trace, rhs=(trace + F))\n[DEBUG] Body of function no value: ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\n[DEBUG] Current environment before function call:\n  0.trace = \n[DEBUG] Closure for function no:\n  0.trace = \n[DEBUG] Function 'no' environment (InstanceID: 1001) variables:\n[DEBUG] Executing statement in function 'no': AssignmentStatementNode(lhs=trace, rhs=(trace + F))\nInterpreting node AssignmentStatementNode(lhs=trace, rhs=(trace + F))\n[EVAL] Variable 1001.trace (InstanceID: 1001) = \n (Assignment RHS: F\n[MARK DIRTY] Variable: 0.trace (ID: 0, Priority: 1)\n[DEBUG] Set variable '0.trace' = F\n[DEBUG] Set variable '1001.trace' = F\n[ASSIGN] LHS=trace (InstanceID: 1001) => RHS=F\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'no': ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\nInterpreting node ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\nReturnStatement nodeReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\n[DEBUG] node.expr: (1.000000000000000 == 0.000000000000000)\n[RETURN] false\n[DEBUG] Function 'no' returned with value: false\n[DEBUG] Parent environment variables after function execution:\n  0.trace = F\nFunction call: yes()\n[DEBUG] Calling function: yes\n[DEBUG] Body of function yes value: AssignmentStatementNode(lhs=trace, rhs=(trace + T))\n[DEBUG] Body of function yes value: ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\n[DEBUG] Current environment before function call:\n  0.trace = F\n[DEBUG] Closure for function yes:\n  0.trace = F\n[DEBUG] Function 'yes' environment (InstanceID: 1002) variables:\n[DEBUG] Executing statement in function 'yes': AssignmentStatementNode(lhs=trace, rhs=(trace + T))\nInterpreting node AssignmentStatementNode(lhs=trace, rhs=(trace + T))\n[EVAL] Variable 1002.trace (InstanceID: 1002) = F\n (Assignment RHS: FT\n[DEBUG] Set variable '0.trace' = FT\n[DEBUG] Set variable '1002.trace' = FT\n[ASSIGN] LHS=trace (InstanceID: 1002) => RHS=FT\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'yes': ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\nInterpreting node ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\nReturnStatement nodeReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\n[DEBUG] node.expr: (1.000000000000000 == 1.000000000000000)\n[RETURN] true\n[DEBUG] Function 'yes' returned with value: true\n[DEBUG] Parent environment variables after function execution:\n  0.trace = FT\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\nno() && yes()\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\nno() && yes()\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:99: Failure\nExpected equality of these values:\n  value(\"trace\")->toString()\n    Which is: \"FT\"\n  \"F\"\n\nFunction call: yes()\n[DEBUG] Calling function: yes\n[DEBUG] Body of function yes value: AssignmentStatementNode(lhs=trace, rhs=(trace + T))\n[DEBUG] Body of function yes value: ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\n[DEBUG] Current environment before function call:\n  0.trace = FT\n[DEBUG] Closure for function yes:\n  0.trace = FT\n[DEBUG] Function 'yes' environment (InstanceID: 1003) variables:\n[DEBUG] Executing statement in function 'yes': AssignmentStatementNode(lhs=trace, rhs=(trace + T))\nInterpreting node AssignmentStatementNode(lhs=trace, rhs=(trace + T))\n[EVAL] Variable 1003.trace (InstanceID: 1003) = FT\n (Assignment RHS: FTT\n[DEBUG] Set variable '0.trace' = FTT\n[DEBUG] Set variable '1003.trace' = FTT\n[ASSIGN] LHS=trace (InstanceID: 1003) => RHS=FTT\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'yes': ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\nInterpreting node ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\nReturnStatement nodeReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\n[DEBUG] node.expr: (1.000000000000000 == 1.000000000000000)\n[RETURN] true\n[DEBUG] Function 'yes' returned with value: true\n[DEBUG] Parent environment variables after function execution:\n  0.trace = FTT\nFunction call: no()\n[DEBUG] Calling function: no\n[DEBUG] Body of function no value: AssignmentStatementNode(lhs=trace, rhs=(trace + F))\n[DEBUG] Body of function no value: ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\n[DEBUG] Current environment before function call:\n  0.trace = FTT\n[DEBUG] Closure for function no:\n  0.trace = FTT\n[DEBUG] Function 'no' environment (InstanceID: 1004) variables:\n[DEBUG] Executing statement in function 'no': AssignmentStatementNode(lhs=trace, rhs=(trace + F))\nInterpreting node AssignmentStatementNode(lhs=trace, rhs=(trace + F))\n[EVAL] Variable 1004.trace (InstanceID: 1004) = FTT\n (Assignment RHS: FTTF\n[DEBUG] Set variable '0.trace' = FTTF\n[DEBUG] Set variable '1004.trace' = FTTF\n[ASSIGN] LHS=trace (InstanceID: 1004) => RHS=FTTF\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'no': ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\nInterpreting node ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\nReturnStatement nodeReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\n[DEBUG] node.expr: (1.000000000000000 == 0.000000000000000)\n[RETURN] false\n[DEBUG] Function 'no' returned with value: false\n[DEBUG] Parent environment variables after function execution:\n  0.trace = FTTF\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:100: Failure\nExpected equality of these values:\n  value(\"trace\")->toString()\n    Which is: \"FTTF\"\n  \"FT\"\n\nFunction call: yes()\n[DEBUG] Calling function: yes\n[DEBUG] Body of function yes value: AssignmentStatementNode(lhs=trace, rhs=(trace + T))\n[DEBUG] Body of function yes value: ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\n[DEBUG] Current environment before function call:\n  0.trace = FTTF\n[DEBUG] Closure for function yes:\n  0.trace = FTTF\n[DEBUG] Function 'yes' environment (InstanceID: 1005) variables:\n[DEBUG] Executing statement in function 'yes': AssignmentStatementNode(lhs=trace, rhs=(trace + T))\nInterpreting node AssignmentStatementNode(lhs=trace, rhs=(trace + T))\n[EVAL] Variable 1005.trace (InstanceID: 1005) = FTTF\n (Assignment RHS: FTTFT\n[DEBUG] Set variable '0.trace' = FTTFT\n[DEBUG] Set variable '1005.trace' = FTTFT\n[ASSIGN] LHS=trace (InstanceID: 1005) => RHS=FTTFT\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'yes': ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\nInterpreting node ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\nReturnStatement nodeReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\n[DEBUG] node.expr: (1.000000000000000 == 1.000000000000000)\n[RETURN] true\n[DEBUG] Function 'yes' returned with value: true\n[DEBUG] Parent environment variables after function execution:\n  0.trace = FTTFT\nFunction call: no()\n[DEBUG] Calling function: no\n[DEBUG] Body of function no value: AssignmentStatementNode(lhs=trace, rhs=(trace + F))\n[DEBUG] Body of function no value: ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\n[DEBUG] Current environment before function call:\n  0.trace = FTTFT\n[DEBUG] Closure for function no:\n  0.trace = FTTFT\n[DEBUG] Function 'no' environment (InstanceID: 1006) variables:\n[DEBUG] Executing statement in function 'no': AssignmentStatementNode(lhs=trace, rhs=(trace + F))\nInterpreting node AssignmentStatementNode(lhs=trace, rhs=(trace + F))\n[EVAL] Variable 1006.trace (InstanceID: 1006) = FTTFT\n (Assignment RHS: FTTFTF\n[DEBUG] Set variable '0.trace' = FTTFTF\n[DEBUG] Set variable '1006.trace' = FTTFTF\n[ASSIGN] LHS=trace (InstanceID: 1006) => RHS=FTTFTF\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'no': ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\nInterpreting node ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\nReturnStatement nodeReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\n[DEBUG] node.expr: (1.000000000000000 == 0.000000000000000)\n[RETURN] false\n[DEBUG] Function 'no' returned with value: false\n[DEBUG] Parent environment variables after function execution:\n  0.trace = FTTFTF\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\nyes() && no()\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\nyes() && no()\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:101: Failure\nExpected equality of these values:\n  value(\"trace\")->toString()\n    Which is: \"FTTFTF\"\n  \"FTTF\"\n\nFunction call: no()\n[DEBUG] Calling function: no\n[DEBUG] Body of function no value: AssignmentStatementNode(lhs=trace, rhs=(trace + F))\n[DEBUG] Body of function no value: ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\n[DEBUG] Current environment before function call:\n  0.trace = FTTFTF\n[DEBUG] Closure for function no:\n  0.trace = FTTFTF\n[DEBUG] Function 'no' environment (InstanceID: 1007) variables:\n[DEBUG] Executing statement in function 'no': AssignmentStatementNode(lhs=trace, rhs=(trace + F))\nInterpreting node AssignmentStatementNode(lhs=trace, rhs=(trace + F))\n[EVAL] Variable 1007.trace (InstanceID: 1007) = FTTFTF\n (Assignment RHS: FTTFTFF\n[DEBUG] Set variable '0.trace' = FTTFTFF\n[DEBUG] Set variable '1007.trace' = FTTFTFF\n[ASSIGN] LHS=trace (InstanceID: 1007) => RHS=FTTFTFF\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'no': ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\nInterpreting node ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\nReturnStatement nodeReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\n[DEBUG] node.expr: (1.000000000000000 == 0.000000000000000)\n[RETURN] false\n[DEBUG] Function 'no' returned with value: false\n[DEBUG] Parent environment variables after function execution:\n  0.trace = FTTFTFF\nFunction call: yes()\n[DEBUG] Calling function: yes\n[DEBUG] Body of function yes value: AssignmentStatementNode(lhs=trace, rhs=(trace + T))\n[DEBUG] Body of function yes value: ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\n[DEBUG] Current environment before function call:\n  0.trace = FTTFTFF\n[DEBUG] Closure for function yes:\n  0.trace = FTTFTFF\n[DEBUG] Function 'yes' environment (InstanceID: 1008) variables:\n[DEBUG] Executing statement in function 'yes': AssignmentStatementNode(lhs=trace, rhs=(trace + T))\nInterpreting node AssignmentStatementNode(lhs=trace, rhs=(trace + T))\n[EVAL] Variable 1008.trace (InstanceID: 1008) = FTTFTFF\n (Assignment RHS: FTTFTFFT\n[DEBUG] Set variable '0.trace' = FTTFTFFT\n[DEBUG] Set variable '1008.trace' = FTTFTFFT\n[ASSIGN] LHS=trace (InstanceID: 1008) => RHS=FTTFTFFT\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'yes': ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\nInterpreting node ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\nReturnStatement nodeReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\n[DEBUG] node.expr: (1.000000000000000 == 1.000000000000000)\n[RETURN] true\n[DEBUG] Function 'yes' returned with value: true\n[DEBUG] Parent environment variables after function execution:\n  0.trace = FTTFTFFT\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:102: Failure\nExpected equality of these values:\n  value(\"trace\")->toString()\n    Which is: \"FTTFTFFT\"\n  \"FTTFFT\"\n\nFunction call: no()\n[DEBUG] Calling function: no\n[DEBUG] Body of function no value: AssignmentStatementNode(lhs=trace, rhs=(trace + F))\n[DEBUG] Body of function no value: ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\n[DEBUG] Current environment before function call:\n  0.trace = FTTFTFFT\n[DEBUG] Closure for function no:\n  0.trace = FTTFTFFT\n[DEBUG] Function 'no' environment (InstanceID: 1009) variables:\n[DEBUG] Executing statement in function 'no': AssignmentStatementNode(lhs=trace, rhs=(trace + F))\nInterpreting node AssignmentStatementNode(lhs=trace, rhs=(trace + F))\n[EVAL] Variable 1009.trace (InstanceID: 1009) = FTTFTFFT\n (Assignment RHS: FTTFTFFTF\n[DEBUG] Set variable '0.trace' = FTTFTFFTF\n[DEBUG] Set variable '1009.trace' = FTTFTFFTF\n[ASSIGN] LHS=trace (InstanceID: 1009) => RHS=FTTFTFFTF\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'no': ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\nInterpreting node ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\nReturnStatement nodeReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\n[DEBUG] node.expr: (1.000000000000000 == 0.000000000000000)\n[RETURN] false\n[DEBUG] Function 'no' returned with value: false\n[DEBUG] Parent environment variables after function execution:\n  0.trace = FTTFTFFTF\nFunction call: yes()\n[DEBUG] Calling function: yes\n[DEBUG] Body of function yes value: AssignmentStatementNode(lhs=trace, rhs=(trace + T))\n[DEBUG] Body of function yes value: ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\n[DEBUG] Current environment before function call:\n  0.trace = FTTFTFFTF\n[DEBUG] Closure for function yes:\n  0.trace = FTTFTFFTF\n[DEBUG] Function 'yes' environment (InstanceID: 1010) variables:\n[DEBUG] Executing statement in function 'yes': AssignmentStatementNode(lhs=trace, rhs=(trace + T))\nInterpreting node AssignmentStatementNode(lhs=trace, rhs=(trace + T))\n[EVAL] Variable 1010.trace (InstanceID: 1010) = FTTFTFFTF\n (Assignment RHS: FTTFTFFTFT\n[DEBUG] Set variable '0.trace' = FTTFTFFTFT\n[DEBUG] Set variable '1010.trace' = FTTFTFFTFT\n[ASSIGN] LHS=trace (InstanceID: 1010) => RHS=FTTFTFFTFT\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'yes': ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\nInterpreting node ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\nReturnStatement nodeReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=(1.000000000000000 == 1.000000000000000))\n[DEBUG] node.expr: (1.000000000000000 == 1.000000000000000)\n[RETURN] true\n[DEBUG] Function 'yes' returned with value: true\n[DEBUG] Parent environment variables after function execution:\n  0.trace = FTTFTFFTFT\nFunction call: no()\n[DEBUG] Calling function: no\n[DEBUG] Body of function no value: AssignmentStatementNode(lhs=trace, rhs=(trace + F))\n[DEBUG] Body of function no value: ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\n[DEBUG] Current environment before function call:\n  0.trace = FTTFTFFTFT\n[DEBUG] Closure for function no:\n  0.trace = FTTFTFFTFT\n[DEBUG] Function 'no' environment (InstanceID: 1011) variables:\n[DEBUG] Executing statement in function 'no': AssignmentStatementNode(lhs=trace, rhs=(trace + F))\nInterpreting node AssignmentStatementNode(lhs=trace, rhs=(trace + F))\n[EVAL] Variable 1011.trace (InstanceID: 1011) = FTTFTFFTFT\n (Assignment RHS: FTTFTFFTFTF\n[DEBUG] Set variable '0.trace' = FTTFTFFTFTF\n[DEBUG] Set variable '1011.trace' = FTTFTFFTFTF\n[ASSIGN] LHS=trace (InstanceID: 1011) => RHS=FTTFTFFTFTF\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'no': ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\nInterpreting node ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\nReturnStatement nodeReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=(1.000000000000000 == 0.000000000000000))\n[DEBUG] node.expr: (1.000000000000000 == 0.000000000000000)\n[RETURN] false\n[DEBUG] Function 'no' returned with value: false\n[DEBUG] Parent environment variables after function execution:\n  0.trace = FTTFTFFTFTF\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:51: Failure\nExpected equality of these values:\n  result->getBool()\n    Which is: true\n  expected\n    Which is: false\nno() && (yes() || no())\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:52: Failure\nExpected equality of these values:\n  result->toString()\n    Which is: \"true\"\n  expected ? \"true\" : \"false\"\n    Which is: \"false\"\nno() && (yes() || no())\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:103: Failure\nExpected equality of these values:\n  value(\"trace\")->toString()\n    Which is: \"FTTFTFFTFTF\"\n  \"FTTFFTF\"\n\n[  FAILED  ] NativeLogical.SideEffectsAreLazyOrderedAndExactlyOnce (2 ms)\n[----------] 1 test from NativeLogical (2 ms total)\n\n[----------] Global test environment tear-down\n[==========] 1 test from 1 test suite ran. (2 ms total)\n[  PASSED  ] 0 tests.\n[  FAILED  ] 1 test, listed below:\n[  FAILED  ] NativeLogical.SideEffectsAreLazyOrderedAndExactlyOnce\n\n 1 FAILED TEST\n\n    Start 35: NativeLogical.DependencyCollectionRemainsConservativeWithoutExecution\n6/7 Test #35: NativeLogical.DependencyCollectionRemainsConservativeWithoutExecution ...***Failed    0.00 sec\nRunning main() from /Users/joaorocha/.codex/worktrees/async-worker-lifetime/jtml-v1/build/_deps/googletest-src/googletest/src/gtest_main.cc\nNote: Google Test filter = NativeLogical.DependencyCollectionRemainsConservativeWithoutExecution\n[==========] Running 1 test from 1 test suite.\n[----------] Global test environment set-up.\n[----------] 1 test from NativeLogical\n[ RUN      ] NativeLogical.DependencyCollectionRemainsConservativeWithoutExecution\n DefineStatementNode(identifier=enabled, declaredType=, isConst=false, expression=false)\nInterpreting node DefineStatementNode(identifier=enabled, declaredType=, isConst=false, expression=false)\n[DEBUG] Defined variable '0.enabled' = false\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEFINE] 0.enabled = false (String)\n DefineStatementNode(identifier=x, declaredType=, isConst=false, expression=1.000000000000000)\nInterpreting node DefineStatementNode(identifier=x, declaredType=, isConst=false, expression=1.000000000000000)\n[DEBUG] Defined variable '0.x' = 1\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEFINE] 0.x = 1 (Number)\n DefineStatementNode(identifier=calls, declaredType=, isConst=false, expression=0.000000000000000)\nInterpreting node DefineStatementNode(identifier=calls, declaredType=, isConst=false, expression=0.000000000000000)\n[DEBUG] Defined variable '0.calls' = 0\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEFINE] 0.calls = 0 (Number)\n FunctionDeclarationNode(name=bump, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000)), ReturnStatementNode(expr=true), ])\nInterpreting node FunctionDeclarationNode(name=bump, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000)), ReturnStatementNode(expr=true), ])\n[DEBUG] Interpreting FunctionDeclarationNode: FunctionDeclarationNode(name=bump, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000)), ReturnStatementNode(expr=true), ])\n[DEBUG] Defined function 'bump' in InstanceID 0\n[DEBUG] Defined function 'bump' with 0 parameters:\nAssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000)), ReturnStatementNode(expr=true), returning \n DeriveStatementNode(identifier=result, declaredType=, expression=(enabled && (x > 2.000000000000000)))\nInterpreting node DeriveStatementNode(identifier=result, declaredType=, expression=(enabled && (x > 2.000000000000000)))\n[DEBUG 0] gatherDeps Element: <(enabled && (x > 2.000000000000000))>\n[DEBUG 0] gatherDeps Element: <enabled>\n[GATHER_DEPS] Dependency found: 0.enabled\n[DEBUG 0] gatherDeps Element: <(x > 2.000000000000000)>\n[DEBUG 0] gatherDeps Element: <x>\n[GATHER_DEPS] Dependency found: 0.x\n[DEBUG 0] gatherDeps Element: <2.000000000000000>\n[DEBUG] About to rum derive on 0.result derived from dependencies: 0.enabled 0.x \n[DEBUG] Derived variable expression: (enabled && (x > 2.000000000000000))\n[EVAL] Variable 0.enabled (InstanceID: 0) = false\n[EVAL] Variable 0.x (InstanceID: 0) = 1\n[MARK DIRTY] Variable: 0.result (ID: 0, Priority: 1)\n[DERIVE] 0.result = true\n[DERIVE] 0.result derived from dependencies: enabled x \n DeriveStatementNode(identifier=guarded, declaredType=, expression=(enabled && bump()))\nInterpreting node DeriveStatementNode(identifier=guarded, declaredType=, expression=(enabled && bump()))\n[DEBUG 0] gatherDeps Element: <(enabled && bump())>\n[DEBUG 0] gatherDeps Element: <enabled>\n[GATHER_DEPS] Dependency found: 0.enabled\n[DEBUG 0] gatherDeps Element: <bump()>\n[DEBUG] About to rum derive on 0.guarded derived from dependencies: 0.enabled \n[DEBUG] Derived variable expression: (enabled && bump())\n[EVAL] Variable 0.enabled (InstanceID: 0) = false\nFunction call: bump()\n[DEBUG] Calling function: bump\n[DEBUG] Body of function bump value: AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000))\n[DEBUG] Body of function bump value: ReturnStatementNode(expr=true)\n[DEBUG] Current environment before function call:\n  0.result = true\n  0.calls = 0\n  0.x = 1\n  0.enabled = false\n[DEBUG] Closure for function bump:\n  0.result = true\n  0.calls = 0\n  0.x = 1\n  0.enabled = false\n[DEBUG] Function 'bump' environment (InstanceID: 1001) variables:\n[DEBUG] Executing statement in function 'bump': AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000))\nInterpreting node AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000))\n[EVAL] Variable 1001.calls (InstanceID: 1001) = 0\n (Assignment RHS: 1\n[MARK DIRTY] Variable: 0.calls (ID: 4, Priority: 1)\n[DEBUG] Set variable '0.calls' = 1\n[DEBUG] Set variable '1001.calls' = 1\n[ASSIGN] LHS=calls (InstanceID: 1001) => RHS=1\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'bump': ReturnStatementNode(expr=true)\nInterpreting node ReturnStatementNode(expr=true)\nReturnStatement nodeReturnStatementNode(expr=true)[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=true)\n[DEBUG] node.expr: true\n[RETURN] true\n[DEBUG] Function 'bump' returned with value: true\n[DEBUG] Parent environment variables after function execution:\n  0.result = true\n  0.calls = 1\n  0.x = 1\n  0.enabled = false\n[MARK DIRTY] Variable: 0.guarded (ID: 3, Priority: 1)\n[DERIVE] 0.guarded = true\n[DERIVE] 0.guarded derived from dependencies: enabled \n[RECALC_DIRTY] Dirty Set: (0, result) (0, calls) (0, guarded) \n[RECALC_DIRTY] Sorted Vars: (0, guarded) (0, calls) (0, result) \n[RECALC_DIRTY] Updating variable: (0, guarded)\n[EVAL] Variable 0.enabled (InstanceID: 0) = false\nFunction call: bump()\n[DEBUG] Calling function: bump\n[DEBUG] Body of function bump value: AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000))\n[DEBUG] Body of function bump value: ReturnStatementNode(expr=true)\n[DEBUG] Current environment before function call:\n  0.guarded = true\n  0.result = true\n  0.calls = 1\n  0.x = 1\n  0.enabled = false\n[DEBUG] Closure for function bump:\n  0.guarded = true\n  0.result = true\n  0.calls = 1\n  0.x = 1\n  0.enabled = false\n[DEBUG] Function 'bump' environment (InstanceID: 1002) variables:\n[DEBUG] Executing statement in function 'bump': AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000))\nInterpreting node AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000))\n[EVAL] Variable 1002.calls (InstanceID: 1002) = 1\n (Assignment RHS: 2\n[DEBUG] Set variable '0.calls' = 2\n[DEBUG] Set variable '1002.calls' = 2\n[ASSIGN] LHS=calls (InstanceID: 1002) => RHS=2\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'bump': ReturnStatementNode(expr=true)\nInterpreting node ReturnStatementNode(expr=true)\nReturnStatement nodeReturnStatementNode(expr=true)[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=true)\n[DEBUG] node.expr: true\n[RETURN] true\n[DEBUG] Function 'bump' returned with value: true\n[DEBUG] Parent environment variables after function execution:\n  0.guarded = true\n  0.result = true\n  0.calls = 2\n  0.x = 1\n  0.enabled = false\n[UPDATE] Evaluated guarded = true\n[RECALC_DIRTY] Updating variable: (0, calls)\n[SKIP] Normal variable 'calls' does not require updates.\n[RECALC_DIRTY] Updating variable: (0, result)\n[EVAL] Variable 0.enabled (InstanceID: 0) = false\n[EVAL] Variable 0.x (InstanceID: 0) = 1\n[UPDATE] Evaluated result = true\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:110: Failure\nExpected equality of these values:\n  value(\"calls\")->getNumber()\n    Which is: 2\n  0\n\n AssignmentStatementNode(lhs=x, rhs=3.000000000000000)\nInterpreting node AssignmentStatementNode(lhs=x, rhs=3.000000000000000)\n (Assignment RHS: 3\n[MARK DIRTY] Propagating to dependent: (0, result)\n[MARK DIRTY] Variable: 0.result (ID: 0, Priority: 1)\n[MARK DIRTY] Variable: 0.x (ID: 2, Priority: 2)\n[DEBUG] Set variable '0.x' = 3\n[ASSIGN] LHS=x (InstanceID: 0) => RHS=3\n[RECALC_DIRTY] Dirty Set: (0, x) (0, result) \n[RECALC_DIRTY] Sorted Vars: (0, x) (0, result) \n[RECALC_DIRTY] Updating variable: (0, x)\n[SKIP] Normal variable 'x' does not require updates.\n[RECALC_DIRTY] Updating variable: (0, result)\n[EVAL] Variable 0.enabled (InstanceID: 0) = false\n[EVAL] Variable 0.x (InstanceID: 0) = 3\n[SKIP] Normal variable 'x' does not require updates.\n[UPDATE] Evaluated result = true\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:121: Failure\nValue of: value(\"result\")->getBool()\n  Actual: true\nExpected: false\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:121: Failure\nExpected equality of these values:\n  value(\"calls\")->getNumber()\n    Which is: 2\n  0\n\n AssignmentStatementNode(lhs=enabled, rhs=true)\nInterpreting node AssignmentStatementNode(lhs=enabled, rhs=true)\n (Assignment RHS: true\n[MARK DIRTY] Propagating to dependent: (0, result)\n[MARK DIRTY] Variable: 0.result (ID: 0, Priority: 1)\n[MARK DIRTY] Propagating to dependent: (0, guarded)\n[MARK DIRTY] Variable: 0.guarded (ID: 3, Priority: 1)\n[MARK DIRTY] Variable: 0.enabled (ID: 1, Priority: 2)\n[DEBUG] Set variable '0.enabled' = true\n[ASSIGN] LHS=enabled (InstanceID: 0) => RHS=true\n[RECALC_DIRTY] Dirty Set: (0, enabled) (0, result) (0, guarded) \n[RECALC_DIRTY] Sorted Vars: (0, enabled) (0, result) (0, guarded) \n[RECALC_DIRTY] Updating variable: (0, enabled)\n[SKIP] Normal variable 'enabled' does not require updates.\n[RECALC_DIRTY] Updating variable: (0, result)\n[EVAL] Variable 0.enabled (InstanceID: 0) = true\n[SKIP] Normal variable 'enabled' does not require updates.\n[EVAL] Variable 0.x (InstanceID: 0) = 3\n[UPDATE] Evaluated result = true\n[RECALC_DIRTY] Updating variable: (0, guarded)\n[EVAL] Variable 0.enabled (InstanceID: 0) = true\n[SKIP] Normal variable 'enabled' does not require updates.\nFunction call: bump()\n[DEBUG] Calling function: bump\n[DEBUG] Body of function bump value: AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000))\n[DEBUG] Body of function bump value: ReturnStatementNode(expr=true)\n[DEBUG] Current environment before function call:\n  0.guarded = true\n  0.result = true\n  0.calls = 2\n  0.x = 3\n  0.enabled = true\n[DEBUG] Closure for function bump:\n  0.guarded = true\n  0.result = true\n  0.calls = 2\n  0.x = 3\n  0.enabled = true\n[DEBUG] Function 'bump' environment (InstanceID: 1003) variables:\n[DEBUG] Executing statement in function 'bump': AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000))\nInterpreting node AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000))\n[EVAL] Variable 1003.calls (InstanceID: 1003) = 2\n (Assignment RHS: 3\n[MARK DIRTY] Variable: 0.calls (ID: 4, Priority: 1)\n[DEBUG] Set variable '0.calls' = 3\n[DEBUG] Set variable '1003.calls' = 3\n[ASSIGN] LHS=calls (InstanceID: 1003) => RHS=3\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'bump': ReturnStatementNode(expr=true)\nInterpreting node ReturnStatementNode(expr=true)\nReturnStatement nodeReturnStatementNode(expr=true)[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=true)\n[DEBUG] node.expr: true\n[RETURN] true\n[DEBUG] Function 'bump' returned with value: true\n[DEBUG] Parent environment variables after function execution:\n  0.guarded = true\n  0.result = true\n  0.calls = 3\n  0.x = 3\n  0.enabled = true\n[UPDATE] Evaluated guarded = true\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:122: Failure\nExpected equality of these values:\n  value(\"calls\")->getNumber()\n    Which is: 3\n  1\n\n AssignmentStatementNode(lhs=enabled, rhs=false)\nInterpreting node AssignmentStatementNode(lhs=enabled, rhs=false)\n (Assignment RHS: false\n[MARK DIRTY] Propagating to dependent: (0, result)\n[MARK DIRTY] Variable: 0.result (ID: 0, Priority: 1)\n[MARK DIRTY] Propagating to dependent: (0, guarded)\n[MARK DIRTY] Variable: 0.guarded (ID: 3, Priority: 1)\n[MARK DIRTY] Variable: 0.enabled (ID: 1, Priority: 2)\n[DEBUG] Set variable '0.enabled' = false\n[ASSIGN] LHS=enabled (InstanceID: 0) => RHS=false\n[RECALC_DIRTY] Dirty Set: (0, enabled) (0, result) (0, guarded) \n[RECALC_DIRTY] Sorted Vars: (0, enabled) (0, result) (0, guarded) \n[RECALC_DIRTY] Updating variable: (0, enabled)\n[SKIP] Normal variable 'enabled' does not require updates.\n[RECALC_DIRTY] Updating variable: (0, result)\n[EVAL] Variable 0.enabled (InstanceID: 0) = false\n[SKIP] Normal variable 'enabled' does not require updates.\n[EVAL] Variable 0.x (InstanceID: 0) = 3\n[UPDATE] Evaluated result = true\n[RECALC_DIRTY] Updating variable: (0, guarded)\n[EVAL] Variable 0.enabled (InstanceID: 0) = false\n[SKIP] Normal variable 'enabled' does not require updates.\nFunction call: bump()\n[DEBUG] Calling function: bump\n[DEBUG] Body of function bump value: AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000))\n[DEBUG] Body of function bump value: ReturnStatementNode(expr=true)\n[DEBUG] Current environment before function call:\n  0.guarded = true\n  0.result = true\n  0.calls = 3\n  0.x = 3\n  0.enabled = false\n[DEBUG] Closure for function bump:\n  0.guarded = true\n  0.result = true\n  0.calls = 3\n  0.x = 3\n  0.enabled = false\n[DEBUG] Function 'bump' environment (InstanceID: 1004) variables:\n[DEBUG] Executing statement in function 'bump': AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000))\nInterpreting node AssignmentStatementNode(lhs=calls, rhs=(calls + 1.000000000000000))\n[EVAL] Variable 1004.calls (InstanceID: 1004) = 3\n (Assignment RHS: 4\n[MARK DIRTY] Variable: 0.calls (ID: 4, Priority: 1)\n[DEBUG] Set variable '0.calls' = 4\n[DEBUG] Set variable '1004.calls' = 4\n[ASSIGN] LHS=calls (InstanceID: 1004) => RHS=4\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEBUG] Executing statement in function 'bump': ReturnStatementNode(expr=true)\nInterpreting node ReturnStatementNode(expr=true)\nReturnStatement nodeReturnStatementNode(expr=true)[DEBUG] Interpreting ReturnStatementNode: ReturnStatementNode(expr=true)\n[DEBUG] node.expr: true\n[RETURN] true\n[DEBUG] Function 'bump' returned with value: true\n[DEBUG] Parent environment variables after function execution:\n  0.guarded = true\n  0.result = true\n  0.calls = 4\n  0.x = 3\n  0.enabled = false\n[UPDATE] Evaluated guarded = true\n AssignmentStatementNode(lhs=x, rhs=1.000000000000000)\nInterpreting node AssignmentStatementNode(lhs=x, rhs=1.000000000000000)\n (Assignment RHS: 1\n[MARK DIRTY] Propagating to dependent: (0, result)\n[MARK DIRTY] Variable: 0.result (ID: 0, Priority: 1)\n[MARK DIRTY] Variable: 0.x (ID: 2, Priority: 2)\n[DEBUG] Set variable '0.x' = 1\n[ASSIGN] LHS=x (InstanceID: 0) => RHS=1\n[RECALC_DIRTY] Dirty Set: (0, x) (0, result) \n[RECALC_DIRTY] Sorted Vars: (0, x) (0, result) \n[RECALC_DIRTY] Updating variable: (0, x)\n[SKIP] Normal variable 'x' does not require updates.\n[RECALC_DIRTY] Updating variable: (0, result)\n[EVAL] Variable 0.enabled (InstanceID: 0) = false\n[EVAL] Variable 0.x (InstanceID: 0) = 1\n[SKIP] Normal variable 'x' does not require updates.\n[UPDATE] Evaluated result = true\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:123: Failure\nValue of: value(\"result\")->getBool()\n  Actual: true\nExpected: false\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:123: Failure\nExpected equality of these values:\n  value(\"calls\")->getNumber()\n    Which is: 4\n  1\n\n[  FAILED  ] NativeLogical.DependencyCollectionRemainsConservativeWithoutExecution (0 ms)\n[----------] 1 test from NativeLogical (0 ms total)\n\n[----------] Global test environment tear-down\n[==========] 1 test from 1 test suite ran. (0 ms total)\n[  PASSED  ] 0 tests.\n[  FAILED  ] 1 test, listed below:\n[  FAILED  ] NativeLogical.DependencyCollectionRemainsConservativeWithoutExecution\n\n 1 FAILED TEST\n\n    Start 36: NativeLogical.InactiveComputedIndexIsCollectedWithoutEvaluation\n7/7 Test #36: NativeLogical.InactiveComputedIndexIsCollectedWithoutEvaluation .........***Failed    0.00 sec\nRunning main() from /Users/joaorocha/.codex/worktrees/async-worker-lifetime/jtml-v1/build/_deps/googletest-src/googletest/src/gtest_main.cc\nNote: Google Test filter = NativeLogical.InactiveComputedIndexIsCollectedWithoutEvaluation\n[==========] Running 1 test from 1 test suite.\n[----------] Global test environment set-up.\n[----------] 1 test from NativeLogical\n[ RUN      ] NativeLogical.InactiveComputedIndexIsCollectedWithoutEvaluation\n DefineStatementNode(identifier=enabled, declaredType=, isConst=false, expression=false)\nInterpreting node DefineStatementNode(identifier=enabled, declaredType=, isConst=false, expression=false)\n[DEBUG] Defined variable '0.enabled' = false\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEFINE] 0.enabled = false (String)\n DefineStatementNode(identifier=index, declaredType=, isConst=false, expression=0.000000000000000)\nInterpreting node DefineStatementNode(identifier=index, declaredType=, isConst=false, expression=0.000000000000000)\n[DEBUG] Defined variable '0.index' = 0\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEFINE] 0.index = 0 (Number)\n DefineStatementNode(identifier=items, declaredType=, isConst=false, expression=[7.000000000000000])\nInterpreting node DefineStatementNode(identifier=items, declaredType=, isConst=false, expression=[7.000000000000000])\n[ReactiveArray] push: Added value to array '0.__temp__array_1'.\n[DEBUG] Assigned name '0.items' to ReactiveArray\n[DEBUG] Defined variable '0.items' = [7]\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \n[DEFINE] 0.items = [7] (Array)\n DeriveStatementNode(identifier=result, declaredType=, expression=(enabled && (items[(index / 0.000000000000000)] > 0.000000000000000)))\nInterpreting node DeriveStatementNode(identifier=result, declaredType=, expression=(enabled && (items[(index / 0.000000000000000)] > 0.000000000000000)))\n[DEBUG 0] gatherDeps Element: <(enabled && (items[(index / 0.000000000000000)] > 0.000000000000000))>\n[DEBUG 0] gatherDeps Element: <enabled>\n[GATHER_DEPS] Dependency found: 0.enabled\n[DEBUG 0] gatherDeps Element: <(items[(index / 0.000000000000000)] > 0.000000000000000)>\n[DEBUG 0] gatherDeps Element: <items[(index / 0.000000000000000)]>\n[DEBUG 0] gatherDeps Element: <items>\n[GATHER_DEPS] Dependency found: 0.items\n[DEBUG 0] gatherDeps Element: <(index / 0.000000000000000)>\n[DEBUG 0] gatherDeps Element: <index>\n[GATHER_DEPS] Dependency found: 0.index\n[DEBUG 0] gatherDeps Element: <0.000000000000000>\n[GATHER_DEPS] Dependency found: 0.items\n[GATHER_DEPS] Specific Subscript Dependency added: 0.items[unknown]\n[DEBUG 0] gatherDeps Element: <0.000000000000000>\n[DEBUG] About to rum derive on 0.result derived from dependencies: 0.enabled 0.items 0.index 0.items 0.items[unknown] \n[DEBUG] Derived variable expression: (enabled && (items[(index / 0.000000000000000)] > 0.000000000000000))\n[EVAL] Variable 0.enabled (InstanceID: 0) = false\n[EVAL] Variable 0.items (InstanceID: 0) = [7]\n[EVAL] Variable 0.index (InstanceID: 0) = 0\n[RECALC_DIRTY] Dirty Set: \n[RECALC_DIRTY] Sorted Vars: \nunknown file: Failure\nC++ exception with description \"Undefined variable: 0.result\" thrown in the test body.\n\n/Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/tests/test_interpreter_logical.cpp:21: Failure\nValue of: errors.str().empty()\n  Actual: false\nExpected: true\nInterpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '0.result': Division by zero\n\n\n[  FAILED  ] NativeLogical.InactiveComputedIndexIsCollectedWithoutEvaluation (0 ms)\n[----------] 1 test from NativeLogical (0 ms total)\n\n[----------] Global test environment tear-down\n[==========] 1 test from 1 test suite ran. (0 ms total)\n[  PASSED  ] 0 tests.\n[  FAILED  ] 1 test, listed below:\n[  FAILED  ] NativeLogical.InactiveComputedIndexIsCollectedWithoutEvaluation\n\n 1 FAILED TEST\n\n\n14% tests passed, 6 tests failed out of 7\n\nLabel Time Summary:\nunit    =   0.04 sec*proc (7 tests)\n\nTotal Test time (real) =   0.06 sec\n\nThe following tests FAILED:\n\t 31 - NativeLogical.BooleanTruthTablesAndType (Failed)  unit\n\t 32 - NativeLogical.ExistingNativeTruthinessIsPreserved (Failed) unit\n\t 33 - NativeLogical.InactiveErrorsAreSkippedAndActiveErrorsStillThrow (Failed) unit\n\t 34 - NativeLogical.SideEffectsAreLazyOrderedAndExactlyOnce (Failed) unit\n\t 35 - NativeLogical.DependencyCollectionRemainsConservativeWithoutExecution (Failed) unit\n\t 36 - NativeLogical.InactiveComputedIndexIsCollectedWithoutEvaluation (Failed) unit\nErrors while running CTest\n",
+  "focusedNativeAfterLog": "Internal ctest changing into directory: /Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/build\nTest project /Users/joaorocha/.codex/worktrees/native-logical-semantics/jtml-v1/build\n      Start  22: NativeTernaryDependencies.MinimalAndNonconditionalControl\n 1/21 Test  #22: NativeTernaryDependencies.MinimalAndNonconditionalControl ...............   Passed    0.01 sec\n      Start  23: NativeTernaryDependencies.BothBranchesAndConditionRemainSubscribed\n 2/21 Test  #23: NativeTernaryDependencies.BothBranchesAndConditionRemainSubscribed ......   Passed    0.00 sec\n      Start  24: NativeTernaryDependencies.NestedGroupingAndDerivedInvalidationChain\n 3/21 Test  #24: NativeTernaryDependencies.NestedGroupingAndDerivedInvalidationChain .....   Passed    0.00 sec\n      Start  25: NativeTernaryDependencies.MemberRootsAndComputedConditionalIndices\n 4/21 Test  #25: NativeTernaryDependencies.MemberRootsAndComputedConditionalIndices ......   Passed    0.00 sec\n      Start  26: NativeTernaryDependencies.GatheringNeverExecutesInactiveBranches\n 5/21 Test  #26: NativeTernaryDependencies.GatheringNeverExecutesInactiveBranches ........   Passed    0.00 sec\n      Start  27: NativeTernaryDependencies.InactiveIndexExpressionsAreNotEvaluated\n 6/21 Test  #27: NativeTernaryDependencies.InactiveIndexExpressionsAreNotEvaluated .......   Passed    0.00 sec\n      Start  28: NativeTernaryDependencies.CompilerAndNativeAgreeOnRequiredRoots\n 7/21 Test  #28: NativeTernaryDependencies.CompilerAndNativeAgreeOnRequiredRoots .........   Passed    0.00 sec\n      Start  29: NativeTernaryDependencies.GatheringNeverExecutesInactiveTrueBranch\n 8/21 Test  #29: NativeTernaryDependencies.GatheringNeverExecutesInactiveTrueBranch ......   Passed    0.00 sec\n      Start  30: NativeLogical.ConstructorOverloadControl\n 9/21 Test  #30: NativeLogical.ConstructorOverloadControl ................................   Passed    0.00 sec\n      Start  31: NativeLogical.BooleanTruthTablesAndType\n10/21 Test  #31: NativeLogical.BooleanTruthTablesAndType .................................   Passed    0.00 sec\n      Start  32: NativeLogical.ExistingNativeTruthinessIsPreserved\n11/21 Test  #32: NativeLogical.ExistingNativeTruthinessIsPreserved .......................   Passed    0.00 sec\n      Start  33: NativeLogical.InactiveErrorsAreSkippedAndActiveErrorsStillThrow\n12/21 Test  #33: NativeLogical.InactiveErrorsAreSkippedAndActiveErrorsStillThrow .........   Passed    0.00 sec\n      Start  34: NativeLogical.SideEffectsAreLazyOrderedAndExactlyOnce\n13/21 Test  #34: NativeLogical.SideEffectsAreLazyOrderedAndExactlyOnce ...................   Passed    0.00 sec\n      Start  35: NativeLogical.DependencyCollectionRemainsConservativeWithoutExecution\n14/21 Test  #35: NativeLogical.DependencyCollectionRemainsConservativeWithoutExecution ...   Passed    0.00 sec\n      Start  36: NativeLogical.InactiveComputedIndexIsCollectedWithoutEvaluation\n15/21 Test  #36: NativeLogical.InactiveComputedIndexIsCollectedWithoutEvaluation .........   Passed    0.00 sec\n      Start 394: InterpreterCalls.simple\n16/21 Test #394: InterpreterCalls.simple .................................................   Passed    0.26 sec\n      Start 395: InterpreterCalls.nested\n17/21 Test #395: InterpreterCalls.nested .................................................   Passed    0.00 sec\n      Start 396: InterpreterCalls.recursion\n18/21 Test #396: InterpreterCalls.recursion ..............................................   Passed    0.01 sec\n      Start 397: InterpreterCalls.excessive\n19/21 Test #397: InterpreterCalls.excessive ..............................................   Passed    0.06 sec\n      Start 398: InterpreterCalls.independent\n20/21 Test #398: InterpreterCalls.independent ............................................   Passed    0.00 sec\n      Start 399: InterpreterCalls.concurrent\n21/21 Test #399: InterpreterCalls.concurrent .............................................   Passed    0.00 sec\n\n100% tests passed, 0 tests failed out of 21\n\nLabel Time Summary:\ninterpreter    =   0.33 sec*proc (6 tests)\nunit           =   0.40 sec*proc (21 tests)\n\nTotal Test time (real) =   0.42 sec\n"
+}

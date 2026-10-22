@@ -1,0 +1,24 @@
+jtml 2
+
+make Probe
+  let x = 0
+  let y = 3
+  get conjunction = (x >= 2) && (y < 5)
+  get disjunction = (x >= 2) || (y < 5)
+  get result = !((x >= 2) && (y < 5))
+  when step
+    x += 1
+  when raise
+    y = 6
+  when lower
+    y = 3
+  box class "probe"
+    p class "out-conjunction" conjunction
+    p class "out-disjunction" disjunction
+    p class "out-result" result
+    button "step" click step
+    button "raise" click raise
+    button "lower" click lower
+
+page
+  Probe

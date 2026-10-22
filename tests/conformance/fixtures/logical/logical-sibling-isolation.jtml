@@ -1,0 +1,15 @@
+jtml 2
+
+make Probe
+  let x = 0
+  get result = !(x > 0)
+  when step
+    x += 1
+  box class "probe"
+    p class "out-x" x
+    p class "out-result" result
+    button "step" click step
+
+page
+  Probe
+  Probe

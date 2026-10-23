@@ -32,33 +32,56 @@ jobs:
       # WebSocket++, standalone Asio, and GoogleTest are pinned and fetched by
       # CMake. httplib.h and nlohmann/json are vendored under `third_party/`.
       # --------------------------------------------------------------
-      - name: Install deps (Ubuntu)
-        if: runner.os == 'Linux'
+      # Hosted images provide these tools. Fail on image drift instead of
+      # updating apt/Homebrew and reinstalling them on every job.
+      - name: Verify runner tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build
-
-      - name: Install deps (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew update
-          brew install cmake ninja
+          cmake --version
+          ninja --version
+          c++ --version
+          node --version
+          npm --version
+          python3 --version
+          curl --version
 
       - name: Install Chrome headless shell
         run: |
           driver="${RUNNER_TEMP}/playwright-driver"
           export PLAYWRIGHT_BROWSERS_PATH="${RUNNER_TEMP}/ms-playwright"
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix "${driver}" --no-save playwright@1.63.0
-          if [[ "${RUNNER_OS}" == "Linux" ]]; then
-            "${driver}/node_modules/.bin/playwright" install --with-deps chromium-headless-shell
-          else
-            "${driver}/node_modules/.bin/playwright" install chromium-headless-shell
-          fi
+          # Keep Playwright's pinned browser; the hosted image supplies system
+          # libraries. Check linking and real execution below, without a second
+          # apt update/install via --with-deps (including fonts and Xvfb).
+          "${driver}/node_modules/.bin/playwright" install chromium-headless-shell
           browser="$(find "${PLAYWRIGHT_BROWSERS_PATH}" -type f -name chrome-headless-shell -perm -111 -print -quit)"
           test -n "${browser}"
           echo "JTML_BENCH_BROWSER=${browser}" >> "${GITHUB_ENV}"
           echo "JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=${driver}" >> "${GITHUB_ENV}"
           "${browser}" --version
+          if [[ "${RUNNER_OS}" == "Linux" ]]; then
+            ldd "${browser}" | tee "${RUNNER_TEMP}/chromium-libraries.txt"
+            if grep -q 'not found' "${RUNNER_TEMP}/chromium-libraries.txt"; then
+              echo "::error::Runner image is missing Chromium shared libraries"
+              exit 1
+            fi
+          fi
+          # --version alone cannot prove renderer startup or dynamic libraries.
+          node - "${driver}" "${browser}" <<'JS'
+          const assert = require('node:assert/strict');
+          const { chromium } = require(`${process.argv[2]}/node_modules/playwright`);
+          (async () => {
+            const browser = await chromium.launch({ executablePath: process.argv[3], headless: true });
+            try {
+              const page = await browser.newPage();
+              await page.setContent('<button onclick="this.textContent = 42">Run</button>');
+              await page.locator('button').click();
+              assert.equal(await page.locator('button').textContent(), '42');
+              console.log(`Chromium renderer verified: ${browser.version()}`);
+            } finally {
+              await browser.close();
+            }
+          })().catch(error => { console.error(error); process.exitCode = 1; });
+          JS
 
       # --------------------------------------------------------------
       # Configure, build, test

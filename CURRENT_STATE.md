@@ -6,6 +6,18 @@ The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.
 
+## Native nested environment repair
+
+The original differential matrix is now 22/22 PASS, resolving the two native
+nested-parameter diagnostic defects without changing their source or oracles.
+Expanded child state, sibling isolation and repeated remount/reset have additional
+regressions. Local verification: 432/432 CTests, nine clean-exit browser benchmarks
+and complete predeploy gate PASS, no checks skipped. The separate Friendly
+parameter-capture defect remains **FAIL / KNOWN DEFECT** (expected 200, actual 20),
+as do the five supplemental native attribute-renderer observations. Original
+strict conformance passes; supplemental capture strict mode still exits nonzero.
+See [ownership, evidence and limits](docs/architecture/native-nested-environments.md).
+
 ## Project Status
 
 JTML is a C++17 language/toolchain for Friendly JTML 2, the primary web/app

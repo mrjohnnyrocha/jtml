@@ -11,6 +11,7 @@ commands = [
     ['node', str(root/'tests/browser/ternary_dependencies.cjs')],
     ['node', str(root/'tests/browser/logical_expressions.cjs')],
     ['node', str(root/'tests/browser/unary_numeric.cjs')],
+    ['node', str(root/'tests/browser/nested_environments.cjs')],
 ]
 for command in commands:
     process = subprocess.Popen(command, cwd=root, start_new_session=True)

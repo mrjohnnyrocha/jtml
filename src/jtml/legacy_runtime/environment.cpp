@@ -481,8 +481,16 @@ void Environment::markDirty(const CompositeKey& key) {
                     << " (ID: " << varID << ", Priority: " << priority << ")\n";
     }
 
-    if (parent && parent->hasVariable(key)) {
-        parent->markDirty(key);
+    // A lexical name match is not ownership: never dirty a child's CompositeKey
+    // in a parent merely because that parent has a same-named local.
+    const auto local = variables.find(key);
+    for (auto owner = parent; owner; owner = owner->parent) {
+        const auto existing = owner->variables.find(key);
+        if (existing == owner->variables.end()) continue;
+        if (local == variables.end() || local->second == existing->second) {
+            owner->markDirty(key);
+        }
+        break;
     }
 }
 

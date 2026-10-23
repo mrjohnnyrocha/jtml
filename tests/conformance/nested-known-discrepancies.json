@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "meaning": "Separate reviewed Friendly parameter-capture failure; never a semantic pass. Exact source/oracle/signature required; changed or resolved behavior requires review.",
+  "entries": {
+    "native-parameter-capture": {
+      "classification": "friendly-parameter-expression-capture",
+      "sourceSha256": "40895b789a64e5ccac7d0b45b56be2983901ff3cbebe00c89c95ce651c39aea2",
+      "expectedSha256": "8bcaa93725b23e9952608adafec72bf8729265af01dc8a7492639bfcfdb48887",
+      "failures": [
+        {
+          "layer": "native-lowering",
+          "observation": "expanded-state",
+          "actual": {
+            "parentCount": 100,
+            "childCount": 10,
+            "result": 20
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+jtml 2
+
+make Leaf value
+  get triple = value * 3
+  p class "leaf-value" triple
+
+make Child value
+  let count = 10
+  get result = value * 2
+  box
+    p class "child-local" count
+    p class "child-value" result
+    Leaf result
+
+make Probe
+  let x = 2
+  get result = x + 1
+  get next = x + 1
+  when step
+    x += 1
+  box class "probe"
+    p class "out-x" x
+    p class "out-result" result
+    Child x
+    Child next
+    button "step" click step
+
+page
+  Probe
+  Probe

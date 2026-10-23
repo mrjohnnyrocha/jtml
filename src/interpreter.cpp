@@ -28,6 +28,27 @@ public:
     using std::runtime_error::runtime_error;
 };
 
+// Resolve the same lexical binding as getVariable, retaining its actual owner
+// and canonical lowered key when a component exposes a public-name alias.
+std::pair<std::shared_ptr<JTML::Environment>, JTML::CompositeKey>
+variableOwner(const std::shared_ptr<JTML::Environment>& env, const std::string& name) {
+    for (auto owner = env; owner; owner = owner->parent) {
+        JTML::CompositeKey key{owner->instanceID, name};
+        const auto variable = owner->variables.find(key);
+        if (variable == owner->variables.end()) continue;
+        const auto id = owner->nameToId.find(key);
+        if (id != owner->nameToId.end() && id->second >= 0 &&
+            static_cast<size_t>(id->second) < owner->idToKey.size()) {
+            const auto canonical = owner->idToKey[id->second];
+            const auto stored = owner->variables.find(canonical);
+            if (stored != owner->variables.end() && stored->second == variable->second) key = canonical;
+        }
+        return {owner, key};
+    }
+    // Preserve the existing undefined-variable diagnostic at the caller.
+    return {env, {env->instanceID, name}};
+}
+
 bool eventCarriesBrowserValue(const std::string& eventType) {
     return eventType == "onInput" ||
            eventType == "onChange" ||
@@ -1109,7 +1130,7 @@ std::string Interpreter::getStateJSON() {
             const std::string raw = i + 1 < words.size() ? words[i + 1] : "";
             JTML::CompositeKey key{nestedInstance.environment->instanceID, nestedDef->params[i]};
             auto value = expressionValue(raw, env);
-            if (nestedInstance.environment->hasVariable(key)) {
+            if (nestedInstance.environment->variables.count(key)) {
                 nestedInstance.environment->setVariable(key, value);
             } else {
                 nestedInstance.environment->defineVariable(key, value);
@@ -1137,7 +1158,7 @@ std::string Interpreter::getStateJSON() {
             if (planned.parentIndex != -1 || planned.name.empty()) continue;
             if (planned.kind == "state") {
                 JTML::CompositeKey key{nestedInstance.environment->instanceID, planned.name};
-                if (!nestedInstance.environment->hasVariable(key)) {
+                if (!nestedInstance.environment->variables.count(key)) {
                     nestedInstance.environment->defineVariable(
                         key,
                         expressionValue(planned.expression, nestedInstance.environment));
@@ -2833,6 +2854,11 @@ void Interpreter::interpretElement(const JtmlElementNode& elem) {
     auto previousEnv = currentEnv;
     RuntimeComponentInstance* componentInstance = findComponentInstanceForElement(elem);
     if (componentInstance && componentInstance->environment) {
+        // Expanded parameters reference the enclosing component's lowered names.
+        // Attach at the lexical boundary, before evaluating child declarations.
+        if (componentInstance->environment != previousEnv) {
+            componentInstance->environment->parent = previousEnv;
+        }
         currentEnv = componentInstance->environment;
     }
 
@@ -2992,7 +3018,7 @@ void Interpreter::attachComponentEnvironment(RuntimeComponentInstance& instance)
 
     for (const auto& [paramName, paramValue] : instance.params) {
         JTML::CompositeKey paramKey{instance.environment->instanceID, paramName};
-        if (!instance.environment->hasVariable(paramKey)) {
+        if (!instance.environment->variables.count(paramKey)) {
             instance.environment->defineVariable(
                 paramKey,
                 std::make_shared<JTML::VarValue>(paramValue));
@@ -3610,9 +3636,7 @@ void Interpreter::interpretDefine(const DefineStatementNode& stmt) {
 
         // Only mark dirty and recalculate if in the global or instance scope
         if (currentEnv->isGlobalEnvironment()) {
-            currentEnv->recalcDirty([this](JTML::VarID varID) {
-                updateVariable(varID, currentEnv);
-            });
+            recalcDirty(currentEnv);
         }
 
         // Enhanced Logging: Separate value and type information
@@ -3755,9 +3779,7 @@ void Interpreter::interpretAssignment(const AssignmentStatementNode& stmt) {
             break;
     }
     std::cout << " => RHS=" << newVal->toString() << "\n";
-    currentEnv->recalcDirty([this](JTML::VarID varID) {
-                        updateVariable(varID, currentEnv);
-                    });
+    recalcDirty(currentEnv);
 
 }
 
@@ -3957,9 +3979,7 @@ void Interpreter::interpretFor(const ForStatementNode& node) {
                     }
 
                     // Recalculate dirty variables if necessary
-                    env->recalcDirty([this](JTML::VarID varID) {
-                        updateVariable(varID, currentEnv);
-                    });
+                    recalcDirty(env);
                 }
             }
             else if (iterableVal->isString()) {
@@ -3983,9 +4003,7 @@ void Interpreter::interpretFor(const ForStatementNode& node) {
                     }
 
                     // Recalculate dirty variables if necessary
-                    env->recalcDirty([this](JTML::VarID varID) {
-                        updateVariable(varID, currentEnv);
-                    });
+                    recalcDirty(env);
                 }
             }
             else {
@@ -4018,9 +4036,7 @@ void Interpreter::interpretFor(const ForStatementNode& node) {
                 }
 
                 // Recalculate dirty variables if necessary
-                env->recalcDirty([this](JTML::VarID varID) {
-                    updateVariable(varID, currentEnv);
-                });
+                recalcDirty(env);
             }
         }
     } catch (const ReturnException&) {
@@ -4833,21 +4849,20 @@ std::shared_ptr<JTML::VarValue> Interpreter::evaluateExpression(const Expression
 
       case ExpressionStatementNodeType::Variable: {
             const auto* varExpr = static_cast<const VariableExpressionStatementNode*>(exprNode);
-            // Construct JTML::CompositeKey for the variable
-            JTML::CompositeKey varKey = { env->instanceID, varExpr->name };
-            auto varVal = env->getVariable(varKey);
+            const auto [owner, varKey] = variableOwner(env, varExpr->name);
+            auto varVal = owner->getVariable(varKey);
 
             std::cout << "[EVAL] Variable " << env->getCompositeName(varKey) << " (InstanceID: " << varKey.instanceID
                       << ") = " << varVal->toString() << "\n";
 
             // Check if the variable is dirty and needs to be updated
-            JTML::VarID varID = env->getVarID(varKey);
+            JTML::VarID varID = owner->getVarID(varKey);
 
-            if (env->dirtyVars.count(varID)) {
-                updateVariable(varID, env);
+            if (owner->dirtyVars.count(varID)) {
+                updateVariable(varID, owner);
             }
 
-            return varVal;
+            return owner->getVariable(varKey);
         }
 
         case ExpressionStatementNodeType::StringLiteral: {
@@ -5212,10 +5227,10 @@ void Interpreter::gatherDeps(
     switch (exprNode->getExprType()) {
         case ExpressionStatementNodeType::Variable: {
             const auto* varExpr = static_cast<const VariableExpressionStatementNode*>(exprNode);
-            JTML::CompositeKey varKey = { env->instanceID, varExpr->name };
+            const auto [owner, varKey] = variableOwner(env, varExpr->name);
 
             try {
-                auto varValue = env->getVariable(varKey);
+                auto varValue = owner->getVariable(varKey);
                 if (!varValue) {
                     throw std::runtime_error("Variable '" + varExpr->name + "' not found.");
                 }
@@ -5379,16 +5394,55 @@ void Interpreter::gatherDeps(
 // (E) Detect cycle using DFS
 
 void Interpreter::recalcDirty(std::shared_ptr<JTML::Environment> env) {
+    // Transfer invalidation before clearing this owner, without recursively
+    // evaluating other scopes from a side-effecting function/derived expression.
+    prepareDirtyScopes();
     env->recalcDirty([this, &env](JTML::VarID varID) {
         this->updateVariable(varID, env);
     });
 }
 
-void Interpreter::recalcAllDirty() {
-    if (globalEnv) recalcDirty(globalEnv);
-    for (auto& instance : componentInstances) {
-        if (instance.environment) recalcDirty(instance.environment);
+std::vector<std::shared_ptr<JTML::Environment>> Interpreter::prepareDirtyScopes() {
+    std::vector<std::shared_ptr<JTML::Environment>> scopes;
+    auto include = [&](std::shared_ptr<JTML::Environment> env) {
+        for (; env; env = env->parent) {
+            if (std::find(scopes.begin(), scopes.end(), env) == scopes.end()) scopes.push_back(env);
+        }
+    };
+    include(globalEnv);
+    include(currentEnv);
+    for (const auto& instance : componentInstances) include(instance.environment);
+    auto depth = [](std::shared_ptr<JTML::Environment> env) {
+        size_t value = 0;
+        for (; env; env = env->parent) ++value;
+        return value;
+    };
+    std::stable_sort(scopes.begin(), scopes.end(), [&](const auto& left, const auto& right) {
+        return depth(left) < depth(right);
+    });
+    // Before clearing any owner's dirty set, transfer invalidation across lexical
+    // boundaries. Store no duplicate values or callbacks. Ancestors precede their
+    // descendants, so a newly dirty child-derived value reaches grandchildren too.
+    for (const auto& scope : scopes) {
+        for (const auto& [key, info] : scope->variables) {
+            if (!info || info->kind != JTML::VarKind::Derived) continue;
+            for (const auto& dependency : info->dependencies) {
+                for (auto owner = scope->parent; owner; owner = owner->parent) {
+                    if (!owner->variables.count(dependency)) continue;
+                    const auto id = owner->nameToId.find(dependency);
+                    if (id != owner->nameToId.end() && owner->dirtyVars.count(id->second)) {
+                        scope->markDirty(variableOwner(scope, key.varName).second);
+                    }
+                    break;
+                }
+            }
+        }
     }
+    return scopes;
+}
+
+void Interpreter::recalcAllDirty() {
+    for (const auto& scope : prepareDirtyScopes()) recalcDirty(scope);
 }
 
 void Interpreter::updateVariable(JTML::VarID varID, std::shared_ptr<JTML::Environment> env) {

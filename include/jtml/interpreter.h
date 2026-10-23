@@ -247,6 +247,7 @@ private:
 
     // Dependency Tracking with Integer IDs
 
+    std::vector<std::shared_ptr<JTML::Environment>> prepareDirtyScopes();
     void recalcDirty(std::shared_ptr<JTML::Environment> env);
     void recalcAllDirty();
     void updateVariable(JTML::VarID varID, std::shared_ptr<JTML::Environment> env);

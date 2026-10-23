@@ -1,0 +1,27 @@
+jtml 2
+
+make Child value
+  let count = 10
+  get result = value * 2
+  box
+    p class "child-local" count
+    p class "child-value" result
+
+make Probe
+  let x = 2
+  let enabled = true
+  get result = x + 1
+  when step
+    x += 1
+  when toggle
+    enabled = !enabled
+  box class "probe"
+    p class "out-x" x
+    p class "out-result" result
+    if enabled
+      Child x
+    button "step" click step
+    button "toggle" click toggle
+
+page
+  Probe

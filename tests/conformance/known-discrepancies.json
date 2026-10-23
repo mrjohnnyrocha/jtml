@@ -1,40 +1,6 @@
 {
   "version": 1,
   "meaning": "Reviewed counterexamples, not semantic passes. No automatic blessing command. A changed signature or resolved discrepancy requires review.",
-  "entries": {
-    "nested-parameter-retention": {
-      "sourceSha256": "1a5436763a48b0b0949a7ea0ca0666d7b74b0e05975fed2e37f3206b1d204ec6",
-      "classification": "native-component-environment",
-      "failures": [
-        {
-          "layer": "native-diagnostics",
-          "details": [
-            "Interpreter Error: Dependency Gathering Error: Undefined variable: <instance>.__Probe_2_x",
-            "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Child_1_result': Undefined variable: <instance>.__Probe_2_x",
-            "Interpreter Error: Dependency Gathering Error: Undefined variable: <instance>.__Probe_4_x",
-            "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Child_3_result': Undefined variable: <instance>.__Probe_4_x",
-            "Interpreter Error: Attempted to update undefined variable '<instance>.result' in InstanceID <instance>",
-            "Interpreter Error: Attempted to update undefined variable '<instance>.result' in InstanceID <instance>",
-            "Interpreter Error: Attempted to update undefined variable '<instance>.result' in InstanceID <instance>",
-            "Interpreter Error: Attempted to update undefined variable '<instance>.result' in InstanceID <instance>"
-          ]
-        }
-      ],
-      "expectedSha256": "04984955eec7d01faae570e093a899e68777a381b3fb56452dd5a3d5b6c763de"
-    },
-    "nested-parameter-minimal": {
-      "sourceSha256": "39c78dd56c207673d039030587a80f9034ed9b49f8e2c1d30934c76a91ed3835",
-      "classification": "native-component-environment",
-      "expectedSha256": "5d7b82f4b31fc0a07d175c4d96e8693db7f0e4c3c6329b87ab0ebfb9199d5b0b",
-      "failures": [
-        {
-          "layer": "native-diagnostics",
-          "details": [
-            "Interpreter Error: Dependency Gathering Error: Undefined variable: <instance>.__Probe_2_x",
-            "Interpreter Error: Derive Statement Error: Error evaluating initial value for derived variable '<instance>.__Child_1_result': Undefined variable: <instance>.__Probe_2_x"
-          ]
-        }
-      ]
-    }
-  }
+  "entries": {},
+  "historicalEvidence": "history/pr28-known-discrepancies.json retains the reviewed nested-parameter signatures. Both now pass unchanged source and independent oracles; separate supplemental catalogs remain failures."
 }

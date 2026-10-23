@@ -21,6 +21,7 @@ set(JTML_TEST_SOURCES
     test_attribute_classifier.cpp
     test_parser.cpp
     test_interpreter_dependencies.cpp
+    test_interpreter_components.cpp
     test_interpreter_logical.cpp
     test_interpreter_unary.cpp
     test_diagnostics.cpp

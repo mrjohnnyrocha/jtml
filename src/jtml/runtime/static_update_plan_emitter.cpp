@@ -2840,6 +2840,21 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
         }
 
         for (const auto& node : component.value("bodyPlan", nlohmann::json::array())) {
+            const auto childId = node.value("childComponentId", -1);
+            if (childId >= 0 && static_cast<size_t>(childId) < components.size()) {
+                // Nested arguments execute in the caller's scope. Require the
+                // existing Expression IR/direct-JS contract, never a source
+                // fragment or a runtime parser fallback for an accepted call.
+                const auto params = components[childId].value("params", std::vector<std::string>{});
+                const auto words = node.value("wordPlans", nlohmann::json::array());
+                for (size_t i = 0; i < params.size(); ++i) {
+                    if (i + 1 < words.size() && isDirectJsExpressionPlan(words[i + 1])) continue;
+                    issues.push_back("component " + context +
+                        " has unsupported production argument `" + params[i] + "` to `" +
+                        components[childId].value("name", "") + "` at " + sourceLabelFor(component, node) +
+                        "; use a statically analyzable expression over caller observable values");
+                }
+            }
             if (node.contains("compilerElementParts")) {
                 const auto& parts = node.at("compilerElementParts");
                 for (const auto& attr : parts.value("attrs", nlohmann::json::array())) {

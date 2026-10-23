@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "meaning": "Original capture resolved with unchanged source/oracle. Separate grouped/global argument backend failures reproduced on frozen main; never semantic passes. Changed or resolved signatures require review.",
+  "historicalEvidence": "history/pr31-nested-known-discrepancies.json",
+  "entries": {
+    "grouped-component-argument": {
+      "classification": "browser-grouped-component-argument",
+      "sourceSha256": "c64b75d25493cd644779f0d59a42b3938973ed4061618a65bec97b3bb7075736",
+      "expectedSha256": "e3e4570266ebf1c72e1503c78db12d0310b1e2db2dfc288a9547bf5bc2a09d70",
+      "failures": [
+        {
+          "layer": "browser",
+          "observation": "visible",
+          "actual": [
+            [
+              {
+                "count": "100",
+                "child": [
+                  "NaN"
+                ]
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    "global-parameter-public-alias": {
+      "classification": "global-argument-backend-binding",
+      "sourceSha256": "1341bd455b9891ef5eb6ed848c532138abf880ad0f3eb0999102a8148f20cbe2",
+      "expectedSha256": "66b5ceedc66b081e6f85369fd97f2ca5ba63d8158f06d31356664c0ecb87c974",
+      "failures": [
+        {
+          "layer": "native",
+          "observation": "state",
+          "actual": [
+            [
+              {
+                "count": 10,
+                "result": 20
+              }
+            ]
+          ]
+        },
+        {
+          "layer": "native",
+          "observation": "visible",
+          "actual": [
+            [
+              {
+                "count": "10",
+                "result": "20"
+              }
+            ]
+          ]
+        },
+        {
+          "layer": "browser",
+          "observation": "state",
+          "actual": [
+            [
+              {
+                "count": 10,
+                "result": null
+              }
+            ]
+          ]
+        },
+        {
+          "layer": "browser",
+          "observation": "visible",
+          "actual": [
+            [
+              {
+                "count": "10",
+                "result": "NaN"
+              }
+            ]
+          ]
+        }
+      ]
+    }
+  }
+}

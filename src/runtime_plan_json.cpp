@@ -1,6 +1,7 @@
 #include "jtml/runtime_plan_json.h"
 
 #include "jtml/expression_ir.h"
+#include "jtml/friendly.h"
 
 #include <cctype>
 #include <cstdlib>
@@ -367,39 +368,6 @@ ExpressionTypeEnvironment runtimePlanInstanceSlotTypeEnvironment(
     return environment;
 }
 
-std::vector<std::string> splitRuntimePlanWords(const std::string& source) {
-    std::vector<std::string> words;
-    std::string current;
-    char quote = '\0';
-    for (size_t i = 0; i < source.size(); ++i) {
-        const char ch = source[i];
-        if (quote != '\0') {
-            current += ch;
-            if (ch == '\\' && i + 1 < source.size()) {
-                current += source[++i];
-            } else if (ch == quote) {
-                quote = '\0';
-            }
-            continue;
-        }
-        if (ch == '"' || ch == '\'') {
-            quote = ch;
-            current += ch;
-            continue;
-        }
-        if (std::isspace(static_cast<unsigned char>(ch))) {
-            if (!current.empty()) {
-                words.push_back(current);
-                current.clear();
-            }
-            continue;
-        }
-        current += ch;
-    }
-    if (!current.empty()) words.push_back(current);
-    return words;
-}
-
 std::string trimRuntimePlanString(const std::string& value) {
     size_t begin = 0;
     while (begin < value.size() &&
@@ -755,7 +723,7 @@ nlohmann::json compileRuntimeWordPlans(
         const ExpressionTypeEnvironment& environment,
         const RuntimePlanJsonOptions& options) {
     nlohmann::json out = nlohmann::json::array();
-    for (const auto& word : splitRuntimePlanWords(text)) {
+    for (const auto& word : splitFriendlyWords(text)) {
         out.push_back(compileRuntimeExpressionPlanForOptions(word, environment, options));
     }
     return out;

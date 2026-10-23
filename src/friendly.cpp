@@ -3052,6 +3052,10 @@ std::vector<ElementBindingRole> classifyElementBindings(
 
 } // namespace
 
+std::vector<std::string> splitFriendlyWords(const std::string& source) {
+    return splitTokens(source);
+}
+
 std::vector<FriendlyElementRole> classifyFriendlyElement(
         const std::vector<std::string>& tokens,
         const std::map<std::string, std::string>& bindings) {

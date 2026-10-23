@@ -6,16 +6,29 @@ The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.
 
+## Friendly component parameter capture
+
+The original Parent count=100 / Child count=10 reproducer now returns **200** in
+expanded state, native rendered HTML and clean-production browser DOM, with its
+source and independent oracle unchanged. Friendly argument/local binding is
+simultaneous and preserves existing inline-content syntax roles. Native runtime
+and the PR #31 environment repair are unchanged. Validation: 204/204 focused tests,
+437/437 CTests, nine clean-exit browser benchmarks and full local gate PASS,
+no checks skipped. Two separately reproduced grouped/global argument backend
+counterexamples remain FAIL / KNOWN DEFECT, plus the five unchanged native
+attribute-renderer observations. See [causes, evidence and review limits](docs/architecture/friendly-parameter-capture.md).
+
 ## Native nested environment repair
 
 The original differential matrix is now 22/22 PASS, resolving the two native
 nested-parameter diagnostic defects without changing their source or oracles.
 Expanded child state, sibling isolation and repeated remount/reset have additional
-regressions. Local verification: 432/432 CTests, nine clean-exit browser benchmarks
-and complete predeploy gate PASS, no checks skipped. The separate Friendly
-parameter-capture defect remains **FAIL / KNOWN DEFECT** (expected 200, actual 20),
-as do the five supplemental native attribute-renderer observations. Original
-strict conformance passes; supplemental capture strict mode still exits nonzero.
+regressions. PR #31 verification: 432/432 CTests, nine clean-exit browser benchmarks
+and complete predeploy gate PASS, no checks skipped. The Friendly parameter
+capture found then is repaired by the subsequent slice above; the five
+supplemental native attribute-renderer observations remain known failures.
+Original strict conformance passes; supplemental strict mode still exits nonzero
+for separately catalogued backend boundaries.
 See [ownership, evidence and limits](docs/architecture/native-nested-environments.md).
 
 ## Project Status

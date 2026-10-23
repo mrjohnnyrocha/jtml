@@ -1,0 +1,11 @@
+jtml 2
+make Child value
+  get result = value * 2
+  p class "child-value" result
+make Probe
+  let count = 100
+  box class "probe"
+    p class "out-count" count
+    Child (count + 1)
+page
+  Probe

@@ -5033,3 +5033,67 @@ page
     EXPECT_NE(lowered.find("id=__Probe_1_title"), std::string::npos);
     EXPECT_NE(lowered.find("show __Probe_1_value"), std::string::npos);
 }
+
+TEST(FriendlyBinding, CallerArgumentsAreNotRenamedAsCalleeLocals) {
+    for (const auto& name : {"count", "x", "title", "index"}) {
+        SCOPED_TRACE(name);
+        const auto lowered = normalizeOk(std::string("jtml 2\nmake Child value\n  let ") + name +
+            " = 10\n  get result = value * 2\n  p result\nmake Parent\n  let " + name +
+            " = 100\n  Child " + name + "\npage\n  Parent\n");
+        EXPECT_NE(lowered.find(std::string("derive __Child_1_result = __Parent_2_") + name + " * 2"), std::string::npos);
+        EXPECT_NE(lowered.find(std::string("define __Child_1_") + name + " = 10"), std::string::npos);
+    }
+}
+
+TEST(FriendlyBinding, CallerMemberRootsAndInterpolationKeepTheirLexicalOwner) {
+    const auto lowered = normalizeOk(R"(jtml 2
+make Child value label
+  let record = { count: 10 }
+  let count = 10
+  get result = value.count + value["count"]
+  p label
+  p result
+make Parent
+  let count = 100
+  let record = { count: count }
+  Child record "caller {count}"
+page
+  Parent
+)");
+    EXPECT_NE(lowered.find("__Parent_2_record.count + __Parent_2_record[\"count\"]"), std::string::npos);
+    EXPECT_NE(lowered.find("{ count: __Parent_2_count }"), std::string::npos);
+    EXPECT_NE(lowered.find("\"caller \" + __Parent_2_count"), std::string::npos);
+    EXPECT_EQ(lowered.find("\"caller \" + __Child_1_count"), std::string::npos);
+}
+
+TEST(FriendlyBinding, ParameterSubstitutionIsSimultaneousAndPreservesActions) {
+    const auto lowered = normalizeOk(R"(jtml 2
+let x = 100
+let y = 200
+make Child first second
+  let x = 10
+  when y
+    return first
+  get result = first - second
+  button "y x first second" click y
+  p result
+page
+  Child y x
+)");
+    EXPECT_NE(lowered.find("derive __Child_1_result = y - x"), std::string::npos);
+    EXPECT_NE(lowered.find("return y"), std::string::npos);
+    EXPECT_NE(lowered.find("function __Child_1_y"), std::string::npos);
+    EXPECT_NE(lowered.find("\"y x first second\""), std::string::npos);
+}
+
+TEST(FriendlyBinding, GlobalCallerAttributeNamesRetainInlineContentRole) {
+    for (const auto& name : {"title", "style", "class", "value", "id", "disabled"}) {
+        SCOPED_TRACE(name);
+        const auto lowered = normalizeOk(std::string("jtml 2\nlet ") + name +
+            " = 100\nmake Child input\n  let " + name +
+            " = 10\n  h2 input data-label \"marker\" aria-label \"caption\"\npage\n  Child " + name + "\n");
+        EXPECT_NE(lowered.find(std::string("show (") + name + ")"), std::string::npos);
+        EXPECT_NE(lowered.find("data-label=\"marker\""), std::string::npos);
+        EXPECT_NE(lowered.find("aria-label=\"caption\""), std::string::npos);
+    }
+}

@@ -209,3 +209,21 @@ TEST_F(NativeComponentEnvironment, SideEffectingDerivedWritesInvalidateChildrenW
     EXPECT_EQ(state["variables"]["calls"]["value"], 1);
     for (const auto& c : state["components"]) if (c["component"] == "Child") EXPECT_EQ(c["locals"]["result"]["value"], 2);
 }
+
+TEST_F(NativeComponentEnvironment, CallerCountIsNotCapturedByChildCount) {
+    run("jtml 2\nmake Child value\n  let count = 10\n  get result = value * 2\n  p result\n"
+        "make Parent\n  let count = 100\n  Child count\npage\n  Parent\n");
+    const auto state = snapshot();
+    size_t children = 0;
+    for (const auto& c : state["components"]) {
+        if (c["component"] == "Child") {
+            ++children; EXPECT_EQ(c["locals"]["count"]["value"], 10);
+            EXPECT_EQ(c["locals"]["result"]["value"], 200);
+        }
+        if (c["component"] == "Parent") {
+            EXPECT_EQ(c["locals"]["count"]["value"], 100);
+            EXPECT_NE(c["renderedHtml"].get<std::string>().find(">200</p>"), std::string::npos);
+        }
+    }
+    EXPECT_EQ(children, 1u);
+}

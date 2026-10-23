@@ -1,0 +1,10 @@
+jtml 2
+let count = 100
+make Probe value
+  let count = 10
+  get result = value * 2
+  box class "probe"
+    p class "out-count" count
+    p class "out-result" result
+page
+  Probe count

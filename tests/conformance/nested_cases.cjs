@@ -21,4 +21,5 @@ module.exports=[
    [{child:['6'],local:['10']}],[{child:['8'],local:['10']}],[{child:[],local:[]}],
    [{child:['8'],local:['10']}],[{child:['10'],local:['10']}]],
   checks:[{component:'Child',text:'get result = value * 2',reads:['value'],irReads:['value']}]}]
+ .concat(require('./parameter_capture_cases.cjs'))
  .map(fixture=>({...fixture,authoredSource:path.join(__dirname,'fixtures/nested',fixture.file),source:fs.readFileSync(path.join(__dirname,'fixtures/nested',fixture.file),'utf8')}));

@@ -1945,6 +1945,10 @@ std::string substituteIdentifiers(const std::string& text,
         } else {
             token = substituteExpressionNames(token, bindings);
         }
+        // Substitution must preserve the parser's original content role. A
+        // caller name such as `title` is still an expression, not a new key.
+        if (roles[tokenIndex] == ElementBindingRole::InlineContent &&
+            isElementAttributeBoundary(token)) token = "(" + token + ")";
     }
     std::ostringstream out;
     for (size_t i = 0; i < tokens.size(); ++i) {
@@ -1952,11 +1956,6 @@ std::string substituteIdentifiers(const std::string& text,
         out << tokens[i];
     }
     return out.str();
-}
-
-std::string substituteParams(const std::string& text,
-                             const std::map<std::string, std::string>& bindings, int lineNumber) {
-    return substituteIdentifiers(text, bindings, lineNumber);
 }
 
 void collectComponentLocalNames(const std::vector<Line>& body,
@@ -2446,6 +2445,11 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
         } else {
             instanceId = instanceCounter;
         }
+        // Bind authored callee references in one pass. Argument expressions
+        // belong to the caller: never rescan inserted arguments with the
+        // callee's local renaming map (which would capture same-named locals).
+        auto bodyBindings = localBindings;
+        bodyBindings.insert(bindings.begin(), bindings.end());
         const std::string instanceMarker =
             componentInstanceLine(def, instanceId, localBindings, bindings,
                                   lines[i].number, "", slotHex);
@@ -2465,8 +2469,7 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
 
             Line copy = bodyLine;
             copy.indent = lines[i].indent + 2 + bodyLine.indent;
-            copy.text = substituteParams(copy.text, bindings, copy.number);
-            copy.text = substituteIdentifiers(copy.text, localBindings, copy.number);
+            copy.text = substituteIdentifiers(copy.text, bodyBindings, copy.number);
             std::string markerHead;
             if (isComponentLocalDeclaration(bodyLine, localBindings, markerHead)) {
                 copy.text = replaceFirstToken(copy.text, markerHead);

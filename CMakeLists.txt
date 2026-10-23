@@ -277,7 +277,7 @@ install(TARGETS jtml_cli jtml_c
 install(FILES include/jtml/c_api.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jtml
 )
-install(DIRECTORY examples tutorial
+install(DIRECTORY examples tutorial studio
     DESTINATION ${CMAKE_INSTALL_DATADIR}/jtml
 )
 install(DIRECTORY site

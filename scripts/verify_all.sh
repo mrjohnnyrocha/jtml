@@ -778,6 +778,8 @@ fi
 
 "$repo_root/scripts/build_site.sh" "$repo_root/dist/site"
 "$repo_root/scripts/package_cli.sh" "$repo_root/dist/release"
+python3 "$repo_root/scripts/test_studio_distribution.py" --build-dir "$build_dir" \
+  --archive "$repo_root/dist/jtml-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz"
 
 test -f "$repo_root/dist/site/index.html"
 test -f "$repo_root/dist/site/tools.html"

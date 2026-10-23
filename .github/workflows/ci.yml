@@ -155,6 +155,9 @@ jobs:
               cmp "${notice}" "${dest}/${notice}"
             done
           done
+          python3 scripts/test_studio_distribution.py \
+            --archive "dist/jtml-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz" \
+            --install-prefix "${RUNNER_TEMP}/jtml-install"
 
       # --------------------------------------------------------------
       # Integration: every bundled example must pass `jtml lint`.

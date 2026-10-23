@@ -2690,3 +2690,45 @@ TEST(RuntimePlan, UnaryDirectJsRejectsUnknownOperatorsAndUnsupportedChildren) {
     auto call = jtml::parseExpressionIr("-unknown(x)");
     ASSERT_TRUE(call); EXPECT_FALSE(jtml::expressionIrSupportsDirectJs(*call));
 }
+
+TEST(RuntimePlan, ComponentArgumentWordPlansPreserveFriendlyExpressionBoundaries) {
+    const std::string source =
+        "jtml 2\n"
+        "make Child value item record label\n"
+        "  text value\n"
+        "make Probe\n"
+        "  let count = 100\n"
+        "  let index = 0\n"
+        "  let items = [3, 5]\n"
+        "  Child ((count + 1) * 2) items[(index + 1) % 2] {value: count + 1} \"a \\\"quoted\\\" label\"\n"
+        "page\n"
+        "  Probe\n";
+    auto program = parseFriendly(source);
+    const auto plan = jtml::buildRuntimePlan(program, jtml::analyzeSemanticProgram(program, source));
+    const auto owner = std::find_if(plan.componentDefinitions.begin(), plan.componentDefinitions.end(),
+        [](const auto& definition) { return definition.name == "Probe"; });
+    ASSERT_NE(owner, plan.componentDefinitions.end());
+    jtml::ExpressionTypeEnvironment environment;
+    environment.symbols["count"] = jtml::ExpressionValueType::Number;
+    environment.symbols["index"] = jtml::ExpressionValueType::Number;
+    environment.symbols["items"] = jtml::ExpressionValueType::Array;
+    const auto body = jtml::runtimePlanBodyPlanToJson(owner->bodyPlan, {true, &environment});
+    const auto call = std::find_if(body.begin(), body.end(), [](const auto& node) { return node.value("head", "") == "Child"; });
+    ASSERT_NE(call, body.end());
+    EXPECT_EQ((*call)["sourceLine"], 8);
+    EXPECT_EQ((*call)["sourceColumn"], 3);
+    const auto& args = (*call)["wordPlans"];
+    ASSERT_EQ(args.size(), 5u) << args.dump(2);
+    EXPECT_EQ(args[1]["kind"], "binary");
+    EXPECT_EQ(args[1]["valueType"], "number");
+    EXPECT_EQ(args[1]["left"]["operator"], "+");
+    EXPECT_EQ(args[2]["kind"], "subscript");
+    EXPECT_EQ(args[2]["index"]["operator"], "%");
+    EXPECT_EQ(args[3]["kind"], "object");
+    EXPECT_EQ(args[3]["entries"][0]["key"], "value");
+    EXPECT_EQ(args[4]["kind"], "literal");
+    EXPECT_EQ(args[4]["value"], "a \"quoted\" label");
+    EXPECT_TRUE(contains(owner->bodyPlan.back().reads, "count"));
+    EXPECT_TRUE(contains(owner->bodyPlan.back().reads, "items"));
+    EXPECT_TRUE(contains(owner->bodyPlan.back().reads, "index"));
+}

@@ -1,0 +1,22 @@
+jtml 2
+make Child value other
+  let count = 10
+  get result = value + other
+  p class "child-value" result
+make Probe
+  let count = 100
+  let items = [3, 5]
+  let index = 0
+  get result = count + 1
+  when step
+    count += 1
+    index = 1 - index
+  box class "probe"
+    p class "out-count" count
+    p class "out-result" result
+    button "step" click step
+    Child ((count + 1) * 2) items[(index + 1) % 2]
+    Child (count > 100 ? count + 2 : count - 2) 1
+page
+  Probe
+  Probe

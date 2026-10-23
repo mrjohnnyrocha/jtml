@@ -13,6 +13,10 @@ enum class SyntaxMode {
     Friendly,
 };
 
+// Split authored words without breaking quoted or grouped expressions.
+// Shared with Runtime Plan serialization so argument indices match the frontend.
+std::vector<std::string> splitFriendlyWords(const std::string& source);
+
 // Token roles are assigned by the Friendly element parser, before binding.
 // Backends may consume them without maintaining another attribute grammar.
 enum class FriendlyElementRole { Syntax, Expression, InlineContent, CompleteAttribute };

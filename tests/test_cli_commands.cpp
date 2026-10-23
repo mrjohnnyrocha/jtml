@@ -2973,3 +2973,30 @@ TEST(CliBuild, BrowserClientManifestEscapesScriptBreakingTextAndOmitsExplainFiel
     EXPECT_TRUE(explain["runtimePlan"]["componentDefinitions"][0].contains("bodySource"));
     EXPECT_TRUE(explain["runtimePlan"]["componentDefinitions"][0].contains("bodyHex"));
 }
+
+TEST(CliBuild, ProductionRejectsUnsupportedNestedArgumentBeforeAssetsWithOriginalLocation) {
+    const auto root = makeTempDir("nested-argument-rejection");
+    const auto input = root / "index.jtml";
+    writeTempFile(input,
+        "jtml 2\nmake Child value\n  p value\nmake Probe\n"
+        "  let count = 100\n  Child unknown(count)\npage\n  Probe\n");
+    jtml::cli::Options opts;
+    opts.inputFile = input.string();
+    opts.outputFile = (root / "dist").string();
+    opts.syntax = jtml::SyntaxMode::Auto;
+    opts.target = "browser";
+    try {
+        (void)jtml::cli::cmdBuild(opts);
+        FAIL() << "production accepted an unsupported nested argument";
+    } catch (const std::runtime_error& error) {
+        const std::string message = error.what();
+        EXPECT_NE(message.find("unsupported production argument `value` to `Child`"), std::string::npos) << message;
+        EXPECT_NE(message.find("Probe"), std::string::npos) << message;
+        EXPECT_NE(message.find(input.string() + ":6:3"), std::string::npos) << message;
+        EXPECT_NE(message.find("caller observable values"), std::string::npos) << message;
+    }
+    for (const auto* asset : {"index.html", "app.js", "jtml-runtime.js", "components/index.js"}) {
+        EXPECT_FALSE(std::filesystem::exists(root / "dist" / asset)) << asset;
+    }
+    std::filesystem::remove_all(root);
+}

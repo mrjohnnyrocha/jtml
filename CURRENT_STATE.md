@@ -8,12 +8,22 @@ features or declare production readiness.
 
 ## Public-preview release audit
 
-The proposed v0.3.0 preview is **NOT READY**: accepted grouped/global component
+The proposed v0.3.0 preview is **NOT READY**: accepted global component
 arguments still fail, version/distribution identity is unfinished, and unchanged
 Taskboard lint reports 346 errors / 7 warnings. See the bounded
 [release contract, licensing review and current evidence](docs/releases/v0.3-readiness.md).
 Strict N04 now passes its tested subset; dated BLOCKED snapshots below remain
 historical evidence, not the current result or a claim of complete source spans.
+
+## Browser nested argument expressions
+
+Grouped nested arguments now preserve Friendly word boundaries through Runtime
+Plan JSON: the original 202 oracle passes in native HTML and browser DOM. Grouped,
+indexed and conditional arguments retain numeric addition, caller scope, repeated
+updates and sibling DOM identity. Unsupported nested argument expressions reject
+with original locations before assets. One supplemental global-alias case and five
+native renderer observations remain known failures; strict supplemental mode
+remains nonzero. See [root cause and scope](docs/architecture/browser-component-arguments.md).
 
 ## Friendly component parameter capture
 

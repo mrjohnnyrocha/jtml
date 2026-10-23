@@ -1,5 +1,9 @@
 # JTML Roadmap
 
+> Historical implementation/backlog notes below are not release acceptance.
+> The current v0.3 proposal, measured blockers and support contract are in
+> [v0.3 readiness](docs/releases/v0.3-readiness.md).
+
 JTL is the planned core language; JTML is its web/app dialect. Together they
 should form an observable-first language family over the full web platform:
 apps read like documents but behave like reactive software, while core logic

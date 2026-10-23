@@ -12,6 +12,12 @@ cp "$repo_root/docs/reference/language-reference.md" "$out_dir/language-referenc
 cp "$repo_root/docs/tooling/deployment.md" "$out_dir/deployment.md"
 cp "$repo_root/README.md" "$out_dir/README.md"
 cp "$repo_root/ROADMAP.md" "$out_dir/ROADMAP.md"
+mkdir -p "$out_dir/docs/images" "$out_dir/docs/releases"
+cp "$repo_root/docs/images/counter-preview.png" "$out_dir/docs/images/"
+cp "$repo_root/docs/releases/v0.3-readiness.md" "$out_dir/docs/releases/"
+cp "$repo_root/LICENSE" "$repo_root/THIRD_PARTY_NOTICES.md" "$out_dir/"
+mkdir -p "$out_dir/third_party"
+cp -R "$repo_root/third_party/licenses" "$out_dir/third_party/"
 
 cat > "$out_dir/robots.txt" <<'ROBOTS'
 User-agent: *

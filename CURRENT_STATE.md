@@ -6,6 +6,15 @@ The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.
 
+## Public-preview release audit
+
+The proposed v0.3.0 preview is **NOT READY**: accepted grouped/global component
+arguments still fail, version/distribution identity is unfinished, and unchanged
+Taskboard lint reports 346 errors / 7 warnings. See the bounded
+[release contract, licensing review and current evidence](docs/releases/v0.3-readiness.md).
+Strict N04 now passes its tested subset; dated BLOCKED snapshots below remain
+historical evidence, not the current result or a claim of complete source spans.
+
 ## Friendly component parameter capture
 
 The original Parent count=100 / Child count=10 reproducer now returns **200** in

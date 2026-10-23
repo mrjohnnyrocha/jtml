@@ -1,50 +1,70 @@
 # JTML
 
-JTML is an experimental, compiler-driven language for web applications.
-Friendly JTML 2 combines HTML-shaped markup, observable state, derived values,
-actions, and components in readable source files. A C++17 toolchain compiles
-supported applications into HTML and JavaScript for browser-local execution.
+JTML is an **experimental compiler-driven language for reactive web apps**.
+Friendly JTML 2 puts observable state, actions and HTML-shaped UI in one readable
+file. The C++17 compiler owns dependency analysis and generates static,
+CSP-safe JavaScript; supported browser apps update locally without a JTML server.
 
-The repository is in active development toward an **experimental v0.3 research
-preview**. This is a development target, not a released version or a claim of
-production readiness. Reactive dependency correctness, supported app semantics,
-and source diagnostics still need validation. See [`CURRENT_STATE.md`](CURRENT_STATE.md)
-for verified results and known limitations, and [`ARCHITECTURE.md`](ARCHITECTURE.md)
-for compiler ownership and backend contracts.
+[Build and try it](#get-started-from-source) · [v0.3 support and release status](docs/releases/v0.3-readiness.md) · [Architecture](https://github.com/mrjohnnyrocha/jtml/blob/main/ARCHITECTURE.md)
 
-Version numbers describe different artifacts: CMake currently declares the CLI
-as **0.1.0** (the default local build reports **0.1.0-dev**); the VS Code extension
-manifest declares **0.2.0**. Neither number means v0.3 has been released. These
-instructions build from source; they do not require a published package or an
-online JTML service.
+```jtml
+jtml 2
+let count = 0
+when add
+  count += 1
+page
+  strong "Count: {count}"
+  button "Add one" click add
+```
+
+This short example is browser-verified: clicking **Add one** changes 0 to 1.
+The fuller [counter example](examples/friendly_counter.jtml) adds layout and Reset:
+
+![Actual Chromium rendering of the compiled Friendly counter after Add one](docs/images/counter-preview.png)
+
+**Research preview in development, not production-ready.** The proposed milestone
+is v0.3.0; no v0.3 release is published. Current CLI/C API builds report
+**0.1.0-dev**, CMake/CPack declare **0.1.0**, and the editor source is **0.2.0**.
+Known component-argument and native-renderer failures remain visible in the
+[independent readiness report](docs/releases/v0.3-readiness.md).
 
 ## Get started from source
 
-You need Git, a C++17 compiler, and CMake (validated with 3.31.3). Configure fetches pinned
-WebSocket++ 0.8.2 and standalone Asio 1.30.2 dependencies, so it needs network
-access or a populated dependency cache. Python bindings are optional and disabled
-here. Python 3 is used only to serve the generated files below.
+Use Git, a C++17 compiler and a recent CMake (validated with **3.31.3**).
+Configure downloads SHA256-pinned WebSocket++ 0.8.2 and Asio 1.30.2, requiring
+network access or a populated cache. Python 3 below serves static files only.
+Python bindings and tests are not needed for this quickstart.
 
 ```sh
 git clone https://github.com/mrjohnnyrocha/jtml.git
 cd jtml
-cmake -S . -B build -DJTML_BUILD_PYTHON=OFF
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJTML_BUILD_PYTHON=OFF -DJTML_BUILD_TESTS=OFF
 cmake --build build --target jtml_cli --parallel
 ./build/jtml --version
 ./build/jtml check examples/friendly_counter.jtml
 ./build/jtml build examples/friendly_counter.jtml --target browser --out dist/counter
-python3 -m http.server 8000 --directory dist/counter
+python3 -m http.server 8000 --bind 127.0.0.1 --directory dist/counter
 ```
 
-Open [localhost:8000](http://localhost:8000), then try **Add one** and **Reset**.
-The generated application runs in the browser; the Python server only serves
-static files. Stop it with Ctrl+C. To try the separate live development backend,
-run `./build/jtml serve examples/friendly_counter.jtml --port 8000 --watch`.
+Open [localhost:8000](http://localhost:8000), try **Add one** and **Reset**, then
+stop the static server with Ctrl+C. Keep all four generated assets together:
+`index.html`, `jtml-runtime.js`, `components/index.js`, `app.js`.
+No npm package or hosted JTML service is needed.
 
-Friendly JTML 2 is the canonical authoring language. Classic JTML remains
-compatibility, migration, and embedding infrastructure. `jtl 1` is experimental;
-a standalone JTL language/runtime and contract-first backend/API system remain
-future work.
+For the separate trusted-code, loopback-only live development backend:
+`./build/jtml serve examples/friendly_counter.jtml --port 8000 --watch`.
+Friendly is canonical; Classic is compatibility/embedding infrastructure and
+`jtl 1` remains experimental. [Installation and packaging](docs/tooling/deployment.md)
+have separate working-directory and version limits.
+
+## License
+
+Project-owned JTML source, documentation, examples, site and editor resources
+are offered under [Apache License 2.0](LICENSE), SPDX **Apache-2.0**.
+Third-party components retain their own licenses and notices; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). This does not relicense dependencies.
+License adoption and provenance are subject to the owner's review before merge;
+no new copyright holder or year is asserted by this PR.
 
 ## Syntax
 
@@ -463,8 +483,9 @@ the editor, runner, tutorial, studio, tester, and release-tooling overview.
 ## Install And Package
 
 ```sh
-cmake --install build --prefix ~/.local
-cd build && cpack
+cmake --build build --target jtml_cli jtml_c --parallel
+cmake --install build --prefix "$HOME/.local"
+(cd build && cpack)
 ```
 
 The documentation set starts at `docs/README.md`. The versioned language

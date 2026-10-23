@@ -1,5 +1,9 @@
 # JTML Restart Backlog
 
+> Historical implementation/backlog notes below are not release acceptance.
+> The current v0.3 proposal, measured blockers and support contract are in
+> [v0.3 readiness](docs/releases/v0.3-readiness.md).
+
 This is not a roadmap. It is the first practical backlog for restarting after
 hibernation. Keep it short and executable.
 

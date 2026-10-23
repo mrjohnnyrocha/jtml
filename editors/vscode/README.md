@@ -29,12 +29,17 @@ always works against any `jtml` build.
 
 Until the extension is published to the Marketplace:
 
-```sh
-cd editors/vscode
-code --install-extension .
-```
+Open `editors/vscode` in VS Code, install its declared development dependencies
+with `npm install`. Loading the source in an Extension Development Host still
+requires a local VS Code launch configuration; that interactive workflow has not
+been verified by this audit. A folder
+is not an installable VSIX; no Marketplace package or packaged-extension install
+is claimed here.
 
-Or open this folder in VS Code and press `F5` to launch a sandboxed Extension Development Host.
+The source manifest is 0.2.0; it is separate from the planned v0.3 CLI preview.
+Project-owned editor files use Apache-2.0; dependencies retain their own terms.
+See the repository LICENSE and THIRD_PARTY_NOTICES.md. A resolved VSIX dependency
+and installation audit is still required before publishing an extension.
 
 ## Roadmap
 

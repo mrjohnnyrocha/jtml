@@ -190,7 +190,7 @@ cmake --build build --target jtml_cli --parallel</code></pre>
           <article class="step">
             <span class="step-number">3</span>
             <h3>Open In Your Browser</h3>
-            <pre><code>python3 -m http.server 8000 --directory dist/counter</code></pre>
+            <pre><code>python3 -m http.server 8000 --bind 127.0.0.1 --directory dist/counter</code></pre>
             <p>Open <a href="http://localhost:8000">localhost:8000</a> and try Add one and Reset. Stop the server with Ctrl+C.</p>
           </article>
         </div>
@@ -249,6 +249,7 @@ cmake --build build --target jtml_cli --parallel</code></pre>
     </main>
 
     <footer class="site-footer">
+      <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache-2.0 (JTML-owned material)</a>
       <span>JTML</span>
       <a href="https://github.com/mrjohnnyrocha/jtml">Source and known limitations on GitHub</a>
     </footer>

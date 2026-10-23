@@ -28,14 +28,14 @@
       <section class="page-hero" aria-labelledby="deploy-title">
         <p class="eyebrow">Deploy</p>
         <h1 id="deploy-title">Static page, live runtime, or verified local package.</h1>
-        <p>JTML can emit plain HTML for static hosting, run a tiny server for reactive event handling, and produce a local release artifact for controlled environments.</p>
+        <p>JTML compiles supported reactive apps to static browser assets. Its separate live development server is loopback-only; local artifacts are not published releases.</p>
       </section>
 
       <section class="reference-layout">
         <article>
           <h2>Static</h2>
-          <pre><code>jtml transpile examples/html_syntax.jtml -o dist/index.html</code></pre>
-          <p>Host the output anywhere that serves static files.</p>
+          <pre><code>jtml build examples/friendly_counter.jtml --target browser --out dist/counter</code></pre>
+          <p>Keep all four generated assets together; supported events and state run in the browser.</p>
         </article>
         <article>
           <h2>Live</h2>
@@ -50,7 +50,7 @@
         <article>
           <h2>Install</h2>
           <pre><code>cmake -S . -B build -DJTML_BUILD_PYTHON=OFF
-cmake --build build --target jtml_cli
+cmake --build build --target jtml_cli jtml_c
 cmake --install build --prefix ~/.local</code></pre>
           <p>Put `~/.local/bin` on your `PATH`, then run `jtml --version`.</p>
         </article>
@@ -68,6 +68,7 @@ cmake --install build --prefix ~/.local</code></pre>
     </main>
 
     <footer class="site-footer">
+      <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache-2.0 (JTML-owned material)</a>
       <span>JTML</span>
       <span>See docs/tooling/deployment.md for the full deployment guide.</span>
     </footer>

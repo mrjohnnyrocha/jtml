@@ -4,7 +4,7 @@
   "description": "Language support for JTML — a tiny reactive HTML-oriented language.",
   "version": "0.2.0",
   "publisher": "jtml",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "main": "./extension.js",
   "engines": {
     "vscode": "^1.70.0"

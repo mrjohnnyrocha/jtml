@@ -40,8 +40,11 @@ variableOwner(const std::shared_ptr<JTML::Environment>& env, const std::string& 
         if (id != owner->nameToId.end() && id->second >= 0 &&
             static_cast<size_t>(id->second) < owner->idToKey.size()) {
             const auto canonical = owner->idToKey[id->second];
-            const auto stored = owner->variables.find(canonical);
-            if (stored != owner->variables.end() && stored->second == variable->second) key = canonical;
+            for (auto actual = owner; actual; actual = actual->parent) {
+                const auto stored = actual->variables.find(canonical);
+                if (stored != actual->variables.end() && stored->second == variable->second)
+                    return {actual, canonical};
+            }
         }
         return {owner, key};
     }
@@ -598,6 +601,8 @@ void Interpreter::reset() {
     // `renderer` alive so the frontend connection is preserved across
     // lesson / playground switches.
     classDeclarations.clear();
+    std::set<std::string> attachedCallers;
+    for (const auto& instance : componentInstances) if (instance.callerAttached) attachedCallers.insert(instance.id);
     componentInstances.clear();
     componentDefinitions.clear();
     dynamicComponentInstances.clear();
@@ -871,25 +876,8 @@ std::string Interpreter::getStateJSON() {
         return std::find(attrs.begin(), attrs.end(), name) != attrs.end();
     };
     auto evalComponentExpression = [&](const std::string& expr,
-                                       const std::shared_ptr<JTML::Environment>& env)
-            -> std::shared_ptr<JTML::VarValue> {
-        const std::string source = "jtml 2\nlet __jtml_render_expr = " + expr + "\n";
-        const std::string lowered = jtml::normalizeSourceSyntax(source, jtml::SyntaxMode::Friendly);
-        Lexer lexer(lowered);
-        auto tokens = lexer.tokenize();
-        if (!lexer.getErrors().empty()) return nullptr;
-        Parser parser(std::move(tokens));
-        auto parsed = parser.parseProgram();
-        if (!parser.getErrors().empty() || parsed.empty() ||
-            parsed.front()->getType() != ASTNodeType::DefineStatement) {
-            return nullptr;
-        }
-        const auto& define = static_cast<const DefineStatementNode&>(*parsed.front());
-        try {
-            return evaluateExpression(define.expression.get(), env);
-        } catch (...) {
-            return nullptr;
-        }
+                                       const std::shared_ptr<JTML::Environment>& env) -> std::shared_ptr<JTML::VarValue> {
+        try { return evaluateRuntimeExpression(expr, env); } catch (...) { return nullptr; }
     };
     auto expressionText = [&](const std::string& expr,
                               const std::shared_ptr<JTML::Environment>& env) {
@@ -1399,7 +1387,7 @@ std::string Interpreter::getStateJSON() {
     auto renderComponent = [&](const RuntimeComponentInstance& instance) {
         const auto* definition = findComponentDefinition(
             instance.component, instance.definitionModule, instance.moduleId);
-        auto env = instance.environment ? instance.environment : globalEnv;
+        auto env = componentPublicScope(instance);
         if (!definition || !env) return std::string{};
         std::string out;
         for (const auto& node : definition->bodyPlan) {
@@ -1420,6 +1408,10 @@ std::string Interpreter::getStateJSON() {
         }
         return out;
     };
+
+    recalcAllDirty(); // caller derived arguments must be current before projection
+    for (auto& instance : componentInstances) refreshComponentParameters(instance);
+    recalcAllDirty();
 
     nlohmann::json out;
     out["variables"] = nlohmann::json::object();
@@ -1693,6 +1685,7 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
         return false;
     }
 
+    refreshComponentParameters(*instance);
     const auto* definition = findComponentDefinition(
         instance->component, instance->definitionModule, instance->moduleId);
 
@@ -1835,21 +1828,7 @@ bool Interpreter::dispatchComponentAction(const std::string& componentId,
         return localIt == instance->locals.end() ? publicName : localIt->second;
     };
     auto parseExpressionValue = [&](const std::string& expr) -> std::shared_ptr<JTML::VarValue> {
-        const std::string source = "jtml 2\nlet __jtml_expr = " + expr + "\n";
-        const std::string lowered = jtml::normalizeSourceSyntax(source, jtml::SyntaxMode::Friendly);
-        Lexer lexer(lowered);
-        auto tokens = lexer.tokenize();
-        if (!lexer.getErrors().empty()) {
-            throw std::runtime_error("Could not tokenize component body-plan expression: " + expr);
-        }
-        Parser parser(std::move(tokens));
-        auto parsed = parser.parseProgram();
-        if (!parser.getErrors().empty() || parsed.empty() ||
-            parsed.front()->getType() != ASTNodeType::DefineStatement) {
-            throw std::runtime_error("Could not parse component body-plan expression: " + expr);
-        }
-        const auto& define = static_cast<const DefineStatementNode&>(*parsed.front());
-        return evaluateExpression(define.expression.get(), instance->environment);
+        return evaluateRuntimeExpression(expr, componentPublicScope(*instance));
     };
     auto splitCallArgs = [](const std::string& source) {
         std::vector<std::string> out;
@@ -2859,6 +2838,8 @@ void Interpreter::interpretElement(const JtmlElementNode& elem) {
         if (componentInstance->environment != previousEnv) {
             componentInstance->environment->parent = previousEnv;
         }
+        componentInstance->callerAttached = true;
+        refreshComponentParameters(*componentInstance);
         currentEnv = componentInstance->environment;
     }
 
@@ -3025,32 +3006,69 @@ void Interpreter::attachComponentEnvironment(RuntimeComponentInstance& instance)
         }
     }
 
-    for (const auto& [publicName, loweredName] : instance.locals) {
-        JTML::CompositeKey globalKey{globalEnv->instanceID, loweredName};
-        JTML::CompositeKey localPublicKey{instance.environment->instanceID, publicName};
-        JTML::CompositeKey localLoweredKey{instance.environment->instanceID, loweredName};
-        auto scopedVarIt = instance.environment->variables.find(localLoweredKey);
-        if (scopedVarIt != instance.environment->variables.end()) {
-            instance.environment->variables[localPublicKey] = scopedVarIt->second;
-            instance.environment->nameToId[localPublicKey] = instance.environment->getVarID(localLoweredKey);
-            continue;
-        }
-        auto varIt = globalEnv->variables.find(globalKey);
-        if (varIt != globalEnv->variables.end()) {
-            instance.environment->variables[localPublicKey] = varIt->second;
-            instance.environment->nameToId[localPublicKey] = globalEnv->getVarID(globalKey);
-        }
-        auto scopedFnIt = instance.environment->functions.find(localLoweredKey);
-        if (scopedFnIt != instance.environment->functions.end()) {
-            instance.environment->functions[localPublicKey] = scopedFnIt->second;
-            continue;
-        }
-        auto fnIt = globalEnv->functions.find(globalKey);
-        if (fnIt != globalEnv->functions.end()) {
-            instance.environment->functions[localPublicKey] = fnIt->second;
+    instance.runtimeReady = true;
+}
+
+std::shared_ptr<JTML::VarValue> Interpreter::evaluateRuntimeExpression(
+        const std::string& expression, const std::shared_ptr<JTML::Environment>& env) {
+    Lexer lexer(jtml::normalizeSourceSyntax("jtml 2\nlet __jtml_expr = " + expression + "\n", jtml::SyntaxMode::Friendly));
+    auto tokens = lexer.tokenize();
+    if (!lexer.getErrors().empty()) throw std::runtime_error("Invalid component argument/expression: " + expression);
+    Parser parser(std::move(tokens));
+    auto program = parser.parseProgram();
+    if (!parser.getErrors().empty() || program.size() != 1 || program[0]->getType() != ASTNodeType::DefineStatement)
+        throw std::runtime_error("Invalid component argument/expression: " + expression);
+    return evaluateExpression(static_cast<const DefineStatementNode&>(*program[0]).expression.get(), env);
+}
+
+void Interpreter::refreshComponentParameters(RuntimeComponentInstance& instance) {
+    if (!instance.callerAttached || instance.argumentExpressions.empty() || !instance.environment) return;
+    auto caller = instance.environment->parent ? instance.environment->parent : globalEnv;
+    for (auto& parent : componentInstances) {
+        if (parent.environment != caller) continue;
+        refreshComponentParameters(parent);
+        caller = componentPublicScope(parent);
+        break;
+    }
+    for (const auto& [name, source] : instance.argumentExpressions) {
+        auto value = evaluateRuntimeExpression(source, caller);
+        const JTML::CompositeKey key{instance.environment->instanceID, name};
+        const auto stored = instance.environment->variables.find(key);
+        if (stored == instance.environment->variables.end()) instance.environment->defineVariable(key, value);
+        else {
+            const auto& previous = stored->second->currentValue;
+            const bool reference = value && (value->isArray() || value->isDict() || value->isObject());
+            if ((reference && previous != value) || varValueToJson(previous) != varValueToJson(value))
+                instance.environment->setVariable(key, value);
         }
     }
-    instance.runtimeReady = true;
+}
+
+std::shared_ptr<JTML::Environment> Interpreter::componentPublicScope(
+        const RuntimeComponentInstance& instance) const {
+    const auto canonical = instance.environment ? instance.environment : globalEnv;
+    if (!canonical || instance.locals.empty()) return canonical;
+    auto scope = std::make_shared<JTML::Environment>(canonical, canonical->instanceID, renderer.get());
+    scope->lookupOnly = true;
+    // Presentation/action names borrow canonical records. They are not lexical
+    // declarations and must never shadow caller references in expanded ASTs.
+    for (const auto& [publicName, loweredName] : instance.locals) {
+        const JTML::CompositeKey publicKey{scope->instanceID, publicName};
+        if (canonical->variables.count(publicKey)) continue; // real parameters/locals win
+        const auto [owner, key] = variableOwner(canonical, loweredName);
+        const auto value = owner->variables.find(key);
+        if (value != owner->variables.end()) {
+            scope->variables[publicKey] = value->second;
+            scope->nameToId[publicKey] = scope->getVarID(key);
+        }
+        for (auto owner = canonical; owner; owner = owner->parent) {
+            const auto function = owner->functions.find({owner->instanceID, loweredName});
+            if (function == owner->functions.end()) continue;
+            scope->functions[publicKey] = function->second;
+            break;
+        }
+    }
+    return scope;
 }
 
 void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<ASTNode>>& program) {
@@ -3062,6 +3080,8 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
         existingByInstance[instance.instanceID] = instance.environment;
     }
 
+    std::set<std::string> attachedCallers;
+    for (const auto& instance : componentInstances) if (instance.callerAttached) attachedCallers.insert(instance.id);
     componentInstances.clear();
     componentDefinitions.clear();
 
@@ -3140,6 +3160,7 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
                 instance.instanceID = static_cast<JTML::InstanceID>(componentInstances.size() + 1);
             }
             instance.params = propertiesToMap(plannedInstance.params);
+            instance.argumentExpressions = propertiesToMap(plannedInstance.argumentExpressions);
             instance.locals = propertiesToMap(plannedInstance.locals);
             for (const auto& plannedNode : plannedInstance.slotPlan) {
                 instance.slotPlan.push_back({
@@ -3181,6 +3202,7 @@ void Interpreter::registerComponentInstances(const std::vector<std::unique_ptr<A
                 instance.environment = byInstance->second;
             }
         }
+        instance.callerAttached = attachedCallers.count(instance.id) != 0;
         attachComponentEnvironment(instance);
     }
 }
@@ -5406,7 +5428,7 @@ std::vector<std::shared_ptr<JTML::Environment>> Interpreter::prepareDirtyScopes(
     std::vector<std::shared_ptr<JTML::Environment>> scopes;
     auto include = [&](std::shared_ptr<JTML::Environment> env) {
         for (; env; env = env->parent) {
-            if (std::find(scopes.begin(), scopes.end(), env) == scopes.end()) scopes.push_back(env);
+            if (!env->lookupOnly && std::find(scopes.begin(), scopes.end(), env) == scopes.end()) scopes.push_back(env);
         }
     };
     include(globalEnv);

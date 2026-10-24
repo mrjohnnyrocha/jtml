@@ -739,6 +739,9 @@ RuntimePlanComponentInstance planComponentInstance(
     planned.instanceId = semantic.instanceId;
     planned.role = semantic.role.empty() ? "component" : semantic.role;
     planned.params = semantic.params;
+    planned.argumentExpressions = semantic.argumentExpressions;
+    planned.sourceSpan.provenance = semantic.provenance;
+    if (semantic.provenance) planned.sourceSpan.original = semantic.provenance->inputConstruct(semantic.sourceLine);
     planned.locals = semantic.locals;
     planned.slotHex = semantic.slotHex;
     planned.slotSource = hexDecode(semantic.slotHex);

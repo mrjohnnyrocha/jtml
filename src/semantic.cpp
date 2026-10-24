@@ -1,5 +1,6 @@
 #include "jtml/semantic.h"
 #include "jtml/language_catalog.h"
+#include "json.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -466,6 +467,7 @@ struct SemanticSets {
                         std::string, std::string, std::string, std::string, std::string,
                         std::string, std::string, std::string, bool, int, int, int, int, std::shared_ptr<const SourceProvenance>>> componentDefinitions;
     std::set<std::tuple<std::string, std::string, int, std::string, std::string, std::string, std::string, int, std::shared_ptr<const SourceProvenance>>> componentInstances;
+    std::map<std::string, std::string> componentArguments;
     std::set<std::string> routes;
     std::set<std::tuple<std::string, std::string, std::string, std::string>> routeRecords;
     std::set<std::string> fetches;
@@ -860,6 +862,8 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
         attributeLiteral(elem, "data-jtml-instance-id", instanceId);
         attributeLiteral(elem, "data-jtml-component-role", role);
         attributeLiteral(elem, "data-jtml-component-params", params);
+        std::string arguments;
+        if (attributeLiteral(elem, "data-jtml-component-args-hex", arguments)) out.componentArguments[id] = arguments;
         attributeLiteral(elem, "data-jtml-component-locals", locals);
         attributeLiteral(elem, "data-jtml-component-slot-hex", slotHex);
         attributeLiteral(elem, "data-jtml-source-line", sourceLine);
@@ -1390,6 +1394,13 @@ SemanticProgram analyzeSemanticProgram(
     semantic.components = toVector(sets.components);
     semantic.componentDefinitions = componentDefinitionsToVector(sets.componentDefinitions);
     semantic.componentInstances = componentInstancesToVector(sets.componentInstances);
+    for (auto& instance : semantic.componentInstances) {
+        const auto encoded = sets.componentArguments.find(instance.id);
+        if (encoded == sets.componentArguments.end()) continue; // explicit Classic metadata
+        const auto expressions = nlohmann::json::parse(hexDecode(encoded->second));
+        for (const auto& expression : expressions.items())
+            instance.argumentExpressions.push_back({expression.key(), expression.value().get<std::string>()});
+    }
     semantic.routes = toVector(sets.routes);
     semantic.routeRecords = routesToVector(sets.routeRecords);
     semantic.fetches = toVector(sets.fetches);

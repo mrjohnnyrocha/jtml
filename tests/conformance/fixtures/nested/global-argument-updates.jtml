@@ -1,0 +1,28 @@
+jtml 2
+let count = 100
+let index = 0
+let items = [3, 5]
+get next = count + 1
+when step
+  count += 1
+  index = 1 - index
+when shadow count
+  count += 1
+make Probe value label
+  let count = 10
+  let initial = value
+  get result = value * 2
+  when bump
+    count += 1
+  box class "probe"
+    p class "out-count" count
+    p class "out-result" result
+    p class "out-initial" initial
+    p class "out-label" label
+    button "bump" click bump
+page
+  button "step" click step
+  button "shadow" click shadow(999)
+  Probe count "Revenue & growth"
+  Probe ((count + 1) * 2) "literal count"
+  Probe (next + items[index]) "indexed"

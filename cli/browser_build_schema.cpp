@@ -465,7 +465,7 @@ void validateClientComponentInstances(const nlohmann::json& instances,
         const auto& instance = instances[i];
         if (!requireObjectAt(instance, itemPath, issues)) continue;
         rejectUnknownKeys(instance, {"moduleId", "definitionModule", "id", "component",
-                                     "instanceId", "role", "params", "locals", "slotPlan"},
+                                     "instanceId", "role", "params", "argumentPlans", "locals", "slotPlan"},
                           itemPath, issues);
         requireOptionalModuleId(instance, "moduleId", itemPath, issues);
         requireOptionalModuleId(instance, "definitionModule", itemPath, issues);
@@ -476,6 +476,11 @@ void validateClientComponentInstances(const nlohmann::json& instances,
         requireOptionalNumber(instance, "instanceId", itemPath, issues);
         requireOptionalString(instance, "role", itemPath, issues);
         requireOptionalObject(instance, "params", itemPath, issues);
+        requireOptionalObject(instance, "argumentPlans", itemPath, issues);
+        if (instance.contains("argumentPlans") && instance["argumentPlans"].is_object()) {
+            for (const auto& argument : instance["argumentPlans"].items())
+                validateClientExpressionPlan(argument.value(), itemPath + ".argumentPlans." + argument.key(), issues);
+        }
         requireOptionalObject(instance, "locals", itemPath, issues);
         if (instance.contains("slotPlan")) {
             validateClientBodyPlanArray(instance.at("slotPlan"), itemPath + ".slotPlan", issues);

@@ -192,11 +192,13 @@ private:
         int sourceLine = 0;
         JTML::InstanceID instanceID = 0;
         std::map<std::string, std::string> params;
+        std::map<std::string, std::string> argumentExpressions;
         std::map<std::string, std::string> locals;
         std::map<std::string, RuntimeComponentEventHandler> eventHandlers;
         std::vector<BodyPlanNode> slotPlan;
         std::shared_ptr<JTML::Environment> environment;
         bool runtimeReady = false;
+        bool callerAttached = false;
         std::vector<std::string> stateNames;
         std::vector<std::string> derivedNames;
         std::vector<std::string> actionNames;
@@ -278,6 +280,9 @@ private:
     void collectComponentInstances(const ASTNode& node, std::vector<RuntimeComponentInstance>& out);
     void collectComponentDefinitions(const ASTNode& node, std::vector<RuntimeComponentDefinition>& out);
     void attachComponentEnvironment(RuntimeComponentInstance& instance);
+    void refreshComponentParameters(RuntimeComponentInstance& instance);
+    std::shared_ptr<JTML::VarValue> evaluateRuntimeExpression(const std::string& source, const std::shared_ptr<JTML::Environment>& env);
+    std::shared_ptr<JTML::Environment> componentPublicScope(const RuntimeComponentInstance& instance) const;
     const RuntimeComponentDefinition* findComponentDefinition(const std::string& name) const;
     const RuntimeComponentDefinition* findComponentDefinition(
         const std::string& name,

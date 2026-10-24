@@ -124,6 +124,7 @@ struct SemanticComponentInstance {
     std::string slotHex;
     int sourceLine = 0;
     std::shared_ptr<const SourceProvenance> provenance;
+    std::vector<SemanticProperty> argumentExpressions;
 };
 
 struct SemanticProgram {

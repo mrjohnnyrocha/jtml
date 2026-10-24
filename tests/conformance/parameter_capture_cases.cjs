@@ -35,6 +35,6 @@ module.exports=[{id:'parameter-capture-siblings',file:'capture-siblings.jtml',fi
  {id:'grouped-component-argument',file:'known-grouped-argument.jtml',
   fields:['count'],steps:[],views:{child:'.child-value'},expected:[[{count:100}]],expectedViews:[[{child:['202']}]],
   checks:[{component:'Child',text:'get result = value * 2',reads:['value'],irReads:['value']}]},
- {id:'global-parameter-public-alias',file:'known-global-parameter-alias.jtml',knownDiscrepancy:true,
+ {id:'global-parameter-public-alias',file:'known-global-parameter-alias.jtml',
   fields:['count','result'],steps:[],expected:[[{count:10,result:200}]],
   checks:[{text:'get result = value * 2',reads:['value'],irReads:['value']}]}];

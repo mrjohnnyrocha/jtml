@@ -2732,3 +2732,23 @@ TEST(RuntimePlan, ComponentArgumentWordPlansPreserveFriendlyExpressionBoundaries
     EXPECT_TRUE(contains(owner->bodyPlan.back().reads, "items"));
     EXPECT_TRUE(contains(owner->bodyPlan.back().reads, "index"));
 }
+
+TEST(RuntimePlan, GlobalArgumentPlansPreserveExpressionsTypesAndLiteralText) {
+    const std::string source =
+        "jtml 2\nlet count = 100\nlet items = [3, 5]\nlet index = 0\n"
+        "make Child value item label\n  let count = 10\n  p value\n"
+        "page\n  Child ((count + 1) * 2) items[(index + 1) % 2] \"literal count & growth\"\n";
+    auto program = parseFriendly(source);
+    const auto plan = jtml::buildRuntimePlan(program, jtml::analyzeSemanticProgram(program, source));
+    ASSERT_EQ(plan.componentInstances.size(), 1u);
+    ASSERT_EQ(plan.componentInstances[0].argumentExpressions.size(), 3u);
+    const auto client = jtml::runtimePlanToClientJson(plan);
+    const auto& arguments = client["componentInstances"][0]["argumentPlans"];
+    EXPECT_EQ(arguments["value"]["kind"], "binary");
+    EXPECT_EQ(arguments["value"]["valueType"], "number");
+    EXPECT_EQ(arguments["value"]["left"]["operator"], "+");
+    EXPECT_EQ(arguments["item"]["kind"], "subscript");
+    EXPECT_EQ(arguments["label"]["kind"], "literal");
+    EXPECT_EQ(arguments["label"]["value"], "literal count & growth");
+    EXPECT_FALSE(arguments["value"].contains("jsExpression"));
+}

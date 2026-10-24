@@ -1,62 +1,6 @@
 {
   "version": 1,
-  "meaning": "Grouped nested arguments resolved against unchanged source/oracle. Separate top-level global argument binding still fails in native/browser; never a semantic pass. Changed signatures require review.",
-  "historicalEvidence": "history/pr33-nested-known-discrepancies.json",
-  "entries": {
-    "global-parameter-public-alias": {
-      "classification": "global-argument-backend-binding",
-      "sourceSha256": "1341bd455b9891ef5eb6ed848c532138abf880ad0f3eb0999102a8148f20cbe2",
-      "expectedSha256": "66b5ceedc66b081e6f85369fd97f2ca5ba63d8158f06d31356664c0ecb87c974",
-      "failures": [
-        {
-          "layer": "native",
-          "observation": "state",
-          "actual": [
-            [
-              {
-                "count": 10,
-                "result": 20
-              }
-            ]
-          ]
-        },
-        {
-          "layer": "native",
-          "observation": "visible",
-          "actual": [
-            [
-              {
-                "count": "10",
-                "result": "20"
-              }
-            ]
-          ]
-        },
-        {
-          "layer": "browser",
-          "observation": "state",
-          "actual": [
-            [
-              {
-                "count": 10,
-                "result": null
-              }
-            ]
-          ]
-        },
-        {
-          "layer": "browser",
-          "observation": "visible",
-          "actual": [
-            [
-              {
-                "count": "10",
-                "result": "NaN"
-              }
-            ]
-          ]
-        }
-      ]
-    }
-  }
+  "meaning": "The global argument alias case now passes independently in native numeric state, native rendered HTML and clean-production browser DOM. All original nested cases are mandatory; native renderer defects remain in their separate catalog.",
+  "historicalEvidence": "history/pr34-nested-known-discrepancies.json",
+  "entries": {}
 }

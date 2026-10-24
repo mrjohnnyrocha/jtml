@@ -601,8 +601,6 @@ void Interpreter::reset() {
     // `renderer` alive so the frontend connection is preserved across
     // lesson / playground switches.
     classDeclarations.clear();
-    std::set<std::string> attachedCallers;
-    for (const auto& instance : componentInstances) if (instance.callerAttached) attachedCallers.insert(instance.id);
     componentInstances.clear();
     componentDefinitions.clear();
     dynamicComponentInstances.clear();

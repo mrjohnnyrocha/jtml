@@ -1,0 +1,32 @@
+{
+  "valid": {
+    "before": {
+      "exit": 1,
+      "errors": 2
+    },
+    "after": {
+      "exit": 0,
+      "errors": 0
+    }
+  },
+  "missing-initializer": {
+    "before": {
+      "exit": 1,
+      "errors": 3
+    },
+    "after": {
+      "exit": 1,
+      "errors": 1
+    }
+  },
+  "missing-target": {
+    "before": {
+      "exit": 1,
+      "errors": 2
+    },
+    "after": {
+      "exit": 1,
+      "errors": 2
+    }
+  }
+}

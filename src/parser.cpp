@@ -1093,6 +1093,16 @@ void Parser::attachStatementSpan(ASTNode& node,
                                  size_t begin,
                                  size_t endExclusive) const {
     node.sourceSpan = spanFromTokenRange(begin, endExclusive);
+    if (node.getType() == ASTNodeType::AssignmentStatement && node.sourceSpan.provenance) {
+        auto& assignment = static_cast<AssignmentStatementNode&>(node);
+        const auto& sites = node.sourceSpan.provenance->localDeclarations;
+        const auto site = sites.find(node.sourceSpan.startLine);
+        if (site != sites.end() && assignment.lhs &&
+            assignment.lhs->getExprType() == ExpressionStatementNodeType::Variable &&
+            static_cast<const VariableExpressionStatementNode&>(*assignment.lhs).name == site->second.name) {
+            assignment.localDeclaration = site->second;
+        }
+    }
 }
 
 void Parser::attachExpressionSpan(ExpressionStatementNode& node,

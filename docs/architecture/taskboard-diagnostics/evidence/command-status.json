@@ -1,0 +1,27 @@
+{
+  "before": {
+    "check": {
+      "exit": 0,
+      "errors": 0,
+      "warnings": 0
+    },
+    "lint": {
+      "exit": 1,
+      "errors": 346,
+      "warnings": 7
+    }
+  },
+  "after": {
+    "check": {
+      "exit": 0,
+      "errors": 0,
+      "warnings": 0
+    },
+    "lint": {
+      "exit": 1,
+      "errors": 44,
+      "warnings": 7
+    }
+  },
+  "sourceSha256": "dd59999cc5c351c809dbc4990fb045ceef89e1912999dc44a8d053b68fdc50da"
+}

@@ -420,6 +420,9 @@ struct DefineStatementNode : public ASTNode {
 
 // -- AssignmentStatementNode --
 struct AssignmentStatementNode : public ASTNode {
+    // Authored Friendly nested let; assigned by the parser from frontend-owned
+    // binding sites, preserved by cloning, ignored by compatibility runtimes.
+    std::optional<jtml::LoweredLocalDeclaration> localDeclaration;
     std::unique_ptr<ExpressionStatementNode> lhs;
     std::unique_ptr<ExpressionStatementNode> rhs;
 

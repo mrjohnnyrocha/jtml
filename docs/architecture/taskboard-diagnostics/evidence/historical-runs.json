@@ -1,0 +1,109 @@
+{
+  "implementationRevision": "36b64502459295207bd74963a723201eb8294a1b",
+  "historicalArchiveRevision": "36b64502459295207bd74963a723201eb8294a1b",
+  "baselineObserver": {
+    "diagnosticDecisions": 353,
+    "matchesOriginalOrder": true,
+    "decisionSequenceSha256": "6caf0f446563f94d4a83da3bd4897c231db04f6b2fcb9a31cbf2241012f9ecb5",
+    "originalJsonSha256": "27e86947dd763d58bcca51b20e519330dd689def4020111ddbff1de2a24c58db",
+    "observationalJsonSha256": "b982ee28f5e73293301eb619ed74e4a5ce979ea84720d7b30889420b8c2a0d02"
+  },
+  "runs": [
+    {
+      "archivePath": "docs/architecture/taskboard-diagnostics/evidence/native-browser-attempt1.log.gz",
+      "exit": 1,
+      "archiveSha256": "39f8c51a5b60e5b2e84936405208e9522ef8fb365252754e60c9f8dbe79d9669",
+      "decodedSha256": "6e041181ba3621b88950238accda99b184c0af4875f4b9442656457b037474e4",
+      "decodedBytes": 107251,
+      "observations": [
+        "browser: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "browser version: Google Chrome 155.0.8059.86 ",
+        "playwright version: disabled",
+        "clicks per fixture: 200",
+        "per-fixture budget: 3000ms",
+        "browser launch timeout: 15s",
+        "require clean browser exit: 1",
+        "fixture server: http://127.0.0.1:51117/",
+        "OK: browser-runtime static_counter clicks=200 initialization=66.30ms interaction=26.10ms average=0.13ms slowest=3.00ms verification=0.70ms nestedParamPatch=false keyedLifecycle=false browserExit=clean",
+        "OK: browser-runtime keyed_list clicks=200 initialization=52.90ms interaction=36.70ms average=0.18ms slowest=3.90ms verification=0.80ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+        "OK: browser-runtime control_flow clicks=200 initialization=33.00ms interaction=41.90ms average=0.21ms slowest=3.20ms verification=0.80ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+        "error: composition reported non-positive interaction time 0.0ms"
+      ]
+    },
+    {
+      "archivePath": "docs/architecture/taskboard-diagnostics/evidence/native-browser-attempt2.log.gz",
+      "exit": 1,
+      "archiveSha256": "4d9b2548441fc033a3c08fbe7e99108b0624bc4938d558ae7e6c5db29e4b29fa",
+      "decodedSha256": "b99fb4a01edf753955df7e40c4e7ec8e3387e79222d901c10858b9eeb098c3d8",
+      "decodedBytes": 107664,
+      "observations": [
+        "browser: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "browser version: Google Chrome 155.0.8059.86 ",
+        "playwright version: disabled",
+        "clicks per fixture: 200",
+        "per-fixture budget: 3000ms",
+        "browser launch timeout: 15s",
+        "require clean browser exit: 1",
+        "fixture server: http://127.0.0.1:51209/",
+        "OK: browser-runtime static_counter clicks=200 initialization=22.50ms interaction=12.60ms average=0.06ms slowest=1.60ms verification=0.40ms nestedParamPatch=false keyedLifecycle=false browserExit=clean",
+        "OK: browser-runtime keyed_list clicks=200 initialization=38.00ms interaction=48.90ms average=0.24ms slowest=5.10ms verification=1.00ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+        "OK: browser-runtime control_flow clicks=200 initialization=25.60ms interaction=37.00ms average=0.18ms slowest=2.70ms verification=0.90ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+        "OK: browser-runtime composition clicks=200 initialization=34.00ms interaction=30.50ms average=0.15ms slowest=5.00ms verification=0.80ms nestedParamPatch=true keyedLifecycle=false browserExit=clean",
+        "OK: browser-runtime large_keyed_updates clicks=201 initialization=100.60ms interaction=749.40ms average=3.73ms slowest=18.60ms verification=7.10ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+        "error: large_keyed_reorder reported non-positive interaction time 0.0ms"
+      ]
+    },
+    {
+      "archivePath": "docs/architecture/taskboard-diagnostics/evidence/pre-final-full-gate.log.gz",
+      "exit": 0,
+      "archiveSha256": "23cb91c5293b0e1f117a56a4c41e6b2b0843ace3d9effc5b78f6d0ddcc96ff0f",
+      "decodedSha256": "24bc139b646133f12a2fc812c624bea9a40403e605ada6a0410319345ada8414",
+      "decodedBytes": 157785
+    },
+    {
+      "archivePath": "docs/architecture/taskboard-diagnostics/evidence/full-gate.log.gz",
+      "exit": 0,
+      "archiveSha256": "2df59ced0737f8e82cfe7fed5ffda9be3667aaac5e25b7cfcc42773e2a4357f3",
+      "decodedSha256": "329d751020c3373eb2fedad0b5565205ae48abbbb9e098790eee6f17042e4997",
+      "decodedBytes": 153228,
+      "observations": [
+        "browser: /tmp/jtml-global-browsers/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell",
+        "browser version: Google Chrome for Testing 153.0.8010.12",
+        "playwright version: 1.63.0",
+        "clicks per fixture: 200",
+        "per-fixture budget: 3000ms",
+        "browser launch timeout: 15s",
+        "require clean browser exit: 1",
+        "fixture server: http://127.0.0.1:52446/",
+        "OK: browser-runtime static_counter clicks=200 initialization=44.10ms interaction=12.80ms average=0.06ms slowest=1.50ms verification=0.30ms nestedParamPatch=false keyedLifecycle=false browserExit=clean",
+        "OK: browser-runtime keyed_list clicks=200 initialization=42.30ms interaction=21.40ms average=0.11ms slowest=2.00ms verification=0.50ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+        "OK: browser-runtime control_flow clicks=200 initialization=42.30ms interaction=21.60ms average=0.11ms slowest=1.90ms verification=0.40ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+        "OK: browser-runtime composition clicks=200 initialization=43.00ms interaction=12.70ms average=0.06ms slowest=2.20ms verification=0.30ms nestedParamPatch=true keyedLifecycle=false browserExit=clean",
+        "OK: browser-runtime large_keyed_updates clicks=201 initialization=88.60ms interaction=657.70ms average=3.27ms slowest=7.90ms verification=7.40ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+        "OK: browser-runtime large_keyed_reorder clicks=201 initialization=93.20ms interaction=737.50ms average=3.67ms slowest=8.50ms verification=11.00ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+        "OK: browser-runtime nested_component_update clicks=200 initialization=43.10ms interaction=21.20ms average=0.11ms slowest=2.20ms verification=0.40ms nestedParamPatch=true keyedLifecycle=false browserExit=clean",
+        "OK: browser-runtime lifecycle_cleanup clicks=200 initialization=41.30ms interaction=35.30ms average=0.18ms slowest=2.80ms verification=0.50ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+        "OK: browser-runtime form_focus clicks=200 initialization=40.10ms interaction=10.50ms average=0.05ms slowest=0.80ms verification=0.40ms nestedParamPatch=false keyedLifecycle=false browserExit=clean",
+        "browser: /tmp/jtml-global-browsers/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell",
+        "browser version: Google Chrome for Testing 153.0.8010.12",
+        "playwright version: 1.63.0",
+        "clicks per fixture: 200",
+        "per-fixture budget: 3000ms",
+        "browser launch timeout: 15s",
+        "require clean browser exit: 1",
+        "fixture server: http://127.0.0.1:52456/",
+        "OK: browser-runtime reference-app clicks=4 initialization=47.10ms interaction=164.10ms average=41.02ms slowest=0.00ms verification=0.30ms nestedParamPatch=false keyedLifecycle=false browserExit=clean",
+        "FAIL / KNOWN DEFECT 5 native body-plan complete-attribute visible observations (one independently reproduced existing-main defect); lowering/lint/native diagnostics/browser PASS, actual discrepancies retained in traces",
+        "Runtime regression smoke passed (8 checks).",
+        "JTML local predeploy verification passed."
+      ]
+    },
+    {
+      "archivePath": "docs/architecture/taskboard-diagnostics/evidence/ci-example-lint.log.gz",
+      "exit": 0,
+      "archiveSha256": "51e0e00e1f5b9607bf9001b689b8398cb1c8ea96e4aa4065ce9edc068207ad1d",
+      "decodedSha256": "e7d0092d9917fe21a0eec6eda70ffd9667bad98edea36b2a46e11b2badcad1f8",
+      "decodedBytes": 4605
+    }
+  ]
+}

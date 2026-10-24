@@ -47,7 +47,8 @@ Retained limitations/failures:
 - Second native-browser full-gate attempt: exit 1, large_keyed_reorder interaction
   time 0.0ms rejected by the same unchanged assertion.
 - Those attempts used installed system Chrome 155.0.8059.86 without Playwright.
-  Both logs are retained. The existing supported pinned Playwright runner
+  Unique failure observations and original log hashes are retained in
+  historical-runs.json. The existing supported pinned Playwright runner
   subsequently passed the complete gate before and after final source-context
   review. No assertion, timing threshold, or asset budget changed.
 - Initial new import test used invalid list syntax; corrected to documented
@@ -65,6 +66,49 @@ Baseline versus final clean Taskboard browser output: diff -qr exit 0, all four
 files byte-identical (index.html, jtml-runtime.js, components/index.js, app.js).
 git diff --check: PASS.
 
-Full raw gate logs are gzip-compressed without modification. Decompress with
-Python gzip or gzip -dc. Full original/candidate diagnostic text and JSON remain
-uncompressed alongside grouped inventories and independent control programs.
+Evidence-only cleanup:
+Full transcripts and duplicate generated diagnostic outputs were removed from
+the final tree. historical-runs.json retains the unique failure observations,
+benchmark measurements, and hashes/paths of historical archives recoverable
+from implementation commit 36b64502459295207bd74963a723201eb8294a1b.
+Ordered before/after diagnostic ledgers preserve decisions and source/ownership
+attribution without repeated advice. summary.json, command-status.json and
+controls.json retain exact counts and statuses. Minimal source fixtures remain.
+No implementation, accepted behavior, oracle, gate, or regression test changed.
+The full runtime gate above is the validated implementation result, not a new
+runtime gate run for this documentation-only follow-up.
+
+Reproduce focused/full verification after the README build commands:
+ctest --test-dir build -R 'Linter|CliLint|SourcePropagation|SourceOrigin' --output-on-failure
+
+For full verification, use a local Playwright 1.63.0 installation with its pinned
+Chromium headless shell and export these variables (replace paths as needed):
+export NODE_PATH=/path/to/driver/node_modules
+export JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=/path/to/driver
+export PLAYWRIGHT_BROWSERS_PATH=/path/to/ms-playwright
+export JTML_BENCH_BROWSER=/path/to/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell
+export JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1
+export PYTHONDONTWRITEBYTECODE=1
+scripts/verify_all.sh
+
+Reproduce the clean asset comparison from the repository root after the README
+build commands (baseline_dir points at the disposable baseline checkout):
+asset_out="$(mktemp -d /tmp/jtml-lint-assets.XXXXXX)"
+"$baseline_dir/build/jtml" build tests/fixtures/production/taskboard-core/index.jtml --target browser --out "$asset_out/before"
+build/jtml build tests/fixtures/production/taskboard-core/index.jtml --target browser --out "$asset_out/after"
+diff -qr "$asset_out/before" "$asset_out/after"
+
+Evidence-only follow-up verification (2026-10-24):
+- All 353 before and 51 after decisions retain discovery order, full messages,
+  lexical/component ownership, and location/precision fields; paths normalized
+  to repository-relative form. Matched field by field against 36b6450 snapshots.
+- Historical archive SHA-256 hashes and retained unique observations verified
+  against immutable Git objects; the temporary observer decision hash matches.
+- summarize.py --check reproduces summary.json exactly, including zero new
+  diagnostics and all remaining categories.
+- Baseline/candidate CLI check/lint and all three control programs reproduce
+  command-status.json and controls.json exactly using the saved baseline binary
+  and unchanged candidate binary. No runtime gate rerun was needed.
+- Report links resolve; README shell blocks pass bash -n; diff whitespace clean.
+- Implementation, permanent regression tests, source fixtures, oracles, gate
+  scripts, summary.json, command-status.json and controls.json are unchanged.

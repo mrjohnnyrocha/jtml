@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 """Aggregate saved compiler diagnostics; never inspect application source."""
+import argparse
 import collections
-import csv
+import hashlib
 import json
-import re
 from pathlib import Path
 
 root = Path(__file__).parent / 'evidence'
-before = json.loads((root / 'before-context.json').read_text())['diagnostics']
-after = json.loads((root / 'after-lint.json').read_text())['diagnostics']
-raw = json.loads((root / 'before-lint.json').read_text())['diagnostics']
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--check', action='store_true', help='check the saved summary without rewriting it')
+args = parser.parse_args()
+def load(stage):
+    return [json.loads(line) for line in (root / (stage + '-diagnostics.jsonl')).read_text().splitlines()]
+before, after = load('before'), load('after')
 def decision(d):
     return d['severity'], d['code'], d['message']
-assert list(map(decision, before)) == list(map(decision, raw))
+sequence = json.dumps([decision(d) for d in before], separators=(',', ':')).encode()
+history = json.loads((root / 'historical-runs.json').read_text())
+assert hashlib.sha256(sequence).hexdigest() == history['baselineObserver']['decisionSequenceSha256']
 def key(d):
     return (*decision(d), d.get('scope', ''))
 remaining = collections.Counter(map(key, after))
@@ -56,23 +61,8 @@ summary = {
     'unlocatedAfter': sum(not d['line'] for d in after),
     'newDiagnostics': 0,
 }
-(root / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
-for stage, items in [('before', before), ('after', after)]:
-    rows = []
-    for d in items:
-        match = re.search(r"'([^']+)'", d['message'])
-        lowered = match.group(1) if match else ''
-        variable = re.sub(r'^(?:__[A-Za-z][A-Za-z0-9_]*?_\d+_)+', '', lowered)
-        file = d.get('file', '')
-        if '/tests/' in file:
-            file = 'tests/' + file.split('/tests/', 1)[1]
-        rows.append((d['severity'], d['code'], category(d), variable, lowered,
-                     d.get('component', ''), d.get('scope', ''), file,
-                     d['line'], d['column'], d.get('sourceExact', False)))
-    with (root / (stage + '-inventory.tsv')).open('w') as stream:
-        writer = csv.writer(stream, delimiter='\t', lineterminator='\n')
-        writer.writerow(['severity', 'code', 'category', 'variable', 'loweredVariable',
-                         'component', 'scope', 'file', 'line', 'column', 'sourceExact', 'count'])
-        for row, count in sorted(collections.Counter(rows).items()):
-            writer.writerow([*row, count])
+if args.check:
+    assert summary == json.loads((root / 'summary.json').read_text()), 'saved summary differs'
+else:
+    (root / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
 print(json.dumps(summary, indent=2))

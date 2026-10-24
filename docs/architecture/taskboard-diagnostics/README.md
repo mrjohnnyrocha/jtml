@@ -36,24 +36,67 @@ Of the removed errors, 272 belong to TaskBoard and 30 to TaskRow. Comparing
 message, severity, code, and lexical scope finds **zero new diagnostics**.
 The original fixture SHA-256 is recorded in `evidence/verification.txt`.
 
-The complete original text/JSON output is in `evidence/before-lint.*`; complete
-candidate output is in `evidence/after-lint.*`. `before-inventory.tsv` and
-`after-inventory.tsv` group every occurrence by code, authored-name projection,
-lowered name, component, AST scope, original construct file/line/column, and
-location precision. The raw lowered name is retained because generated names
-can represent different lexical bindings.
+The permanent snapshots are `evidence/before-diagnostics.jsonl` (353 decisions)
+and `evidence/after-diagnostics.jsonl` (51 decisions). Each JSON line records one
+diagnostic in discovery order: severity, code, full message, component, lexical
+scope, repository-relative source file, line, column, and `sourceExact`. Repeated
+hints/examples and duplicate text/TSV renderings are omitted. These ledgers retain
+all information needed to group counts by name, scope, and source construct.
+[summary.json](evidence/summary.json), [command-status.json](evidence/command-status.json),
+and [controls.json](evidence/controls.json) retain the aggregate
+counts, actual exit statuses, fixture hash, and valid/invalid control results.
 
-Original main emitted line/column 0 for these lint diagnostics. To locate the
-baseline decisions, a temporary observational linter was linked against the
-same compiler: it adds the candidate context fields and corrected physical-line
-map, but omits the new `localDeclaration` handling. `before-context.json` retains
-all 353 original diagnostic decisions **in the same order**, asserted against
-the untouched baseline output by `summarize.py`. Its counts are observations,
-not a second acceptance oracle. Recreate the aggregate tables with:
+Original main emitted line/column 0 for these lint diagnostics. The **before**
+ledger preserves the unique temporary observer's source/scope attribution: the
+observer added context fields and corrected physical-line mapping but omitted
+`localDeclaration` handling. All 353 decisions matched the untouched baseline's
+message, severity, code, and discovery order. That historical equality and its
+sequence hash are recorded in `evidence/historical-runs.json`. It is an
+observation, not a second acceptance oracle. Baseline CLI output can be regenerated
+from the recorded main revision; its additional observational attribution is
+preserved here because the temporary observer is not a permanent compiler mode.
+
+Verify the ledgers against the saved aggregate summary without rewriting files:
 
 ```sh
-python3 docs/architecture/taskboard-diagnostics/summarize.py
+python3 docs/architecture/taskboard-diagnostics/summarize.py --check
 ```
+
+To reproduce raw outputs, build the recorded baseline in a disposable checkout
+and compare it with the repaired revision. Run from the repository root; output
+and build artifacts stay outside version control:
+
+```sh
+baseline=315e6f280169330f0f6a7528484f3f78b8d5a1f9
+baseline_dir="$(mktemp -d /tmp/jtml-lint-baseline.XXXXXX)"
+git archive "$baseline" | tar -x -C "$baseline_dir"
+cmake -S "$baseline_dir" -B "$baseline_dir/build" -DJTML_BUILD_TESTS=ON -DJTML_BUILD_PYTHON=OFF
+cmake --build "$baseline_dir/build" --parallel 8
+cmake -S . -B build -DJTML_BUILD_TESTS=ON -DJTML_BUILD_PYTHON=OFF
+cmake --build build --parallel 8
+out="$(mktemp -d /tmp/jtml-lint-evidence.XXXXXX)"
+source=tests/fixtures/production/taskboard-core/index.jtml
+for stage in before after; do
+  binary="$baseline_dir/build/jtml"
+  if [ "$stage" = after ]; then binary="$PWD/build/jtml"; fi
+  for command in check lint; do
+    lint_exit=0
+    "$binary" "$command" "$source" --json > "$out/$stage-$command.json" || lint_exit=$?
+    echo "$stage $command exit=$lint_exit" # check=0, lint=1 for both revisions
+  done
+  for fixture in valid missing-initializer missing-target; do
+    lint_exit=0
+    "$binary" lint "docs/architecture/taskboard-diagnostics/evidence/$fixture.jtml" --json \
+      > "$out/$fixture-$stage.json" || lint_exit=$?
+    echo "$stage $fixture exit=$lint_exit"
+  done
+done
+```
+
+The fixed baseline revision and unchanged source bytes define reproducibility;
+absolute checkout paths and repeated remediation prose are not acceptance data.
+See `evidence/verification.txt` for focused/full-gate commands, tool versions,
+results, known failures, and asset comparison commands.
 
 ## Independent diagnosis and first incorrect layer
 
@@ -74,8 +117,9 @@ page
 Before: two errors, for assignment to the generated `next` and its subsequent
 read. After: no errors, lint exits 0. Replacing the initializer's `count` with
 `absent` still exits 1 with one undefined-name error. Removing `let` from `next`
-still exits 1 with two errors. Full baseline/candidate output for both deliberately
-invalid controls and the valid source is saved alongside `controls.json`.
+still exits 1 with two errors. The source fixtures and exact baseline/candidate
+exit and error counts are retained in `controls.json`; the commands above
+regenerate their raw output.
 
 The ownership trace is:
 
@@ -173,9 +217,35 @@ locations; AST clone retention; multiline CSS attribution; and Classic-prefix
 binding offsets. The tests use the actual linked compilation pipeline or rich
 lowering result, not a second source scanner.
 
-Verification results and complete logs are recorded in `evidence/verification.txt`.
+Verification results and reproduction commands are recorded in
+`evidence/verification.txt`. `evidence/historical-runs.json` preserves the unique
+failed-run observations, recorded benchmark measurements, and archive hashes.
 Both initial native-browser full-gate timing failures remain recorded
 independently of subsequent successful runs. The original conformance suite
 continues to report five known native attribute-renderer discrepancies; those
 are retained failures, not new semantic passes. The separate Studio `/api/export` concurrency
 investigation is outside this change.
+
+## Evidence retention review
+
+The evidence-only follow-up keeps the root-cause analysis, all counts and known
+limitations, the three minimal source fixtures, compact ordered diagnostic
+ledgers, machine-readable summaries, verification results, source/log hashes,
+and tool/reproduction commands. Implementation and permanent regression tests
+are unchanged from `36b6450`.
+
+Removed from the final PR diff: verbose diagnostic JSON with repeated advice,
+duplicate text and TSV outputs, generated control/check outputs, the focused-test
+transcript, and full compressed verification/build transcripts. The compiler and
+existing gates reproduce their relevant conclusions. Unique baseline observer
+attribution and historical timing-failure observations remain in the compact
+snapshots; no failure is reclassified as a pass.
+
+The original raw archives remain recoverable from the immutable implementation
+commit if a historical transcript is needed. `historical-runs.json` records their
+paths and SHA-256 hashes; for example:
+
+```sh
+git show 36b64502459295207bd74963a723201eb8294a1b:docs/architecture/taskboard-diagnostics/evidence/full-gate.log.gz > /tmp/jtml-full-gate.log.gz
+gzip -dc /tmp/jtml-full-gate.log.gz > /tmp/jtml-full-gate.log
+```

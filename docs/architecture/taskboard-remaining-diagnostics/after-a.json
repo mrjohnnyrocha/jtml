@@ -1,0 +1,163 @@
+[
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskBoard_14_draft'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskBoard14Draft",
+    "sourceExact": false
+  },
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskBoard_14_renameDraft'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskBoard14RenameDraft",
+    "sourceExact": false
+  },
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskBoard_14_selectedFallback'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskBoard14SelectedFallback",
+    "sourceExact": false
+  },
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskBoard_14_selectedId'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskBoard14SelectedId",
+    "sourceExact": false
+  },
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskBoard_14_selectedSuffix'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskBoard14SelectedSuffix",
+    "sourceExact": false
+  },
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskBoard_7_draft'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskBoard7Draft",
+    "sourceExact": false
+  },
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskBoard_7_renameDraft'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskBoard7RenameDraft",
+    "sourceExact": false
+  },
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskBoard_7_selectedFallback'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskBoard7SelectedFallback",
+    "sourceExact": false
+  },
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskBoard_7_selectedId'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskBoard7SelectedId",
+    "sourceExact": false
+  },
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskBoard_7_selectedSuffix'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskBoard7SelectedSuffix",
+    "sourceExact": false
+  },
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskRow_13_draftNote'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskRow13DraftNote",
+    "sourceExact": false
+  },
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskRow_13_draftTitle'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskRow13DraftTitle",
+    "sourceExact": false
+  },
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskRow_6_draftNote'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskRow6DraftNote",
+    "sourceExact": false
+  },
+  {
+    "severity": "error",
+    "code": "JTML_UNDEFINED_NAME",
+    "message": "assignment to undefined variable '__TaskRow_6_draftTitle'",
+    "file": "",
+    "line": 0,
+    "column": 0,
+    "component": "",
+    "scope": "module/action:setTaskRow6DraftTitle",
+    "sourceExact": false
+  },
+  {
+    "severity": "warning",
+    "code": "JTML_UI_SURFACE_UNLABELED",
+    "message": "semantic card should usually have title \"...\" or aria-label \"...\" so sections are understandable in large apps",
+    "line": 0,
+    "column": 0
+  }
+]

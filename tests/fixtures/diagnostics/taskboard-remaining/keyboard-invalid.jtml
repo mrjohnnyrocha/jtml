@@ -1,0 +1,7 @@
+jtml 2
+make Editor
+  when key
+    show "key"
+  input keydown key
+page
+  Editor

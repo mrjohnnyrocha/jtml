@@ -9,8 +9,9 @@ features or declare production readiness.
 ## Public-preview release audit
 
 The proposed v0.3.0 preview is **NOT READY**: version/distribution identity is
-unfinished, and unchanged Taskboard lint still fails with 28 errors / 7 warnings
-(after local/emit ownership repairs; latest measured baseline 44 / 7). See the bounded
+unfinished. Unchanged Taskboard lint now passes with 0 errors / 1 legitimate
+accessibility advisory, from the independently measured PR #39 baseline of 28 / 7.
+See the bounded
 [release contract, licensing review and current evidence](docs/releases/v0.3-readiness.md).
 Strict N04 now passes its tested subset; dated BLOCKED snapshots below remain
 historical evidence, not the current result or a claim of complete source spans.
@@ -26,15 +27,31 @@ nested supplemental cases are mandatory; their last catalogued defect is retired
 with its old signature preserved. Five independent native attribute-renderer
 observations remain FAIL / KNOWN DEFECT. See [evidence and boundaries](docs/architecture/global-component-parameters.md).
 
+## Remaining Taskboard diagnostics
+
+The unchanged Taskboard now passes check and lint with **0 errors / 1 legitimate
+unlabeled-card advisory**, down from a freshly built PR #39 baseline of 28 / 7.
+Standalone callback arguments retain lexical binding; parser-owned postfix ASTs
+preserve object/grouped/indexed/call bases. Generated input setters close over
+owning component state and retain their input origin, while module setters keep
+the existing native/live contract. Keyboard payload arity and action/template
+while context are checked independently. Invalid binding, scope, arity and syntax
+controls remain rejected. This is bounded Taskboard diagnostic acceptance, not a
+complete TypeEnvironment or token-exact source span claim. Verification: 468/468
+CTests and the complete local gate PASS, nine clean-exit benchmarks and live smoke
+8/8, no checks skipped. Five native attribute-renderer observations and the
+reference microfixture HTML size overage remain known failures. See
+[root causes, inventories and verification](docs/architecture/taskboard-remaining-diagnostics/README.md).
+
 ## Component emitted callback diagnostics
 
 Canonical Semantic IR emit contracts now bind callbacks only within their owning
 component's lint scope. All 16 false callback-name errors disappear; unchanged
-Taskboard lint reports 28 errors / 7 warnings, down from the fresh PR #38 baseline
+Taskboard lint at that slice reported 28 errors / 7 warnings, down from the fresh PR #38 baseline
 of 44 / 7. Unknown callbacks, argument names and payload arity still fail; child,
 sibling, page and imported component scopes remain isolated. The 12 argument
-binding errors have a separate lowering cause and remain deferred, as do setter
-ownership and keyboard arity. Taskboard lint acceptance remains **FAIL**. See
+binding errors, setter ownership and keyboard arity were deferred then; the
+remaining-diagnostics slice above supersedes that failing result. See
 [diagnosis, exact evidence and verification](docs/architecture/emitted-callback-diagnostics/README.md).
 
 ## Friendly nested-local diagnostics
@@ -43,10 +60,9 @@ The PR #38 slice reduced unchanged Taskboard lint to 44 errors / 7 warnings,
 from the independently reproduced 346 / 7 baseline at merged PR #37. Frontend
 binding metadata preserves nested `let` identity through compatibility lowering
 and AST cloning; lint checks lexical ownership without hoisting action locals.
-The 302 removed errors are false undefined-name diagnostics. Taskboard lint
-acceptance remains **FAIL**; emitted callbacks/arguments, generated setter owners,
-keyboard arity, action/template context and source precision remain separate
-limitations. See [diagnostic evidence and verification](docs/architecture/taskboard-diagnostics/README.md).
+The 302 removed errors were false undefined-name diagnostics. Later repairs
+above resolve the remaining Taskboard binding, arity and context false positives;
+complete source precision remains a separate limitation. See [diagnostic evidence and verification](docs/architecture/taskboard-diagnostics/README.md).
 
 ## Browser nested argument expressions
 

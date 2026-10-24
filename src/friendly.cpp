@@ -32,6 +32,8 @@ struct OpenBlock {
     std::vector<std::string> afterClose;
     int sourceLine = 0;
     std::string actionName;
+    bool componentBoundary = false;
+    std::map<std::string, int> inputSetters;
 };
 
 struct ComponentDef {
@@ -1901,7 +1903,11 @@ std::vector<ElementBindingRole> classifyElementBindings(
 std::string substituteIdentifiers(const std::string& text,
                                   const std::map<std::string, std::string>& bindings, int lineNumber) {
     auto tokens = splitTokens(text);
-    const bool expressionLine = tokens.empty() || isKnownLineKeyword(tokens.front()) || tokens.front() == "text" ||
+    // Match the standalone expression production used by the lowering below.
+    // Its callee and arguments are references, never element syntax roles.
+    const bool standaloneExpression = tokens.size() == 1 &&
+        (tokens.front().find('(') != std::string::npos || tokens.front().find('.') != std::string::npos);
+    const bool expressionLine = standaloneExpression || tokens.empty() || isKnownLineKeyword(tokens.front()) || tokens.front() == "text" ||
         startsWith(tokens.front(), "__") ||
         (tokens.size() > 1 && isFriendlyAssignmentOperator(tokens[1]));
     const auto roles = expressionLine ? std::vector<ElementBindingRole>(tokens.size(), ElementBindingRole::Expression)
@@ -3204,7 +3210,7 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
     const std::string themeCss = collectThemeCss(lines);
     std::ostringstream out;
     std::vector<OpenBlock> stack;
-    std::set<std::string> synthesizedSetters;
+    std::map<std::string, int> synthesizedSetters;
     // Maps action name → redirect path for client-side wiring.
     std::map<std::string, std::string> redirectActions;
     // Maps action name → fetch names refreshed after the action runs.
@@ -3221,6 +3227,12 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
             const auto close = stack.back().close;
             const auto afterClose = stack.back().afterClose;
             const int previousSourceLine = activeFriendlySourceLine;
+            for (const auto& [helper, origin] : stack.back().inputSetters) {
+                activeFriendlySourceLine = origin;
+                std::istringstream input(helper);
+                std::string helperLine;
+                while (std::getline(input, helperLine)) emitLine(out, level + 1, helperLine);
+            }
             activeFriendlySourceLine = stack.back().sourceLine;
             emitLine(out, level, close);
             stack.pop_back();
@@ -3684,13 +3696,24 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
             throw std::runtime_error("Unsupported Friendly JTML statement '" + head + "' at line " + std::to_string(line.number));
         } else {
             auto element = translateElement(tokens, line.number);
+            // Component helpers belong to the component declaration scope,
+            // even when the input is inside DOM containers. Ordinary module
+            // bindings keep the legacy module helper contract.
+            auto owner = std::find_if(stack.rbegin(), stack.rend(),
+                [](const OpenBlock& block) { return block.componentBoundary; });
+            for (const auto& setter : element.synthesizedSetters) {
+                if (startsWith(setter, "function ") && owner != stack.rend()) {
+                    owner->inputSetters.emplace(setter, line.number);
+                } else {
+                    synthesizedSetters.emplace(setter, line.number);
+                }
+            }
             emitLine(out, level, element.openLine);
             for (const auto& body : element.bodyLines) emitLine(out, level + 1, body);
-            for (const auto& setter : element.synthesizedSetters) {
-                synthesizedSetters.insert(setter);
-            }
             if (hasChildren && element.closesWithHash) {
                 stack.push_back({line.indent, "#"});
+                stack.back().componentBoundary = std::any_of(tokens.begin(), tokens.end(),
+                    [](const std::string& token) { return startsWith(token, "data-jtml-component="); });
             } else if (element.closesWithHash) {
                 emitLine(out, level, "#");
             } else if (element.isVoid && !stack.empty() && nextIndent <= line.indent) {
@@ -3702,8 +3725,11 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
 
     closeToIndent(-1);
 
-    for (const auto& setter : synthesizedSetters) {
-        out << "\n" << setter << "\n";
+    for (const auto& [setter, origin] : synthesizedSetters) {
+        activeFriendlySourceLine = origin;
+        std::istringstream input(setter);
+        std::string helperLine;
+        while (std::getline(input, helperLine)) emitLine(out, 0, helperLine);
     }
 
     // Emit meta elements for redirect actions so the browser runtime can

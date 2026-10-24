@@ -142,6 +142,9 @@ std::unique_ptr<ExpressionStatementNode> Parser::parseStandaloneExpression() {
                         ", col " + std::to_string(extra.column) + ")");
             return nullptr;
         }
+        // consume() records recoverable errors without throwing. A standalone
+        // expression must never expose that recovery AST as a valid plan.
+        if (!m_errors.empty()) return nullptr;
         return expression;
     } catch (const std::runtime_error& error) {
         recordError(error.what());
@@ -1291,7 +1294,66 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parseUnary() 
         return withSpan(std::make_unique<UnaryExpressionStatementNode>(
             opTok, std::move(right)), expressionStart);
     }
-    return parsePrimary();
+    return parsePostfix();
+}
+
+// Postfix access belongs to an expression, not only to a bare identifier.
+// Keeping the base as an AST node preserves grouping and literal ownership.
+std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parsePostfix() {
+    const size_t expressionStart = m_posRef;
+    auto expr = parsePrimary();
+    // Handle chained accesses (dot, subscript)
+    while (true) {
+        if (match(TokenType::DOT)) {
+            // Property access or method call
+            Token memberToken = m_parentParser.consume(TokenType::IDENTIFIER, "Expected property or method name after '.'");
+            if (match(TokenType::LPAREN)) {
+                // Method Call
+                std::vector<std::unique_ptr<ExpressionStatementNode>> methodArgs;
+                if (!m_parentParser.check(TokenType::RPAREN)) {
+                    do {
+                        methodArgs.push_back(parseExpression());
+                    } while (match(TokenType::COMMA));
+                }
+                m_parentParser.consume(TokenType::RPAREN, "Expected ')' after method arguments.");
+
+                expr = withSpan(std::make_unique<ObjectMethodCallExpressionNode>(
+                    std::move(expr),
+                    memberToken.text,
+                    std::move(methodArgs)
+                ), expressionStart);
+
+                JTML_PARSER_DEBUG << "[DEBUG] Parsed method call: " << memberToken.text << "\n";
+            }
+            else {
+                // Property Access
+                expr = withSpan(std::make_unique<ObjectPropertyAccessExpressionNode>(
+                    std::move(expr),
+                    memberToken.text
+                ), expressionStart);
+
+                JTML_PARSER_DEBUG << "[DEBUG] Parsed property access: " << memberToken.text << "\n";
+            }
+        }
+        else if (match(TokenType::LBRACKET)) {
+            // Subscript Access
+            std::unique_ptr<ExpressionStatementNode> indexExpr = parseExpression();
+            m_parentParser.consume(TokenType::RBRACKET, "Expected ']' after subscript.");
+
+            expr = withSpan(std::make_unique<SubscriptExpressionStatementNode>(
+                std::move(expr),
+                std::move(indexExpr)
+            ), expressionStart);
+
+            JTML_PARSER_DEBUG << "[DEBUG] Parsed subscript access.\n";
+        }
+        else {
+            // No further chaining
+            break;
+        }
+    }
+
+    return withSpan(std::move(expr), expressionStart);
 }
 
 std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parsePrimary() {
@@ -1308,57 +1370,6 @@ std::unique_ptr<ExpressionStatementNode> Parser::ExpressionParser::parsePrimary(
         // Start with the base variable
         std::unique_ptr<ExpressionStatementNode> expr;
         expr = withSpan(std::make_unique<VariableExpressionStatementNode>(identifierToken), expressionStart);
-
-        // Handle chained accesses (dot, subscript)
-        while (true) {
-            if (match(TokenType::DOT)) {
-                // Property access or method call
-                Token memberToken = m_parentParser.consume(TokenType::IDENTIFIER, "Expected property or method name after '.'");
-                if (match(TokenType::LPAREN)) {
-                    // Method Call
-                    std::vector<std::unique_ptr<ExpressionStatementNode>> methodArgs;
-                    if (!m_parentParser.check(TokenType::RPAREN)) {
-                        do {
-                            methodArgs.push_back(parseExpression());
-                        } while (match(TokenType::COMMA));
-                    }
-                    m_parentParser.consume(TokenType::RPAREN, "Expected ')' after method arguments.");
-
-                    expr = withSpan(std::make_unique<ObjectMethodCallExpressionNode>(
-                        std::move(expr),
-                        memberToken.text,
-                        std::move(methodArgs)
-                    ), expressionStart);
-
-                    JTML_PARSER_DEBUG << "[DEBUG] Parsed method call: " << memberToken.text << "\n";
-                }
-                else {
-                    // Property Access
-                    expr = withSpan(std::make_unique<ObjectPropertyAccessExpressionNode>(
-                        std::move(expr),
-                        memberToken.text
-                    ), expressionStart);
-
-                    JTML_PARSER_DEBUG << "[DEBUG] Parsed property access: " << memberToken.text << "\n";
-                }
-            }
-            else if (match(TokenType::LBRACKET)) {
-                // Subscript Access
-                std::unique_ptr<ExpressionStatementNode> indexExpr = parseExpression();
-                m_parentParser.consume(TokenType::RBRACKET, "Expected ']' after subscript.");
-
-                expr = withSpan(std::make_unique<SubscriptExpressionStatementNode>(
-                    std::move(expr),
-                    std::move(indexExpr)
-                ), expressionStart);
-
-                JTML_PARSER_DEBUG << "[DEBUG] Parsed subscript access.\n";
-            }
-            else {
-                // No further chaining
-                break;
-            }
-        }
 
         return withSpan(std::move(expr), expressionStart);
     }

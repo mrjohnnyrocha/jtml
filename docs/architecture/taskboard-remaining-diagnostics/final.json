@@ -1,0 +1,9 @@
+[
+  {
+    "severity": "warning",
+    "code": "JTML_UI_SURFACE_UNLABELED",
+    "message": "semantic card should usually have title \"...\" or aria-label \"...\" so sections are understandable in large apps",
+    "line": 0,
+    "column": 0
+  }
+]

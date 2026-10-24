@@ -1,0 +1,281 @@
+{
+  "before": {
+    "warning/JTML_TEMPLATE_WHILE": 6,
+    "error/JTML_UNDEFINED_NAME": 26,
+    "error/JTML_ARITY": 2,
+    "warning/JTML_UI_SURFACE_UNLABELED": 1
+  },
+  "after-cd": {
+    "error/JTML_UNDEFINED_NAME": 26,
+    "warning/JTML_UI_SURFACE_UNLABELED": 1
+  },
+  "after-a": {
+    "error/JTML_UNDEFINED_NAME": 14,
+    "warning/JTML_UI_SURFACE_UNLABELED": 1
+  },
+  "after-b": {
+    "warning/JTML_UI_SURFACE_UNLABELED": 1
+  },
+  "baseline": "95e7bf0fceb39fa1f5d934e65170acdd88b00695",
+  "taskboardSha256": "dd59999cc5c351c809dbc4990fb045ceef89e1912999dc44a8d053b68fdc50da",
+  "baselineControls": {
+    "while-template-before.json": [
+      {
+        "severity": "warning",
+        "code": "JTML_TEMPLATE_WHILE",
+        "message": "template while is action-only in production runtimes; use `for` for rendered repetition",
+        "file": "while-template.jtml",
+        "line": 4,
+        "column": 3,
+        "component": "",
+        "scope": "module/element:main",
+        "sourceExact": false
+      }
+    ],
+    "setter-valid-before.json": [
+      {
+        "severity": "error",
+        "code": "JTML_UNDEFINED_NAME",
+        "message": "assignment to undefined variable '__Editor_1_text'",
+        "file": "",
+        "line": 0,
+        "column": 0,
+        "component": "",
+        "scope": "module/action:setEditor1Text",
+        "sourceExact": false
+      },
+      {
+        "severity": "error",
+        "code": "JTML_UNDEFINED_NAME",
+        "message": "assignment to undefined variable '__Editor_2_text'",
+        "file": "",
+        "line": 0,
+        "column": 0,
+        "component": "",
+        "scope": "module/action:setEditor2Text",
+        "sourceExact": false
+      }
+    ],
+    "setter-invalid-before.json": [
+      {
+        "severity": "error",
+        "code": "JTML_UNDEFINED_NAME",
+        "message": "undefined variable 'missing'",
+        "file": "setter-invalid.jtml",
+        "line": 3,
+        "column": 3,
+        "component": "Editor",
+        "scope": "module/element:main/component:Editor",
+        "sourceExact": false
+      },
+      {
+        "severity": "error",
+        "code": "JTML_UNDEFINED_NAME",
+        "message": "assignment to undefined variable 'missing'",
+        "file": "",
+        "line": 0,
+        "column": 0,
+        "component": "",
+        "scope": "module/action:setMissing",
+        "sourceExact": false
+      },
+      {
+        "severity": "warning",
+        "code": "JTML_UNKNOWN_INTO_TARGET",
+        "message": "component Editor binds `into missing`, but no local `let missing` state exists",
+        "line": 0,
+        "column": 0
+      }
+    ],
+    "keyboard-valid-before.json": [
+      {
+        "severity": "error",
+        "code": "JTML_ARITY",
+        "message": "function '__Editor_1_key' expects 1 argument(s), got 0",
+        "file": "keyboard-valid.jtml",
+        "line": 5,
+        "column": 3,
+        "component": "Editor",
+        "scope": "module/element:main/component:Editor",
+        "sourceExact": false
+      }
+    ],
+    "while-valid-before.json": [
+      {
+        "severity": "warning",
+        "code": "JTML_TEMPLATE_WHILE",
+        "message": "template while is action-only in production runtimes; use `for` for rendered repetition",
+        "file": "while-valid.jtml",
+        "line": 5,
+        "column": 5,
+        "component": "Counter",
+        "scope": "module/element:main/component:Counter/action:__Counter_1_advance",
+        "sourceExact": false
+      }
+    ],
+    "object-valid-before.json": [
+      {
+        "severity": "error",
+        "code": "JTML_UNDEFINED_NAME",
+        "message": "undefined variable 'record'",
+        "file": "object-valid.jtml",
+        "line": 6,
+        "column": 5,
+        "component": "Sender",
+        "scope": "module/element:main/component:Sender/action:__Sender_1_send",
+        "sourceExact": false
+      },
+      {
+        "severity": "warning",
+        "code": "JTML_UNBOUND_ACTION",
+        "message": "action \"receive\" is defined but never triggered from the UI; add a click, input, or other event",
+        "line": 0,
+        "column": 0
+      }
+    ],
+    "argument-invalid-before.json": [
+      {
+        "severity": "error",
+        "code": "JTML_UNDEFINED_NAME",
+        "message": "undefined variable 'absent'",
+        "file": "argument-invalid.jtml",
+        "line": 6,
+        "column": 5,
+        "component": "Sender",
+        "scope": "module/element:main/component:Sender/action:__Sender_1_send",
+        "sourceExact": false
+      },
+      {
+        "severity": "warning",
+        "code": "JTML_DEAD_STATE",
+        "message": "\"task\" is never observed in UI output; remove it or bind it to a text, attribute, or condition",
+        "line": 0,
+        "column": 0
+      },
+      {
+        "severity": "warning",
+        "code": "JTML_UNBOUND_ACTION",
+        "message": "action \"receive\" is defined but never triggered from the UI; add a click, input, or other event",
+        "line": 0,
+        "column": 0
+      }
+    ],
+    "argument-valid-before.json": [
+      {
+        "severity": "error",
+        "code": "JTML_UNDEFINED_NAME",
+        "message": "undefined variable 'record'",
+        "file": "argument-valid.jtml",
+        "line": 6,
+        "column": 5,
+        "component": "Sender",
+        "scope": "module/element:main/component:Sender/action:__Sender_1_send",
+        "sourceExact": false
+      },
+      {
+        "severity": "warning",
+        "code": "JTML_DEAD_STATE",
+        "message": "\"task\" is never observed in UI output; remove it or bind it to a text, attribute, or condition",
+        "line": 0,
+        "column": 0
+      },
+      {
+        "severity": "warning",
+        "code": "JTML_UNBOUND_ACTION",
+        "message": "action \"receive\" is defined but never triggered from the UI; add a click, input, or other event",
+        "line": 0,
+        "column": 0
+      }
+    ],
+    "keyboard-invalid-before.json": []
+  },
+  "final": {
+    "exit": 0,
+    "counts": {
+      "warning/JTML_UI_SURFACE_UNLABELED": 1
+    }
+  },
+  "finalControls": {
+    "tests/fixtures/diagnostics/emitted-callbacks/argument-invalid.jtml": {
+      "exit": 1,
+      "counts": {
+        "error/JTML_UNDEFINED_NAME": 1,
+        "warning/JTML_DEAD_STATE": 1,
+        "warning/JTML_UNBOUND_ACTION": 1
+      }
+    },
+    "tests/fixtures/diagnostics/emitted-callbacks/argument-valid.jtml": {
+      "exit": 0,
+      "counts": {
+        "warning/JTML_UNBOUND_ACTION": 1
+      }
+    },
+    "tests/fixtures/diagnostics/taskboard-remaining/keyboard-invalid.jtml": {
+      "exit": 1,
+      "counts": {
+        "error/JTML_ARITY": 1
+      }
+    },
+    "tests/fixtures/diagnostics/taskboard-remaining/keyboard-valid.jtml": {
+      "exit": 0,
+      "counts": {}
+    },
+    "tests/fixtures/diagnostics/taskboard-remaining/object-valid.jtml": {
+      "exit": 0,
+      "counts": {
+        "warning/JTML_UNBOUND_ACTION": 1
+      }
+    },
+    "tests/fixtures/diagnostics/taskboard-remaining/setter-invalid.jtml": {
+      "exit": 1,
+      "counts": {
+        "error/JTML_UNDEFINED_NAME": 2,
+        "warning/JTML_UNKNOWN_INTO_TARGET": 1
+      }
+    },
+    "tests/fixtures/diagnostics/taskboard-remaining/setter-valid.jtml": {
+      "exit": 0,
+      "counts": {}
+    },
+    "tests/fixtures/diagnostics/taskboard-remaining/while-template.jtml": {
+      "exit": 0,
+      "counts": {
+        "warning/JTML_TEMPLATE_WHILE": 1
+      }
+    },
+    "tests/fixtures/diagnostics/taskboard-remaining/while-valid.jtml": {
+      "exit": 0,
+      "counts": {}
+    }
+  },
+  "taskboardCleanAssets": [
+    {
+      "file": "app.js",
+      "beforeBytes": 619,
+      "afterBytes": 619,
+      "identical": true,
+      "sha256": "dedd38574630aed2eda3cf043323340b214a9f7f068d3238e8262be24cd80328"
+    },
+    {
+      "file": "components/index.js",
+      "beforeBytes": 346249,
+      "afterBytes": 346249,
+      "identical": true,
+      "sha256": "34d99fcc50682d3b1ca43150018d64f29d478d6365e64729f78cf5d6ea576526"
+    },
+    {
+      "file": "index.html",
+      "beforeBytes": 1022172,
+      "afterBytes": 1015237,
+      "identical": false,
+      "sha256": "711cc489dc58d4bca6be03fa984151c39f8ad18aaa50a8ee76fae7359030b20f"
+    },
+    {
+      "file": "jtml-runtime.js",
+      "beforeBytes": 271855,
+      "afterBytes": 271855,
+      "identical": true,
+      "sha256": "56a9593066ac6d63f1c8fedaa24271c8e7b15bcae881c57e79b1d871683a6ce6"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+jtml 2
+make Counter
+  let count = 0
+  when advance
+    while count < 2
+      count += 1
+  button "Go" click advance
+page
+  Counter

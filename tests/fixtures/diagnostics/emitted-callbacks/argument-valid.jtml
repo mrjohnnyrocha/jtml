@@ -1,0 +1,10 @@
+jtml 2
+when receive value
+  show value
+make Sender record
+  when send
+    receive(record.id)
+  button "Send" click send
+let task = { "id": "task-1" }
+page
+  Sender task

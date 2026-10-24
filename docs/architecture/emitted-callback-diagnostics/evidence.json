@@ -1,0 +1,222 @@
+{
+  "baseline": "460a9d6004feb77e6e589129e30ac315e2b2813f",
+  "taskboard": "tests/fixtures/production/taskboard-core/index.jtml",
+  "sourceSha256": "dd59999cc5c351c809dbc4990fb045ceef89e1912999dc44a8d053b68fdc50da",
+  "stage": {
+    "before": {
+      "checkExit": 0,
+      "lintExit": 1,
+      "errors": 44,
+      "warnings": 7,
+      "byCode": {
+        "JTML_ARITY": 2,
+        "JTML_ERROR": 16,
+        "JTML_TEMPLATE_WHILE": 6,
+        "JTML_UI_SURFACE_UNLABELED": 1,
+        "JTML_UNDEFINED_NAME": 26
+      },
+      "rawDiagnosticSha256": "9e1448786e5f8873f782e92ce0e3458a2b0dbc2edd5d84f82bdf94fa5b91ed17"
+    },
+    "after": {
+      "checkExit": 0,
+      "lintExit": 1,
+      "errors": 28,
+      "warnings": 7,
+      "byCode": {
+        "JTML_ARITY": 2,
+        "JTML_TEMPLATE_WHILE": 6,
+        "JTML_UI_SURFACE_UNLABELED": 1,
+        "JTML_UNDEFINED_NAME": 26
+      },
+      "rawDiagnosticSha256": "24f655934eb197ad83fdda4f03c192e4d31f40a15cc9d0d2a836a5828b0ac1ff"
+    }
+  },
+  "controls": {
+    "argument-invalid": {
+      "file": "tests/fixtures/diagnostics/emitted-callbacks/argument-invalid.jtml",
+      "sha256": "8a05dcdc265b5fb4ad443f54e3cf93ec5ed5868306e9c363dce9470cc9d4c82e",
+      "before": {
+        "lintExit": 1,
+        "errors": [
+          {
+            "code": "JTML_UNDEFINED_NAME",
+            "message": "undefined variable 'absent'",
+            "line": 6,
+            "column": 5,
+            "component": "Sender"
+          }
+        ],
+        "warnings": {
+          "JTML_DEAD_STATE": 1,
+          "JTML_UNBOUND_ACTION": 1
+        }
+      },
+      "after": {
+        "lintExit": 1,
+        "errors": [
+          {
+            "code": "JTML_UNDEFINED_NAME",
+            "message": "undefined variable 'absent'",
+            "line": 6,
+            "column": 5,
+            "component": "Sender"
+          }
+        ],
+        "warnings": {
+          "JTML_DEAD_STATE": 1,
+          "JTML_UNBOUND_ACTION": 1
+        }
+      }
+    },
+    "argument-valid": {
+      "file": "tests/fixtures/diagnostics/emitted-callbacks/argument-valid.jtml",
+      "sha256": "d72acf9f22be779e33c012e1ef9582e12f37e43a9a525297aad0225ddf572fed",
+      "before": {
+        "lintExit": 1,
+        "errors": [
+          {
+            "code": "JTML_UNDEFINED_NAME",
+            "message": "undefined variable 'record'",
+            "line": 6,
+            "column": 5,
+            "component": "Sender"
+          }
+        ],
+        "warnings": {
+          "JTML_DEAD_STATE": 1,
+          "JTML_UNBOUND_ACTION": 1
+        }
+      },
+      "after": {
+        "lintExit": 1,
+        "errors": [
+          {
+            "code": "JTML_UNDEFINED_NAME",
+            "message": "undefined variable 'record'",
+            "line": 6,
+            "column": 5,
+            "component": "Sender"
+          }
+        ],
+        "warnings": {
+          "JTML_DEAD_STATE": 1,
+          "JTML_UNBOUND_ACTION": 1
+        }
+      },
+      "cleanBrowserBuildExit": {
+        "before": 0,
+        "after": 0
+      }
+    },
+    "binding-invalid": {
+      "file": "tests/fixtures/diagnostics/emitted-callbacks/binding-invalid.jtml",
+      "sha256": "19675677906f87c172b0ca596a2ead08d98eb53fcd8a6d5555401e9da1f173a1",
+      "before": {
+        "lintExit": 1,
+        "errors": [
+          {
+            "code": "JTML_ERROR",
+            "message": "call to undefined function 'absent'",
+            "line": 3,
+            "column": 3,
+            "component": "Child"
+          }
+        ],
+        "warnings": {}
+      },
+      "after": {
+        "lintExit": 1,
+        "errors": [
+          {
+            "code": "JTML_ERROR",
+            "message": "call to undefined function 'absent'",
+            "line": 3,
+            "column": 3,
+            "component": "Child"
+          }
+        ],
+        "warnings": {}
+      }
+    },
+    "binding-valid": {
+      "file": "tests/fixtures/diagnostics/emitted-callbacks/binding-valid.jtml",
+      "sha256": "961d60d484793e02ed23c33964ff80098fd225a9a02ecc26833b2ef6096e48e3",
+      "before": {
+        "lintExit": 1,
+        "errors": [
+          {
+            "code": "JTML_ERROR",
+            "message": "call to undefined function 'done'",
+            "line": 3,
+            "column": 3,
+            "component": "Child"
+          }
+        ],
+        "warnings": {}
+      },
+      "after": {
+        "lintExit": 0,
+        "errors": [],
+        "warnings": {}
+      },
+      "cleanBrowserBuildExit": {
+        "before": 0,
+        "after": 0
+      }
+    }
+  },
+  "removedCallbacks": {
+    "movedDown": 4,
+    "movedUp": 4,
+    "noteSaved": 2,
+    "titleSaved": 2,
+    "deleted": 2,
+    "toggled": 2
+  },
+  "retainedDiagnosticsIdentical": 35,
+  "newDiagnostics": 0,
+  "remainingCategories": {
+    "emittedArgumentBindings": 12,
+    "generatedSetterOwnership": 14,
+    "keyboardArity": 2,
+    "templateWhileWarnings": 6,
+    "unlabeledCardWarning": 1
+  },
+  "verification": {
+    "minimalTests": 6,
+    "focusedTests": 148,
+    "fullCTestCount": 459,
+    "selectedStableFullGateRuns": 1,
+    "fullGateExit": 0,
+    "skippedChecks": 0,
+    "cleanExitBrowserBenchmarks": 9,
+    "browserAssetsByteIdentical": true,
+    "knownNativeAttributeDiscrepancies": 5,
+    "fullGateLogSha256": "3d1b1de2bc7ea8eba8a77de6fef67be9597681771fff36360ec44e2ce9c61cd2",
+    "minimalLogSha256": "796294bb328bba63c1074444b2677206639d5202e1ae768a4cb13d275201f194",
+    "focusedLogSha256": "d55748bbf1dca9d712cb6b851f2adb64dcfab4d5178a4f3d60cf632116f4e92a",
+    "browserAssets": {
+      "index.html": {
+        "bytes": 1022172,
+        "sha256": "cc797ddb83a68e78fe2c02b97697ae9e9ccd20b114645ed4954f3f2019af9d91"
+      },
+      "jtml-runtime.js": {
+        "bytes": 271855,
+        "sha256": "56a9593066ac6d63f1c8fedaa24271c8e7b15bcae881c57e79b1d871683a6ce6"
+      },
+      "components/index.js": {
+        "bytes": 346249,
+        "sha256": "34d99fcc50682d3b1ca43150018d64f29d478d6365e64729f78cf5d6ea576526"
+      },
+      "app.js": {
+        "bytes": 619,
+        "sha256": "dedd38574630aed2eda3cf043323340b214a9f7f068d3238e8262be24cd80328"
+      }
+    },
+    "ciExampleLint": {
+      "exit": 0,
+      "examples": 37,
+      "existingExclusions": 4
+    }
+  }
+}

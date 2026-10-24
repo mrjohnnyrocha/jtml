@@ -4,6 +4,7 @@
 #include "jtml/lexer.h"
 #include "jtml/module_resolver.h"
 #include "jtml/parser.h"
+#include "jtml/semantic.h"
 
 #include <algorithm>
 #include <cctype>
@@ -213,6 +214,19 @@ std::vector<LintDiagnostic> JtmlLinter::lint(const std::vector<std::unique_ptr<A
     functionArityScopes.clear();
     importedFiles_.clear();
     elementDepth_ = 0;
+    componentScope_ = -1;
+    emitOwnerScopes_.clear();
+    componentEmits_.clear();
+    for (const auto& definition : analyzeSemanticProgram(program).componentDefinitions) {
+        std::map<std::string, int> callbacks;
+        for (const auto& name : definition.emits) {
+            const auto arity = definition.emitArity.find(name);
+            callbacks[name] = arity == definition.emitArity.end() ? 0 : arity->second;
+        }
+        const auto inserted = componentEmits_.emplace(definition.name, std::move(callbacks));
+        // Do not union contracts from ambiguous same-named definitions.
+        if (!inserted.second) inserted.first->second.clear();
+    }
     diagnosticSpan_ = nullptr;
     component_.clear();
     scopeNames_.clear();
@@ -235,19 +249,28 @@ std::vector<LintDiagnostic> JtmlLinter::lint(const std::vector<std::unique_ptr<A
 void JtmlLinter::pushScope(const std::string& name) {
     scopeNames_.push_back(name);
     scopes.emplace_back();
+    emitOwnerScopes_.emplace_back();
     typeScopes.emplace_back();
     functionArityScopes.emplace_back();
 }
 void JtmlLinter::popScope()  {
     if (!scopeNames_.empty()) scopeNames_.pop_back();
     if (!scopes.empty()) scopes.pop_back();
+    if (!emitOwnerScopes_.empty()) emitOwnerScopes_.pop_back();
     if (!typeScopes.empty()) typeScopes.pop_back();
     if (!functionArityScopes.empty()) functionArityScopes.pop_back();
 }
 
+bool JtmlLinter::isVisibleInScope(size_t scope, const std::string& name) const {
+    const auto& names = scopes[scope];
+    if (std::find(names.begin(), names.end(), name) == names.end()) return false;
+    const auto owner = emitOwnerScopes_[scope].find(name);
+    return owner == emitOwnerScopes_[scope].end() || owner->second == componentScope_;
+}
+
 bool JtmlLinter::isDefined(const std::string& name) const {
-    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
-        if (std::find(it->begin(), it->end(), name) != it->end()) return true;
+    for (size_t i = scopes.size(); i-- > 0;) {
+        if (isVisibleInScope(i, name)) return true;
     }
     return false;
 }
@@ -261,6 +284,7 @@ bool JtmlLinter::isDefinedInCurrentScope(const std::string& name) const {
 void JtmlLinter::define(const std::string& name, const std::string& declaredType) {
     if (scopes.empty()) pushScope();
     scopes.back().push_back(name);
+    emitOwnerScopes_.back().erase(name);
     if (!declaredType.empty()) {
         typeScopes.back()[name] = normalizeType(declaredType);
     }
@@ -274,7 +298,7 @@ void JtmlLinter::defineFunction(const std::string& name, int arity) {
 
 std::string JtmlLinter::lookupType(const std::string& name) const {
     for (size_t i = scopes.size(); i-- > 0;) {
-        if (std::find(scopes[i].begin(), scopes[i].end(), name) == scopes[i].end()) continue;
+        if (!isVisibleInScope(i, name)) continue;
         const auto found = typeScopes[i].find(name);
         return found == typeScopes[i].end() ? "" : found->second;
     }
@@ -283,7 +307,7 @@ std::string JtmlLinter::lookupType(const std::string& name) const {
 
 int JtmlLinter::lookupFunctionArity(const std::string& name) const {
     for (size_t i = scopes.size(); i-- > 0;) {
-        if (std::find(scopes[i].begin(), scopes[i].end(), name) == scopes[i].end()) continue;
+        if (!isVisibleInScope(i, name)) continue;
         const auto found = functionArityScopes[i].find(name);
         return found == functionArityScopes[i].end() ? -1 : found->second;
     }
@@ -614,6 +638,7 @@ void JtmlLinter::visitStmt(const ASTNode& node) {
 
 void JtmlLinter::visitElement(const JtmlElementNode& elem) {
     Restore<std::string> restoreComponent(component_);
+    Restore<int> restoreComponentScope(componentScope_);
     const auto component = attrLiteral(elem, "data-jtml-component");
     if (!component.empty()) component_ = component;
     if (elem.tagName == "img" && !hasAttr(elem, "alt") && !attrIsTruthy(elem, "aria-hidden")) {
@@ -678,6 +703,16 @@ void JtmlLinter::visitElement(const JtmlElementNode& elem) {
         }
     }
     pushScope(component.empty() ? "element:" + elem.tagName : "component:" + component);
+    if (!component.empty()) {
+        componentScope_ = static_cast<int>(scopes.size()) - 1;
+        const auto definition = componentEmits_.find(component);
+        if (definition != componentEmits_.end()) {
+            for (const auto& callback : definition->second) {
+                defineFunction(callback.first, callback.second);
+                emitOwnerScopes_.back()[callback.first] = componentScope_;
+            }
+        }
+    }
     ++elementDepth_;
     visitBlock(elem.content);
     --elementDepth_;

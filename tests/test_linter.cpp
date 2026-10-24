@@ -457,3 +457,107 @@ TEST(Linter, UntypedFriendlyLocalShadowsOuterTypeAndFunctionArity) {
 TEST(Linter, ClassicAssignmentDoesNotIntroduceBinding) {
     EXPECT_EQ(countErrors(lintSource("missing = 1\\\\\nshow missing\\\\\n")), 2);
 }
+
+
+TEST(Linter, DeclaredComponentCallbackFixturePassesAndUnknownCallbackStillFails) {
+    const auto root = std::filesystem::path(JTML_SOURCE_DIR) /
+        "tests/fixtures/diagnostics/emitted-callbacks";
+    jtml::JtmlLinter linter;
+    auto program = jtml::cli::parseProgramFromFile((root / "binding-valid.jtml").string());
+    EXPECT_EQ(countErrors(linter.lint(program)), 0);
+    std::vector<std::unique_ptr<ASTNode>> cloned;
+    for (const auto& node : program) cloned.push_back(node->clone());
+    EXPECT_EQ(countErrors(linter.lint(cloned)), 0);
+    program = jtml::cli::parseProgramFromFile((root / "binding-invalid.jtml").string());
+    const auto diagnostics = linter.lint(program);
+    ASSERT_EQ(countErrors(diagnostics), 1);
+    EXPECT_NE(diagnostics[0].message.find("call to undefined function 'absent'"), std::string::npos);
+    EXPECT_EQ(diagnostics[0].line, 3);
+    EXPECT_EQ(diagnostics[0].column, 3);
+    EXPECT_EQ(diagnostics[0].component, "Child");
+    EXPECT_EQ(diagnostics[0].file, (root / "binding-invalid.jtml").string());
+    EXPECT_FALSE(diagnostics[0].sourceExact);
+}
+
+TEST(Linter, ComponentCallbackPayloadArityAndMissingArgumentsRemainChecked) {
+    const std::string source =
+        "jtml 2\n"
+        "make Sender value emits saved(item: number)\n"
+        "  button \"Save\" click saved(value)\n"
+        "page\n"
+        "  Sender 7\n";
+    EXPECT_EQ(countErrors(lintFriendly(source)), 0);
+    std::string badArity = source;
+    badArity.replace(badArity.find("saved(value)"), std::string("saved(value)").size(), "saved()");
+    auto diagnostics = lintFriendly(badArity);
+    ASSERT_EQ(countErrors(diagnostics), 1);
+    EXPECT_EQ(diagnostics[0].code, "JTML_ARITY");
+    EXPECT_EQ(diagnostics[0].line, 3);
+    EXPECT_EQ(diagnostics[0].component, "Sender");
+    std::string missing = source;
+    missing.replace(missing.find("saved(value)"), std::string("saved(value)").size(), "saved(absent)");
+    diagnostics = lintFriendly(missing);
+    ASSERT_EQ(countErrors(diagnostics), 1);
+    EXPECT_EQ(diagnostics[0].code, "JTML_UNDEFINED_NAME");
+    EXPECT_NE(diagnostics[0].message.find("absent"), std::string::npos);
+}
+
+TEST(Linter, ComponentCallbacksDoNotLeakToNestedSiblingOrPageScopes) {
+    const auto diagnostics = lintFriendly(
+        "jtml 2\n"
+        "make Leaf\n"
+        "  button \"Invalid child\" click saved\n"
+        "make Sender emits saved\n"
+        "  button \"Valid parent\" click saved\n"
+        "  Leaf\n"
+        "make Sibling\n"
+        "  button \"Invalid sibling\" click saved\n"
+        "page\n"
+        "  Sender\n"
+        "  Sibling\n"
+        "  button \"Invalid outside\" click saved\n");
+    ASSERT_EQ(countErrors(diagnostics), 3);
+    EXPECT_EQ(diagnostics[0].component, "Leaf");
+    EXPECT_EQ(diagnostics[1].component, "Sibling");
+    EXPECT_EQ(diagnostics[2].component, "");
+    EXPECT_EQ(diagnostics[0].line, 3);
+    EXPECT_EQ(diagnostics[1].line, 8);
+    EXPECT_EQ(diagnostics[2].line, 12);
+    for (const auto& diagnostic : diagnostics) {
+        EXPECT_NE(diagnostic.message.find("call to undefined function 'saved'"), std::string::npos);
+    }
+}
+
+TEST(Linter, ComponentCallbackContractsAreDistinctAndShadowOuterFunctions) {
+    const auto diagnostics = lintFriendly(
+        "jtml 2\n"
+        "when saved\n"
+        "  show 0\n"
+        "make Zero emits saved\n"
+        "  button \"Valid zero\" click saved\n"
+        "make One emits saved(item: number)\n"
+        "  button \"Valid one\" click saved(7)\n"
+        "  button \"Invalid one\" click saved\n"
+        "page\n"
+        "  Zero\n"
+        "  One\n"
+        "  button \"Valid global\" click saved\n");
+    ASSERT_EQ(countErrors(diagnostics), 1);
+    EXPECT_EQ(diagnostics[0].code, "JTML_ARITY");
+    EXPECT_EQ(diagnostics[0].component, "One");
+    EXPECT_EQ(diagnostics[0].line, 8);
+}
+
+TEST(Linter, ActionBindingsShadowComponentCallbackArity) {
+    const auto diagnostics = lintFriendly(
+        "jtml 2\n"
+        "make Sender emits saved(item: number)\n"
+        "  when run saved\n"
+        "    saved()\n"
+        "  button \"Run\" click saved(7)\n"
+        "page\n"
+        "  Sender\n");
+    // Action parameters already have unknown callable arity. Do not import the
+    // outer emit contract through a nearer lexical binding of the same name.
+    EXPECT_EQ(countErrors(diagnostics), 0);
+}

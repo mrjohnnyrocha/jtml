@@ -3068,3 +3068,48 @@ TEST(CliLint, ImportedFriendlyActionLocalsRetainTheirOriginalOwner) {
     EXPECT_EQ(errors, 1);
     std::filesystem::remove_all(root);
 }
+
+
+TEST(CliLint, ImportedEmitContractsStayWithTheirComponentAndOriginalSource) {
+    const auto root = makeTempDir("component-emit-ownership");
+    const auto library = root / "library.jtml";
+    const auto entry = root / "index.jtml";
+    writeTempFile(library,
+        "jtml 2\n"
+        "export make Sender value emits saved(item: number)\n"
+        "  button \"Save\" click saved(value)\n"
+        "export make Plain\n"
+        "  button \"Invalid\" click saved(7)\n");
+    writeTempFile(entry,
+        "jtml 2\n"
+        "use { Sender, Plain } from \"./library.jtml\"\n"
+        "page\n"
+        "  Sender 7\n");
+    jtml::cli::Options opts;
+    opts.inputFile = entry.string();
+    opts.json = true;
+    auto result = captureCommand([&] { return jtml::cli::cmdLint(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+    writeTempFile(entry,
+        "jtml 2\n"
+        "use { Sender, Plain } from \"./library.jtml\"\n"
+        "page\n"
+        "  Sender 7\n"
+        "  Plain\n");
+    result = captureCommand([&] { return jtml::cli::cmdLint(opts); });
+    ASSERT_EQ(result.code, 1) << result.out << result.err;
+    const auto json = nlohmann::json::parse(result.out);
+    int errors = 0;
+    for (const auto& diagnostic : json["diagnostics"]) {
+        if (diagnostic["severity"] != "error") continue;
+        ++errors;
+        EXPECT_NE(diagnostic["message"].get<std::string>().find("call to undefined function 'saved'"), std::string::npos);
+        EXPECT_EQ(diagnostic["file"], std::filesystem::canonical(library).string());
+        EXPECT_EQ(diagnostic["line"], 5);
+        EXPECT_EQ(diagnostic["column"], 3);
+        EXPECT_EQ(diagnostic["component"], "Plain");
+        EXPECT_EQ(diagnostic["sourceExact"], false);
+    }
+    EXPECT_EQ(errors, 1);
+    std::filesystem::remove_all(root);
+}

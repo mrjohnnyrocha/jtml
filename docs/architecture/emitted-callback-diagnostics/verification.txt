@@ -1,0 +1,76 @@
+Verification: 2026-10-24, macOS arm64
+Baseline: 460a9d6004feb77e6e589129e30ac315e2b2813f (PR #38 merged)
+New isolated worktree: emitted-callback-diagnostics/jtml-v1
+Branch: codex/emitted-callback-diagnostics
+
+Original Taskboard SHA-256:
+dd59999cc5c351c809dbc4990fb045ceef89e1912999dc44a8d053b68fdc50da
+Source independently compared byte-for-byte with baseline Git blob: identical.
+Original browser/Taskboard/negative/provenance/conformance/security fixtures,
+oracles, expected outcomes, gate scripts and budgets are unchanged.
+
+Build:
+cmake -S . -B build -DJTML_BUILD_TESTS=ON -DJTML_BUILD_PYTHON=OFF
+cmake --build build --parallel 8
+Fresh baseline built once; subsequent candidate builds were incremental.
+C++17; CMake 3.31.3; Node 22.23.3; Python 3.14.6.
+
+Verification order on selected repair:
+1. Six minimal positive/negative regression tests: 6/6 PASS.
+2. Relevant lint/semantic/component-event/provenance tests: 148/148 PASS.
+3. Unchanged Taskboard remeasurement: 44 errors/7 warnings -> 28/7.
+   Exactly 16 callback-name errors removed, zero new diagnostics; all 35 retained
+   diagnostics match message, code, scope, component, source and precision fields.
+4. Complete gate on stable selected implementation: exit 0, one run.
+   No executable/test-contract/build changes followed this successful gate.
+
+Minimal and focused commands are in README.md. Full gate command (paths are
+local tool installations; substitute paths to the same pinned tools):
+export NODE_PATH=/tmp/jtml-global-tools/node_modules
+export JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=/tmp/jtml-global-tools
+export PLAYWRIGHT_BROWSERS_PATH=/tmp/jtml-global-browsers
+export JTML_BENCH_BROWSER=/tmp/jtml-global-browsers/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell
+export JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1
+export PYTHONDONTWRITEBYTECODE=1
+scripts/verify_all.sh
+
+Playwright 1.63.0 / pinned Chromium headless shell 153.0.8010.12.
+459/459 CTests PASS; doctor and examples/demos PASS; all nine mandatory browser
+benchmarks within original budgets and all browserExit=clean; production reference
+PASS; C01-C14 and N01-N08 PASS; strict N04 original-source provenance PASS;
+original conformance and controls retain their reviewed contracts; keyed lifecycle,
+security, async and literal suites PASS; package/site/install/Studio-resource
+checks PASS; editor/refactor/LSP checks PASS; live smoke 8/8 PASS. No checks skipped.
+
+Additional checks:
+- Both minimal valid controls compile to clean browser output with baseline and
+  candidate. The argument-valid control remains an explicit lint failure.
+- Taskboard clean browser output is byte-identical in all four files: index.html,
+  jtml-runtime.js, components/index.js and app.js (diff -qr exits 0).
+- Fixture and raw diagnostic/log hashes are in evidence.json. Raw logs and
+  generated browser assets remain under /tmp or ignored dist/, not in Git.
+- Exact CI example-lint shell block passes all 37 covered examples, with the
+  same four exclusions; no assertion or CI coverage changes.
+- Report references resolve, reproduction shell blocks pass bash -n, and
+  git diff --check passes.
+
+Retained limitations and development observations:
+- Taskboard lint still exits 1: 12 emitted argument-binding errors, 14 generated
+  setter ownership errors, 2 keyboard arity errors, 6 template-while warnings,
+  and 1 semantic card advisory. No setter or Studio concurrency work was done.
+- Existing conformance output retains five FAIL / KNOWN DEFECT native body-plan
+  complete-attribute visible observations. They are not semantic passes.
+- The standalone argument-role prototype was discarded because substituting an
+  object literal followed by member access regressed an accepted browser input.
+  Its partial full-gate run was stopped, not counted as a pass. No prototype
+  lowering changes or prototype regression tests remain in the candidate.
+- The callback fix uses existing static arity checks; it does not introduce
+  broader payload type inference. Runtime payload contracts remain unchanged.
+- Sanitizers, Python bindings and a fresh local Linux build were not run.
+  Hosted exact-head Ubuntu/macOS CI is separate post-publication evidence.
+
+Asset comparison reproduction after building both revisions:
+asset_out="$(mktemp -d /tmp/jtml-emits-assets.XXXXXX)"
+/path/to/baseline/build/jtml build tests/fixtures/production/taskboard-core/index.jtml --target browser --out "$asset_out/before"
+build/jtml build tests/fixtures/production/taskboard-core/index.jtml --target browser --out "$asset_out/after"
+diff -qr "$asset_out/before" "$asset_out/after"

@@ -59,6 +59,13 @@ private:
     std::vector<LintDiagnostic> diagnostics;
     std::string sourcePath_;
     int elementDepth_ = 0;
+    int componentScope_ = -1;
+    std::map<std::string, std::map<std::string, int>> componentEmits_;
+    // Emit bindings are component-owned: enclosing components do not lend
+    // their callbacks to nested components. Ordinary lexical bindings still
+    // shadow them in action/block scopes.
+    std::vector<std::map<std::string, int>> emitOwnerScopes_;
+    bool isVisibleInScope(size_t scope, const std::string& name) const;
     const SourceSpan* diagnosticSpan_ = nullptr;
     std::string component_;
     std::vector<std::string> scopeNames_;

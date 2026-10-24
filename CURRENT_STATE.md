@@ -9,8 +9,8 @@ features or declare production readiness.
 ## Public-preview release audit
 
 The proposed v0.3.0 preview is **NOT READY**: version/distribution identity is
-unfinished, and unchanged Taskboard lint still fails with 44 errors / 7 warnings
-(after the nested-local diagnostic repair; measured baseline 346 / 7). See the bounded
+unfinished, and unchanged Taskboard lint still fails with 28 errors / 7 warnings
+(after local/emit ownership repairs; latest measured baseline 44 / 7). See the bounded
 [release contract, licensing review and current evidence](docs/releases/v0.3-readiness.md).
 Strict N04 now passes its tested subset; dated BLOCKED snapshots below remain
 historical evidence, not the current result or a claim of complete source spans.
@@ -26,9 +26,20 @@ nested supplemental cases are mandatory; their last catalogued defect is retired
 with its old signature preserved. Five independent native attribute-renderer
 observations remain FAIL / KNOWN DEFECT. See [evidence and boundaries](docs/architecture/global-component-parameters.md).
 
+## Component emitted callback diagnostics
+
+Canonical Semantic IR emit contracts now bind callbacks only within their owning
+component's lint scope. All 16 false callback-name errors disappear; unchanged
+Taskboard lint reports 28 errors / 7 warnings, down from the fresh PR #38 baseline
+of 44 / 7. Unknown callbacks, argument names and payload arity still fail; child,
+sibling, page and imported component scopes remain isolated. The 12 argument
+binding errors have a separate lowering cause and remain deferred, as do setter
+ownership and keyboard arity. Taskboard lint acceptance remains **FAIL**. See
+[diagnosis, exact evidence and verification](docs/architecture/emitted-callback-diagnostics/README.md).
+
 ## Friendly nested-local diagnostics
 
-The unchanged Taskboard fixture now reports 44 lint errors / 7 warnings, down
+The PR #38 slice reduced unchanged Taskboard lint to 44 errors / 7 warnings,
 from the independently reproduced 346 / 7 baseline at merged PR #37. Frontend
 binding metadata preserves nested `let` identity through compatibility lowering
 and AST cloning; lint checks lexical ownership without hoisting action locals.

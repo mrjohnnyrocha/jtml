@@ -72,6 +72,14 @@ const {runCase}=require('../conformance/runner.cjs');
  const report={id:'native-parameter-capture',sha256:require('node:crypto').createHash('sha256').update(fs.readFileSync(source)).digest('hex'),expected,views,failures:JSON.stringify(actual)===JSON.stringify(expected)?[]:[{layer:'native-lowering',observation:'expanded-state',actual}]};
  fs.writeFileSync(path.join(directory,'trace.json'),JSON.stringify(report,null,2));
  require('../conformance/catalog.cjs').verify([...reports,report],require('../conformance/nested-known-discrepancies.json').entries);
+ // Catalog retirement must not hide a new failure in this exact original case.
+ const original=reports.find(r=>r.id==='global-parameter-public-alias');
+ const originalFixture=require('../conformance/nested_cases.cjs').find(f=>f.id===original.id);
+ const wrong={...originalFixture,expected:[[{count:10,result:201}]]};
+ const injected={...original,failures:require('../conformance/oracle.cjs').compare(wrong,original.observed,[])};
+ assert(injected.failures.length>0,'independent wrong oracle must fail');
+ assert.throws(()=>require('../conformance/catalog.cjs').verify([injected],{}),/new or resolved discrepancies/);
+ console.log('PASS negative control: retired global catalog cannot hide an injected 201 oracle');
  assert.deepEqual(report.failures,[],'resolved original capture must remain a mandatory pass');
  console.log('PASS original parameter capture: expanded state 200; native rendered view 200; clean-production DOM 200; original source and oracle unchanged');
  const known=reports.filter(r=>r.failures.length);

@@ -671,34 +671,24 @@ const char* browserRuntimePreludeChunk() {
         return removed;
       }
 
-      function componentScopeFor(instance, definition) {
-        if (!instance || !instance.id) return {};
-        if (componentScopes[instance.id]) {
-          Object.assign(componentScopes[instance.id], instance.params || {});
-          return componentScopes[instance.id];
-        }
-        const scope = {};
-        Object.assign(scope, instance.params || {});
-        (definition.bodyPlan || []).forEach(function (node) {
-          if (!node || node.kind !== 'state' || !node.name || node.parentIndex !== -1) return;
-          const result = evaluateCompiledComponentExpressionResult(
-            node.expressionPlan || compileComponentExpressionPlan(node.expression || ''),
-            node.expression || '',
-            scope);
-          scope[node.name] = result.found ? result.value : unquoteComponentText(node.expression || '');
+      function componentScopeFor(i,d) {
+        if(!i||!i.id)return {};
+        if(i.argumentPlans)i.params=Object.fromEntries(Object.entries(i.argumentPlans).map(([k,p])=>[k,evaluateCompiledComponentExpression(p,'',clientState)]));
+        if(componentScopes[i.id])return Object.assign(componentScopes[i.id],i.params||{});
+        const scope=Object.assign({},i.params||{});
+        (d.bodyPlan||[]).forEach(function(n){
+          if(!n||n.kind!=='state'||!n.name||n.parentIndex!==-1)return;
+          const r=evaluateCompiledComponentExpressionResult(n.expressionPlan||compileComponentExpressionPlan(n.expression||''),n.expression||'',scope);
+          scope[n.name]=r.found?r.value:unquoteComponentText(n.expression||'');
         });
-        componentScopes[instance.id] = scope;
-        return scope;
+        return componentScopes[i.id]=scope;
       }
 
-      function applyComponentDerived(scope, definition) {
-        (definition.bodyPlan || []).forEach(function (node) {
-          if (!node || node.kind !== 'derived' || !node.name) return;
-          const result = evaluateCompiledComponentExpressionResult(
-            node.expressionPlan || compileComponentExpressionPlan(node.expression || ''),
-            node.expression || '',
-            scope);
-          if (result.found) scope[node.name] = result.value;
+      function applyComponentDerived(s,d) {
+        (d.bodyPlan||[]).forEach(function(n){
+          if(!n||n.kind!=='derived'||!n.name)return;
+          const r=evaluateCompiledComponentExpressionResult(n.expressionPlan||compileComponentExpressionPlan(n.expression||''),n.expression||'',s);
+          if(r.found)s[n.name]=r.value;
         });
       }
 
@@ -3273,6 +3263,7 @@ const char* browserRuntimeComponentChunk() {
               instanceId: Number(record.instanceId || 0),
               role: record.role || 'component',
               params: record.params || {},
+              argumentPlans: record.argumentPlans,
               locals: record.locals || {},
               slotPlan: Array.isArray(record.slotPlan) ? record.slotPlan.slice() : [],
               sourceLine: Number(record.sourceLine || 0),
@@ -3872,6 +3863,11 @@ const char* browserRuntimeComponentChunk() {
 
       function applyClientState() {
         applyClientDerived();
+        componentInstances.forEach(function(i){
+          if(!i.argumentPlans||!i.element||!i.element.isConnected)return;
+          const d=componentDefinitionForInstance(i),p=i.params,s=componentScopeFor(i,d),c=changedParamNames(p,i.params);
+          if(c.length){applyComponentDerived(s,d);if(!applyCompiledComponentUpdatePlan(i,d,c,s).handled)throw Error('Unsupported component argument update');}
+        });
         applyClientExpressions();
         applyClientAttributes();
 
@@ -3990,13 +3986,13 @@ const char* browserRuntimeComponentChunk() {
         });
         try {
           runClientStatements(action.body || []);
-          applyClientState();
         } finally {
           (action.params || []).forEach(function (param) {
             if (Object.prototype.hasOwnProperty.call(restore, param)) clientState[param] = restore[param];
             else if (missing[param]) delete clientState[param];
           });
         }
+        applyClientState();
         return true;
       }
 
@@ -4185,6 +4181,7 @@ const char* browserRuntimeComponentChunk() {
             return executeClientAction(name, Array.prototype.slice.call(arguments, 1));
           }
         });
+        applyClientDerived();
       }
 
       const __jtml_refresh_fns = {};

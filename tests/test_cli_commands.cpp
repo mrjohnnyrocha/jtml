@@ -3000,3 +3000,23 @@ TEST(CliBuild, ProductionRejectsUnsupportedNestedArgumentBeforeAssetsWithOrigina
     }
     std::filesystem::remove_all(root);
 }
+
+TEST(CliBuild, ProductionRejectsUnsupportedGlobalArgumentBeforeAssetsWithOriginalLocation) {
+    const auto root = makeTempDir("global-argument-rejection");
+    const auto input = root / "index.jtml";
+    writeTempFile(input, "jtml 2\nlet count = 100\nmake Child value\n  p value\npage\n  Child unknown(count)\n");
+    jtml::cli::Options opts;
+    opts.inputFile = input.string(); opts.outputFile = (root / "dist").string();
+    opts.syntax = jtml::SyntaxMode::Auto; opts.target = "browser";
+    try {
+        (void)jtml::cli::cmdBuild(opts);
+        FAIL() << "accepted an unsupported global argument";
+    } catch (const std::runtime_error& error) {
+        const std::string message = error.what();
+        EXPECT_NE(message.find("unsupported production argument `value`"), std::string::npos) << message;
+        EXPECT_NE(message.find(input.string() + ":6:3"), std::string::npos) << message;
+    }
+    for (const auto* asset : {"index.html", "app.js", "jtml-runtime.js", "components/index.js"})
+        EXPECT_FALSE(std::filesystem::exists(root / "dist" / asset));
+    std::filesystem::remove_all(root);
+}

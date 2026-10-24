@@ -189,6 +189,8 @@ std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
     // static platform data, while only events and real expressions need runtime
     // bindings.
     for (auto& attr : elem.attributes) {
+        // Compiler transport only; executable argument plans live in the manifest.
+        if (browserLocalRuntime && attr.key == "data-jtml-component-args-hex") continue;
         const auto classification = classifyJtmlAttribute(attr);
 
        if (classification.kind == JtmlAttributeKind::Event) {

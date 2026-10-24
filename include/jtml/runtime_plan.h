@@ -88,6 +88,8 @@ struct RuntimePlanComponentInstance {
     std::string slotHex;
     std::vector<RuntimePlanComponentBodyNode> slotPlan;
     int sourceLine = 0;
+    std::vector<SemanticProperty> argumentExpressions;
+    SourceSpan sourceSpan;
 };
 
 struct RuntimePlan {

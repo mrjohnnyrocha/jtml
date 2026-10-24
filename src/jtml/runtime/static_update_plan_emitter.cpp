@@ -2678,6 +2678,24 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
         return out.str();
     };
 
+    // Instance arguments use the same Expression IR contract as nested calls.
+    // Reject before assets; do not feed Source plans to the browser evaluator.
+    for (const auto& instance : plan.linkedPlan.componentInstances) {
+        for (const auto& argument : instance.argumentExpressions) {
+            const auto ir = parseExpressionIr(argument.value);
+            if (ir && expressionIrSupportsDirectJs(*ir)) continue;
+            std::string location = "lowered line " + std::to_string(instance.sourceLine);
+            if (instance.sourceSpan.original) {
+                const auto& original = *instance.sourceSpan.original;
+                const auto [line, column] = original.source->coordinates(original.begin);
+                location = original.source->file + ":" + std::to_string(line) + ":" + std::to_string(column);
+            }
+            issues.push_back("component " + instance.component + " has unsupported production argument `" +
+                argument.name + "` at " + location +
+                "; use a statically analyzable expression over caller observable values");
+        }
+    }
+
     const auto components = assignComponentIdsAndChildIds(collectComponentPlans(plan));
     if (!components.is_array()) return issues;
 

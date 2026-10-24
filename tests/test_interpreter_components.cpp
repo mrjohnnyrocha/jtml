@@ -227,3 +227,45 @@ TEST_F(NativeComponentEnvironment, CallerCountIsNotCapturedByChildCount) {
     }
     EXPECT_EQ(children, 1u);
 }
+
+TEST_F(NativeComponentEnvironment, GlobalArgumentsDoNotCapturePublicLocalAliases) {
+    const std::string source =
+        "jtml 2\nlet count = 100\nmake Probe value\n  let count = 10\n"
+        "  get result = value * 2\n  when bump\n    count += 1\n"
+        "  box\n    p class \"out-result\" result\npage\n  Probe count\n  Probe (count + 1)\n";
+    for (int mount = 0; mount < 3; ++mount) {
+        interpreter.reset();
+        run(source);
+        auto state = snapshot();
+        ASSERT_EQ(state["components"].size(), 2u);
+        const std::string first = state["components"][0]["id"];
+        action(first, "bump");
+        state = snapshot();
+        EXPECT_EQ(state["components"][0]["locals"]["count"]["value"], 11);
+        EXPECT_EQ(state["components"][1]["locals"]["count"]["value"], 10);
+        for (int count : {101, 99, 103}) {
+            auto global = interpreter.getCurrentEnvironment();
+            global->setVariable({global->instanceID, "count"}, std::make_shared<JTML::VarValue>(double(count)));
+            state = snapshot();
+            for (size_t i = 0; i < 2; ++i) {
+                const auto result = state["components"][i]["locals"]["result"]["value"];
+                EXPECT_TRUE(result.is_number());
+                EXPECT_EQ(result, (count + static_cast<int>(i)) * 2);
+                EXPECT_NE(state["components"][i]["renderedHtml"].get<std::string>().find(">" + std::to_string((count + i) * 2) + "</p>"), std::string::npos);
+            }
+        }
+    }
+}
+
+TEST_F(NativeComponentEnvironment, GlobalArgumentsPreserveQuotedValuesAndDerivedCallerTypes) {
+    run("jtml 2\nlet x = 100\nget next = x + 1\nmake Probe value label\n"
+        "  let x = 10\n  get result = value * 2\n  box\n    p result\n    p label\n"
+        "page\n  Probe next \"Revenue & growth\"\n");
+    auto state = snapshot();
+    EXPECT_EQ(state["components"][0]["locals"]["result"]["value"], 202);
+    EXPECT_NE(state["components"][0]["renderedHtml"].get<std::string>().find("Revenue &amp; growth"), std::string::npos);
+    auto global = interpreter.getCurrentEnvironment();
+    global->setVariable({global->instanceID, "x"}, std::make_shared<JTML::VarValue>(102.0));
+    state = snapshot();
+    EXPECT_EQ(state["components"][0]["locals"]["result"]["value"], 206);
+}

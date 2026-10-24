@@ -218,6 +218,9 @@ nlohmann::json runtimePlanComponentInstancesToJson(
     nlohmann::json out = nlohmann::json::array();
     for (const auto& instance : instances) {
         const auto environment = runtimePlanInstanceSlotTypeEnvironment(baseEnvironment, instance);
+        nlohmann::json arguments = nlohmann::json::object();
+        for (const auto& argument : instance.argumentExpressions)
+            arguments[argument.name] = compileRuntimeExpressionPlanForOptions(argument.value, baseEnvironment, RuntimePlanJsonOptions{false, &baseEnvironment});
         out.push_back({
             {"moduleId", moduleIdToJson(instance.moduleId)},
             {"definitionModule", moduleIdToJson(instance.definitionModule)},
@@ -234,6 +237,7 @@ nlohmann::json runtimePlanComponentInstancesToJson(
                 RuntimePlanJsonOptions{true, &environment})},
             {"sourceLine", instance.sourceLine},
         });
+        if (!arguments.empty()) out.back()["argumentPlans"] = arguments;
     }
     return out;
 }
@@ -275,6 +279,9 @@ nlohmann::json runtimePlanComponentInstancesToClientJson(
     nlohmann::json out = nlohmann::json::array();
     for (const auto& instance : instances) {
         const auto environment = runtimePlanInstanceSlotTypeEnvironment(baseEnvironment, instance);
+        nlohmann::json arguments = nlohmann::json::object();
+        for (const auto& argument : instance.argumentExpressions)
+            arguments[argument.name] = compileRuntimeExpressionPlanForOptions(argument.value, baseEnvironment, RuntimePlanJsonOptions{false, &baseEnvironment});
         out.push_back({
             {"moduleId", moduleIdToJson(instance.moduleId)},
             {"definitionModule", moduleIdToJson(instance.definitionModule)},
@@ -288,6 +295,7 @@ nlohmann::json runtimePlanComponentInstancesToClientJson(
                 instance.slotPlan,
                 RuntimePlanJsonOptions{false, &environment})},
         });
+        if (!arguments.empty()) out.back()["argumentPlans"] = arguments;
     }
     return out;
 }

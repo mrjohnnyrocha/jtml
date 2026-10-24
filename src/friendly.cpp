@@ -1,6 +1,7 @@
 #include "jtml/expression_source.h"
 #include "jtml/friendly.h"
 #include "jtml/lexer.h"
+#include "json.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -2135,6 +2136,7 @@ std::string componentInstanceLine(const ComponentDef& def,
          << " data-jtml-component-locals=" << quote(serializedComponentMap(localBindings))
          << " data-jtml-component-params=" << quote(serializedComponentMap(paramBindings))
          << " data-jtml-source-line=" << quote(std::to_string(sourceLine));
+    line << " data-jtml-component-args-hex=" << quote(hexEncode(nlohmann::json(paramBindings).dump()));
     if (!slotHex.empty()) {
         line << " data-jtml-component-slot-hex=" << quote(slotHex);
     }

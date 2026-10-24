@@ -98,6 +98,9 @@ public:
     std::unordered_map<VarID, int> visitTimestamp; // Timestamp for visitation
     int currentTimestamp = 0;
 
+    // Read-only component name projection; never an owner in the dirty graph.
+    bool lookupOnly = false;
+
     // Parent Environment for scoping
     std::shared_ptr<Environment> parent;
 

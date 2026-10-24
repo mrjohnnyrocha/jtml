@@ -1,0 +1,9 @@
+jtml 2
+make Child emits done
+  button "Done" click absent
+make Parent
+  when receive
+    show "received"
+  Child on done receive
+page
+  Parent

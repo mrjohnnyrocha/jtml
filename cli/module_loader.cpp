@@ -657,9 +657,14 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
 NormalizedCompilationSource normalizeCompilationSource(const CompilationSource& unit) {
     MappedSource generated = unit.classicPrefix;
     std::vector<int> lineMap(1, 0);
+    std::map<int, LoweredLocalDeclaration> declarations;
     for (const char ch : unit.classicPrefix.text()) if (ch == '\n') lineMap.push_back(0);
     if (unit.syntax == SyntaxMode::Friendly) {
         auto lowered = friendlyToClassicWithSourceMap(unit.source);
+        const int prefixLines = static_cast<int>(lineMap.size()) - 1;
+        for (const auto& binding : lowered.localDeclarations) {
+            declarations.emplace(binding.first + prefixLines, binding.second);
+        }
         generated.appendSynthetic(lowered.classicSource);
         lineMap.insert(lineMap.end(), lowered.classicLineToFriendlyLine.begin() + 1,
                        lowered.classicLineToFriendlyLine.end());
@@ -671,7 +676,8 @@ NormalizedCompilationSource normalizeCompilationSource(const CompilationSource& 
         if (mixedLine < lineMap.size()) lineMap[mixedLine] = 0;
     }
     auto provenance = std::make_shared<const SourceProvenance>(generated, unit.source, std::move(lineMap),
-        unit.syntax == SyntaxMode::Friendly ? SourceProvenance::Kind::FriendlyLowering : SourceProvenance::Kind::Identity);
+        unit.syntax == SyntaxMode::Friendly ? SourceProvenance::Kind::FriendlyLowering : SourceProvenance::Kind::Identity,
+        std::move(declarations));
     return {generated.text(), std::move(provenance)};
 }
 

@@ -129,3 +129,48 @@ TEST(SourcePropagation, CompilerSpansDoNotLeakIntoStaticExecutionAssets) {
     EXPECT_EQ(jtml::emitStaticComponentModuleAsset(project).find("\"originalLocation\""), std::string::npos);
     EXPECT_EQ(jtml::emitStaticComponentModuleAsset(project).find("\"sourceSpan\""), std::string::npos);
 }
+
+
+TEST(SourcePropagation, MultilineGeneratedCssDoesNotShiftFriendlyBindingAttribution) {
+    const auto program = parse(jtml::MappedSource::original("css-locals.jtml",
+        "jtml 2\n"
+        "when run\n"
+        "  let local: number = missing\n"
+        "  show local\n"
+        "page\n"
+        "  card title \"Prelude\"\n"
+        "    text \"CSS spans several physical output lines\"\n"), true);
+    bool found = false;
+    for (const auto& node : program) {
+        if (node->getType() != ASTNodeType::FunctionDeclaration) continue;
+        const auto& action = static_cast<const FunctionDeclarationNode&>(*node);
+        ASSERT_EQ(action.body.size(), 2);
+        const auto& assignment = static_cast<const AssignmentStatementNode&>(*action.body[0]);
+        ASSERT_TRUE(assignment.localDeclaration);
+        EXPECT_EQ(assignment.localDeclaration->name, "local");
+        EXPECT_EQ(assignment.localDeclaration->declaredType, "number");
+        expectOrigin(assignment.sourceSpan, "css-locals.jtml", 3, 3, false);
+        expectOrigin(assignment.rhs->sourceSpan, "css-locals.jtml", 3, 3, false);
+        found = true;
+    }
+    EXPECT_TRUE(found);
+}
+
+TEST(SourcePropagation, ClassicPrefixOffsetsFriendlyLocalDeclarationSites) {
+    jtml::cli::CompilationSource input;
+    input.classicPrefix = jtml::MappedSource::original("prefix.jtml", "define imported = 1\\\\\n");
+    input.source = jtml::MappedSource::original("entry.jtml",
+        "jtml 2\nwhen run\n  let local = imported\n  show local\n");
+    input.syntax = jtml::SyntaxMode::Friendly;
+    const auto normalized = jtml::cli::normalizeCompilationSource(input);
+    Lexer lexer(normalized.text, normalized.provenance);
+    Parser parser(lexer.tokenize());
+    const auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty());
+    ASSERT_EQ(program.size(), 2);
+    const auto& action = static_cast<const FunctionDeclarationNode&>(*program[1]);
+    const auto& assignment = static_cast<const AssignmentStatementNode&>(*action.body[0]);
+    ASSERT_TRUE(assignment.localDeclaration);
+    EXPECT_EQ(assignment.localDeclaration->name, "local");
+    expectOrigin(assignment.sourceSpan, "entry.jtml", 3, 3, false);
+}

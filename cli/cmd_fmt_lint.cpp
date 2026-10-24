@@ -136,7 +136,7 @@ int cmdLint(const Options& o) {
     for (const auto& d : diagnostics) {
         const char* label =
             (d.severity == LintDiagnostic::Severity::Error) ? "error" : "warning";
-        std::cerr << o.inputFile << ": " << label << "[" << d.code << "]";
+        std::cerr << (d.file.empty() ? o.inputFile : d.file) << ": " << label << "[" << d.code << "]";
         if (d.line > 0) {
             std::cerr << ":" << d.line;
             if (d.column > 0) std::cerr << ":" << d.column;

@@ -53,6 +53,7 @@ struct FriendlyClassicResult {
     // Entry 0 is unused so callers can index with a diagnostic line directly.
     std::vector<int> classicLineToFriendlyLine;
     std::shared_ptr<const SourceProvenance> provenance;
+    std::map<int, LoweredLocalDeclaration> localDeclarations;
 };
 
 std::string friendlyToClassic(const std::string& source);

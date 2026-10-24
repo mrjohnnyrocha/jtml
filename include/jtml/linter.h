@@ -31,6 +31,10 @@ struct LintDiagnostic {
     int column = 0;
     std::string hint;
     std::string example;
+    std::string file;
+    std::string component;
+    std::string scope;
+    bool sourceExact = false;
 };
 
 namespace jtml {
@@ -55,13 +59,17 @@ private:
     std::vector<LintDiagnostic> diagnostics;
     std::string sourcePath_;
     int elementDepth_ = 0;
+    const SourceSpan* diagnosticSpan_ = nullptr;
+    std::string component_;
+    std::vector<std::string> scopeNames_;
+    void attachDiagnosticContext();
     // Canonical absolute paths already pulled into the module graph, so we
     // never reparse the same file or recurse forever on a cycle.
     std::vector<std::string> importedFiles_;
     void declareTopLevel(const std::vector<std::unique_ptr<ASTNode>>& program);
     void resolveImport(const std::string& rawPath);
 
-    void pushScope();
+    void pushScope(const std::string& name = "block");
     void popScope();
     bool isDefined(const std::string& name) const;
     bool isDefinedInCurrentScope(const std::string& name) const;

@@ -1,0 +1,70 @@
+Verification: 2026-10-24, macOS arm64
+Baseline main: 315e6f280169330f0f6a7528484f3f78b8d5a1f9 (PR #37 merged)
+New worktree: /Users/joaorocha/.codex/worktrees/taskboard-diagnostics/jtml-v1
+New branch: codex/taskboard-diagnostic-correctness
+
+Original Taskboard SHA-256:
+dd59999cc5c351c809dbc4990fb045ceef89e1912999dc44a8d053b68fdc50da
+Original main blob independently compared byte for byte: identical.
+No source, fixture, oracle, script, workflow, budget, or expected-outcome changes
+to Taskboard/browser/negative/provenance/conformance acceptance.
+
+Fresh configure/build:
+cmake -S . -B build -DJTML_BUILD_TESTS=ON -DJTML_BUILD_PYTHON=OFF
+cmake --build build --parallel 8
+PASS. C++17; pinned dependency fetch completed. Python bindings disabled.
+CMake 3.31.3; Node 22.23.3; Python 3.14.6.
+
+Focused final candidate:
+ctest --test-dir build -R 'Linter|CliLint|SourcePropagation|SourceOrigin' --output-on-failure
+PASS: 53/53, 0 failures. Ten new permanent tests; existing unreachable-warning
+regression strengthened to assert the offending source statement.
+
+Full frozen-candidate gate (exit 0):
+NODE_PATH=/tmp/jtml-global-tools/node_modules
+JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=/tmp/jtml-global-tools
+PLAYWRIGHT_BROWSERS_PATH=/tmp/jtml-global-browsers
+JTML_BENCH_BROWSER=/tmp/jtml-global-browsers/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell
+JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1
+PYTHONDONTWRITEBYTECODE=1
+scripts/verify_all.sh
+
+Playwright 1.63.0, pinned Chromium headless shell 153.0.8010.12.
+453/453 CTests PASS; doctor, bundled examples/demos, all nine browser benchmarks
+PASS within unchanged budgets, all nine browserExit=clean; production reference
+PASS; original Taskboard C01-C14 PASS; N01-N08 PASS including strict N04 original
+source provenance; security/lifecycle/async/literal checks PASS; original
+semantic conformance and controls PASS within their reviewed contracts;
+package/site/install/Studio-resource checks PASS; editor/refactor/LSP checks PASS;
+live smoke 8/8 PASS. No checks skipped.
+
+Retained limitations/failures:
+- The original conformance suite still explicitly records 5 FAIL / KNOWN DEFECT
+  native body-plan complete-attribute visible observations. They are not semantic
+  passes and remain out of scope. Original oracles are unchanged.
+- First native-browser full-gate attempt: exit 1, composition interaction time
+  0.0ms rejected by the unchanged positive-timing assertion.
+- Second native-browser full-gate attempt: exit 1, large_keyed_reorder interaction
+  time 0.0ms rejected by the same unchanged assertion.
+- Those attempts used installed system Chrome 155.0.8059.86 without Playwright.
+  Both logs are retained. The existing supported pinned Playwright runner
+  subsequently passed the complete gate before and after final source-context
+  review. No assertion, timing threshold, or asset budget changed.
+- Initial new import test used invalid list syntax; corrected to documented
+  `use { seed, compute } from ...` before stable verification.
+- Taskboard check exits 0; Taskboard lint still exits 1, 44 errors/7 warnings.
+  All remaining diagnostic categories and 15 unlocated diagnostics are retained.
+- Separate Studio /api/export concurrency issue was not investigated or changed.
+- Sanitizers, Python bindings, and a separate fresh local Linux build were not
+  run. Hosted Ubuntu/macOS exact-head CI is separate post-publication evidence.
+
+Additional final-candidate checks:
+Exact CI example lint shell block: exit 0, 37 examples, same four exclusions.
+Exact CI formatter shell block: exit 0, 41 examples, idempotence preserved.
+Baseline versus final clean Taskboard browser output: diff -qr exit 0, all four
+files byte-identical (index.html, jtml-runtime.js, components/index.js, app.js).
+git diff --check: PASS.
+
+Full raw gate logs are gzip-compressed without modification. Decompress with
+Python gzip or gzip -dc. Full original/candidate diagnostic text and JSON remain
+uncompressed alongside grouped inventories and independent control programs.

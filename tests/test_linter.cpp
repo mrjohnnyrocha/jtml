@@ -6,6 +6,7 @@
 #include "jtml/linter.h"
 #include "jtml/parser.h"
 #include "jtml/transpiler.h"
+#include "cli/util.h"
 
 #include <gtest/gtest.h>
 
@@ -54,8 +55,13 @@ TEST(Linter, UnreachableCodeAfterReturnIsWarning) {
         "    return\\\\\n"   // unreachable
         "\\\\\n");
     bool sawUnreachable = false;
-    for (const auto& diag : d)
-        if (diag.message.find("unreachable") != std::string::npos) sawUnreachable = true;
+    for (const auto& diag : d) {
+        if (diag.message.find("unreachable") != std::string::npos) {
+            sawUnreachable = true;
+            EXPECT_EQ(diag.line, 3);
+            EXPECT_EQ(diag.column, 5);
+        }
+    }
     EXPECT_TRUE(sawUnreachable);
 }
 
@@ -302,3 +308,152 @@ TEST(Linter, MediaControllerStateIsDefinedByFriendlyInto) {
 }
 
 } // namespace
+
+
+namespace {
+std::vector<std::unique_ptr<ASTNode>> parseFriendlyForLint(const std::string& source) {
+    jtml::cli::CompilationSource input;
+    input.source = jtml::MappedSource::original("lint-friendly.jtml", source);
+    input.syntax = jtml::SyntaxMode::Friendly;
+    auto normalized = jtml::cli::normalizeCompilationSource(input);
+    Lexer lexer(normalized.text, normalized.provenance);
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+    EXPECT_TRUE(lexer.getErrors().empty());
+    EXPECT_TRUE(parser.getErrors().empty());
+    return program;
+}
+std::vector<LintDiagnostic> lintFriendly(const std::string& source) {
+    auto program = parseFriendlyForLint(source);
+    jtml::JtmlLinter linter;
+    return linter.lint(program);
+}
+}
+
+TEST(Linter, FriendlyActionLocalsAreLexicalDeclarationsAfterLoweringAndClone) {
+    const std::string source =
+        "jtml 2\n"
+        "make Counter initial\n"
+        "  let count = initial\n"
+        "  get doubled = count + count\n"
+        "  when advance step\n"
+        "    let next: number = doubled + step\n"
+        "    let items = [next]\n"
+        "    for item in items\n"
+        "      let local = item + next\n"
+        "      count = local\n"
+        "    if next > 0\n"
+        "      let label = next\n"
+        "      show label\n"
+        "  button \"Advance\" click advance(1)\n"
+        "page\n"
+        "  Counter 2\n"
+        "  Counter 3\n";
+    auto program = parseFriendlyForLint(source);
+    std::vector<std::unique_ptr<ASTNode>> cloned;
+    for (const auto& node : program) cloned.push_back(node->clone());
+    jtml::JtmlLinter linter;
+    EXPECT_EQ(countErrors(linter.lint(program)), 0);
+    EXPECT_EQ(countErrors(linter.lint(cloned)), 0);
+    // Compatibility text is still assignment-based: runtime behavior is unchanged.
+    EXPECT_NE(jtml::friendlyToClassic(source).find("_next ="), std::string::npos);
+    EXPECT_EQ(jtml::friendlyToClassic(source).find("define __Counter_1_next"), std::string::npos);
+}
+
+TEST(Linter, FriendlyMissingLocalAndInitializerStillFailAtOriginalConstruct) {
+    const auto diagnostics = lintFriendly(
+        "jtml 2\n"
+        "make Counter\n"
+        "  when advance\n"
+        "    let local = missing\n"
+        "    ghost = local\n"
+        "  button \"Advance\" click advance\n"
+        "page\n"
+        "  Counter\n");
+    ASSERT_EQ(countErrors(diagnostics), 2);
+    EXPECT_NE(diagnostics[0].message.find("missing"), std::string::npos);
+    EXPECT_NE(diagnostics[1].message.find("ghost"), std::string::npos);
+    EXPECT_EQ(diagnostics[0].line, 4);
+    EXPECT_EQ(diagnostics[0].column, 5);
+    EXPECT_EQ(diagnostics[1].line, 5);
+    EXPECT_EQ(diagnostics[1].column, 5);
+    for (const auto& diagnostic : diagnostics) {
+        EXPECT_EQ(diagnostic.file, "lint-friendly.jtml");
+        EXPECT_EQ(diagnostic.component, "Counter");
+        EXPECT_FALSE(diagnostic.sourceExact); // Construct attribution, not exact token spans.
+    }
+}
+
+TEST(Linter, FriendlyLocalsDoNotEscapeBlocksActionsOrComponents) {
+    const auto diagnostics = lintFriendly(
+        "jtml 2\n"
+        "make First\n"
+        "  when one\n"
+        "    if true\n"
+        "      let branch = 1\n"
+        "      show branch\n"
+        "    show branch\n"
+        "    for item in [1]\n"
+        "      let loopLocal = item\n"
+        "      show loopLocal\n"
+        "    show loopLocal\n"
+        "    let private = 1\n"
+        "  when two\n"
+        "    show private\n"
+        "  button \"One\" click one\n"
+        "  button \"Two\" click two\n"
+        "make Second\n"
+        "  when three\n"
+        "    show private\n"
+        "  button \"Three\" click three\n"
+        "page\n"
+        "  First\n"
+        "  Second\n");
+    EXPECT_EQ(countErrors(diagnostics), 4);
+}
+
+TEST(Linter, FriendlyInitializerDoesNotBindItselfAndLocalTypesAreRetained) {
+    auto diagnostics = lintFriendly(
+        "jtml 2\n"
+        "when run\n"
+        "  let unknown = unknown + 1\n"
+        "  let amount: number = \"wrong\"\n");
+    ASSERT_EQ(countErrors(diagnostics), 2);
+    EXPECT_EQ(diagnostics[0].code, "JTML_UNDEFINED_NAME");
+    EXPECT_EQ(diagnostics[1].code, "JTML_TYPE_MISMATCH");
+}
+
+TEST(Linter, FriendlyLocalShadowingChecksInitializerInEnclosingScope) {
+    const auto diagnostics = lintFriendly(
+        "jtml 2\n"
+        "let outer: number = 1\n"
+        "when run param\n"
+        "  let outer: string = \"local\"\n"
+        "  let valid: string = outer\n"
+        "  if true\n"
+        "    let outer: number = 2\n"
+        "    let valid: number = outer\n"
+        "  let after: string = outer\n"
+        "  let param = param + 1\n"
+        "  show param\n");
+    EXPECT_EQ(countErrors(diagnostics), 0);
+}
+
+
+TEST(Linter, UntypedFriendlyLocalShadowsOuterTypeAndFunctionArity) {
+    const auto diagnostics = lintFriendly(
+        "jtml 2\n"
+        "let value: number = 1\n"
+        "when callback first second\n"
+        "  show first + second\n"
+        "when run supplied\n"
+        "  let value = supplied\n"
+        "  let label: string = value\n"
+        "  let callback = supplied\n"
+        "  callback()\n");
+    EXPECT_EQ(countErrors(diagnostics), 0);
+}
+
+TEST(Linter, ClassicAssignmentDoesNotIntroduceBinding) {
+    EXPECT_EQ(countErrors(lintSource("missing = 1\\\\\nshow missing\\\\\n")), 2);
+}

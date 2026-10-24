@@ -9,7 +9,8 @@ features or declare production readiness.
 ## Public-preview release audit
 
 The proposed v0.3.0 preview is **NOT READY**: version/distribution identity is
-unfinished, and unchanged Taskboard lint reports 346 errors / 7 warnings. See the bounded
+unfinished, and unchanged Taskboard lint still fails with 44 errors / 7 warnings
+(after the nested-local diagnostic repair; measured baseline 346 / 7). See the bounded
 [release contract, licensing review and current evidence](docs/releases/v0.3-readiness.md).
 Strict N04 now passes its tested subset; dated BLOCKED snapshots below remain
 historical evidence, not the current result or a claim of complete source spans.
@@ -24,6 +25,17 @@ browser caller state and refreshed through retained component updates. All six
 nested supplemental cases are mandatory; their last catalogued defect is retired
 with its old signature preserved. Five independent native attribute-renderer
 observations remain FAIL / KNOWN DEFECT. See [evidence and boundaries](docs/architecture/global-component-parameters.md).
+
+## Friendly nested-local diagnostics
+
+The unchanged Taskboard fixture now reports 44 lint errors / 7 warnings, down
+from the independently reproduced 346 / 7 baseline at merged PR #37. Frontend
+binding metadata preserves nested `let` identity through compatibility lowering
+and AST cloning; lint checks lexical ownership without hoisting action locals.
+The 302 removed errors are false undefined-name diagnostics. Taskboard lint
+acceptance remains **FAIL**; emitted callbacks/arguments, generated setter owners,
+keyboard arity, action/template context and source precision remain separate
+limitations. See [diagnostic evidence and verification](docs/architecture/taskboard-diagnostics/README.md).
 
 ## Browser nested argument expressions
 

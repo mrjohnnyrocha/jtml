@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <map>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -115,9 +116,16 @@ private:
     }
 };
 
-// A lowering result keeps exact copied bytes separately from attribution of
-// generated lines to their triggering input construct. These are different
-// guarantees: an attributed generated token is never an exact original token.
+// A binding site retained by the frontend when compatibility lowering emits
+// an assignment for a Friendly nested `let`. It is tooling metadata only;
+// neither generated Classic text nor runtime assignment behavior changes.
+struct LoweredLocalDeclaration {
+    std::string name;
+    std::string declaredType;
+};
+
+// Exact copied bytes and generated construct attribution are distinct.
+// A generated token attributed to a construct is never an exact original token.
 struct SourceProvenance {
     enum class Kind { Identity, FriendlyLowering };
     Kind kind;
@@ -125,11 +133,13 @@ struct SourceProvenance {
     MappedSource input;
     std::vector<int> generatedLineToInputLine;
     std::vector<size_t> inputLineStarts{0};
+    std::map<int, LoweredLocalDeclaration> localDeclarations;
 
     SourceProvenance(MappedSource output, MappedSource originalInput,
-                     std::vector<int> lines = {}, Kind sourceKind = Kind::Identity)
+                     std::vector<int> lines = {}, Kind sourceKind = Kind::Identity,
+                     std::map<int, LoweredLocalDeclaration> declarations = {})
         : kind(sourceKind), generated(std::move(output)), input(std::move(originalInput)),
-          generatedLineToInputLine(std::move(lines)) {
+          generatedLineToInputLine(std::move(lines)), localDeclarations(std::move(declarations)) {
         for (size_t i = 0; i < input.size(); ++i)
             if (input.text()[i] == '\n') inputLineStarts.push_back(i + 1);
     }

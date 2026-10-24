@@ -1367,10 +1367,12 @@ void emitLine(std::ostringstream& out,
               std::vector<int>* sourceMap = nullptr,
               int sourceLine = 0) {
     out << makeIndent(level) << line << "\n";
-    if (sourceMap) {
-        sourceMap->push_back(sourceLine);
-    } else if (activeFriendlySourceMap) {
-        activeFriendlySourceMap->push_back(activeFriendlySourceLine);
+    auto* map = sourceMap ? sourceMap : activeFriendlySourceMap;
+    if (map) {
+        // A quoted generated payload (notably the UI CSS prelude) may contain
+        // physical newlines. Every generated line needs an attribution entry.
+        const auto count = 1 + std::count(line.begin(), line.end(), '\n');
+        map->insert(map->end(), count, sourceMap ? sourceLine : activeFriendlySourceLine);
     }
 }
 
@@ -3432,6 +3434,10 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
             }
             const std::string expr = friendlyExpression(joinTokens(tokens, nameIndex + 1));
             const std::string typeSuffix = (!insideBlock && !typedName.type.empty()) ? ": " + typedName.type : "";
+            if (insideBlock) {
+                result.localDeclarations.emplace(static_cast<int>(result.classicLineToFriendlyLine.size()),
+                    LoweredLocalDeclaration{typedName.name, typedName.type});
+            }
             emitLine(out, level, (insideBlock ? "" : "define ") + typedName.name + typeSuffix + " = " + expr + "\\\\");
         } else if (head == "__define" || head == "__const" || head == "__derive") {
             if (tokens.size() < 4) {
@@ -3767,7 +3773,8 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const MappedSource& source)
     MappedSource generated;
     generated.appendSynthetic(result.classicSource);
     result.provenance = std::make_shared<const SourceProvenance>(
-        std::move(generated), source, result.classicLineToFriendlyLine, SourceProvenance::Kind::FriendlyLowering);
+        std::move(generated), source, result.classicLineToFriendlyLine, SourceProvenance::Kind::FriendlyLowering,
+        result.localDeclarations);
     return result;
 }
 

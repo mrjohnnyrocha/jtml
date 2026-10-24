@@ -3020,3 +3020,51 @@ TEST(CliBuild, ProductionRejectsUnsupportedGlobalArgumentBeforeAssetsWithOrigina
         EXPECT_FALSE(std::filesystem::exists(root / "dist" / asset));
     std::filesystem::remove_all(root);
 }
+
+
+TEST(CliLint, ImportedFriendlyActionLocalsRetainTheirOriginalOwner) {
+    const auto root = makeTempDir("lint-import-locals");
+    const auto library = root / "library.jtml";
+    const auto entry = root / "index.jtml";
+    writeTempFile(library,
+        "jtml 2\n"
+        "export let seed = 2\n"
+        "export when compute value\n"
+        "  let local = value + seed\n"
+        "  show local\n");
+    writeTempFile(entry,
+        "jtml 2\n"
+        "use { seed, compute } from \"./library.jtml\"\n"
+        "when run\n"
+        "  let local = seed + 1\n"
+        "  compute(local)\n"
+        "page\n"
+        "  button \"Run\" click run\n");
+    jtml::cli::Options opts;
+    opts.inputFile = entry.string();
+    opts.json = true;
+    auto result = captureCommand([&] { return jtml::cli::cmdLint(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+    // Removing the initializer binding keeps a real undefined read visible.
+    writeTempFile(library,
+        "jtml 2\n"
+        "export let seed = 2\n"
+        "export when compute value\n"
+        "  let local = value + absent\n"
+        "  show local\n");
+    result = captureCommand([&] { return jtml::cli::cmdLint(opts); });
+    EXPECT_EQ(result.code, 1) << result.out << result.err;
+    const auto json = nlohmann::json::parse(result.out);
+    int errors = 0;
+    for (const auto& diagnostic : json["diagnostics"]) {
+        if (diagnostic["severity"] != "error") continue;
+        ++errors;
+        EXPECT_EQ(diagnostic["code"], "JTML_UNDEFINED_NAME");
+        EXPECT_EQ(diagnostic["file"], std::filesystem::canonical(library).string());
+        EXPECT_EQ(diagnostic["line"], 4);
+        EXPECT_EQ(diagnostic["column"], 3);
+        EXPECT_EQ(diagnostic["sourceExact"], false);
+    }
+    EXPECT_EQ(errors, 1);
+    std::filesystem::remove_all(root);
+}

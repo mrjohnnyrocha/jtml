@@ -35,7 +35,12 @@ nlohmann::json lintDiagnosticsToJson(const std::vector<LintDiagnostic>& diagnost
         diagnostic.column = d.column;
         diagnostic.hint = d.hint;
         diagnostic.example = d.example;
-        out.push_back(diagnosticToJson(diagnostic));
+        auto json = diagnosticToJson(diagnostic);
+        json["file"] = d.file;
+        json["component"] = d.component;
+        json["scope"] = d.scope;
+        json["sourceExact"] = d.sourceExact;
+        out.push_back(std::move(json));
     }
     return out;
 }

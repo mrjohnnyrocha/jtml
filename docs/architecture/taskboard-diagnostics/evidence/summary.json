@@ -1,0 +1,87 @@
+{
+  "baseline": "315e6f280169330f0f6a7528484f3f78b8d5a1f9",
+  "beforeByCode": [
+    {
+      "severity": "error",
+      "code": "JTML_ARITY",
+      "count": 2
+    },
+    {
+      "severity": "error",
+      "code": "JTML_ERROR",
+      "count": 16
+    },
+    {
+      "severity": "error",
+      "code": "JTML_UNDEFINED_NAME",
+      "count": 328
+    },
+    {
+      "severity": "warning",
+      "code": "JTML_TEMPLATE_WHILE",
+      "count": 6
+    },
+    {
+      "severity": "warning",
+      "code": "JTML_UI_SURFACE_UNLABELED",
+      "count": 1
+    }
+  ],
+  "afterByCode": [
+    {
+      "severity": "error",
+      "code": "JTML_ARITY",
+      "count": 2
+    },
+    {
+      "severity": "error",
+      "code": "JTML_ERROR",
+      "count": 16
+    },
+    {
+      "severity": "error",
+      "code": "JTML_UNDEFINED_NAME",
+      "count": 26
+    },
+    {
+      "severity": "warning",
+      "code": "JTML_TEMPLATE_WHILE",
+      "count": 6
+    },
+    {
+      "severity": "warning",
+      "code": "JTML_UI_SURFACE_UNLABELED",
+      "count": 1
+    }
+  ],
+  "removedByComponent": [
+    {
+      "component": "TaskBoard",
+      "count": 272
+    },
+    {
+      "component": "TaskRow",
+      "count": 30
+    }
+  ],
+  "beforeCategories": {
+    "action-versus-template-context": 6,
+    "emit-argument-lowering": 12,
+    "emit-callback-binding": 16,
+    "erased-local-declaration": 302,
+    "generated-input-setter-owner": 14,
+    "keyboard-implicit-event-argument": 2,
+    "unlabeled-card-advisory": 1
+  },
+  "remainingCategories": {
+    "action-versus-template-context": 6,
+    "emit-argument-lowering": 12,
+    "emit-callback-binding": 16,
+    "generated-input-setter-owner": 14,
+    "keyboard-implicit-event-argument": 2,
+    "unlabeled-card-advisory": 1
+  },
+  "unlocatedBefore": 15,
+  "unlocatedAfter": 15,
+  "newDiagnostics": 0
+}

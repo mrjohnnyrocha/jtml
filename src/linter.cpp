@@ -15,6 +15,13 @@ namespace jtml {
 
 namespace {
 
+template <typename T> struct Restore {
+    T& target;
+    T previous;
+    Restore(T& value) : target(value), previous(value) {}
+    ~Restore() { target = previous; }
+};
+
 std::string normalizeType(std::string type) {
     std::transform(type.begin(), type.end(), type.begin(), [](unsigned char ch) {
         return static_cast<char>(std::tolower(ch));
@@ -206,12 +213,15 @@ std::vector<LintDiagnostic> JtmlLinter::lint(const std::vector<std::unique_ptr<A
     functionArityScopes.clear();
     importedFiles_.clear();
     elementDepth_ = 0;
+    diagnosticSpan_ = nullptr;
+    component_.clear();
+    scopeNames_.clear();
 
     // Pre-pass: collect top-level declarations so that forward references
     // between top-level functions (a calls b, b calls a) don't trip the
     // undefined-reference check. Also pulls names from imported modules in
     // when a source path is configured, so cross-file references resolve.
-    pushScope();
+    pushScope("module");
     declareTopLevel(program);
 
     visitBlock(program);
@@ -222,12 +232,14 @@ std::vector<LintDiagnostic> JtmlLinter::lint(const std::vector<std::unique_ptr<A
 // ---------------------------------------------------------------------------
 // Scope bookkeeping
 // ---------------------------------------------------------------------------
-void JtmlLinter::pushScope() {
+void JtmlLinter::pushScope(const std::string& name) {
+    scopeNames_.push_back(name);
     scopes.emplace_back();
     typeScopes.emplace_back();
     functionArityScopes.emplace_back();
 }
 void JtmlLinter::popScope()  {
+    if (!scopeNames_.empty()) scopeNames_.pop_back();
     if (!scopes.empty()) scopes.pop_back();
     if (!typeScopes.empty()) typeScopes.pop_back();
     if (!functionArityScopes.empty()) functionArityScopes.pop_back();
@@ -261,17 +273,19 @@ void JtmlLinter::defineFunction(const std::string& name, int arity) {
 }
 
 std::string JtmlLinter::lookupType(const std::string& name) const {
-    for (auto it = typeScopes.rbegin(); it != typeScopes.rend(); ++it) {
-        auto found = it->find(name);
-        if (found != it->end()) return found->second;
+    for (size_t i = scopes.size(); i-- > 0;) {
+        if (std::find(scopes[i].begin(), scopes[i].end(), name) == scopes[i].end()) continue;
+        const auto found = typeScopes[i].find(name);
+        return found == typeScopes[i].end() ? "" : found->second;
     }
     return "";
 }
 
 int JtmlLinter::lookupFunctionArity(const std::string& name) const {
-    for (auto it = functionArityScopes.rbegin(); it != functionArityScopes.rend(); ++it) {
-        auto found = it->find(name);
-        if (found != it->end()) return found->second;
+    for (size_t i = scopes.size(); i-- > 0;) {
+        if (std::find(scopes[i].begin(), scopes[i].end(), name) == scopes[i].end()) continue;
+        const auto found = functionArityScopes[i].find(name);
+        return found == functionArityScopes[i].end() ? -1 : found->second;
     }
     return -1;
 }
@@ -339,6 +353,28 @@ void JtmlLinter::checkDeclaredType(const std::string& name,
     }
 }
 
+void JtmlLinter::attachDiagnosticContext() {
+    auto& diagnostic = diagnostics.back();
+    diagnostic.component = component_;
+    for (const auto& scope : scopeNames_) {
+        if (!diagnostic.scope.empty()) diagnostic.scope += "/";
+        diagnostic.scope += scope;
+    }
+    if (!diagnosticSpan_) return;
+    const auto& span = *diagnosticSpan_;
+    if (span.original) {
+        const auto& original = *span.original;
+        const auto position = original.source->coordinates(original.begin);
+        diagnostic.file = original.source->file;
+        diagnostic.line = static_cast<int>(position.first);
+        diagnostic.column = static_cast<int>(position.second);
+        diagnostic.sourceExact = span.originalExact;
+    } else if (!span.provenance) {
+        diagnostic.line = span.startLine;
+        diagnostic.column = span.startColumn;
+    }
+}
+
 void JtmlLinter::reportError(const std::string& msg) {
     auto d = jtml::diagnosticFromMessage(msg, jtml::DiagnosticSeverity::Error);
     diagnostics.push_back({
@@ -350,6 +386,7 @@ void JtmlLinter::reportError(const std::string& msg) {
         d.hint,
         d.example,
     });
+    attachDiagnosticContext();
 }
 void JtmlLinter::reportWarning(const std::string& msg) {
     auto d = jtml::diagnosticFromMessage(msg, jtml::DiagnosticSeverity::Warning);
@@ -362,6 +399,7 @@ void JtmlLinter::reportWarning(const std::string& msg) {
         d.hint,
         d.example,
     });
+    attachDiagnosticContext();
 }
 
 // ---------------------------------------------------------------------------
@@ -373,6 +411,8 @@ void JtmlLinter::visitBlock(const std::vector<std::unique_ptr<ASTNode>>& stmts) 
     for (const auto& s : stmts) {
         if (!s) continue;
         if (flowEnded && !unreachableReported) {
+            Restore<const SourceSpan*> restore(diagnosticSpan_);
+            diagnosticSpan_ = &s->sourceSpan;
             reportWarning("unreachable code after return/throw/break/continue");
             unreachableReported = true;
         }
@@ -388,6 +428,8 @@ void JtmlLinter::visitBlock(const std::vector<std::unique_ptr<ASTNode>>& stmts) 
 }
 
 void JtmlLinter::visitStmt(const ASTNode& node) {
+    Restore<const SourceSpan*> restore(diagnosticSpan_);
+    diagnosticSpan_ = &node.sourceSpan;
     switch (node.getType()) {
     case ASTNodeType::JtmlElement:
         visitElement(static_cast<const JtmlElementNode&>(node));
@@ -420,6 +462,15 @@ void JtmlLinter::visitStmt(const ASTNode& node) {
     }
     case ASTNodeType::AssignmentStatement: {
         const auto& n = static_cast<const AssignmentStatementNode&>(node);
+        if (n.localDeclaration) {
+            // The initializer sees the enclosing binding, never the binding
+            // being introduced. Declarations stay in this lexical scope.
+            if (n.rhs) visitExpr(*n.rhs);
+            const auto& binding = *n.localDeclaration;
+            checkDeclaredType(binding.name, binding.declaredType, n.rhs.get());
+            if (!isDefinedInCurrentScope(binding.name)) define(binding.name, binding.declaredType);
+            return;
+        }
         // Tolerate assignments to subscripts / property access (like
         // `user["name"] = x`). Only flag pure undefined variable targets.
         if (n.lhs && n.lhs->getExprType() == ExpressionStatementNodeType::Variable) {
@@ -474,7 +525,7 @@ void JtmlLinter::visitStmt(const ASTNode& node) {
         const auto& n = static_cast<const ForStatementNode&>(node);
         if (n.iterableExpression) visitExpr(*n.iterableExpression);
         if (n.rangeEndExpr)       visitExpr(*n.rangeEndExpr);
-        pushScope();
+        pushScope("for:" + n.iteratorName);
         define(n.iteratorName);
         visitBlock(n.body);
         popScope();
@@ -504,7 +555,7 @@ void JtmlLinter::visitStmt(const ASTNode& node) {
         } else if (!functionArityScopes.empty()) {
             functionArityScopes.back()[n.name] = static_cast<int>(n.parameters.size());
         }
-        pushScope();
+        pushScope("action:" + n.name);
         for (const auto& p : n.parameters) define(p.name);
         visitBlock(n.body);
         popScope();
@@ -562,6 +613,9 @@ void JtmlLinter::visitStmt(const ASTNode& node) {
 }
 
 void JtmlLinter::visitElement(const JtmlElementNode& elem) {
+    Restore<std::string> restoreComponent(component_);
+    const auto component = attrLiteral(elem, "data-jtml-component");
+    if (!component.empty()) component_ = component;
     if (elem.tagName == "img" && !hasAttr(elem, "alt") && !attrIsTruthy(elem, "aria-hidden")) {
         reportWarning("media accessibility: image elements need alt text or aria-hidden");
     }
@@ -623,7 +677,7 @@ void JtmlLinter::visitElement(const JtmlElementNode& elem) {
             visitExpr(*attr.value);
         }
     }
-    pushScope();
+    pushScope(component.empty() ? "element:" + elem.tagName : "component:" + component);
     ++elementDepth_;
     visitBlock(elem.content);
     --elementDepth_;
@@ -634,6 +688,13 @@ void JtmlLinter::visitElement(const JtmlElementNode& elem) {
 // Expressions
 // ---------------------------------------------------------------------------
 void JtmlLinter::visitExpr(const ExpressionStatementNode& expr) {
+    Restore<const SourceSpan*> restore(diagnosticSpan_);
+    // Compound-assignment desugaring can synthesize an unspanned child.
+    // Retain its containing construct's attribution rather than losing it.
+    if (expr.sourceSpan.original ||
+        (!expr.sourceSpan.provenance && expr.sourceSpan.valid()) || !diagnosticSpan_) {
+        diagnosticSpan_ = &expr.sourceSpan;
+    }
     switch (expr.getExprType()) {
     case ExpressionStatementNodeType::Variable: {
         const auto& e = static_cast<const VariableExpressionStatementNode&>(expr);

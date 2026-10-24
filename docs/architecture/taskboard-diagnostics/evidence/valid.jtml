@@ -1,0 +1,9 @@
+jtml 2
+make Counter initial
+  let count = initial
+  when advance step
+    let next = count + step
+    count = next
+  button "Advance" click advance(1)
+page
+  Counter 2

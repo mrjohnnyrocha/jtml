@@ -497,6 +497,7 @@ ASTNodeType AssignmentStatementNode::getType() const {
 
 std::unique_ptr<ASTNode> AssignmentStatementNode::clone() const {
     auto newNode = std::make_unique<AssignmentStatementNode>();
+    newNode->localDeclaration = localDeclaration;
     // Clone the left-hand side (lhs) expression
     newNode->lhs = lhs ? lhs->clone() : nullptr;
     // Clone the right-hand side (rhs) expression

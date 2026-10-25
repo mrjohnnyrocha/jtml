@@ -45,6 +45,11 @@ def prepare(root, revision, build):
     env = {**os.environ, 'JTML_VERSION_SUFFIX': 'rc.1', 'BUILD_TYPE': 'Release',
            'BUILD_DIR': str(build), 'SOURCE_DATE_EPOCH': str(epoch), 'PYTHONDONTWRITEBYTECODE': '1'}
 
+    if system == 'darwin':
+        if env.get('MACOSX_DEPLOYMENT_TARGET', '14.0') != '14.0':
+            raise ValueError('RC macOS minimum deployment target must be 14.0')
+        env['MACOSX_DEPLOYMENT_TARGET'] = '14.0'
+
     def run(*args):
         subprocess.run(list(map(str, args)), cwd=root, env=env, check=True)
 
@@ -67,6 +72,17 @@ def prepare(root, revision, build):
         run('cmake', '--install', build, '--prefix', prefix)
         run('python3', root / 'scripts/test_studio_distribution.py', '--build-dir', build,
             '--archive', bundle, '--cpack-archive', cpack, '--install-prefix', prefix)
+    macos_audits = []
+    if system == 'darwin':
+        # Audit what testers extract, including CPack, not just build outputs.
+        for archive in (bundle, cpack):
+            with tempfile.TemporaryDirectory(prefix='jtml-macho-') as extracted:
+                run('tar', '-xzf', archive, '-C', extracted)
+                report = Path(extracted) / 'audit.json'
+                run('python3', root / 'scripts/check_macos_distribution.py',
+                    next(Path(extracted).iterdir()), '--output', report)
+                macos_audits.append(dict(archive=archive.name,
+                                        **json.loads(report.read_text())))
     require_clean_revision(root, revision)
     output = root / 'dist/rc-review'
     if output.exists():
@@ -91,6 +107,9 @@ def prepare(root, revision, build):
         for file in [binary, *libraries]:
             command = ['otool', '-L', str(file)] if system == 'darwin' else ['ldd', str(file)]
             subprocess.run(command, env=env, check=True, stdout=evidence, stderr=subprocess.STDOUT)
+    if macos_audits:
+        (output / 'MACOS_COMPATIBILITY.json').write_text(
+            json.dumps(macos_audits, sort_keys=True, indent=2) + '\n')
     files = sorted(p for p in output.iterdir() if p.is_file())
     (output / 'SHA256SUMS').write_text(''.join(
         hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n' for p in files))

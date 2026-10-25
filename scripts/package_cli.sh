@@ -9,7 +9,8 @@ build_type="${BUILD_TYPE:-Release}"
 cmake -S "$repo_root" -B "$build_dir" \
   -DCMAKE_BUILD_TYPE="$build_type" \
   -DJTML_BUILD_PYTHON=OFF \
-  -DJTML_BUILD_TESTS=ON
+  -DJTML_BUILD_TESTS=ON \
+  -DJTML_VERSION_SUFFIX="${JTML_VERSION_SUFFIX-dev}"
 cmake --build "$build_dir" --target jtml_cli --parallel
 cmake --build "$build_dir" --target jtml_c --parallel
 
@@ -44,11 +45,12 @@ Run:
 ./bin/jtml build examples/friendly_import_page.jtml --out dist
 ```
 
-Run these commands from the extracted archive root; examples/tutorial and Studio
-resource discovery are currently relative to the working directory.
+Compiler inputs above are relative to the archive root. The executable finds its
+bundled examples/tutorial/Studio/docs independently of the working directory; use
+absolute source paths when invoking check/build from another directory.
 `doctor` audits a source checkout,
-not a standalone installation. These development artifacts retain the current
-0.1.0-dev binary version; they are not a published v0.3 release.
+not a standalone installation. ARTIFACT.json records version, platform, architecture
+and source revision/dirty status. Development artifacts are not a published release.
 
 JTML-owned material: Apache-2.0. Read LICENSE and THIRD_PARTY_NOTICES.md;
 third-party components retain their own licenses under third_party/licenses/.
@@ -59,18 +61,23 @@ tutorial lessons, Studio samples/reference/sidebar catalogs, docs, editor suppor
 the predeploy static site source, a file manifest, and SHA-256 checksums.
 INSTALL
 
-find "$out_dir" -type f | sort > "$out_dir/MANIFEST.txt"
-(
-  cd "$out_dir"
-  LC_ALL=C LANG=C find . -type f ! -name SHA256SUMS -print0 \
-    | sort -z \
-    | LC_ALL=C LANG=C xargs -0 shasum -a 256 > SHA256SUMS
-)
-
-archive_base="$repo_root/dist/jtml-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
+version="$(cat "$build_dir/jtml-version.txt")"
+test "$("$out_dir/bin/jtml" --version)" = "jtml $version"
+platform="$(uname -s | tr '[:upper:]' '[:lower:]')"
+architecture="$(uname -m)"
+case "$platform" in
+  darwin|linux) ;;
+  *) echo "error: binary archive platform not validated: $platform" >&2; exit 1 ;;
+esac
+archive_base="$repo_root/dist/jtml-$version-$platform-$architecture"
 mkdir -p "$(dirname "$archive_base")"
-rm -f "$archive_base.tar.gz"
-LC_ALL=C LANG=C tar -C "$(dirname "$out_dir")" -czf "$archive_base.tar.gz" "$(basename "$out_dir")"
+revision="$(git -C "$repo_root" rev-parse HEAD)"
+dirty=false
+if [[ -n "$(git -C "$repo_root" status --porcelain --untracked-files=normal)" ]]; then dirty=true; fi
+epoch="${SOURCE_DATE_EPOCH:-$(git -C "$repo_root" show -s --format=%ct HEAD)}"
+python3 "$repo_root/scripts/create_release_archive.py" "$out_dir" "$archive_base.tar.gz" \
+  --version "$version" --platform "$platform" --architecture "$architecture" \
+  --revision "$revision" --dirty "$dirty" --epoch "$epoch"
 
 echo "Built CLI release directory: $out_dir"
 echo "Built archive: $archive_base.tar.gz"

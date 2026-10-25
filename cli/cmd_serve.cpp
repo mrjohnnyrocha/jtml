@@ -4,6 +4,7 @@
 // `serve --watch`  : poll source mtime; hot-swap interpreter on change.
 // `studio`/`demo`  : full IDE — editor, diagnostics, formatter, preview, tutorial.
 #include "commands.h"
+#include "resource_paths.h"
 #include "diagnostic_json.h"
 #include "studio_shell.h"
 
@@ -910,11 +911,12 @@ static void serveWatching(const std::string& inputFile, int port, SyntaxMode syn
 
 /* ── `jtml studio` (merged IDE + tutorial) ───────────────── */
 static void serveStudio(int port) {
-    auto lessons = loadLessons("tutorial");
-    auto docs = loadStudioDocs("docs");
-    auto samples = loadStudioSamples("studio/samples");
-    auto referenceCatalog = loadStudioReferenceCatalog("studio/reference/catalog.json");
-    auto sidebarCatalog = loadStudioSidebarCatalog("studio/sidebar/catalog.json");
+    const auto resources = resourcePaths();
+    auto lessons = loadLessons(resources.tutorial);
+    auto docs = loadStudioDocs(resources.docs);
+    auto samples = loadStudioSamples(resources.studio / "samples");
+    auto referenceCatalog = loadStudioReferenceCatalog(resources.studio / "reference/catalog.json");
+    auto sidebarCatalog = loadStudioSidebarCatalog(resources.studio / "sidebar/catalog.json");
 
     JtmlTranspiler transpiler;
     InterpreterConfig cfg;
@@ -1167,11 +1169,11 @@ static void serveStudio(int port) {
         std::cout << "JTML Studio: http://localhost:" << port
                   << "  (WebSocket on " << cfg.wsPort << ")\n";
         if (!lessons.empty())
-            std::cout << "Tutorial: " << lessons.size() << " lesson(s) from ./tutorial/\n";
+            std::cout << "Tutorial: " << lessons.size() << " lesson(s) from " << resources.tutorial << "\n";
         if (!docs.empty())
-            std::cout << "Docs: " << docs.size() << " guide(s) from ./docs/\n";
+            std::cout << "Docs: " << docs.size() << " guide(s) from " << resources.docs << "\n";
         else
-            std::cout << "Tutorial: no ./tutorial/ found (run from the repo root to include it)\n";
+            std::cout << "Studio: no bundled documentation found\n";
         std::cout << std::flush;
     }
     if (!svr.listen("127.0.0.1", port)) {

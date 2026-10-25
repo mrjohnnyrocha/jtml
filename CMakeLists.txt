@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(jtml VERSION 0.1.0 LANGUAGES CXX)
+project(jtml VERSION 0.3.0 LANGUAGES CXX)
 
 # ---------------------------------------------------------------------------
 # Global build settings
@@ -14,6 +14,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(JtmlVersion)
+include(GNUInstallDirs)
 
 option(JTML_BUILD_PYTHON "Build the optional Python extension (jtml_engine)" ON)
 option(JTML_BUILD_TESTS  "Build the unit test suite"                         OFF)
@@ -165,12 +166,19 @@ jtml_configure_core_target(jtml_browser_production)
 
 set(JTML_CLI_COMMON_SOURCES
     cli/util.cpp
+    cli/resource_paths.cpp
     cli/module_loader.cpp
 )
 
 add_library(jtml_cli_common STATIC ${JTML_CLI_COMMON_SOURCES})
 jtml_configure_core_target(jtml_cli_common)
 jtml_apply_version_defs(jtml_cli_common)
+file(RELATIVE_PATH JTML_DATA_FROM_BINDIR "${CMAKE_INSTALL_FULL_BINDIR}" "${CMAKE_INSTALL_FULL_DATADIR}/jtml")
+file(RELATIVE_PATH JTML_DOCS_FROM_BINDIR "${CMAKE_INSTALL_FULL_BINDIR}" "${CMAKE_INSTALL_FULL_DOCDIR}/docs")
+target_compile_definitions(jtml_cli_common PRIVATE
+    JTML_DATA_FROM_BINDIR="${JTML_DATA_FROM_BINDIR}"
+    JTML_DOCS_FROM_BINDIR="${JTML_DOCS_FROM_BINDIR}"
+)
 
 add_library(jtml_browser_build_lib STATIC
     cli/browser_build.cpp
@@ -268,7 +276,6 @@ endif()
 # ---------------------------------------------------------------------------
 # Install rules (basic; refined in Phase 5 of the roadmap)
 # ---------------------------------------------------------------------------
-include(GNUInstallDirs)
 install(TARGETS jtml_cli jtml_c
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -276,6 +283,9 @@ install(TARGETS jtml_cli jtml_c
 )
 install(FILES include/jtml/c_api.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jtml
+)
+install(FILES "${CMAKE_BINARY_DIR}/jtml-version.txt"
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/jtml
 )
 install(DIRECTORY examples tutorial studio
     DESTINATION ${CMAKE_INSTALL_DATADIR}/jtml
@@ -298,6 +308,10 @@ set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_NAME "jtml")
 set(CPACK_PACKAGE_VENDOR "JTML")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Tiny reactive HTML language and CLI")
-set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+file(WRITE "${CMAKE_BINARY_DIR}/jtml-version.txt" "${JTML_FULL_VERSION}\n")
+set(CPACK_PACKAGE_VERSION "${JTML_FULL_VERSION}")
+string(TOLOWER "${CMAKE_SYSTEM_NAME}" JTML_PACKAGE_PLATFORM)
+set(CPACK_PACKAGE_FILE_NAME "jtml-${JTML_FULL_VERSION}-${JTML_PACKAGE_PLATFORM}-${CMAKE_SYSTEM_PROCESSOR}-install")
+file(WRITE "${CMAKE_BINARY_DIR}/jtml-cpack-filename.txt" "${CPACK_PACKAGE_FILE_NAME}.tar.gz\n")
 set(CPACK_GENERATOR "TGZ")
 include(CPack)

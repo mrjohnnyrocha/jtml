@@ -1,0 +1,18 @@
+set(PROJECT_VERSION "0.3.0")
+foreach(suffix "dev" "rc.1" "")
+    set(JTML_VERSION_SUFFIX "${suffix}")
+    include("${SOURCE}/cmake/JtmlVersion.cmake")
+    set(expected "0.3.0")
+    if(NOT suffix STREQUAL "")
+        string(APPEND expected "-${suffix}")
+    endif()
+    if(NOT JTML_FULL_VERSION STREQUAL expected)
+        message(FATAL_ERROR "Expected ${expected}, got ${JTML_FULL_VERSION}")
+    endif()
+endforeach()
+execute_process(COMMAND "${CMAKE_COMMAND}" -DJTML_VERSION_SUFFIX=bad/path
+    -DPROJECT_VERSION=0.3.0 -P "${SOURCE}/cmake/JtmlVersion.cmake"
+    RESULT_VARIABLE invalid OUTPUT_QUIET ERROR_QUIET)
+if(invalid EQUAL 0)
+    message(FATAL_ERROR "Path-shaped artifact version was accepted")
+endif()

@@ -9,7 +9,14 @@ features or declare production readiness.
 ## Public-preview release audit
 
 The proposed v0.3.0 preview is **NOT READY**: version/distribution identity is
-unfinished. Unchanged Taskboard lint now passes with 0 errors / 1 legitimate
+unfinished pending owner approval and platform/release evidence. Development
+CLI/C API/CPack/archive identity is now `0.3.0-dev`; the independent editor remains
+`0.2.0`. Relocated bundle, CMake install and CPack artifact tests pass version,
+check/browser build, shipped-header C API and complete Studio resources from fresh
+HOME/cwd. Local gate: 471/471 CTests, nine clean-exit benchmarks, live smoke 8/8,
+no skips. Five native renderer observations and reference HTML size overage remain
+failures. See the [release-engineering golden path](docs/releases/v0.3-golden-path.md).
+Unchanged Taskboard lint now passes with 0 errors / 1 legitimate
 accessibility advisory, from the independently measured PR #39 baseline of 28 / 7.
 See the bounded
 [release contract, licensing review and current evidence](docs/releases/v0.3-readiness.md).

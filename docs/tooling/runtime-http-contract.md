@@ -13,7 +13,7 @@ Returns the CLI version and the runtime contract.
 ```json
 {
   "ok": true,
-  "version": "0.1.0-dev",
+  "version": "0.3.0-dev",
   "contract": {
     "endpoints": {
       "health": "/api/health",

@@ -1,6 +1,6 @@
 # JTML Language Reference
 
-Version: 0.1.0-dev
+Version: 0.3.0-dev
 
 JTML is the web/app dialect of the planned JTL language family. JTML is a
 compact syntax for building reactive HTML pages: it keeps HTML's element and

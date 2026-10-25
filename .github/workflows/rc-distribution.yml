@@ -1,0 +1,68 @@
+name: RC distribution review
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_revision:
+        description: 'Full 40-character reviewed commit SHA containing the RC preparation scripts'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux-x86_64
+          - os: macos-14
+            platform: darwin-arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      RC_SOURCE_REVISION: ${{ inputs.source_revision }}
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Validate pinned source input
+        shell: bash
+        run: '[[ "$RC_SOURCE_REVISION" =~ ^[0-9a-fA-F]{40}$ ]]'
+      - name: Checkout selected source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_revision }}
+          persist-credentials: false
+      - name: Confirm clean exact checkout
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$(printf '%s' "$RC_SOURCE_REVISION" | tr '[:upper:]' '[:lower:]')"
+          test -z "$(git status --porcelain --untracked-files=normal)"
+      - name: Focused RC guards
+        run: python3 tests/test_prepare_rc.py
+      - name: Prepare and verify actual RC packages
+        run: python3 scripts/prepare_rc.py --source-revision "$RC_SOURCE_REVISION"
+      - name: Browser reference using the actual RC CLI
+        shell: bash
+        run: |
+          driver="$RUNNER_TEMP/rc-playwright"
+          export PLAYWRIGHT_BROWSERS_PATH="$RUNNER_TEMP/rc-browsers"
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix "$driver" --no-save playwright@1.63.0
+          "$driver/node_modules/.bin/playwright" install chromium-headless-shell
+          export JTML_BENCH_BROWSER="$(find "$PLAYWRIGHT_BROWSERS_PATH" -type f -name chrome-headless-shell -perm -111 -print -quit)"
+          test -n "$JTML_BENCH_BROWSER"
+          export JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT="$driver"
+          export JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1
+          export JTML_BIN="$PWD/dist/release/bin/jtml"
+          test "$("$JTML_BIN" --version)" = "jtml 0.3.0-rc.1"
+          scripts/test_production_reference.sh
+          echo "RC browser reference PASS for $RC_SOURCE_REVISION" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload verified packages for review only
+        uses: actions/upload-artifact@v4
+        with:
+          name: jtml-0.3.0-rc.1-${{ matrix.platform }}-${{ inputs.source_revision }}
+          path: dist/rc-review/
+          if-no-files-found: error
+          retention-days: 14

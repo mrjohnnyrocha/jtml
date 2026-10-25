@@ -23,6 +23,15 @@ See the bounded
 Strict N04 now passes its tested subset; dated BLOCKED snapshots below remain
 historical evidence, not the current result or a claim of complete source spans.
 
+## RC.1 distribution preparation
+
+The [0.3.0-rc.1 tester guide](docs/releases/v0.3.0-rc.1.md) separates automatic release
+checks, owner licensing/provenance decisions and disclosed experimental limits.
+A manual `rc-distribution.yml` workflow pins a reviewed full SHA, reuses the existing
+packagers/install tests, verifies exact rc.1 identity and uploads review files only.
+Fresh RC platform results remain separate from PR #42's development evidence;
+no tag, public release or owner approval is inferred.
+
 ## Global component argument ownership
 
 The unchanged global count=100 / component-local count=10 fixture now gives

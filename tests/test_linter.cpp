@@ -561,3 +561,81 @@ TEST(Linter, ActionBindingsShadowComponentCallbackArity) {
     // outer emit contract through a nearer lexical binding of the same name.
     EXPECT_EQ(countErrors(diagnostics), 0);
 }
+
+
+TEST(Linter, KeyboardPayloadArityPreservesOrdinaryCallChecks) {
+    for (const std::string event : {"keydown", "keyup", "key-down", "key-up"}) {
+        auto valid = lintFriendly("jtml 2\nmake Editor\n  when key payload\n    show payload\n  input " + event + " key\npage\n  Editor\n");
+        EXPECT_EQ(countErrors(valid), 0) << event;
+        auto invalid = lintFriendly("jtml 2\nmake Editor\n  when key\n    show 1\n  input " + event + " key\npage\n  Editor\n");
+        ASSERT_EQ(countErrors(invalid), 1) << event;
+        EXPECT_EQ(invalid.front().code, "JTML_ARITY");
+        EXPECT_EQ(invalid.front().line, 5);
+        EXPECT_EQ(invalid.front().component, "Editor");
+        auto excessive = lintFriendly("jtml 2\nwhen key payload\n  show payload\npage\n  input " + event + " key(1)\n");
+        EXPECT_EQ(countErrors(excessive), 1) << event;
+    }
+    EXPECT_EQ(countErrors(lintFriendly("jtml 2\nwhen key payload\n  show payload\npage\n  button \"Go\" click key\n")), 1);
+    EXPECT_EQ(countErrors(lintFriendly("jtml 2\nwhen key payload\n  show payload\nkey()\n")), 1);
+}
+
+TEST(Linter, ActionWhileInsideComponentDoesNotHideTemplateWhile) {
+    auto d = lintFriendly("jtml 2\nmake Counter\n  let count = 0\n  when advance\n    if count < 2\n      while count < 2\n        count += 1\n  while count < 2\n    show count\n  button \"Go\" click advance\npage\n  Counter\n");
+    EXPECT_EQ(countErrors(d), 0);
+    ASSERT_EQ(d.size(), 1u);
+    EXPECT_EQ(d.front().code, "JTML_TEMPLATE_WHILE");
+    EXPECT_EQ(d.front().line, 8);
+    EXPECT_EQ(d.front().component, "Counter");
+}
+
+
+TEST(Linter, StandaloneCallbackExpressionsPreserveCallerArguments) {
+    for (const std::string argument : {"task", "{ \"id\": \"task-1\" }", "(task)", "tasks[0]", "identity(task)"}) {
+        auto d = lintFriendly("jtml 2\nwhen receive value\n  show value\nwhen identity value\n  return value\nlet task = { \"id\": \"task-1\" }\nlet tasks = [task]\nmake Sender record\n  when send\n    receive(record.id)\n  button \"Send\" click send\npage\n  Sender " + argument + "\n");
+        EXPECT_EQ(countErrors(d), 0) << argument;
+    }
+    auto missing = lintFriendly("jtml 2\nwhen receive value\n  show value\nmake Sender record\n  when send\n    receive(absent.id)\n  button \"Send\" click send\npage\n  Sender { \"id\": 1 }\n");
+    ASSERT_EQ(countErrors(missing), 1);
+    EXPECT_EQ(missing.front().line, 6);
+    EXPECT_EQ(missing.front().component, "Sender");
+    EXPECT_EQ(missing.front().code, "JTML_UNDEFINED_NAME");
+}
+
+TEST(Linter, StandaloneCallsBindLocalsAndPreserveLiteralAndMemberNames) {
+    auto d = lintFriendly("jtml 2\nwhen receive value\n  show value\nmake Sender record\n  let id = 99\n  when send\n    let trimmed = record.id\n    receive(trimmed)\n    receive(\"trimmed\")\n    receive({ \"trimmed\": trimmed }.trimmed)\n    receive([record.id][0])\n  button \"Send\" click send\nlet task = { \"id\": 1 }\npage\n  Sender task\n  Sender task\n");
+    EXPECT_EQ(countErrors(d), 0);
+    auto escaped = lintFriendly("jtml 2\nwhen receive value\n  show value\nmake Sender\n  when first\n    let trimmed = 1\n    receive(trimmed)\n  when second\n    receive(trimmed)\n  button \"Send\" click second\npage\n  Sender\n");
+    ASSERT_EQ(countErrors(escaped), 1);
+    EXPECT_EQ(escaped.front().line, 9);
+}
+
+
+TEST(Linter, InputSettersRetainOwnerAndInputOriginThroughClone) {
+    const std::string source = "jtml 2\nmake Editor\n  let text = \"\"\n  box\n    input into text\n    input into text\npage\n  Editor\n  Editor\n";
+    auto program = parseFriendlyForLint(source);
+    jtml::JtmlLinter linter;
+    EXPECT_EQ(countErrors(linter.lint(program)), 0);
+    std::vector<std::unique_ptr<ASTNode>> clones;
+    for (const auto& node : program) clones.push_back(node->clone());
+    EXPECT_EQ(countErrors(linter.lint(clones)), 0);
+    auto invalid = lintFriendly("jtml 2\nmake Editor\n  input into missing\npage\n  Editor\n");
+    ASSERT_EQ(countErrors(invalid), 2);
+    for (const auto& d : invalid) {
+        EXPECT_EQ(d.line, 3);
+        EXPECT_EQ(d.column, 3);
+        EXPECT_EQ(d.component, "Editor");
+        EXPECT_EQ(d.file, "lint-friendly.jtml");
+        EXPECT_FALSE(d.sourceExact);
+    }
+}
+
+TEST(Linter, InputSettersCannotBorrowSiblingStateOrEscapeToModule) {
+    auto d = lintFriendly("jtml 2\nmake Owner\n  let text = \"\"\n  input into text\nmake Other\n  input into text\npage\n  Owner\n  Other\nsetOwner1Text(\"escaped\")\n");
+    EXPECT_GE(countErrors(d), 3);
+    bool escaped = false;
+    for (const auto& diag : d) {
+        if (diag.line == 10) escaped = true;
+        if (diag.line == 6) EXPECT_EQ(diag.component, "Other");
+    }
+    EXPECT_TRUE(escaped);
+}

@@ -5097,3 +5097,35 @@ TEST(FriendlyBinding, GlobalCallerAttributeNamesRetainInlineContentRole) {
         EXPECT_NE(lowered.find("aria-label=\"caption\""), std::string::npos);
     }
 }
+
+
+TEST(FriendlySyntax, ComponentInputHelpersDispatchInTheirOwningEnvironment) {
+    const auto classic = normalizeOk("jtml 2\nmake Editor\n  let text = \"initial\"\n  box\n    input into text\npage\n  Editor\n  Editor\n");
+    Lexer lexer(classic);
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty());
+    JtmlTranspiler transpiler;
+    const auto html = transpiler.transpile(program);
+    InterpreterConfig config;
+    config.startWebSocket = false;
+    Interpreter interpreter(transpiler, config);
+    interpreter.interpret(program);
+    size_t offset = 0;
+    for (int instance = 1; instance <= 2; ++instance) {
+        const auto start = html.find("sendEvent('", offset);
+        ASSERT_NE(start, std::string::npos) << html;
+        const auto idStart = start + std::string("sendEvent('").size();
+        const auto idEnd = html.find('\'', idStart);
+        const auto id = html.substr(idStart, idEnd - idStart);
+        offset = idEnd;
+        std::string updated, error;
+        ASSERT_TRUE(interpreter.dispatchEvent(id, "onInput",
+            nlohmann::json::array({"setEditor" + std::to_string(instance) + "Text()", "edited"}),
+            updated, error)) << error;
+        const auto state = nlohmann::json::parse(interpreter.getStateJSON());
+        ASSERT_EQ(state["components"].size(), 2u) << state.dump(2);
+        EXPECT_EQ(state["components"][0]["locals"]["text"]["value"], "edited");
+        EXPECT_EQ(state["components"][1]["locals"]["text"]["value"], instance == 1 ? "initial" : "edited");
+    }
+}

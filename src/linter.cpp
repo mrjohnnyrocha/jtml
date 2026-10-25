@@ -1,5 +1,6 @@
 // linter.cpp — see linter.h for the contract.
 #include "jtml/linter.h"
+#include "jtml/attribute_classifier.h"
 #include "jtml/friendly.h"
 #include "jtml/lexer.h"
 #include "jtml/module_resolver.h"
@@ -114,7 +115,10 @@ std::string externActionName(const JtmlElementNode& elem) {
 }
 
 int implicitEventArgumentCount(const std::string& eventName) {
-    if (eventName == "onInput" || eventName == "onChange" || eventName == "onScroll") {
+    // Legacy value events share the runtime classifier. Direct component
+    // keydown supplies one structured keyboard payload; scroll supplies a value.
+    if (jtmlEventCarriesElementValue(eventName) || eventName == "onScroll" ||
+        eventName == "onKeyDown") {
         return 1;
     }
     return 0;
@@ -214,6 +218,7 @@ std::vector<LintDiagnostic> JtmlLinter::lint(const std::vector<std::unique_ptr<A
     functionArityScopes.clear();
     importedFiles_.clear();
     elementDepth_ = 0;
+    actionDepth_ = 0;
     componentScope_ = -1;
     emitOwnerScopes_.clear();
     componentEmits_.clear();
@@ -538,7 +543,7 @@ void JtmlLinter::visitStmt(const ASTNode& node) {
     }
     case ASTNodeType::WhileStatement: {
         const auto& n = static_cast<const WhileStatementNode&>(node);
-        if (elementDepth_ > 0) {
+        if (elementDepth_ > 0 && actionDepth_ == 0) {
             reportWarning("template while is action-only in production runtimes; use `for` for rendered repetition");
         }
         if (n.condition) visitExpr(*n.condition);
@@ -581,7 +586,9 @@ void JtmlLinter::visitStmt(const ASTNode& node) {
         }
         pushScope("action:" + n.name);
         for (const auto& p : n.parameters) define(p.name);
+        ++actionDepth_;
         visitBlock(n.body);
+        --actionDepth_;
         popScope();
         return;
     }
@@ -710,6 +717,16 @@ void JtmlLinter::visitElement(const JtmlElementNode& elem) {
             for (const auto& callback : definition->second) {
                 defineFunction(callback.first, callback.second);
                 emitOwnerScopes_.back()[callback.first] = componentScope_;
+            }
+        }
+    }
+    // Component actions (including compiler-generated input setters) close
+    // over this component and may be referenced before their declaration.
+    if (!component.empty()) {
+        for (const auto& child : elem.content) {
+            if (child && child->getType() == ASTNodeType::FunctionDeclaration) {
+                const auto& fn = static_cast<const FunctionDeclarationNode&>(*child);
+                defineFunction(fn.name, static_cast<int>(fn.parameters.size()));
             }
         }
     }

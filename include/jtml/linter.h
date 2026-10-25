@@ -59,6 +59,7 @@ private:
     std::vector<LintDiagnostic> diagnostics;
     std::string sourcePath_;
     int elementDepth_ = 0;
+    int actionDepth_ = 0;
     int componentScope_ = -1;
     std::map<std::string, std::map<std::string, int>> componentEmits_;
     // Emit bindings are component-owned: enclosing components do not lend

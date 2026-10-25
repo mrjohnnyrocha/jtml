@@ -162,6 +162,7 @@ private:
         std::unique_ptr<ExpressionStatementNode> parseAddition();
         std::unique_ptr<ExpressionStatementNode> parseMultiplication();
         std::unique_ptr<ExpressionStatementNode> parseUnary();
+        std::unique_ptr<ExpressionStatementNode> parsePostfix();
         std::unique_ptr<ExpressionStatementNode> parsePrimary();
         std::unique_ptr<ExpressionStatementNode> parseFunctionCall(const Token& nameToken);
         std::unique_ptr<ExpressionStatementNode> parseArrayLiteral();

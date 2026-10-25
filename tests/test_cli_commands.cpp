@@ -3113,3 +3113,38 @@ TEST(CliLint, ImportedEmitContractsStayWithTheirComponentAndOriginalSource) {
     EXPECT_EQ(errors, 1);
     std::filesystem::remove_all(root);
 }
+
+
+TEST(CliLint, ImportedCallbacksAndSettersRetainOriginalLexicalOwner) {
+    const auto root = makeTempDir("lint-callback-setter-owner");
+    const auto library = root / "library.jtml";
+    const auto entry = root / "index.jtml";
+    const std::string valid = "jtml 2\nexport make Editor record emits saved(item)\n  let draft = record.id\n  when save\n    let trimmed = draft\n    saved(trimmed)\n  input into draft\n  button \"Save\" click save\n";
+    writeTempFile(library, valid);
+    writeTempFile(entry, "jtml 2\nuse Editor from \"./library.jtml\"\npage\n  Editor { \"id\": \"a\" }\n  Editor { \"id\": \"b\" }\n");
+    jtml::cli::Options opts;
+    opts.inputFile = entry.string();
+    opts.json = true;
+    auto result = captureCommand([&] { return jtml::cli::cmdLint(opts); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+    auto invalid = valid;
+    invalid.replace(invalid.find("saved(trimmed)"), std::string("saved(trimmed)").size(), "saved(absent)");
+    invalid.replace(invalid.find("into draft"), std::string("into draft").size(), "into missing");
+    writeTempFile(library, invalid);
+    result = captureCommand([&] { return jtml::cli::cmdLint(opts); });
+    ASSERT_EQ(result.code, 1) << result.out << result.err;
+    const auto json = nlohmann::json::parse(result.out);
+    int errors = 0;
+    for (const auto& diagnostic : json["diagnostics"]) {
+        if (diagnostic["severity"] != "error") continue;
+        ++errors;
+        EXPECT_EQ(diagnostic["code"], "JTML_UNDEFINED_NAME");
+        EXPECT_EQ(diagnostic["file"], std::filesystem::canonical(library).string());
+        EXPECT_TRUE(diagnostic["line"] == 6 || diagnostic["line"] == 7);
+        EXPECT_EQ(diagnostic["column"], diagnostic["line"] == 6 ? 5 : 3);
+        EXPECT_EQ(diagnostic["component"], "Editor");
+        EXPECT_EQ(diagnostic["sourceExact"], false);
+    }
+    EXPECT_EQ(errors, 6);
+    std::filesystem::remove_all(root);
+}

@@ -192,3 +192,23 @@ TEST(Parser, UnterminatedElementReportsError) {
 }
 
 } // namespace
+
+
+TEST(Parser, PostfixBasesKeepStructureAndRejectMalformedPaths) {
+    for (const std::string source : {"{\"id\": 7}.id", "(record).id", "identity(record).id", "[record][0].id", "((record)).items[0].id"}) {
+        Lexer lexer(source);
+        Parser parser(lexer.tokenize());
+        auto expression = parser.parseStandaloneExpression();
+        ASSERT_TRUE(expression) << source;
+        EXPECT_TRUE(parser.getErrors().empty()) << source;
+        EXPECT_EQ(expression->getExprType(), ExpressionStatementNodeType::ObjectPropertyAccess);
+        EXPECT_EQ(expression->sourceSpan.startColumn, 1);
+        EXPECT_EQ(expression->sourceSpan.endColumn, source.size() + 1);
+    }
+    for (const std::string source : {"{\"id\": 7}.", "(record)[", "identity(record).", "[record][0] extra", "(record.id"}) {
+        Lexer lexer(source);
+        Parser parser(lexer.tokenize());
+        EXPECT_FALSE(parser.parseStandaloneExpression()) << source;
+        EXPECT_FALSE(parser.getErrors().empty()) << source;
+    }
+}

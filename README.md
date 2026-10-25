@@ -9,24 +9,37 @@ CSP-safe JavaScript; supported browser apps update locally without a JTML server
 
 ```jtml
 jtml 2
+
 let count = 0
+
 when add
   count += 1
-page
-  strong "Count: {count}"
-  button "Add one" click add
+
+when reset
+  count = 0
+
+page class "friendly-counter" style "max-width: 680px; margin: 48px auto; padding: 28px; font-family: Arial, sans-serif; display: grid; gap: 16px"
+  h1 "Friendly JTML Counter"
+  p "This file uses canonical Friendly JTML and the shared reactive runtime."
+
+  section style "display: grid; gap: 10px"
+    strong "Count: {count}"
+    box style "display: flex; gap: 8px; flex-wrap: wrap"
+      button "Add one" click add
+      button "Reset" click reset
 ```
 
-This short example is browser-verified: clicking **Add one** changes 0 to 1.
-The fuller [counter example](examples/friendly_counter.jtml) adds layout and Reset:
+This is the complete source of [the counter example](examples/friendly_counter.jtml)
+built by the quickstart below. The screenshot shows the compiled application after
+clicking **Add one** once, so it displays **Count: 1**.
 
 ![Actual Chromium rendering of the compiled Friendly counter after Add one](docs/images/counter-preview.png)
 
 **Research preview in development, not production-ready.** The proposed milestone
 is v0.3.0; no v0.3 release is published. Current CLI/C API builds report
 **0.1.0-dev**, CMake/CPack declare **0.1.0**, and the editor source is **0.2.0**.
-Known component-argument and native-renderer failures remain visible in the
-[independent readiness report](docs/releases/v0.3-readiness.md).
+Validated component-argument repairs and remaining native-renderer limitations are
+recorded in the [independent readiness report](docs/releases/v0.3-readiness.md).
 
 ## Get started from source
 

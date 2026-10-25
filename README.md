@@ -36,11 +36,16 @@ clicking **Add one** once, so it displays **Count: 1**.
 ![Actual Chromium rendering of the compiled Friendly counter after Add one](docs/images/counter-preview.png)
 
 **Research preview in development, not production-ready.** The proposed milestone
-is v0.3.0; no v0.3 release is published. Current CLI/C API builds report
+is v0.3.0; no v0.3 release is published. Default source CLI/C API builds report
 **0.3.0-dev**; CPack and CLI archive identities use the same full version.
 The editor source remains independently versioned at **0.2.0** (no VSIX is shipped).
 Validated component-argument repairs and remaining native-renderer limitations are
 recorded in the [independent readiness report](docs/releases/v0.3-readiness.md).
+
+For external tester packages, use the prepared [v0.3.0-rc.1 guide](docs/releases/v0.3.0-rc.1.md)
+for review downloads, exact `0.3.0-rc.1` commands, limitations and the five-minute
+smoke. No RC is published automatically; the source quickstart below builds the
+`0.3.0-dev` default.
 
 ## Get started from source
 

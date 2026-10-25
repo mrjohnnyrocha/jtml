@@ -117,3 +117,10 @@ target_include_directories(jtml_conformance_probe PRIVATE ${CMAKE_SOURCE_DIR})
 add_test(NAME SemanticConformance.OracleControls
     COMMAND node ${CMAKE_CURRENT_SOURCE_DIR}/conformance/self_test.cjs)
 set_tests_properties(SemanticConformance.OracleControls PROPERTIES TIMEOUT 15 LABELS "unit;conformance")
+
+add_test(NAME Release.VersionMapping COMMAND ${CMAKE_COMMAND}
+    -DSOURCE=${CMAKE_SOURCE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/test_release_version.cmake)
+add_test(NAME Release.ArchiveReproducibility COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_release_archive.py ${CMAKE_SOURCE_DIR}/scripts/create_release_archive.py)
+set_tests_properties(Release.VersionMapping Release.ArchiveReproducibility
+    PROPERTIES TIMEOUT 15 LABELS "unit;release")

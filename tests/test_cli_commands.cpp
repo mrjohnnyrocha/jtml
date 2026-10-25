@@ -1,4 +1,5 @@
 #include "cli/commands.h"
+#include "cli/resource_paths.h"
 #include "cli/browser_build_policy.h"
 #include "cli/browser_build_schema.h"
 #include "json.hpp"
@@ -3147,4 +3148,23 @@ TEST(CliLint, ImportedCallbacksAndSettersRetainOriginalLexicalOwner) {
     }
     EXPECT_EQ(errors, 6);
     std::filesystem::remove_all(root);
+}
+
+TEST(CliResources, RelocatedInstallAndBundleIgnoreUnrelatedWorkingDirectory) {
+    const auto root = std::filesystem::canonical(makeTempDir("resource-discovery"));
+    std::filesystem::create_directories(root / "prefix/share/jtml/examples");
+    std::filesystem::create_directories(root / "prefix/share/doc/jtml/docs");
+    std::filesystem::create_directories(root / "prefix/bin");
+    std::filesystem::create_directories(root / "unrelated/examples");
+    ScopedCurrentPath cwd(root / "unrelated");
+    auto installed = jtml::cli::resourcePathsForExecutable(root / "prefix/bin/jtml");
+    EXPECT_EQ(installed.examples, root / "prefix/share/jtml/examples");
+    EXPECT_EQ(installed.docs, root / "prefix/share/doc/jtml/docs");
+    std::filesystem::create_directories(root / "bundle/examples");
+    std::filesystem::create_directories(root / "bundle/bin");
+    auto bundle = jtml::cli::resourcePathsForExecutable(root / "bundle/bin/jtml");
+    EXPECT_EQ(bundle.examples, root / "bundle/examples");
+    EXPECT_EQ(bundle.docs, root / "bundle/docs");
+    auto missing = jtml::cli::resourcePathsForExecutable(root / "standalone/bin/jtml");
+    EXPECT_EQ(missing.examples, root / "unrelated/examples");
 }

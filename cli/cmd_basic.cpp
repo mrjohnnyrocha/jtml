@@ -2,6 +2,7 @@
 // pipelines: examples, new, check, interpret, transpile. Each stays short
 // and self-contained.
 #include "commands.h"
+#include "resource_paths.h"
 #include "browser_build.h"
 #include "diagnostic_json.h"
 #include "package_manager.h"
@@ -678,9 +679,9 @@ void createStarterApp(const Options& o) {
 
 int cmdExamples(const Options&) {
     std::cout << "JTML examples:\n";
-    std::filesystem::path examplesDir = "examples";
+    std::filesystem::path examplesDir = resourcePaths().examples;
     if (!std::filesystem::exists(examplesDir)) {
-        std::cout << "  (no examples directory found from this working directory)\n";
+        std::cout << "  (no bundled examples directory found)\n";
         return 0;
     }
     std::vector<std::filesystem::path> files;
@@ -1947,9 +1948,9 @@ int cmdExport(const Options& o) {
 }
 
 int cmdTest(const Options&) {
-    std::filesystem::path examplesDir = "examples";
+    std::filesystem::path examplesDir = resourcePaths().examples;
     if (!std::filesystem::exists(examplesDir)) {
-        throw std::runtime_error("Cannot find examples/ from this working directory");
+        throw std::runtime_error("Cannot find bundled examples/");
     }
 
     std::vector<std::filesystem::path> files;

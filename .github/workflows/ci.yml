@@ -150,6 +150,8 @@ jobs:
           scripts/package_cli.sh dist/release
           test -f dist/site/tools.html
           test -f dist/release/bin/jtml
+          # CPack rewrites install_manifest.txt; keep the explicit install last.
+          cpack --config build/CPackConfig.cmake -B dist/cpack
           cmake --install build --prefix "${RUNNER_TEMP}/jtml-install"
           for dest in dist/release dist/site "${RUNNER_TEMP}/jtml-install/share/doc/jtml"; do
             cmp LICENSE "${dest}/LICENSE"
@@ -159,7 +161,8 @@ jobs:
             done
           done
           python3 scripts/test_studio_distribution.py \
-            --archive "dist/jtml-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz" \
+            --cpack-archive "dist/cpack/$(cat build/jtml-cpack-filename.txt)" \
+            --archive "dist/jtml-$(cat build/jtml-version.txt)-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz" \
             --install-prefix "${RUNNER_TEMP}/jtml-install"
 
       # --------------------------------------------------------------

@@ -37,7 +37,8 @@ clicking **Add one** once, so it displays **Count: 1**.
 
 **Research preview in development, not production-ready.** The proposed milestone
 is v0.3.0; no v0.3 release is published. Current CLI/C API builds report
-**0.1.0-dev**, CMake/CPack declare **0.1.0**, and the editor source is **0.2.0**.
+**0.3.0-dev**; CPack and CLI archive identities use the same full version.
+The editor source remains independently versioned at **0.2.0** (no VSIX is shipped).
 Validated component-argument repairs and remaining native-renderer limitations are
 recorded in the [independent readiness report](docs/releases/v0.3-readiness.md).
 

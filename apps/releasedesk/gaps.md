@@ -64,27 +64,47 @@ to change, but this slice avoids another compiler/runtime patch: ReleaseDesk use
 a required empty first choice and preserves the user's severity when clearing
 text. Real `selectOption`/input events persist the chosen severity in SQLite.
 
-## Retained: strict CSP for root event attributes
+## Fixed: strict script CSP for supported browser events
 
-Root controls emit `oninput`, `onclick` and `onsubmit` attributes. Serve the probe
-with `Content-Security-Policy: script-src 'self'`: clicking Increment is blocked,
-Clicks remains 0 and the browser reports an inline-handler CSP violation.
-Classification: root browser event transport/HTML emission. A complete fix needs
-static event delegation and independent root/native/live coverage; it is not a
-small app-only change. The app's local-only CSP explicitly permits generated
-inline handlers, but not eval/new Function. No custom JS installs listeners or
-patches state. Clean browser mode is tested; strict script CSP is **not** claimed.
+At PR #45 main `32bb777`, root controls emitted `oninput`, `onclick` and
+`onsubmit`. The unchanged root-controls probe under `script-src 'self'` kept
+Clicks at 0 and reported a blocked inline handler. Root events in browser-local
+output now carry HTML-escaped JSON metadata. Compiler-owned external `app.js`
+listeners call the existing action dispatcher; they do not evaluate attribute
+JavaScript. Submit cancellation is synchronous and native required validation
+still precedes submit. Input/change values, keyboard payloads, action arguments,
+bubbling and dynamic root controls retain real-browser coverage.
 
-To build the remaining-gap probe (a diagnostic, not another product frontend):
+`tests/browser/strict_csp.cjs` compiles this existing probe, the unchanged Friendly
+Counter and a new independent control fixture, serves the actual assets with the
+strict HTTP header, and operates them in Chromium. Separate negative controls
+prove inline scripts and event attributes are blocked. ReleaseDesk's complete
+HTTP/SQLite E2E now runs with the same strict script policy, without custom
+frontend JavaScript or compatibility assets. Inline styles remain allowed by the
+separate style policy. Author-supplied raw HTML/JavaScript URLs, extern host
+functions and legacy inline live/preview documents are outside this proof.
+The inert `application/json` manifest remains an HTML data block, not executable
+inline JavaScript.
 
 ```sh
 ./build/jtml build apps/releasedesk/probes/root-controls.jtml --target browser --out dist/releasedesk-root-probe
 python3 apps/releasedesk/server.py --dist dist/releasedesk-root-probe --db dist/releasedesk-probe-data/issues.sqlite3 --port 8766
+node tests/browser/strict_csp.cjs
 ```
 
-The normal server permits inline handlers. To reproduce strict CSP, serve the
-same four assets with the restrictive header described above. The main app does
-not load this probe or ship it as an extra browser asset.
+## Retained: component introduced by a root conditional is not initialized
+
+[root-conditional-component.jtml](probes/root-conditional-component.jtml) is a
+separate minimal probe discovered while expanding event coverage. Click Toggle,
+then Child increment: a lowered expression placeholder remains and the runtime
+reports `No browser-local action named: __Child_1_increment`. Root conditional
+HTML insertion does not initialize the new component instance. This is component
+mount lifecycle, not CSP event rejection: the event reaches the dispatcher and
+there is no policy violation. The shared rendering runtime is unchanged by the
+CSP correction. This unsupported shape remains a limitation, not a passing
+acceptance case. Component-owned conditional child creation/removal/remount and
+sibling event isolation pass the independent strict-CSP test; plain root
+conditional/loop controls also pass. This fix does not expand mounting semantics.
 
 ## Application/API boundary, not a compiler promise
 

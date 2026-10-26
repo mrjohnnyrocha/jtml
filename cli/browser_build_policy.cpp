@@ -1,4 +1,5 @@
 #include "browser_build_policy.h"
+#include "jtml/browser_runtime_emitter.h"
 
 #include <filesystem>
 #include <iterator>
@@ -84,7 +85,7 @@ std::string emitBrowserBuildAppBootstrap(BrowserBuildMode mode) {
         << "  };\n"
         << "  window.jtml.productionMode = window.jtml.browserBuild.mode;\n"
         << "}());\n";
-    return out.str();
+    return out.str() + jtml::emitBrowserRootEventBindings();
 }
 
 bool shouldCopyBrowserBuildAsset(const std::filesystem::path& rel) {

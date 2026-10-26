@@ -54,12 +54,16 @@ async function visible(locator) { await locator.waitFor({state:'visible'}); }
     const text = fs.readFileSync(path.join(dist,file),'utf8');
     assert(!/\bnew\s+Function\b|\beval\s*\(/.test(text), file);
     assert(!text.includes('jtml-update-plans.js'), file);
+    assert(!/\son[a-z]+\s*=/i.test(text), 'inline event handler in ' + file);
+    if (file === 'index.html') assert(!/<script\b(?![^>]*\bsrc=)(?![^>]*\btype="application\/json")/i.test(text), 'inline executable script');
   }
   browser = await chromium.launch({executablePath: process.env.JTML_BENCH_BROWSER, headless:true});
   const page = await browser.newPage({viewport:{width:1100,height:900}});
   activePage = page;
   page.setDefaultTimeout(10000);
-  const unexpected = [], requests = [];
+  const unexpected = [], requests = [], csp = [];
+  await page.exposeFunction('observeCSP', directive => csp.push(directive));
+  await page.addInitScript(() => document.addEventListener('securitypolicyviolation', event => window.observeCSP(event.effectiveDirective)));
   let expectedHTTPFailure = false;
   page.on('websocket', socket => unexpected.push('unexpected WebSocket: ' + socket.url()));
   page.on('pageerror', error => unexpected.push(error.message));
@@ -68,7 +72,9 @@ async function visible(locator) { await locator.waitFor({state:'visible'}); }
   let releaseLoad;
   const loadGate = new Promise(resolve => releaseLoad = resolve);
   await page.route('**/api/issues', async route => {if(route.request().method()==='GET') await loadGate; await route.continue();});
-  await page.goto(origin);
+  const response = await page.goto(origin);
+  const policy = response.headers()['content-security-policy'];
+  assert(policy.includes("script-src 'self';"), policy);
   await visible(page.getByText('Loading issues…', {exact:true}));
   releaseLoad();
   await visible(page.getByTestId('empty-state'));
@@ -167,6 +173,7 @@ async function visible(locator) { await locator.waitFor({state:'visible'}); }
   assert.equal(contract.debug,false);
   assert(!Object.hasOwn(contract.assets,'compatibilityUpdatePlans'));
   assert.deepEqual(unexpected,[],'unexpected console/page errors');
+  assert.deepEqual(csp,[],'strict CSP violations');
   await page.screenshot({path:path.join(repo,'dist/releasedesk-e2e.png'),fullPage:true});
   await page.setViewportSize({width:390,height:844});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth <= window.innerWidth),'mobile layout must not scroll horizontally');

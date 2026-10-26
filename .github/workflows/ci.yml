@@ -113,6 +113,9 @@ jobs:
       - name: Production reference application (browser required)
         run: scripts/test_production_reference.sh
 
+      - name: Strict CSP root and dynamic events (browser required)
+        run: node tests/browser/strict_csp.cjs
+
       - name: ReleaseDesk real persistence (browser required)
         run: scripts/test_releasedesk.sh
 

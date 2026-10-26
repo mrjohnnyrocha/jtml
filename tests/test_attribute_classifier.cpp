@@ -84,3 +84,36 @@ TEST(AttributeClassifier, LiteralAttributesDoNotBecomeReactiveBindings) {
     EXPECT_NE(html.find("data-jtml-attr-class"), std::string::npos) << html;
     EXPECT_NE(html.find("data-jtml-attr-class-expr=\"cardClass\""), std::string::npos) << html;
 }
+
+TEST(AttributeClassifier, AllFriendlyEventsAreTransportEvents) {
+    for (const auto* name : {"onClick", "onInput", "onChange", "onKeyUp", "onKeyDown",
+                            "onFocus", "onBlur", "onDblClick", "onMouseOver", "onScroll",
+                            "onSubmit", "onDragOver", "onDrop"}) {
+        EXPECT_EQ(classifyJtmlAttribute(variableAttr(name, "handle()")).kind,
+                  JtmlAttributeKind::Event) << name;
+    }
+    EXPECT_FALSE(isJtmlEventAttribute("onInvented"));
+}
+
+TEST(AttributeClassifier, BrowserEventsAreDataWhileLiveBindingProtocolIsPreserved) {
+    const auto classic = jtml::normalizeSourceSyntax(
+        "jtml 2\nwhen save value\n  show value\npage\n  button \"Save\" click save(\"a & < ' b\")\n",
+        jtml::SyntaxMode::Friendly);
+    Lexer lex(classic);
+    Parser parser(lex.tokenize());
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty());
+    JtmlTranspiler browser;
+    browser.setBrowserLocalRuntime(true);
+    browser.setExternalRuntimeScript(true);
+    const auto html = browser.transpile(program);
+    EXPECT_EQ(html.find(" onclick="), std::string::npos);
+    EXPECT_EQ(html.find("<script>"), std::string::npos);
+    EXPECT_NE(html.find("data-jtml-event-click="), std::string::npos);
+    EXPECT_NE(html.find("\\u0026"), std::string::npos);
+    EXPECT_NE(html.find("\\u003c"), std::string::npos);
+    JtmlTranspiler live;
+    const auto liveHtml = live.transpile(program);
+    EXPECT_NE(liveHtml.find("onclick=\"sendEvent('attr_"), std::string::npos);
+    EXPECT_EQ(liveHtml.find("data-jtml-event-click="), std::string::npos);
+}

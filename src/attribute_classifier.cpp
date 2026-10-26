@@ -33,6 +33,10 @@ bool isJtmlEventAttribute(const std::string& attrName) {
            attrName == "onInput" ||
            attrName == "onChange" ||
            attrName == "onKeyUp" ||
+           attrName == "onKeyDown" ||
+           attrName == "onFocus" ||
+           attrName == "onBlur" ||
+           attrName == "onDblClick" ||
            attrName == "onMouseOver" ||
            attrName == "onScroll" ||
            attrName == "onSubmit" ||

@@ -6,6 +6,17 @@ The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.
 
+## Strict script CSP for browser root events
+
+Clean browser root events use declarative metadata and compiler-owned external
+listeners. Counter and ReleaseDesk's real HTTP/SQLite workflow run under
+`script-src 'self'`; synchronous submit cancellation, native validation, dynamic
+root controls and supported component-owned remounts have real Chromium tests.
+ReleaseDesk no longer permits inline scripts. Explicit root IDs, programmatic
+select values and components introduced by root conditionals remain limitations;
+raw HTML/extern/live preview CSP is outside this bounded proof. See
+[transport and verification](docs/architecture/browser-root-csp.md).
+
 ## RC.1 macOS backward compatibility blocker
 
 The original macOS RC from hosted run 40150110121 fails at dyld startup on

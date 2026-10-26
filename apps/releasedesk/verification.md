@@ -39,3 +39,13 @@ are **not** claimed as fixed. Shared-runtime budgets and all prior oracles remai
 unchanged. The app permits generated inline handlers and does not claim strict
 script CSP, universal native parity, exactly-once network retries, or public
 production readiness. See gaps.md for minimal reproductions and scope.
+
+Hosted macOS initially exceeded the test harness's five-second Python readiness
+wait before any browser interaction. The harness now waits for the same actual
+listening-port announcement for at most 60 seconds and reports startup latency;
+all interaction/persistence assertions and runtime budgets are unchanged. The
+full local gate above predates this test-only readiness adjustment; the complete
+ReleaseDesk test is rerun for the final harness.
+The final harness also passed all browser acceptance with an independently delayed
+Python launcher (6.6s initial and 6.1s restart), which exceeded the old readiness
+window. No backend/API response, UI state or persistence assertion was mocked.

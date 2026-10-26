@@ -19,13 +19,15 @@ async function start(port = 0) {
   server = spawn('python3', [path.join(__dirname, 'server.py'), '--dist', dist, '--db', db, '--port', String(port)], {env: {...process.env, PYTHONDONTWRITEBYTECODE: '1'}});
   server.stdout.on('data', chunk => log += chunk);
   server.stderr.on('data', chunk => log += chunk);
-  for (let i = 0; i < 100; i++) {
+  // Hosted macOS can cold-start Python/SQLite slowly; readiness is not an app interaction budget.
+  const started = Date.now(), deadline = started + 60000;
+  while (Date.now() < deadline) {
     const match = log.match(/http:\/\/127\.0\.0\.1:(\d+)/);
-    if (match) return `http://127.0.0.1:${match[1]}`;
+    if (match) {console.log(`Backend ready after ${Date.now() - started}ms`); return `http://127.0.0.1:${match[1]}`;}
     if (server.exitCode !== null) throw new Error(log);
     await new Promise(resolve => setTimeout(resolve, 50));
   }
-  throw new Error('Backend startup timed out: ' + log);
+  throw new Error('Backend readiness not reached within 60s (Python startup/SQLite initialization): ' + log);
 }
 async function stop() {
   if (!server || server.exitCode !== null) return;

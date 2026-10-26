@@ -40,6 +40,14 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$(printf '%s' "$RC_SOURCE_REVISION" | tr '[:upper:]' '[:lower:]')"
           test -z "$(git status --porcelain --untracked-files=normal)"
+      - name: Set macOS 14 deployment contract
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          test "$(uname -m)" = arm64
+          echo 'MACOSX_DEPLOYMENT_TARGET=14.0' >> "$GITHUB_ENV"
+      - name: Focused macOS artifact guards
+        run: python3 tests/test_macos_distribution.py
       - name: Focused RC guards
         run: python3 tests/test_prepare_rc.py
       - name: Prepare and verify actual RC packages

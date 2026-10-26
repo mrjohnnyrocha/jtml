@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.dont_write_bytecode = True
@@ -51,6 +52,13 @@ class RcGuards(unittest.TestCase):
         (self.root / 'unreviewed.txt').write_text('unreviewed payload')
         with self.assertRaises(ValueError):
             rc.require_clean_revision(self.root, self.sha)
+
+    def test_rc_rejects_newer_macos_target_before_build(self):
+        with patch.object(rc.platform, 'system', return_value='Darwin'), \
+             patch.object(rc.platform, 'machine', return_value='arm64'), \
+             patch.dict(rc.os.environ, {'MACOSX_DEPLOYMENT_TARGET': '15.0'}):
+            with self.assertRaisesRegex(ValueError, 'must be 14.0'):
+                rc.prepare(self.root, self.sha, self.root / 'build')
 
     def metadata(self):
         return dict(version='0.3.0-rc.1', sourceRevision=self.sha, sourceDirty=False,

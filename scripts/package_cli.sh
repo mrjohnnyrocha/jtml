@@ -6,8 +6,12 @@ build_dir="${BUILD_DIR:-"$repo_root/build"}"
 out_dir="${1:-"$repo_root/dist/release"}"
 build_type="${BUILD_TYPE:-Release}"
 
-cmake -S "$repo_root" -B "$build_dir" \
-  -DCMAKE_BUILD_TYPE="$build_type" \
+platform_args=(-DCMAKE_BUILD_TYPE="$build_type")
+if [[ "$(uname -s)" == Darwin ]]; then
+  # Explicit cache input overrides stale host/SDK defaults before project().
+  platform_args+=(-DCMAKE_OSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-14.0}")
+fi
+cmake -S "$repo_root" -B "$build_dir" "${platform_args[@]}" \
   -DJTML_BUILD_PYTHON=OFF \
   -DJTML_BUILD_TESTS=ON \
   -DJTML_VERSION_SUFFIX="${JTML_VERSION_SUFFIX-dev}"
@@ -52,6 +56,12 @@ absolute source paths when invoking check/build from another directory.
 not a standalone installation. ARTIFACT.json records version, platform, architecture
 and source revision/dirty status. Development artifacts are not a published release.
 
+macOS arm64 packages target macOS 14.0. MACOS_COMPATIBILITY.json records the CLI
+and C API Mach-O audit; hosted macOS 15 success alone does not prove macOS 14
+runtime compatibility. Use only a regenerated artifact whose exact SHA/checksums
+also have a successful macOS 14 runtime report. The macOS artifact from workflow
+40150110121 requires macOS 15 and must not be used on macOS 14.
+
 JTML-owned material: Apache-2.0. Read LICENSE and THIRD_PARTY_NOTICES.md;
 third-party components retain their own licenses under third_party/licenses/.
 The editor is source-only here; no node_modules or published VSIX is included.
@@ -60,6 +70,11 @@ This archive includes the CLI, the C ABI shared library + header, examples,
 tutorial lessons, Studio samples/reference/sidebar catalogs, docs, editor support,
 the predeploy static site source, a file manifest, and SHA-256 checksums.
 INSTALL
+
+if [[ "$(uname -s)" == Darwin ]]; then
+  python3 "$repo_root/scripts/check_macos_distribution.py" "$out_dir" \
+    --output "$out_dir/MACOS_COMPATIBILITY.json"
+fi
 
 version="$(cat "$build_dir/jtml-version.txt")"
 test "$("$out_dir/bin/jtml" --version)" = "jtml $version"

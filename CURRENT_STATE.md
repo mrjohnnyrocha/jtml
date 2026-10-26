@@ -6,6 +6,16 @@ The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.
 
+## RC.1 macOS backward compatibility blocker
+
+The original macOS RC from hosted run 40150110121 fails at dyld startup on
+physical macOS 14.4.1 arm64: CLI and C API both target 15.0 and import unavailable
+libc++ symbols. It must not be represented as macOS 14-compatible. The corrective
+packager targets 14.0 and audits extracted bundle/CPack binaries; hosted macOS 15
+success and actual macOS 14 acceptance remain separate requirements. See the
+[compatibility investigation](docs/releases/macos14-compatibility.md) and exact
+corrective PR artifact evidence before distributing replacements.
+
 ## Public-preview release audit
 
 The proposed v0.3.0 preview is **NOT READY**: version/distribution identity is

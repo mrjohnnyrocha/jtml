@@ -218,7 +218,11 @@ std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
 
             // Generate the event handler. JTML uses readable names such as
             // onInput, while HTML event attributes are most reliable lower-case.
-            out << " " << htmlEventName << "=\"sendEvent('" << derivedVarName << "', '" << attr.key << "', ['" << functionCall << "'" << args.str() << "])\"";
+            out << " " << htmlEventName << "=\"";
+            // A JTML submit action owns submission, as component forms do.
+            // Cancel synchronously: an async fetch must not race a native reload.
+            if (elem.tagName == "form" && htmlEventName == "onsubmit") out << "event.preventDefault(); ";
+            out << "sendEvent('" << derivedVarName << "', '" << attr.key << "', ['" << functionCall << "'" << args.str() << "])\"";
 
         } else {
             if (classification.kind == JtmlAttributeKind::Boolean) {

@@ -363,6 +363,28 @@ TEST(FriendlySyntax, RouteParamsBecomeClientStateBindings) {
     EXPECT_NE(html.find("params: Object.assign({}, params)"), std::string::npos);
 }
 
+TEST(FriendlySyntax, LazyFetchStartsIdleWhileEagerFetchStartsLoading) {
+    auto classic = normalizeOk(
+        "jtml 2\n"
+        "let pending = fetch \"/api/write\" method \"POST\" body {title: \"Probe\"} lazy refresh save\n"
+        "let eager = fetch \"/api/read\"\n"
+        "page\n"
+        "  button \"Save\" click save\n");
+    Lexer lex(classic);
+    Parser parser(lex.tokenize());
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty());
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    auto manifest = clientManifestFromHtml(transpiler.transpile(program));
+    auto pending = nlohmann::json::parse(manifest["state"]["pending"].get<std::string>());
+    auto eager = nlohmann::json::parse(manifest["state"]["eager"].get<std::string>());
+    EXPECT_FALSE(pending["loading"].get<bool>());
+    EXPECT_TRUE(pending["data"].empty());
+    EXPECT_EQ(pending["error"], "");
+    EXPECT_TRUE(eager["loading"].get<bool>());
+}
+
 TEST(FriendlySyntax, BrowserLocalManifestCarriesRouteTable) {
     std::string classic = normalizeOk(
         "jtml 2\n"
@@ -1812,6 +1834,21 @@ TEST(FriendlySyntax, SelectAndOptionElements) {
 // ---------------------------------------------------------------------------
 // Form Elements
 // ---------------------------------------------------------------------------
+
+TEST(FriendlySyntax, RootSubmitActionCancelsNativeNavigationBeforeDispatch) {
+    auto classic = normalizeOk(
+        "jtml 2\nlet saved = false\nwhen save\n  saved = true\n"
+        "page\n  form submit save\n    input required\n    button \"Save\" type \"submit\"\n");
+    Lexer lex(classic);
+    Parser parser(lex.tokenize());
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty());
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    auto html = transpiler.transpile(program);
+    EXPECT_NE(html.find("onsubmit=\"event.preventDefault(); sendEvent("), std::string::npos);
+    EXPECT_NE(html.find("required"), std::string::npos);
+}
 
 TEST(FriendlySyntax, FormWithSubmitEvent) {
     std::string classic = normalizeOk(

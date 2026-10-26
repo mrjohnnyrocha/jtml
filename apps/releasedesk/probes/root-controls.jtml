@@ -1,0 +1,21 @@
+jtml 2
+
+let selection = "high"
+let clicks = 0
+
+when chooseLow
+  selection = "low"
+
+when increment
+  clicks += 1
+
+page
+  label "Explicit label" for "declared"
+  input id "declared"
+  select into selection aria-label "Selection"
+    option "Low" value "low"
+    option "High" value "high"
+  text "Selection state: {selection}"
+  button "Choose low" click chooseLow
+  button "Increment" click increment
+  text "Clicks: {clicks}"

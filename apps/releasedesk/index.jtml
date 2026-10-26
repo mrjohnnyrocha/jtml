@@ -1,0 +1,157 @@
+jtml 2
+
+let draftTitle = ""
+let draftDescription = ""
+let draftSeverity = ""
+let issueList = fetch "/api/issues" stale keep cache "no-store" timeout 5000 refresh reloadIssues
+let saveResult = fetch "/api/issues" method "POST" body { title: draftTitle, description: draftDescription, severity: draftSeverity } cache "no-store" timeout 5000 stale keep lazy refresh submitIssue
+get saving = saveResult.loading
+get loadingIssues = issueList.loading
+get current = saveResult.hasData && (!issueList.hasData || saveResult.data.revision >= issueList.data.revision) ? saveResult.data : issueList.data
+
+when newIssue
+  draftTitle = ""
+  draftDescription = ""
+
+style
+  .releasedesk
+    max-width: 1040px
+    margin: 40px auto
+    padding: 24px
+    font-family: system-ui, sans-serif
+    color: #172b38
+    line-height: 1.5
+  header
+    display: grid
+    gap: 10px
+    margin-bottom: 28px
+  p
+    margin: 0
+  label
+    display: grid
+    gap: 6px
+  .workspace
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))
+    gap: 32px
+    align-items: start
+  .intro
+    color: #415968
+  .editor
+    border: 1px solid #cad5db
+    border-radius: 10px
+    padding: 20px
+    background: #f5f8fa
+  .fields
+    display: grid
+    gap: 10px
+    border: 0
+    margin: 0
+    padding: 0
+  input
+    font: inherit
+    padding: 10px
+    border: 1px solid #617987
+    border-radius: 4px
+    width: 100%
+    box-sizing: border-box
+  textarea
+    font: inherit
+    padding: 10px
+    border: 1px solid #617987
+    border-radius: 4px
+    width: 100%
+    box-sizing: border-box
+    resize: vertical
+  select
+    font: inherit
+    padding: 10px
+  button
+    font: inherit
+    padding: 10px 14px
+    cursor: pointer
+  .hint
+    font-size: 0.9rem
+    color: #415968
+  .notice
+    padding: 12px
+    border-left: 4px solid #156348
+    background: #edf8f2
+  .failure
+    padding: 12px
+    border-left: 4px solid #a4262c
+    background: #fff0ef
+  .issues
+    list-style: none
+    padding: 0
+  .issue
+    border-top: 1px solid #cad5db
+    padding: 16px 0
+    overflow-wrap: anywhere
+  .description
+    white-space: pre-wrap
+  .metadata
+    font-size: 0.9rem
+    color: #415968
+
+page class "releasedesk"
+  header
+    p "LOCAL RELEASE WORKSPACE"
+    h1 "ReleaseDesk"
+    p "Keep release blockers and regressions in one durable issue list. Stored in SQLite on this computer." class "intro"
+  box class "workspace"
+    section class "editor" aria-label "New issue"
+      h2 "New issue"
+      p "All fields are required. Title: up to 120 characters. Description: up to 4000 characters. Whitespace-only text is not accepted." class "hint"
+      form submit submitIssue aria-label "Create issue"
+        fieldset class "fields" disabled=saving
+          label "Title"
+            input into draftTitle required maxlength "120"
+          label "Description"
+            textarea into draftDescription required maxlength "4000" rows "5"
+          label "Severity"
+            select into draftSeverity required aria-label "Severity"
+              option "Choose severity…" value ""
+              option "Low" value "low"
+              option "Medium" value "medium"
+              option "High" value "high"
+              option "Critical" value "critical"
+          button "Save issue" type "submit"
+      if saving
+        box role "status"
+          text "Saving issue…"
+      if saveResult.error
+        box class "failure" role "alert" data-testid "save-error"
+          strong "Issue was not confirmed saved."
+          p "Your draft is kept. Check the required fields and limits above. If the API is unavailable, restart the local server. Reload issues to check whether the request reached the database before trying Save issue again."
+          p "API response: {saveResult.error}"
+      if saveResult.ok
+        box class "notice" role "status" data-testid "save-success"
+          strong "Last confirmed save: Issue {saveResult.data.created.id} — {saveResult.data.created.title}"
+          p "Stored in SQLite. Reloading the browser will keep this issue."
+          button "Clear text for next issue" click newIssue
+    section aria-label "Saved issues"
+      h2 "Saved issues"
+      button "Reload issues" click reloadIssues disabled=loadingIssues
+      if loadingIssues
+        box role "status"
+          text "Loading issues…"
+      if issueList.error
+        box class "failure" role "alert" data-testid "load-error"
+          strong "Could not load issues."
+          p "Check that the local server is running, then choose Reload issues. Any last confirmed list below may be out of date."
+          p "API response: {issueList.error}"
+      if issueList.hasData || saveResult.hasData
+        if current.issues.length == 0
+          box data-testid "empty-state"
+            text "No issues yet. Capture your first release blocker or regression."
+        else
+          list class "issues" aria-label "Saved issues"
+            for issue in current.issues
+              item class "issue" data-testid "issue"
+                h3 "Issue {issue.id} — {issue.title}"
+                p "Severity: {issue.severity} · Open · {issue.created_at}" class "metadata"
+                box class "description"
+                  text issue.description
+  footer
+    p "Local development tool · No accounts or cloud sync · Back up the SQLite file before deleting local data." class "hint"

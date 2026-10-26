@@ -47,6 +47,7 @@ rm -f "$tmp_browser_loop"
 
 JTML_REQUIRE_BROWSER_BENCH=1 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/benchmark_runtime.sh"
 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_production_reference.sh"
+JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_releasedesk.sh"
 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_taskboard_core.sh"
 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_taskboard_negative.sh"
 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_source_provenance.sh"

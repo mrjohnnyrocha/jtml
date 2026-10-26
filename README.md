@@ -76,6 +76,10 @@ Friendly is canonical; Classic is compatibility/embedding infrastructure and
 `jtl 1` remains experimental. [Installation and packaging](docs/tooling/deployment.md)
 have separate working-directory and version limits.
 
+For a complete local application with HTTP persistence, try
+[ReleaseDesk](apps/releasedesk/README.md): create and recover SQLite-backed release
+issues through the compiled Friendly JTML browser interface.
+
 ## License
 
 Project-owned JTML source, documentation, examples, site and editor resources

@@ -113,6 +113,9 @@ jobs:
       - name: Production reference application (browser required)
         run: scripts/test_production_reference.sh
 
+      - name: ReleaseDesk real persistence (browser required)
+        run: scripts/test_releasedesk.sh
+
       - name: Adversarial Taskboard Core C01–C14 (browser required)
         run: scripts/test_taskboard_core.sh
 

@@ -27,42 +27,49 @@
     <main>
       <section class="page-hero" aria-labelledby="deploy-title">
         <p class="eyebrow">Deploy</p>
-        <h1 id="deploy-title">Static page, live runtime, or verified local package.</h1>
-        <p>JTML compiles supported reactive apps to static browser assets. Its separate live development server is loopback-only; local artifacts are not published releases.</p>
+        <h1 id="deploy-title">Install RC.2, then publish static browser assets.</h1>
+        <p>JTML compiles supported reactive apps to static browser assets. Its separate live development server is loopback-only trusted-code tooling; the public RC.2 packages are experimental, unsigned and unnotarized.</p>
       </section>
 
       <section class="reference-layout">
         <article>
-          <h2>Static</h2>
-          <pre><code>jtml build examples/friendly_counter.jtml --target browser --out dist/counter</code></pre>
-          <p>Keep all four generated assets together; supported events and state run in the browser.</p>
+          <h2>Download and verify</h2>
+          <p><a href="https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.2">Published v0.3.0-rc.2 packages and SHA256SUMS</a>. Download the bundle matching your platform. The <code>-install</code> tarball is an alternative CPack layout.</p>
+          <pre><code># Linux x86_64: beside the downloaded files
+grep '  jtml-0.3.0-rc.2-linux-x86_64.tar.gz$' SHA256SUMS | sha256sum -c -
+tar -xzf jtml-0.3.0-rc.2-linux-x86_64.tar.gz
+# macOS arm64 instead:
+grep '  jtml-0.3.0-rc.2-darwin-arm64.tar.gz$' SHA256SUMS | shasum -a 256 -c -
+tar -xzf jtml-0.3.0-rc.2-darwin-arm64.tar.gz</code></pre>
         </article>
         <article>
-          <h2>Live</h2>
-          <pre><code>jtml serve examples/starter_counter.jtml --port 8000 --watch</code></pre>
-          <p>The server provides HTTP, WebSocket updates, and an HTTP event fallback.</p>
+          <h2>Compile the Counter</h2>
+          <pre><code>cd release
+./bin/jtml --version
+# jtml 0.3.0-rc.2
+./bin/jtml check examples/friendly_counter.jtml
+./bin/jtml build examples/friendly_counter.jtml --target browser --out counter-dist
+python3 -m http.server 8000 --bind 127.0.0.1 --directory counter-dist</code></pre>
+          <p>Open localhost:8000; Add one changes 0 to 1 and Reset returns to 0. Keep all four generated assets together. <a href="./demo/counter/">Try the same compiled application here</a>.</p>
         </article>
         <article>
-          <h2>Studio</h2>
-          <pre><code>jtml demo --port 8000</code></pre>
-          <p>Open the local authoring surface with Run, Lint, Format, Export HTML, diagnostics, versioned local Save/history, snippets, and preview.</p>
+          <h2>Platform contract</h2>
+          <p>Ubuntu 22.04 x86_64; Apple Silicon macOS with minimum deployment target 14.0, tested physically on 14.4.1 and hosted on 15. Other distributions/versions are not independently certified. No Windows, Linux arm64, Intel/universal Mac, Python wheel or VSIX package is included.</p>
+          <p>Unsigned/unnotarized downloads may be subject to local OS policy. Matching header/library C API smoke tests do not establish a stable cross-version ABI.</p>
         </article>
         <article>
-          <h2>Install</h2>
-          <pre><code>cmake -S . -B build -DJTML_BUILD_PYTHON=OFF
-cmake --build build --target jtml_cli jtml_c
-cmake --install build --prefix ~/.local</code></pre>
-          <p>Put `~/.local/bin` on your `PATH`, then run `jtml --version`.</p>
+          <h2>Local Studio</h2>
+          <pre><code>./bin/jtml studio --port 8001</code></pre>
+          <p>Studio, tutorial and live serve bind to loopback and execute trusted local code. They are not public production servers. Packaged resources are discovered relative to the executable.</p>
         </article>
         <article>
-          <h2>Package</h2>
-          <pre><code>scripts/package_cli.sh dist/release</code></pre>
-          <p>The release bundle includes docs, examples, tutorial, editor assets, website source, manifest, and checksums.</p>
+          <h2>Source builds</h2>
+          <p><a href="https://github.com/mrjohnnyrocha/jtml#readme">Build from source</a> with a C++17 compiler and CMake. Source builds default to 0.3.0-dev; RC.2 is selected explicitly when packaging. Optional Python bindings and VSIX publication have separate requirements.</p>
         </article>
         <article>
-          <h2>Predeploy Verify</h2>
-          <pre><code>scripts/verify_all.sh</code></pre>
-          <p>Build tests, smoke examples, generate the static site, and produce the release archive before publication.</p>
+          <h2>Static hosting</h2>
+          <p>The generated Counter needs no backend. Serve <code>index.html</code>, <code>jtml-runtime.js</code>, <code>components/index.js</code> and <code>app.js</code> together with HTML/JavaScript MIME types. Scripts use <code>script-src 'self'</code>; the example's inline styles require a separate style policy.</p>
+          <p><a href="https://github.com/mrjohnnyrocha/jtml/blob/v0.3.0-rc.2/docs/releases/v0.3.0-rc.2.md">Full RC.2 installation, checksums, provenance and limitations</a>.</p>
         </article>
       </section>
     </main>

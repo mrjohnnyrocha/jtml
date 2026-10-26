@@ -56,8 +56,8 @@ relative to the caller; the build and archive locations remain repository-relati
 
 Build both CLI and C API targets before CPack. The archive script builds them
 itself. Default CLI/C API, CPack and archive identities are `0.3.0-dev`.
-`JTML_VERSION_SUFFIX=rc.1 scripts/package_cli.sh dist/release` creates a local
-`0.3.0-rc.1` candidate; an explicitly empty suffix maps to `0.3.0`. These commands
+`JTML_VERSION_SUFFIX=rc.2 scripts/package_cli.sh dist/release` creates a local
+`0.3.0-rc.2` candidate; an explicitly empty suffix maps to `0.3.0`. These commands
 perform no tag or upload and do not establish release approval.
 The archive contains LICENSE, THIRD_PARTY_NOTICES.md, full dependency license
 texts, CLI/C API, docs, examples, lessons, Studio samples/reference/sidebar catalogs,
@@ -85,13 +85,17 @@ and tests a relocated copy of a default-layout CMake install. `--cpack-archive`
 adds the same relocated CPack smoke; `--install-prefix` supplies an existing install
 without moving it. `--expect-missing` remains a historical missing-catalog control.
 
-JTML-owned material is Apache-2.0; third-party terms remain unchanged. Owner
-review of licensing/provenance is required before public distribution.
+JTML-owned material is Apache-2.0; third-party terms remain unchanged. The
+[owner confirmation](../releases/licensing-provenance.md) is recorded and the
+[RC.2 prerelease](https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.2)
+is public; future artifacts still require their own source/acceptance review.
 
-The site artifact is local-only. GitHub Pages, a public homepage and DNS are
-not configured by these scripts. `site/CNAME` and generated sitemap references to
-jtml.org are existing configuration inputs, not evidence of ownership or a live
-service; confirm/remove them for the chosen host before publishing.
+The site build is local-only and requires a JTML compiler for its genuine Counter
+demo. The unverified `site/CNAME` for jtml.org was removed. The default publication
+URL is `https://mrjohnnyrocha.github.io/jtml/`; relative assets also work at a domain
+root. The separate Pages workflow permits deployment only by explicit manual
+dispatch after repository activation; see [website launch](website-launch.md).
+No DNS/domain ownership, Pages setting or deployment is changed by a local build.
 
 ## Browser Production Builds
 

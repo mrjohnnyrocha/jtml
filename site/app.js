@@ -1,18 +1,5 @@
 const snippets = {
-  jtml: `jtml 2
-
-let count = 0
-get doubled = count * 2
-
-when add
-  count += 1
-
-page class "counter"
-  h1 "Count: {count}"
-
-  button "Add one" data-testid "add" click add
-
-  text "Doubled: {doubled}" aria-label "Doubled value"`,
+  jtml: document.querySelector("#snippet-code").textContent,
 
   html: `<main class="counter">
   <h1>Count: <span id="count">0</span></h1>
@@ -67,15 +54,28 @@ const segments = document.querySelectorAll("[data-snippet]");
 
 function setSnippet(name) {
   code.textContent = snippets[name];
+  document.querySelector("#syntax-panel").setAttribute("aria-labelledby", `syntax-${name}`);
   segments.forEach((segment) => {
     const active = segment.dataset.snippet === name;
     segment.classList.toggle("is-active", active);
     segment.setAttribute("aria-selected", String(active));
+    segment.tabIndex = active ? 0 : -1;
   });
 }
 
 segments.forEach((segment) => {
   segment.addEventListener("click", () => setSnippet(segment.dataset.snippet));
+});
+
+document.querySelector('[role="tablist"]').addEventListener("keydown", (event) => {
+  const tabs = [...segments];
+  const current = tabs.indexOf(document.activeElement);
+  if (current < 0) return;
+  const next = {ArrowRight: (current + 1) % tabs.length, ArrowLeft: (current + tabs.length - 1) % tabs.length, Home: 0, End: tabs.length - 1}[event.key];
+  if (next === undefined) return;
+  event.preventDefault();
+  setSnippet(tabs[next].dataset.snippet);
+  tabs[next].focus();
 });
 
 setSnippet("jtml");

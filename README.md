@@ -35,8 +35,8 @@ clicking **Add one** once, so it displays **Count: 1**.
 
 ![Actual Chromium rendering of the compiled Friendly counter after Add one](docs/images/counter-preview.png)
 
-**Research preview in development, not production-ready.** The proposed milestone
-is v0.3.0; no v0.3 release is published. Default source CLI/C API builds report
+**Research preview in development, not production-ready.** The [v0.3.0-rc.2 experimental prerelease](https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.2)
+is publicly available for technical testers. Default source CLI/C API builds report
 **0.3.0-dev**; CPack and CLI archive identities use the same full version.
 The editor source remains independently versioned at **0.2.0** (no VSIX is shipped).
 Validated component-argument repairs and remaining native-renderer limitations are
@@ -513,8 +513,9 @@ cmake --install build --prefix "$HOME/.local"
 
 The documentation set starts at `docs/README.md`. The versioned language
 reference is in `docs/reference/language-reference.md`, the deployment guide is in
-`docs/tooling/deployment.md`, and the predeploy static website for `jtml.org` lives in
-`site/`.
+`docs/tooling/deployment.md`, and the static website source lives in
+`site/`. Its GitHub Pages workflow deploys only after explicit manual activation;
+see [website launch and verification](docs/tooling/website-launch.md).
 
 Build all local predeploy artifacts:
 

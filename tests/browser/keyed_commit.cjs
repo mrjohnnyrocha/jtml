@@ -27,6 +27,7 @@ const { chromium } = require(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT
           const wrapper = board.querySelector('.row').closest('[data-jtml-direct-instance]');
           const region = wrapper.closest('[data-jtml-direct-list-key]').parentNode;
           window.beforeCommit = { html: board.innerHTML, registry: JSON.stringify(jtml.getRuntimeRegistrySnapshot()),
+            publicInstances: jtml.getComponentInstances(),
             destroyed: jtml.directComponentDestroyLifecycle?.count || 0,
             lifecycle: JSON.stringify(jtml.directComponentListLifecycle),
             refs: [...board.querySelectorAll('*')],
@@ -68,6 +69,17 @@ const { chromium } = require(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT
             trace: commitTrace[0],
             fallback: ['directComponentStaticUpdateError','directComponentPatchFallback','directComponentBodyPlanFallback'].filter(k => jtml[k]) };
         });
+        const publicRollback = await page.evaluate(() => {
+          const current = jtml.getComponentInstances(), before = beforeCommit.publicInstances;
+          return {beforeIds:before.map(i=>i.id), currentIds:current.map(i=>i.id),
+            sameObjects:current.map((i,n)=>i===before[n]), connected:current.map(i=>!!i.element?.isConnected),
+            aliases:[jtml.components,__jtml_components].map(es=>es.map(i=>i.id)),
+            lookup:current.map(i=>jtml.findComponentInstance(i.id)===i), metadata:current.map(i=>!!i.runtime)};
+        });
+        assert.equal(publicRollback.beforeIds.length,10,'two boards, four rows and four counters');
+        assert.deepEqual(publicRollback.currentIds,publicRollback.beforeIds,'rollback restores exact public registry order/identities');
+        for(const flag of ['sameObjects','connected','lookup','metadata']) assert.deepEqual(publicRollback[flag],Array(10).fill(true),flag);
+        assert.deepEqual(publicRollback.aliases,[publicRollback.beforeIds,publicRollback.beforeIds]);
         assert.ok(state.html && state.refs && state.registry && state.lifecycle, 'exact DOM/ownership/metadata rollback');
         assert.deepEqual(state.dom, state.registered, 'DOM and registry bijection');
         assert.equal(new Set(state.dom).size, state.dom.length, 'unique component IDs');

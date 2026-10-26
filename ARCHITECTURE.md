@@ -160,7 +160,11 @@ generated static creation and descendant teardown synchronously. The manifest is
 a declaration catalog; only connected, independently owned roots enter the active
 startup registry. Mounted template roots use the existing dynamic registry and
 generation counters; component-owned children keep their existing keyed paths.
-Removal releases scopes/handlers before DOM replacement. Direct components under
+The canonical active-instance array backs public enumeration and aliases; dynamic
+lookup indexes the same objects with the shared runtime metadata initializer.
+Committed DOM insertion binds nested elements, and rollback unregisters tentative
+entries through the existing cleanup path. Removal releases scopes/handlers before
+DOM replacement. Direct components under
 root loops reject until that backend has per-item ownership; component-owned keyed
 loops remain the supported path. See [root mounting](docs/architecture/root-conditional-mount.md).
 

@@ -494,9 +494,7 @@ const char* browserRuntimePreludeChunk() {
 
       function findRuntimeComponentInstance(id) {
         if (!id) return null;
-        const staticInstance = componentInstances.find(function (item) { return item.id === id; });
-        if (staticInstance) return staticInstance;
-        return dynamicComponentInstances[id] || null;
+        return dynamicComponentInstances[id] || componentInstances.find(i => i.id === id) || null;
       }
 
       function registerDynamicComponentInstance(instance) {
@@ -515,22 +513,27 @@ const char* browserRuntimePreludeChunk() {
           existing.eventHandlers = instance.eventHandlers || existing.eventHandlers || {};
           existing.slotHtml = instance.slotHtml != null ? instance.slotHtml : existing.slotHtml;
           existing.slotPlan = Array.isArray(instance.slotPlan) ? instance.slotPlan.slice() : (existing.slotPlan || []);
-          existing.element = componentElementFor(instance.id) || existing.element || null;
           return existing;
         }
         dynamicComponentInstanceGenerations[instance.id] =
           (dynamicComponentInstanceGenerations[instance.id] || 0) + 1;
         instance.__jtmlGeneration = dynamicComponentInstanceGenerations[instance.id];
-        instance.element = componentElementFor(instance.id) || null;
         dynamicComponentInstances[instance.id] = instance;
+        componentInstances.push(initializeComponentRuntime(instance));
         return instance;
       }
 
       function runtimeRegistrySnapshot() {
         const h = [], g = {};
-        Object.keys(dynamicComponentInstances).sort().forEach(function (id) { const i = dynamicComponentInstances[id] || {}; g[id] = Number(i.__jtmlGeneration || dynamicComponentInstanceGenerations[id] || 0); if (Object.keys(i.eventHandlers || {}).length > 0) h.push(id); });
-        componentInstances.forEach(function (i) { if (i && i.id && Object.keys(i.eventHandlers || {}).length > 0) h.push(i.id); });
+        Object.keys(dynamicComponentInstances).sort().forEach(id => { g[id] = Number(dynamicComponentInstances[id].__jtmlGeneration || 0); });
+        componentInstances.forEach(i => { if (Object.keys(i.eventHandlers || {}).length) h.push(i.id); });
         return { handlerOwnerIds: h.sort(), dynamicGenerations: g };
+      }
+
+      function bindComponentElements(root) {
+        root.querySelectorAll('[data-jtml-direct-instance]').forEach(el => {
+          dynamicComponentInstances[el.dataset.jtmlDirectInstance].element = el;
+        });
       }
 
       function unregisterComponentInstance(instance, definition) {
@@ -1887,6 +1890,7 @@ const char* browserRuntimeComponentChunk() {
           planKeyedChildren(el, desired, changes, liveIds, stats);
           // Each inverse is recorded before its mutation, including a failing edit.
           changes.forEach(function (commit) { commit(undo); });
+          bindComponentElements(el);
           restoreFocus();
         } catch (error) {
           // Bounded recovery assumes native DOM methods work again. Persistent or
@@ -1896,7 +1900,7 @@ const char* browserRuntimeComponentChunk() {
             try { restore(); } catch (failure) { recoveryError = failure; }
           });
           Object.keys(dynamicComponentInstances).forEach(function (id) {
-            if (!saved.has(id)) { delete dynamicComponentInstances[id]; delete componentScopes[id]; }
+            if (!saved.has(id)) unregisterComponentInstance(id);
           });
           saved.forEach(function (record, id) {
             const entry = record[0], local = record[2];
@@ -2444,6 +2448,7 @@ const char* browserRuntimeComponentChunk() {
         if (typeof html !== 'string' || !html.length) return false;
         destroyDirectComponentInstancesUnderElement(el, reason || 'body-node-html-replace');
         el.outerHTML = html;
+        bindComponentElements(instance.element);
         return true;
       }
 
@@ -2580,6 +2585,7 @@ const char* browserRuntimeComponentChunk() {
         el.setAttribute('data-jtml-component', nestedName);
         el.setAttribute('data-jtml-component-parent', nestedInstance.parentId || '');
         el.setAttribute('data-jtml-nested-component', 'true');
+        bindComponentElements(el);
         window.jtml = window.jtml || {};
         window.jtml.directNestedComponentParamPatch = { mode: 'in-place-param-body-patch' };
         return true;
@@ -3010,6 +3016,7 @@ const char* browserRuntimeComponentChunk() {
         pruneDynamicComponentSubtree(instance.id, renderedDynamicIds);
         instance.element.innerHTML = html;
         instance.element.dataset.jtmlDirectRendered = 'true';
+        bindComponentElements(instance.element);
         return true;
       }
 
@@ -3262,6 +3269,19 @@ const char* browserRuntimeComponentChunk() {
         });
       }
 
+      function initializeComponentRuntime(instance) {
+        const definition = componentDefinitionForInstance(instance) || {};
+        instance.runtime = {
+          mode: 'semantic-instance', ownsEnvironment: true, ready: !!instance.id,
+          environmentId: instance.instanceId || instance.id, definition: instance.component,
+          actions: (definition.localActions || []).slice(), state: (definition.localState || []).slice(),
+          derived: (definition.localDerived || []).slice(), effects: (definition.localEffects || []).slice(),
+          hasSlot: !!definition.hasSlot, bodyNodeCount: Number(definition.bodyNodeCount || 0),
+          rootTemplateNodeCount: Number(definition.rootTemplateNodeCount || 0)
+        };
+        return instance;
+      }
+
       function scanComponentInstances() {
         const manifestInstances = (window.jtml && Array.isArray(window.jtml.componentInstanceManifest))
           ? window.jtml.componentInstanceManifest
@@ -3370,17 +3390,7 @@ const char* browserRuntimeComponentChunk() {
             };
           });
         }
-        componentInstances.forEach(function (instance) {
-          const definition = componentDefinitionForInstance(instance) || {};
-          instance.runtime = {
-            mode: 'semantic-instance', ownsEnvironment: true, ready: !!instance.id,
-            environmentId: instance.instanceId, definition: instance.component,
-            actions: (definition.localActions || []).slice(), state: (definition.localState || []).slice(),
-            derived: (definition.localDerived || []).slice(), effects: (definition.localEffects || []).slice(),
-            hasSlot: !!definition.hasSlot, bodyNodeCount: Number(definition.bodyNodeCount || 0),
-            rootTemplateNodeCount: Number(definition.rootTemplateNodeCount || 0)
-          };
-        });
+        componentInstances.forEach(initializeComponentRuntime);
         window.__jtml_components = componentInstances;
         window.__jtml_component_definitions = componentDefinitions;
         window.jtml = Object.assign(window.jtml || {}, {
@@ -3858,7 +3868,7 @@ const char* browserRuntimeComponentChunk() {
 
       function applyClientState() {
         applyClientDerived();
-        componentInstances.concat(Object.values(dynamicComponentInstances)).forEach(function(i){
+        componentInstances.forEach(function(i){
           if(!i.argumentPlans||!i.element||!i.element.isConnected)return;
           const d=componentDefinitionForInstance(i),p=i.params,s=componentScopeFor(i,d),c=changedParamNames(p,i.params);
           if(c.length){applyComponentDerived(s,d);if(!applyCompiledComponentUpdatePlan(i,d,c,s).handled)throw Error('Unsupported component argument update');}

@@ -41,6 +41,18 @@ argument updates include dynamically mounted roots without reinitializing locals
 The touched initialization code reuses compiler-serialized manifest records and
 compacts equivalent metadata to retain the **272,000-byte** shared-runtime limit.
 
+Final review found a second registration boundary: mounted components appeared in
+the dynamic lookup index but not the public `componentInstances` array, and missed
+startup-only `runtime` metadata. The dynamic registrar now adds the same object to
+the canonical array and calls the extracted existing metadata initializer. The
+lookup index remains an index of those objects, not another public registry.
+`getComponentInstances()`, `jtml.components`, `__jtml_components` and
+`findComponentInstance()` agree for roots and nested/keyed children. Existing
+commit points bind registered children to inserted DOM elements, replacing
+premature DOM lookups during HTML generation. Existing unregistration removes
+both index and canonical entries, including tentative keyed entries on rollback.
+Argument updates and handler snapshots enumerate the canonical array once.
+
 Live/native event and rendering implementations are unchanged. Browser-local
 compilation explicitly rejects components directly repeated by root loops: that
 backend repeats one physical call-site ID without per-item ownership. The AST
@@ -67,6 +79,13 @@ application state or provide frontend replacements.
   whole-subtree teardown and unchanged sibling DOM/state.
 - Mounted root parameters update while retaining local state; root conditional
   controls and a growing plain root loop dispatch exactly once.
+- Public registries have independently expected nonzero component counts and
+  exact DOM identities, shared lookup/alias objects and definition/state/action
+  metadata. The unchanged probe specifically enumerates `Child_1`; remount gets
+  a fresh object. A permanent static counter coexists with conditional children.
+- Retained keyed/sibling objects survive reorder and reactive updates; removed
+  objects disappear from all interfaces. Four injected keyed commit failures also
+  restore the exact ten public objects, order, metadata and connected elements.
 - Every connected direct-instance wrapper matches one live registry entry.
   Existing destruction diagnostics report no registry/scope/handler/dispatch
   leaks. No unexpected console errors, CSP violations or create/patch fallbacks.
@@ -74,8 +93,11 @@ application state or provide frontend replacements.
   authored location (`root-loop-rejected.jtml:10:7`) before runnable assets.
 
 Main failed the independently written browser test at first `Child: 0`, before
-the correction. No prior fixture, oracle or threshold was edited. Existing CSP,
-Counter, ReleaseDesk and keyed lifecycle/rollback tests run unchanged in the gate.
+the correction. The strengthened public-registry test independently fails on
+`c3e10cf00b6657aba18dd5a4885448e90ac1a6f9`: expected `["Child_1"]`, got `[]`.
+No prior assertion, acceptance oracle or threshold was weakened. The keyed
+rollback test gains public-registry assertions; CSP, Counter and ReleaseDesk
+suites remain unchanged.
 
 ```sh
 cmake --build build --parallel
@@ -105,7 +127,7 @@ strict-CSP lifecycle acceptance and the complete gate **PASS, exit 0**, run once
 on the stable candidate. All nine mandatory benchmarks exited cleanly; existing
 CSP/Counter/ReleaseDesk, keyed lifecycle/rollback, provenance, security, package/
 install and live smoke (8/8) pass, with no verification checks skipped. Shared
-runtime is **271,926 / 272,000 bytes** (+71, 74 bytes headroom); app.js stays
+runtime is **271,961 / 272,000 bytes** (+106 versus main, 39 bytes headroom); app.js stays
 **2,043 / 20,000**. Known reference HTML remains **99,939 / 70,000** and five
 native renderer observations remain known failures. No acceptance limit changed.
 

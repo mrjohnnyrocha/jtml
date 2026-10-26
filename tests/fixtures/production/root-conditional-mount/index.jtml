@@ -69,3 +69,4 @@ page
   if second
     box class "second"
       Board "B"
+  Counter "Permanent"

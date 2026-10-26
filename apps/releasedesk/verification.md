@@ -7,16 +7,18 @@ Local host: macOS 14.4.1 arm64, Chromium 153.0.8010.12, Playwright 1.63.0.
 
 | Check | Result |
 | --- | --- |
+| Public-registry review negative | On `c3e10cf`, the strengthened test expects `["Child_1"]` after mount but receives `[]`; reproduced before the registry correction |
 | Independent baseline negative | Unchanged probe fails at first `Child: 0` on main; definition/instance ownership remains present in actual manifest |
 | Focused compiler regressions | PASS, 130/130; added client-plan test proves local state/action ownership remains separate from global state/actions |
 | Unchanged reproduction in actual strict-CSP browser output | PASS, initially absent, four show/hide cycles, initial 0 → two clicks → 2, fresh state each remount, increasing generations, empty registry after hide |
 | Independent siblings/nested/keyed fixture | PASS, initially true conditional mounts, three additional cycles, sibling state/DOM isolation, keyed reorder retains draft/DOM, keyed removal/remount resets removed child, callback executes once |
+| Public introspection | Exact nonempty source-derived counts and DOM identities; all three public lists and lookup share objects/runtime metadata; retained keyed/sibling identities, fresh remount objects, complete removal; four injected keyed failures restore ten public objects, ordering and metadata |
 | Ownership cleanup | Exact live DOM/registry correspondence; hidden declarations absent from active registry; detached controls cannot resurrect instances; no registry/scope/handler/dispatch leaks or patch/create fallbacks |
 | Root arguments / generated handlers | Parameter update retains local state; conditional controls and growing plain root loop dispatch once; no inline scripts/handlers, eval, new Function, compatibility fallback or CSP/console errors |
 | Unsupported direct root-loop component | Rejected before runnable assets at authored `root-loop-rejected.jtml:10:7`, naming component Child and remediation to component-owned keyed loops |
 | Existing Counter/CSP/ReleaseDesk | PASS unchanged suites, including API/SQLite create/persist/reload/failure/recovery and strict script CSP |
 | Full local gate | PASS once, exit 0; 476/476 CTests, nine required benchmarks with clean exit, existing production/Taskboard/provenance/conformance/nested/keyed/rollback/security/async/literal checks, packages/install/LSP/editor/site and live smoke 8/8; no verification checks skipped |
-| Budgets | Runtime 271,926 / 272,000 bytes (+71); app.js unchanged 2,043 / 20,000; no threshold changes |
+| Budgets | Runtime 271,961 / 272,000 bytes (+106 versus main; 39 bytes headroom); app.js unchanged 2,043 / 20,000; no threshold changes |
 | Remaining boundaries | Direct root-loop component ownership rejects; implicit component `into` without explicit `value` exposed an unrelated patch fallback; root IDs/select, five native renderer observations and reference HTML 99,939 / 70,000 remain limitations |
 
 See [the traced cause and exact commands](../../docs/architecture/root-conditional-mount.md).

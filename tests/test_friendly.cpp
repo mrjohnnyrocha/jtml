@@ -5173,3 +5173,33 @@ TEST(FriendlySyntax, ComponentInputHelpersDispatchInTheirOwningEnvironment) {
         EXPECT_EQ(state["components"][1]["locals"]["text"]["value"], instance == 1 ? "initial" : "edited");
     }
 }
+
+TEST(FriendlySyntax, RootConditionalComponentPreservesOwnershipInClientPlan) {
+    const auto source = normalizeOk(
+        "jtml 2\nlet shown = false\nwhen toggle\n  shown = !shown\n"
+        "make Child\n  let count = 0\n  when increment\n    count += 1\n"
+        "  button \"Increment\" click increment\n  text count\n"
+        "page\n  button \"Toggle\" click toggle\n  if shown\n    Child\n");
+    Lexer lexer(source);
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+    ASSERT_TRUE(parser.getErrors().empty());
+    JtmlTranspiler transpiler;
+    transpiler.setBrowserLocalRuntime(true);
+    const auto html = transpiler.transpile(program);
+    const auto manifest = clientManifestFromHtml(html);
+    ASSERT_EQ(manifest["componentInstances"].size(), 1);
+    const auto& instance = manifest["componentInstances"][0];
+    EXPECT_EQ(instance["component"], "Child");
+    EXPECT_TRUE(instance["locals"].contains("count"));
+    EXPECT_TRUE(instance["locals"].contains("increment"));
+    EXPECT_FALSE(manifest["actions"].contains(instance["locals"]["increment"].get<std::string>()));
+    EXPECT_FALSE(manifest["state"].contains(instance["locals"]["count"].get<std::string>()));
+    ASSERT_EQ(manifest["componentDefinitions"].size(), 1);
+    const auto& definition = manifest["componentDefinitions"][0];
+    EXPECT_EQ(definition["name"], "Child");
+    EXPECT_EQ(definition["localActions"], nlohmann::json::array({"increment"}));
+    EXPECT_EQ(definition["localState"], nlohmann::json::array({"count"}));
+    EXPECT_NE(html.find("data-jtml-cond-expr=\"shown\""), std::string::npos);
+    EXPECT_NE(html.find("data-jtml-instance=&quot;" + instance["id"].get<std::string>()), std::string::npos);
+}

@@ -116,6 +116,9 @@ jobs:
       - name: Strict CSP root and dynamic events (browser required)
         run: node tests/browser/strict_csp.cjs
 
+      - name: Root conditional component lifecycle (browser required)
+        run: node tests/browser/root_conditional_mount.cjs
+
       - name: ReleaseDesk real persistence (browser required)
         run: scripts/test_releasedesk.sh
 

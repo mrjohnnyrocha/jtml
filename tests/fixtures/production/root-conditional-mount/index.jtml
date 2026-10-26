@@ -1,0 +1,71 @@
+jtml 2
+let first = false
+let second = true
+let rootClicks = 0
+let title = "Sibling initial"
+let rows = [1, 2]
+when toggleFirst
+  first = !first
+when toggleSecond
+  second = !second
+when rootClick
+  rootClicks += 1
+when rename
+  title = "Sibling changed"
+when grow
+  rows = [1, 2, 3]
+
+make Counter label
+  let count = 0
+  let draft = "Seed"
+  when increment
+    count += 1
+  box class "counter" data-label label
+    button "Increment" click increment
+    input aria-label "Draft" value draft into draft
+    text "Count: {count}"
+    text "Label: {label}"
+
+make Badge label emits pinged(value)
+  button "Ping" click pinged(label)
+
+make Board label
+  let ids = ["a", "b"]
+  let seen = "None"
+  let pings = 0
+  when remember value
+    seen = value
+    pings += 1
+  when reorder
+    ids = ["b", "a"]
+  when removeB
+    ids = ["a"]
+  when restore
+    ids = ["a", "b"]
+  box class "board" data-board label
+    button "Reorder" click reorder
+    button "Remove B" click removeB
+    button "Restore" click restore
+    text "Seen: {seen}"
+    text "Pings: {pings}"
+    for id in ids key id
+      box class "row" data-id id
+        Counter id
+        Badge id on pinged remember
+
+page
+  button "Toggle first" click toggleFirst
+  button "Toggle second" click toggleSecond
+  button "Grow root loop" click grow
+  button "Rename sibling" click rename
+  text "Root clicks: {rootClicks}"
+  if first
+    box class "first"
+      button "Conditional root action" click rootClick
+      for row in rows
+        button "Loop root action" click rootClick
+      Board "A"
+      Counter title
+  if second
+    box class "second"
+      Board "B"

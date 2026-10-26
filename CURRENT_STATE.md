@@ -6,6 +6,16 @@ The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.
 
+## Root-conditional component lifecycle
+
+Root template insertion now reuses component registration, generated static
+creation and teardown. The unchanged ReleaseDesk probe passes fresh-state remount,
+independent siblings and nested/keyed cleanup under strict script CSP. Dormant
+manifest declarations are not active instances; new root parameters remain
+reactive. Direct root-loop components lack per-item identity and now reject before
+assets with source-first remediation to a component-owned keyed loop. See
+[the cause, boundaries and evidence](docs/architecture/root-conditional-mount.md).
+
 ## Strict script CSP for browser root events
 
 Clean browser root events use declarative metadata and compiler-owned external
@@ -13,7 +23,7 @@ listeners. Counter and ReleaseDesk's real HTTP/SQLite workflow run under
 `script-src 'self'`; synchronous submit cancellation, native validation, dynamic
 root controls and supported component-owned remounts have real Chromium tests.
 ReleaseDesk no longer permits inline scripts. Explicit root IDs, programmatic
-select values and components introduced by root conditionals remain limitations;
+select values remain limitations; root-conditional mounting is repaired above;
 raw HTML/extern/live preview CSP is outside this bounded proof. See
 [transport and verification](docs/architecture/browser-root-csp.md).
 

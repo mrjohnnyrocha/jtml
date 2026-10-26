@@ -3013,6 +3013,22 @@ const char* browserRuntimeComponentChunk() {
         return true;
       }
 
+      // Reuse registry/static lifecycle at root insertion.
+      function replaceClientTemplate(root, html) {
+        if (browserLocalRuntime) destroyDirectComponentInstancesUnderElement(root, 'root-template-replace');
+        root.innerHTML = html;
+        if (!browserLocalRuntime) return;
+        root.querySelectorAll('[data-jtml-instance]').forEach(el => {
+          if (!el.isConnected) return;
+          const record = window.jtml.componentInstanceManifest.find(r => r.id === el.dataset.jtmlInstance);
+          if (!record) throw Error('Missing root component instance');
+          const instance = registerDynamicComponentInstance(Object.assign({}, record));
+          instance.element = el;
+          el.dataset.jtmlDirectInstance = instance.id;
+          renderDirectComponent(instance);
+        });
+      }
+
       function renderDirectComponents() {
         if (!browserLocalRuntime) return;
         let rendered = 0;
@@ -3254,22 +3270,9 @@ const char* browserRuntimeComponentChunk() {
           ? window.jtml.componentDefinitionManifest
           : [];
         if (manifestInstances.length) {
-          componentInstances = manifestInstances.map(function (record) {
-            return {
-              moduleId: record.moduleId == null ? null : record.moduleId,
-              definitionModule: record.definitionModule == null ? null : record.definitionModule,
-              id: record.id || '',
-              component: record.component || '',
-              instanceId: Number(record.instanceId || 0),
-              role: record.role || 'component',
-              params: record.params || {},
-              argumentPlans: record.argumentPlans,
-              locals: record.locals || {},
-              slotPlan: Array.isArray(record.slotPlan) ? record.slotPlan.slice() : [],
-              sourceLine: Number(record.sourceLine || 0),
-              element: componentElementFor(record.id || '')
-            };
-          });
+          componentInstances = manifestInstances.map(record => Object.assign({sourceLine: 0}, record, {
+            slotPlan: (record.slotPlan || []).slice(), element: componentElementFor(record.id)
+          })).filter(i => !browserLocalRuntime || i.element && !i.element.parentElement.closest('[data-jtml-instance]'));
         } else {
           componentInstances = Array.prototype.slice.call(
             document.querySelectorAll('[data-jtml-instance]')
@@ -3370,17 +3373,11 @@ const char* browserRuntimeComponentChunk() {
         componentInstances.forEach(function (instance) {
           const definition = componentDefinitionForInstance(instance) || {};
           instance.runtime = {
-            mode: 'semantic-instance',
-            ownsEnvironment: true,
-            ready: !!instance.id,
-            environmentId: instance.instanceId,
-            definition: instance.component,
-            actions: Array.isArray(definition.localActions) ? definition.localActions.slice() : [],
-            state: Array.isArray(definition.localState) ? definition.localState.slice() : [],
-            derived: Array.isArray(definition.localDerived) ? definition.localDerived.slice() : [],
-            effects: Array.isArray(definition.localEffects) ? definition.localEffects.slice() : [],
-            hasSlot: !!definition.hasSlot,
-            bodyNodeCount: Number(definition.bodyNodeCount || 0),
+            mode: 'semantic-instance', ownsEnvironment: true, ready: !!instance.id,
+            environmentId: instance.instanceId, definition: instance.component,
+            actions: (definition.localActions || []).slice(), state: (definition.localState || []).slice(),
+            derived: (definition.localDerived || []).slice(), effects: (definition.localEffects || []).slice(),
+            hasSlot: !!definition.hasSlot, bodyNodeCount: Number(definition.bodyNodeCount || 0),
             rootTemplateNodeCount: Number(definition.rootTemplateNodeCount || 0)
           };
         });
@@ -3392,9 +3389,7 @@ const char* browserRuntimeComponentChunk() {
           getComponentInstances: function () { return componentInstances.slice(); },
           getComponentDefinitions: function () { return componentDefinitions.slice(); },
           getRuntimeRegistrySnapshot: runtimeRegistrySnapshot,
-          findComponentInstance: function (id) {
-            return componentInstances.find(function (item) { return item.id === id; }) || null;
-          },
+          findComponentInstance: findRuntimeComponentInstance,
           findComponentDefinition: function (name) {
             return componentDefinitions.find(function (item) { return item.name === name; }) || null;
           }
@@ -3863,7 +3858,7 @@ const char* browserRuntimeComponentChunk() {
 
       function applyClientState() {
         applyClientDerived();
-        componentInstances.forEach(function(i){
+        componentInstances.concat(Object.values(dynamicComponentInstances)).forEach(function(i){
           if(!i.argumentPlans||!i.element||!i.element.isConnected)return;
           const d=componentDefinitionForInstance(i),p=i.params,s=componentScopeFor(i,d),c=changedParamNames(p,i.params);
           if(c.length){applyComponentDerived(s,d);if(!applyCompiledComponentUpdatePlan(i,d,c,s).handled)throw Error('Unsupported component argument update');}
@@ -3879,7 +3874,7 @@ const char* browserRuntimeComponentChunk() {
             if (!result.found) return;
             const source = result.value ? el.getAttribute('data-then') || el.getAttribute('data-body') || '' : el.getAttribute('data-else') || '';
             if (el.dataset.jtmlRendered !== source) {
-              el.innerHTML = source;
+              replaceClientTemplate(el, source);
               el.dataset.jtmlRendered = source;
               changed = true;
             }
@@ -3899,7 +3894,7 @@ const char* browserRuntimeComponentChunk() {
             }
             const html = values.map(function (item) { return renderLoopBody(body, iterator, item); }).join('');
             if (el.dataset.jtmlRendered !== html) {
-              el.innerHTML = html;
+              replaceClientTemplate(el, html);
               el.dataset.jtmlRendered = html;
               changed = true;
             }

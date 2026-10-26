@@ -494,9 +494,7 @@ const char* browserRuntimePreludeChunk() {
 
       function findRuntimeComponentInstance(id) {
         if (!id) return null;
-        const staticInstance = componentInstances.find(function (item) { return item.id === id; });
-        if (staticInstance) return staticInstance;
-        return dynamicComponentInstances[id] || null;
+        return dynamicComponentInstances[id] || componentInstances.find(i => i.id === id) || null;
       }
 
       function registerDynamicComponentInstance(instance) {
@@ -515,22 +513,27 @@ const char* browserRuntimePreludeChunk() {
           existing.eventHandlers = instance.eventHandlers || existing.eventHandlers || {};
           existing.slotHtml = instance.slotHtml != null ? instance.slotHtml : existing.slotHtml;
           existing.slotPlan = Array.isArray(instance.slotPlan) ? instance.slotPlan.slice() : (existing.slotPlan || []);
-          existing.element = componentElementFor(instance.id) || existing.element || null;
           return existing;
         }
         dynamicComponentInstanceGenerations[instance.id] =
           (dynamicComponentInstanceGenerations[instance.id] || 0) + 1;
         instance.__jtmlGeneration = dynamicComponentInstanceGenerations[instance.id];
-        instance.element = componentElementFor(instance.id) || null;
         dynamicComponentInstances[instance.id] = instance;
+        componentInstances.push(initializeComponentRuntime(instance));
         return instance;
       }
 
       function runtimeRegistrySnapshot() {
         const h = [], g = {};
-        Object.keys(dynamicComponentInstances).sort().forEach(function (id) { const i = dynamicComponentInstances[id] || {}; g[id] = Number(i.__jtmlGeneration || dynamicComponentInstanceGenerations[id] || 0); if (Object.keys(i.eventHandlers || {}).length > 0) h.push(id); });
-        componentInstances.forEach(function (i) { if (i && i.id && Object.keys(i.eventHandlers || {}).length > 0) h.push(i.id); });
+        Object.keys(dynamicComponentInstances).sort().forEach(id => { g[id] = Number(dynamicComponentInstances[id].__jtmlGeneration || 0); });
+        componentInstances.forEach(i => { if (Object.keys(i.eventHandlers || {}).length) h.push(i.id); });
         return { handlerOwnerIds: h.sort(), dynamicGenerations: g };
+      }
+
+      function bindComponentElements(root) {
+        root.querySelectorAll('[data-jtml-direct-instance]').forEach(el => {
+          dynamicComponentInstances[el.dataset.jtmlDirectInstance].element = el;
+        });
       }
 
       function unregisterComponentInstance(instance, definition) {
@@ -1887,6 +1890,7 @@ const char* browserRuntimeComponentChunk() {
           planKeyedChildren(el, desired, changes, liveIds, stats);
           // Each inverse is recorded before its mutation, including a failing edit.
           changes.forEach(function (commit) { commit(undo); });
+          bindComponentElements(el);
           restoreFocus();
         } catch (error) {
           // Bounded recovery assumes native DOM methods work again. Persistent or
@@ -1896,7 +1900,7 @@ const char* browserRuntimeComponentChunk() {
             try { restore(); } catch (failure) { recoveryError = failure; }
           });
           Object.keys(dynamicComponentInstances).forEach(function (id) {
-            if (!saved.has(id)) { delete dynamicComponentInstances[id]; delete componentScopes[id]; }
+            if (!saved.has(id)) unregisterComponentInstance(id);
           });
           saved.forEach(function (record, id) {
             const entry = record[0], local = record[2];
@@ -2444,6 +2448,7 @@ const char* browserRuntimeComponentChunk() {
         if (typeof html !== 'string' || !html.length) return false;
         destroyDirectComponentInstancesUnderElement(el, reason || 'body-node-html-replace');
         el.outerHTML = html;
+        bindComponentElements(instance.element);
         return true;
       }
 
@@ -2580,6 +2585,7 @@ const char* browserRuntimeComponentChunk() {
         el.setAttribute('data-jtml-component', nestedName);
         el.setAttribute('data-jtml-component-parent', nestedInstance.parentId || '');
         el.setAttribute('data-jtml-nested-component', 'true');
+        bindComponentElements(el);
         window.jtml = window.jtml || {};
         window.jtml.directNestedComponentParamPatch = { mode: 'in-place-param-body-patch' };
         return true;
@@ -3010,7 +3016,24 @@ const char* browserRuntimeComponentChunk() {
         pruneDynamicComponentSubtree(instance.id, renderedDynamicIds);
         instance.element.innerHTML = html;
         instance.element.dataset.jtmlDirectRendered = 'true';
+        bindComponentElements(instance.element);
         return true;
+      }
+
+      // Reuse registry/static lifecycle at root insertion.
+      function replaceClientTemplate(root, html) {
+        if (browserLocalRuntime) destroyDirectComponentInstancesUnderElement(root, 'root-template-replace');
+        root.innerHTML = html;
+        if (!browserLocalRuntime) return;
+        root.querySelectorAll('[data-jtml-instance]').forEach(el => {
+          if (!el.isConnected) return;
+          const record = window.jtml.componentInstanceManifest.find(r => r.id === el.dataset.jtmlInstance);
+          if (!record) throw Error('Missing root component instance');
+          const instance = registerDynamicComponentInstance(Object.assign({}, record));
+          instance.element = el;
+          el.dataset.jtmlDirectInstance = instance.id;
+          renderDirectComponent(instance);
+        });
       }
 
       function renderDirectComponents() {
@@ -3246,6 +3269,19 @@ const char* browserRuntimeComponentChunk() {
         });
       }
 
+      function initializeComponentRuntime(instance) {
+        const definition = componentDefinitionForInstance(instance) || {};
+        instance.runtime = {
+          mode: 'semantic-instance', ownsEnvironment: true, ready: !!instance.id,
+          environmentId: instance.instanceId || instance.id, definition: instance.component,
+          actions: (definition.localActions || []).slice(), state: (definition.localState || []).slice(),
+          derived: (definition.localDerived || []).slice(), effects: (definition.localEffects || []).slice(),
+          hasSlot: !!definition.hasSlot, bodyNodeCount: Number(definition.bodyNodeCount || 0),
+          rootTemplateNodeCount: Number(definition.rootTemplateNodeCount || 0)
+        };
+        return instance;
+      }
+
       function scanComponentInstances() {
         const manifestInstances = (window.jtml && Array.isArray(window.jtml.componentInstanceManifest))
           ? window.jtml.componentInstanceManifest
@@ -3254,22 +3290,9 @@ const char* browserRuntimeComponentChunk() {
           ? window.jtml.componentDefinitionManifest
           : [];
         if (manifestInstances.length) {
-          componentInstances = manifestInstances.map(function (record) {
-            return {
-              moduleId: record.moduleId == null ? null : record.moduleId,
-              definitionModule: record.definitionModule == null ? null : record.definitionModule,
-              id: record.id || '',
-              component: record.component || '',
-              instanceId: Number(record.instanceId || 0),
-              role: record.role || 'component',
-              params: record.params || {},
-              argumentPlans: record.argumentPlans,
-              locals: record.locals || {},
-              slotPlan: Array.isArray(record.slotPlan) ? record.slotPlan.slice() : [],
-              sourceLine: Number(record.sourceLine || 0),
-              element: componentElementFor(record.id || '')
-            };
-          });
+          componentInstances = manifestInstances.map(record => Object.assign({sourceLine: 0}, record, {
+            slotPlan: (record.slotPlan || []).slice(), element: componentElementFor(record.id)
+          })).filter(i => !browserLocalRuntime || i.element && !i.element.parentElement.closest('[data-jtml-instance]'));
         } else {
           componentInstances = Array.prototype.slice.call(
             document.querySelectorAll('[data-jtml-instance]')
@@ -3367,23 +3390,7 @@ const char* browserRuntimeComponentChunk() {
             };
           });
         }
-        componentInstances.forEach(function (instance) {
-          const definition = componentDefinitionForInstance(instance) || {};
-          instance.runtime = {
-            mode: 'semantic-instance',
-            ownsEnvironment: true,
-            ready: !!instance.id,
-            environmentId: instance.instanceId,
-            definition: instance.component,
-            actions: Array.isArray(definition.localActions) ? definition.localActions.slice() : [],
-            state: Array.isArray(definition.localState) ? definition.localState.slice() : [],
-            derived: Array.isArray(definition.localDerived) ? definition.localDerived.slice() : [],
-            effects: Array.isArray(definition.localEffects) ? definition.localEffects.slice() : [],
-            hasSlot: !!definition.hasSlot,
-            bodyNodeCount: Number(definition.bodyNodeCount || 0),
-            rootTemplateNodeCount: Number(definition.rootTemplateNodeCount || 0)
-          };
-        });
+        componentInstances.forEach(initializeComponentRuntime);
         window.__jtml_components = componentInstances;
         window.__jtml_component_definitions = componentDefinitions;
         window.jtml = Object.assign(window.jtml || {}, {
@@ -3392,9 +3399,7 @@ const char* browserRuntimeComponentChunk() {
           getComponentInstances: function () { return componentInstances.slice(); },
           getComponentDefinitions: function () { return componentDefinitions.slice(); },
           getRuntimeRegistrySnapshot: runtimeRegistrySnapshot,
-          findComponentInstance: function (id) {
-            return componentInstances.find(function (item) { return item.id === id; }) || null;
-          },
+          findComponentInstance: findRuntimeComponentInstance,
           findComponentDefinition: function (name) {
             return componentDefinitions.find(function (item) { return item.name === name; }) || null;
           }
@@ -3879,7 +3884,7 @@ const char* browserRuntimeComponentChunk() {
             if (!result.found) return;
             const source = result.value ? el.getAttribute('data-then') || el.getAttribute('data-body') || '' : el.getAttribute('data-else') || '';
             if (el.dataset.jtmlRendered !== source) {
-              el.innerHTML = source;
+              replaceClientTemplate(el, source);
               el.dataset.jtmlRendered = source;
               changed = true;
             }
@@ -3899,7 +3904,7 @@ const char* browserRuntimeComponentChunk() {
             }
             const html = values.map(function (item) { return renderLoopBody(body, iterator, item); }).join('');
             if (el.dataset.jtmlRendered !== html) {
-              el.innerHTML = html;
+              replaceClientTemplate(el, html);
               el.dataset.jtmlRendered = html;
               changed = true;
             }

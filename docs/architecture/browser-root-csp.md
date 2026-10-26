@@ -57,7 +57,11 @@ styles. This does not establish a strict style policy, arbitrary author-provided
 raw HTML or JavaScript-URL safety, extern-host compliance, or strict CSP for
 legacy inline live/preview documents.
 
-The root ID/label and programmatic SELECT property limitations remain. A separate
+The root ID/label and programmatic SELECT property limitations remain. The
+[root-mount lifecycle correction](root-conditional-mount.md) subsequently fixes
+the conditional mounting defect below, with the original probe unchanged. The
+following paragraph records PR #46's historical boundary, not the current result.
+A separate
 minimal `apps/releasedesk/probes/root-conditional-component.jtml` reproduces a
 component introduced by a root conditional without component initialization:
 Toggle → Child increment reports `__Child_1_increment` missing and retains a

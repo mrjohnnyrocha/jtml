@@ -10,6 +10,7 @@
 #include <cctype>
 #include <unordered_set>
 #include <vector>
+#include <stdexcept>
 
 namespace {
 std::string lowerCopy(std::string value) {
@@ -17,6 +18,44 @@ std::string lowerCopy(std::string value) {
         return static_cast<char>(std::tolower(c));
     });
     return value;
+}
+
+// Root loops currently repeat one lowered instance ID; only component-owned
+// keyed plans provide per-item component identity. Reject before writing assets.
+void validateRootComponentPlacement(const ASTNode& node, bool loop = false, bool owned = false) {
+    auto visit = [&](const auto& children, bool inLoop, bool inComponent) {
+        for (const auto& child : children) validateRootComponentPlacement(*child, inLoop, inComponent);
+    };
+    if (node.getType() == ASTNodeType::JtmlElement) {
+        const auto& element = static_cast<const JtmlElementNode&>(node);
+        for (const auto& attribute : element.attributes) {
+            if (attribute.key != "data-jtml-instance") continue;
+            if (loop && !owned) {
+                std::string location = "line " + std::to_string(node.sourceSpan.startLine);
+                if (node.sourceSpan.original) {
+                    const auto& range = *node.sourceSpan.original;
+                    const auto [line, column] = range.source->coordinates(range.begin);
+                    location = range.source->file + ":" + std::to_string(line) + ":" + std::to_string(column);
+                }
+                std::string component;
+                for (const auto& attr : element.attributes) {
+                    if (attr.key == "data-jtml-component") jtmlStaticAttributeValue(attr.value.get(), component);
+                }
+                throw std::runtime_error("Root loop component '" + component + "' lacks per-item instance ownership at " + location +
+                    "; put the loop inside a component and use a key");
+            }
+            owned = true;
+        }
+        visit(element.content, loop, owned);
+    } else if (node.getType() == ASTNodeType::ForStatement) {
+        visit(static_cast<const ForStatementNode&>(node).body, true, owned);
+    } else if (node.getType() == ASTNodeType::IfStatement) {
+        const auto& condition = static_cast<const IfStatementNode&>(node);
+        visit(condition.thenStatements, loop, owned);
+        visit(condition.elseStatements, loop, owned);
+    } else if (node.getType() == ASTNodeType::WhileStatement) {
+        visit(static_cast<const WhileStatementNode&>(node).body, loop, owned);
+    }
 }
 
 }
@@ -44,6 +83,9 @@ void JtmlTranspiler::setRuntimeProjectPlan(const jtml::RuntimeProjectPlan& plan)
 }
 
 std::string JtmlTranspiler::transpile(const std::vector<std::unique_ptr<ASTNode>>& program) {
+    if (browserLocalRuntime) {
+        for (const auto& node : program) validateRootComponentPlacement(*node);
+    }
     uniqueElemId = 0;
     uniqueVarId  = 0;
     nodeID = 0;

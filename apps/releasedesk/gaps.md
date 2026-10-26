@@ -92,19 +92,32 @@ python3 apps/releasedesk/server.py --dist dist/releasedesk-root-probe --db dist/
 node tests/browser/strict_csp.cjs
 ```
 
-## Retained: component introduced by a root conditional is not initialized
+## Fixed: component introduced by a root conditional is not initialized
 
-[root-conditional-component.jtml](probes/root-conditional-component.jtml) is a
-separate minimal probe discovered while expanding event coverage. Click Toggle,
-then Child increment: a lowered expression placeholder remains and the runtime
-reports `No browser-local action named: __Child_1_increment`. Root conditional
-HTML insertion does not initialize the new component instance. This is component
-mount lifecycle, not CSP event rejection: the event reaches the dispatcher and
-there is no policy violation. The shared rendering runtime is unchanged by the
-CSP correction. This unsupported shape remains a limitation, not a passing
-acceptance case. Component-owned conditional child creation/removal/remount and
-sibling event isolation pass the independent strict-CSP test; plain root
-conditional/loop controls also pass. This fix does not expand mounting semantics.
+The unchanged [root-conditional-component.jtml](probes/root-conditional-component.jtml)
+failed on PR #46 main `26eb51c`: Toggle inserted lowered HTML without initializing
+Child; its local state stayed as a placeholder and increment reached the missing
+`__Child_1_increment` action. Semantic IR and the client Runtime Plan retained
+Child's definition/instance. The first loss was after root `innerHTML` insertion,
+which never registered/rendered the instance.
+
+Root template replacement now uses existing component registration, generated
+static creation and destruction. It tears down old descendants before replacement
+and initializes connected component roots from their manifest ownership records.
+Hidden/expanded nested declarations are not registered as active root instances.
+Remount gets fresh local state; live root arguments update without resetting it.
+Strict-CSP browser acceptance covers the unchanged probe, repeated cycles,
+independent siblings, nested/keyed children, callback cleanup and detached controls.
+See [the lifecycle report](../../docs/architecture/root-conditional-mount.md).
+
+Remaining boundaries: a component directly repeated by a **root** loop has no
+per-item component identity in the current root backend. Browser-local compilation
+now rejects that shape before assets, at the authored component location, and
+instructs the author to put the keyed loop inside a component. Plain root-loop
+controls and component-owned keyed children pass. This does not add a new root
+keyed-component renderer. Component input retention tests use the existing
+explicit `value draft into draft` pattern; the independently observed patch
+fallback for component `input into draft` without `value` is outside this fix.
 
 ## Application/API boundary, not a compiler promise
 

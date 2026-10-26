@@ -1,0 +1,10 @@
+jtml 2
+make Child
+  let count = 0
+  when increment
+    count += 1
+  button "Increment" click increment
+page
+  for item in [1, 2] key item
+    box
+      Child

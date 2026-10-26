@@ -111,9 +111,11 @@ executable scripts, event handlers, `eval` and `new Function`. Inline styles rem
 permitted separately; this is a script-CSP claim for the tested application,
 not a claim that arbitrary raw HTML, extern hosts or live previews are CSP-safe.
 
-Other limitations remain explicit. Components introduced later by a root-level
-conditional are not initialized correctly; use the separately tested component-
-owned conditional path where needed. See the minimal probe in gaps.md.
+Components introduced by root conditionals now initialize and clean up on
+hide/remount, with independent strict-CSP lifecycle tests. Direct root loops
+of components still lack per-item ownership and reject before browser assets;
+put such keyed loops inside a component. See the minimal probes in gaps.md.
+Other limitations remain explicit.
 Programmatic root select values are not reflected in the native selection, so
 the form starts with a required empty choice and retains the user-selected severity
 when clearing its text fields. Explicit root IDs are duplicated by the

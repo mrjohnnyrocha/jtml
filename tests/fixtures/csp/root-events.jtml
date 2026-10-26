@@ -1,0 +1,127 @@
+jtml 2
+
+let count = 0
+let draft = ""
+let choice = ""
+let agreed = false
+let key = ""
+let saved = "None"
+let submissions = 0
+let visible = false
+let dynamic = ""
+let focusEvents = 0
+let blurEvents = 0
+let ups = ""
+let doubles = 0
+let bubbled = 0
+let rows = [1, 2]
+let loopTaps = 0
+let hovered = false
+let scrolled = false
+let shifted = false
+
+when increment amount
+  count += amount
+when save
+  saved = draft
+  submissions += 1
+when toggle
+  visible = !visible
+when handleKey event
+  key = event.key
+  shifted = event.shiftKey
+when handleUp value
+  ups = value
+when focused
+  focusEvents += 1
+when blurred
+  blurEvents += 1
+when double
+  doubles += 1
+when hoverTarget
+  hovered = true
+when scrollTarget position
+  scrolled = true
+when parentClick
+  bubbled *= 10
+when childClick
+  bubbled += 1
+when loopTap
+  loopTaps += 1
+when grow
+  rows = [1, 2, 3]
+when literal value
+  saved = value
+
+make OwnedCounter
+  let local = 0
+  when increment
+    local += 1
+  box class "owned"
+    button "Component increment" click increment
+    text "Local: {local}"
+
+make ChildHost
+  let shown = false
+  when toggleChild
+    shown = !shown
+  box class "child-host"
+    button "Toggle component child" click toggleChild
+    if shown
+      OwnedCounter
+
+page
+  button click increment(2) aria-label "Root increment"
+    strong "Nested target"
+  button "Literal argument" click literal("Quotes: ' & < > \\")
+  text "Count: {count}"
+  form submit save
+    label
+      text "Draft"
+      input into draft required focus focused blur blurred keydown handleKey keyup handleUp
+    button "Save" type "submit"
+  label
+    text "Choice"
+    select into choice aria-label "Choice"
+      option "Choose" value ""
+      option "High" value "high"
+  label
+    text "Agreed"
+    checkbox into agreed aria-label "Agreed"
+  text "Draft: {draft}"
+  text "Choice: {choice}"
+  text "Agreed: {agreed}"
+  text "Key: {key}"
+  text "Shifted: {shifted}"
+  text "Keyup: {ups}"
+  text "Saved: {saved}"
+  text "Submissions: {submissions}"
+  text "Focus: {focusEvents}"
+  text "Blur: {blurEvents}"
+  button "Double" dblclick double
+  text "Doubles: {doubles}"
+  button "Toggle controls" click toggle
+  if visible
+    button "Dynamic increment" click increment(3)
+    label
+      text "Dynamic draft"
+      input into dynamic
+    text "Dynamic: {dynamic}"
+  OwnedCounter
+  OwnedCounter
+  ChildHost
+  box click parentClick
+    button click childClick aria-label "Bubbling child"
+      strong "Child target"
+  text "Bubbled: {bubbled}"
+  for row in rows
+    button "Loop increment" click loopTap
+  button "Grow loop" click grow
+  text "Loop taps: {loopTaps}"
+  form action "/native" method "get"
+    button "Native submit" type "submit"
+  button "Hover target" hover hoverTarget
+  text "Hovered: {hovered}"
+  box class "scroll-target" style "height: 60px; overflow-y: auto" scroll scrollTarget
+    box style "height: 600px" "Scrollable content"
+  text "Scrolled: {scrolled}"

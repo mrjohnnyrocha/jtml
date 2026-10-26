@@ -200,29 +200,24 @@ std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
             // Store in nodeDerivedMap
             nodeDerivedMap[nodeID][attr.key] = derivedVarName;
             attributeBindings[&attr] = {derivedVarName, derivedVarName};
-            // Ensure that the attribute value represents the JTML function or handler
-            std::string functionCall = escapeHTML(escapeJS(expressionSource(attr.value.get())));
-
-            // Handle browser events that provide a useful value to JTML.
-            std::ostringstream args;
-            if (jtmlEventCarriesElementValue(attr.key)) {
-                args << ", window.jtmlEventValue(event)";
-            } else if (attr.key == "onScroll") {
-                args << ", String(window.scrollY)"; // Pass the scroll position as an argument
+            std::string htmlEventName = lowerCopy(attr.key);
+            if (browserLocalRuntime) {
+                // Declarative transport, including in conditional/loop templates.
+                // JSON encodes data; no JavaScript is evaluated from an attribute.
+                const auto metadata = "[" + jtml::jsonString(derivedVarName) + "," +
+                    jtml::jsonString(expressionSource(attr.value.get())) + "]";
+                out << " data-jtml-event-" << htmlEventName.substr(2) << "=\""
+                    << escapeHTML(metadata) << "\"";
+            } else {
+                // Preserve the live/native event protocol and binding identifiers.
+                const auto functionCall = escapeHTML(escapeJS(expressionSource(attr.value.get())));
+                out << " " << htmlEventName << "=\"";
+                if (elem.tagName == "form" && htmlEventName == "onsubmit") out << "event.preventDefault(); ";
+                out << "sendEvent('" << derivedVarName << "', '" << attr.key << "', ['" << functionCall << "'";
+                if (jtmlEventCarriesElementValue(attr.key)) out << ", window.jtmlEventValue(event)";
+                else if (attr.key == "onScroll") out << ", String(window.scrollY)";
+                out << "])\"";
             }
-
-            std::string htmlEventName = attr.key;
-            std::transform(htmlEventName.begin(), htmlEventName.end(), htmlEventName.begin(), [](unsigned char c) {
-                return static_cast<char>(std::tolower(c));
-            });
-
-            // Generate the event handler. JTML uses readable names such as
-            // onInput, while HTML event attributes are most reliable lower-case.
-            out << " " << htmlEventName << "=\"";
-            // A JTML submit action owns submission, as component forms do.
-            // Cancel synchronously: an async fetch must not race a native reload.
-            if (elem.tagName == "form" && htmlEventName == "onsubmit") out << "event.preventDefault(); ";
-            out << "sendEvent('" << derivedVarName << "', '" << attr.key << "', ['" << functionCall << "'" << args.str() << "])\"";
 
         } else {
             if (classification.kind == JtmlAttributeKind::Boolean) {

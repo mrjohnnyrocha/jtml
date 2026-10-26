@@ -103,11 +103,18 @@ incorrect loading flag, and root form-submit actions allowed native navigation
 to race asynchronous work. Independent compiler regressions and real browser
 interaction cover both.
 
-Other limitations remain explicit. Root page event handlers are generated inline
-attributes, so this local server's CSP allows inline scripts/handlers (but not
-`eval`/`new Function`). **This app does not prove strict script CSP support.**
-Component delegation has a different contract; moving all form/fetch ownership
-into components is not assumed to work. Programmatic root select values are not reflected in the native selection, so
+The clean browser application now runs with `script-src 'self'`: the compiler
+emits declarative root-event metadata and external event delegation. The local
+server no longer permits `unsafe-inline` for scripts. Real browser tests cover
+create/persist/reload and error/retry under that header and reject inline
+executable scripts, event handlers, `eval` and `new Function`. Inline styles remain
+permitted separately; this is a script-CSP claim for the tested application,
+not a claim that arbitrary raw HTML, extern hosts or live previews are CSP-safe.
+
+Other limitations remain explicit. Components introduced later by a root-level
+conditional are not initialized correctly; use the separately tested component-
+owned conditional path where needed. See the minimal probe in gaps.md.
+Programmatic root select values are not reflected in the native selection, so
 the form starts with a required empty choice and retains the user-selected severity
 when clearing its text fields. Explicit root IDs are duplicated by the
 renderer, so the app uses native wrapping labels and named sections rather than

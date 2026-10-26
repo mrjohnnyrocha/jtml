@@ -1,0 +1,14 @@
+jtml 2
+let shown = false
+when toggle
+  shown = !shown
+make Child
+  let count = 0
+  when increment
+    count += 1
+  button "Child increment" click increment
+  text "Child: {count}"
+page
+  button "Toggle" click toggle
+  if shown
+    Child

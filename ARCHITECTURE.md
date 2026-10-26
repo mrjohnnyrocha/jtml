@@ -146,6 +146,15 @@ extracted from an HTML script string. For the incremental implementation history
 see `docs/architecture/observable-first-architecture-roadmap.md`; older milestones
 there describe transitional behavior, not permission to relax clean production.
 
+Browser-local root event attributes are declarative `data-jtml-event-*` JSON.
+Compiler-owned listeners in the external `app.js` bootstrap delegate to the
+existing runtime dispatcher, including synchronous prevention of handled form
+submission. Conditional/loop controls need no per-element listener registration.
+Non-bubbling focus/blur/scroll events are captured at the document. Component
+listeners and ownership remain separate. Inline browser-local embedding uses the
+same wiring emitter; legacy live documents keep their existing inline protocol.
+See [strict script CSP boundaries](docs/architecture/browser-root-csp.md).
+
 ## Live Mode
 
 Live mode is for Studio, tutorial, `serve`, internal/server-owned UI, and

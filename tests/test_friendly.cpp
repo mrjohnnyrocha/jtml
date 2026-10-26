@@ -1013,11 +1013,11 @@ TEST(FriendlySyntax, StoreBlockLowersToSharedDictionaryState) {
               std::string::npos) << html;
     EXPECT_NE(html.find("\"expr\":\"\\\"\\\"\""),
               std::string::npos) << html;
-    const std::string marker = "sendEvent('";
+    const std::string marker = "data-jtml-event-click=\"[&quot;";
     const auto eventPos = html.find(marker);
     ASSERT_NE(eventPos, std::string::npos) << html;
     const auto idStart = eventPos + marker.size();
-    const auto idEnd = html.find("'", idStart);
+    const auto idEnd = html.find("&quot;", idStart);
     ASSERT_NE(idEnd, std::string::npos) << html;
     const std::string elementId = html.substr(idStart, idEnd - idStart);
 
@@ -1087,11 +1087,11 @@ TEST(FriendlySyntax, StoreActionWithStringArgumentLowersAndDispatches) {
     EXPECT_NE(html.find("filterState_pickRegion(\\&quot;Portugal\\&quot;)"), std::string::npos)
         << html;
 
-    const std::string marker = "sendEvent('";
+    const std::string marker = "data-jtml-event-click=\"[&quot;";
     const auto eventPos = html.find(marker);
     ASSERT_NE(eventPos, std::string::npos) << html;
     const auto idStart = eventPos + marker.size();
-    const auto idEnd = html.find("'", idStart);
+    const auto idEnd = html.find("&quot;", idStart);
     ASSERT_NE(idEnd, std::string::npos) << html;
     const std::string elementId = html.substr(idStart, idEnd - idStart);
 
@@ -1846,7 +1846,14 @@ TEST(FriendlySyntax, RootSubmitActionCancelsNativeNavigationBeforeDispatch) {
     JtmlTranspiler transpiler;
     transpiler.setBrowserLocalRuntime(true);
     auto html = transpiler.transpile(program);
-    EXPECT_NE(html.find("onsubmit=\"event.preventDefault(); sendEvent("), std::string::npos);
+    EXPECT_EQ(html.find("onsubmit="), std::string::npos);
+    EXPECT_NE(html.find("data-jtml-event-submit="), std::string::npos);
+    const auto wiring = jtml::emitBrowserRootEventBindings();
+    const auto cancel = wiring.find("if (type === 'submit' && element.tagName === 'FORM') event.preventDefault();");
+    const auto dispatch = wiring.find("window.sendEvent(binding[0], name, args)");
+    ASSERT_NE(cancel, std::string::npos);
+    ASSERT_NE(dispatch, std::string::npos);
+    EXPECT_LT(cancel, dispatch);
     EXPECT_NE(html.find("required"), std::string::npos);
 }
 

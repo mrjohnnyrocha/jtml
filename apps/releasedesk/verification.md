@@ -1,5 +1,36 @@
 # ReleaseDesk verification
 
+## Strict script CSP correction — 2026-10-26
+
+Starting point: merged PR #45 main
+`32bb777a307484f497c550a8158c9b0390dce2ac`. macOS 14.4.1 arm64, Chromium
+153.0.8010.12, Playwright 1.63.0. Hosted CI remains separate PR evidence.
+
+| Check | Result |
+| --- | --- |
+| Original root-controls probe on main | Reproduced: strict script CSP blocks Increment; Clicks stays 0 |
+| Focused compiler regressions | PASS, 129/129 Friendly/attribute tests; native/live dispatch assertions retained |
+| Strict HTTP CSP / real Chromium | PASS: original probe, unchanged Counter Add/Reset and independent root/dynamic/component controls |
+| Root transport semantics | PASS: quoted arguments, input/change/checkbox, keyboard modifiers/keyup values, focus/blur, double click, hover/scroll, bubbling order, native validation and submit without navigation |
+| Dynamic ownership | PASS: root conditional/loop controls, sibling component isolation, component-owned conditional child remount twice |
+| Independent negative controls | Inline script and inline handler blocked; both expected CSP violations observed |
+| Generated assets | Four clean assets; no inline executable scripts/handlers, eval, new Function or compatibility fallback; inert JSON data block retained |
+| ReleaseDesk HTTP/SQLite | PASS: all five API tests and existing create/persist/full reload, real failure/retry/restart assertions under strict script CSP; no unexpected console/CSP errors |
+| Shared runtime / app bootstrap | 271,855 / 272,000 bytes unchanged; app.js 2,043 / 20,000 bytes, previously 619 |
+| Full local gate | PASS, exit 0; 475/475 CTests, nine mandatory browser benchmarks with clean exit, production reference/Taskboard/provenance/conformance/lifecycle/security/async/literals, packaging/install/LSP/editor/site and live smoke 8/8; no verification checks skipped |
+| Remaining defects | Five native renderer observations and reference HTML 99,939 / 70,000 bytes remain known failures; root IDs, programmatic select property and root-conditional component initialization remain limitations |
+
+Commands, transport review and bounded CSP audit are recorded in
+[the compiler report](../../docs/architecture/browser-root-csp.md). The server
+now removes `unsafe-inline` from **script** CSP; inline styles remain permitted
+separately. No ReleaseDesk product source, accepted fixture or budget was changed.
+The final review tightened the unit assertion to inspect the root wiring emitter
+specifically; the focused compiler suite was rerun. Executable code is identical
+to the full-gate candidate. The minimal newly observed component-mount probe reaches dispatch with no CSP
+violation and is documented as a limitation, not counted as passing functionality.
+
+## Historical PR #45 application evidence
+
 Starting point: main `fa6d10e13e676eed42f9ac1b0d586c3fdbe7ea93`, fresh isolated
 worktree. Local host: macOS 14.4.1 arm64. Hosted PR CI is separate evidence.
 

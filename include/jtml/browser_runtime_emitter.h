@@ -5,6 +5,9 @@
 
 namespace jtml {
 
+// App-owned external event wiring; also used by inline browser-local callers.
+std::string emitBrowserRootEventBindings();
+
 std::string emitBrowserRuntimeScript(int webSocketPort,
                                      bool browserLocalRuntime);
 

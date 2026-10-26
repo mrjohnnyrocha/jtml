@@ -42,8 +42,8 @@ The editor source remains independently versioned at **0.2.0** (no VSIX is shipp
 Validated component-argument repairs and remaining native-renderer limitations are
 recorded in the [independent readiness report](docs/releases/v0.3-readiness.md).
 
-For external tester packages, use the prepared [v0.3.0-rc.1 guide](docs/releases/v0.3.0-rc.1.md)
-for review downloads, exact `0.3.0-rc.1` commands, limitations and the five-minute
+For external tester packages, use the prepared [v0.3.0-rc.2 guide](docs/releases/v0.3.0-rc.2.md)
+for review downloads, exact `0.3.0-rc.2` commands, limitations and the five-minute
 smoke. No RC is published automatically; the source quickstart below builds the
 `0.3.0-dev` default.
 

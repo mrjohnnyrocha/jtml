@@ -39,8 +39,10 @@ corrective PR artifact evidence before distributing replacements.
 
 ## Public-preview release audit
 
-The proposed v0.3.0 preview is **NOT READY**: version/distribution identity is
-unfinished pending owner approval and platform/release evidence. Development
+The proposed v0.3.0 preview is **NOT READY FOR PUBLIC DISTRIBUTION** pending exact
+RC.2 artifacts and platform/release evidence. Owner licensing authority was
+explicitly confirmed on 2026-10-26; the JSON import and matching MIT text are
+resolved in the [licensing/provenance record](docs/releases/licensing-provenance.md). Development
 CLI/C API/CPack/archive identity is now `0.3.0-dev`; the independent editor remains
 `0.2.0`. Relocated bundle, CMake install and CPack artifact tests pass version,
 check/browser build, shipped-header C API and complete Studio resources from fresh
@@ -54,14 +56,15 @@ See the bounded
 Strict N04 now passes its tested subset; dated BLOCKED snapshots below remain
 historical evidence, not the current result or a claim of complete source spans.
 
-## RC.1 distribution preparation
+## RC.2 distribution preparation
 
-The [0.3.0-rc.1 tester guide](docs/releases/v0.3.0-rc.1.md) separates automatic release
+The [0.3.0-rc.2 tester guide](docs/releases/v0.3.0-rc.2.md) separates automatic release
 checks, owner licensing/provenance decisions and disclosed experimental limits.
 A manual `rc-distribution.yml` workflow pins a reviewed full SHA, reuses the existing
-packagers/install tests, verifies exact rc.1 identity and uploads review files only.
+packagers/install tests, verifies exact rc.2 identity and uploads review files only.
 Fresh RC platform results remain separate from PR #42's development evidence;
-no tag, public release or owner approval is inferred.
+no tag or public release is inferred. Recorded licensing authority does not approve
+unbuilt artifacts; source/artifact review and physical macOS 14 acceptance remain required.
 
 ## Global component argument ownership
 

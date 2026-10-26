@@ -1,4 +1,4 @@
-# JTML 0.3.0-rc.1 tester feedback
+# JTML 0.3.0-rc.2 tester feedback
 
 Open a repository issue and paste this short report. Remove private application
 code, tokens, personal data and internal URLs before sharing.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare review-only 0.3.0-rc.1 artifacts using the existing JTML packagers."""
+"""Prepare review-only 0.3.0-rc.2 artifacts using the existing JTML packagers."""
 import argparse
 import hashlib
 import json
@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import tempfile
 
-VERSION = '0.3.0-rc.1'
+VERSION = '0.3.0-rc.2'
 
 
 def git(root, *args):
@@ -40,9 +40,9 @@ def prepare(root, revision, build):
     revision = revision.lower()
     system, arch = platform.system().lower(), platform.machine()
     if (system, arch) not in {('linux', 'x86_64'), ('darwin', 'arm64')}:
-        raise ValueError('RC.1 targets Ubuntu x86_64 and macOS arm64; other targets are unverified')
+        raise ValueError('RC.2 targets Ubuntu x86_64 and macOS arm64; other targets are unverified')
     epoch = int(git(root, 'show', '-s', '--format=%ct', 'HEAD'))
-    env = {**os.environ, 'JTML_VERSION_SUFFIX': 'rc.1', 'BUILD_TYPE': 'Release',
+    env = {**os.environ, 'JTML_VERSION_SUFFIX': 'rc.2', 'BUILD_TYPE': 'Release',
            'BUILD_DIR': str(build), 'SOURCE_DATE_EPOCH': str(epoch), 'PYTHONDONTWRITEBYTECODE': '1'}
 
     if system == 'darwin':
@@ -90,7 +90,7 @@ def prepare(root, revision, build):
     output.mkdir(parents=True)
     for file in (bundle, cpack, root / 'dist/release/ARTIFACT.json'):
         shutil.copy2(file, output / file.name)
-    shutil.copy2(root / 'docs/releases/v0.3.0-rc.1.md', output / 'RELEASE_NOTES.md')
+    shutil.copy2(root / 'docs/releases/v0.3.0-rc.2.md', output / 'RELEASE_NOTES.md')
     shutil.copy2(root / 'docs/releases/rc-feedback.md', output / 'FEEDBACK.md')
     report = dict(version=VERSION, sourceRevision=revision, sourceDirty=False,
                   platform=system, architecture=arch, host=platform.platform(),
@@ -114,7 +114,7 @@ def prepare(root, revision, build):
     (output / 'SHA256SUMS').write_text(''.join(
         hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n' for p in files))
     print(f'PASS: {VERSION} review artifacts for {revision} -> {output}')
-    print('No tag, GitHub release or publication was performed. Owner approval remains separate.')
+    print('No tag, GitHub release or publication was performed. Artifact review/publication approval remains separate.')
 
 
 if __name__ == '__main__':

@@ -37,7 +37,7 @@ let browser;
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const origin=`http://127.0.0.1:${server.address().port}`;
  browser=await chromium.launch({headless:true,executablePath:process.env.JTML_BENCH_BROWSER});
- for(const prefix of ['/','/jtml/'])for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
+ for(const prefix of ['/','/jtml/'])for(const viewport of [{width:1440,height:1000},{width:390,height:844},{width:320,height:720}]){
   const context=await browser.newContext({viewport});const page=await context.newPage();page.setDefaultTimeout(7000);
   page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
   page.on('response',r=>{if(r.status()>=400)errors.push(`${r.status()} ${r.url()}`);if(r.url().endsWith('.js')){assert(r.headers()['content-type'].startsWith('text/javascript'));mime.push(r.url());}});
@@ -50,7 +50,8 @@ let browser;
    assert((await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content')).includes("script-src 'self'"));
    assert.equal(await page.locator('script:not([src]):not([type="application/json"])').count(),0);
    assert.equal(await page.evaluate(()=>[...document.querySelectorAll('*')].filter(e=>e.getAttributeNames().some(a=>/^on/i.test(a))).length),0);
-   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'no page-wide horizontal overflow: '+file);
+   const layout=await page.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth}));
+   assert(layout.document<=layout.viewport,`no page-wide horizontal overflow: ${prefix}${file} ${JSON.stringify(layout)}`);
    // Resolve actual navigation/assets and authored fragment targets under the mount prefix.
    const links=await page.locator('a[href],link[rel="stylesheet"],script[src],iframe[src]').evaluateAll(es=>es.map(e=>e.href||e.src));
    for(const link of links){

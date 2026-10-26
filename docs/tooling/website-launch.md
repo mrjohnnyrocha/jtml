@@ -126,21 +126,27 @@ is an owner setting. The website is not automatically deployed by merge.
 
 ## Verification and launch verdict
 
-Focused local browser acceptance passed at 1440×1000 and 390×844 for both `/` and
+Focused local browser acceptance passed at 1440×1000, 390×844 and 320×720 for both `/` and
 `/jtml/`, including independent CSP negatives, all navigation/assets and genuine
 Counter interactions. Desktop/mobile screenshots were inspected; hero contrast
 and visible mobile navigation were corrected without introducing a second frontend.
 The compiler's Counter runtime remains **271961/272000 bytes**. Known native
 renderer/HTML-size/tooling/platform/signing limits remain visible on the site.
 
-The complete local gate passed once with exit 0: 476/476 CTests, all nine mandatory
+The complete local gate passed once on the initial candidate `49a79d4` with exit 0:
+476/476 CTests, all nine mandatory
 benchmarks with clean browser exit, unchanged Counter/CSP/ReleaseDesk/Taskboard/
 provenance/lifecycle/security checks, the new site test, package/install/LSP/editor
 checks and live smoke 8/8. No verification check was skipped. Two complete site
 builds (140 files) were byte-identical. YAML/Bash/JavaScript/Python syntax and
 manual-only deployment/permissions/no-enablement guards passed. Compiler/runtime,
 accepted example, vendor code, budgets and release workflows are unchanged.
-Exact-head hosted CI/preview results are recorded separately in the PR; local and
+The first hosted preview exposed a font-dependent unbreakable reference heading.
+A one-rule CSS wrapping correction fixes the actual text overflow; the browser
+suite additionally requires 320-pixel layout without relaxing any assertion.
+Focused browser acceptance was rerun for that CSS/test-only correction; no compiler
+or runtime changed and the full gate was not repeated. Exact-head hosted CI/preview
+results are recorded separately in the PR; local and
 hosted-preview evidence are distinct from live Pages evidence.
 **GO for review and manual activation once checks pass.** Actual Pages source,
 environment approval, HTTPS/MIME and live browser confirmation remain pending.

@@ -511,6 +511,7 @@ section:not(.hero) {
 }
 
 .page-hero h1 {
+  overflow-wrap: anywhere;
   width: min(980px, 100%);
   margin: 0 auto;
   font-size: 3.2rem;

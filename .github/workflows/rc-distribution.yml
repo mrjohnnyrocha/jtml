@@ -64,13 +64,13 @@ jobs:
           export JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT="$driver"
           export JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1
           export JTML_BIN="$PWD/dist/release/bin/jtml"
-          test "$("$JTML_BIN" --version)" = "jtml 0.3.0-rc.1"
+          test "$("$JTML_BIN" --version)" = "jtml 0.3.0-rc.2"
           scripts/test_production_reference.sh
           echo "RC browser reference PASS for $RC_SOURCE_REVISION" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload verified packages for review only
         uses: actions/upload-artifact@v4
         with:
-          name: jtml-0.3.0-rc.1-${{ matrix.platform }}-${{ inputs.source_revision }}
+          name: jtml-0.3.0-rc.2-${{ matrix.platform }}-${{ inputs.source_revision }}
           path: dist/rc-review/
           if-no-files-found: error
           retention-days: 14

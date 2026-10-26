@@ -3348,7 +3348,8 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
                     throw std::runtime_error("Friendly fetch declarations are currently supported at module/page scope only at line " +
                                              std::to_string(line.number));
                 }
-                emitLine(out, level, "define " + typedName.name + " = {loading: true, data: [], error: \"\"}\\\\");
+                emitLine(out, level, "define " + typedName.name + " = {loading: " +
+                         (fetch.lazy ? "false" : "true") + ", data: [], error: \"\"}\\\\");
                 std::string marker = "@template data-jtml-fetch=" + quote(typedName.name) +
                                      " data-url=" + fetch.url +
                                      " data-method=" + fetch.method;

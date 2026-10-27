@@ -1,0 +1,51 @@
+{
+  "kind": "worker-calibration",
+  "workerImage": "sha256:bff47eabffba34021986fa29be3318b9a48307db8354d785077ecd9bfab4a84d",
+  "workerCompilerSha256": "f1ec136a180b3fcec1227fbe025d81c33139d1a7b4dfea27b3205d4bd119f276",
+  "oracleSha256": "5faabdc8a064e3c64ab8da01d9067208e3dd89613f5f4794babeec8470adff72",
+  "pass": true,
+  "cases": [
+    {
+      "task": "01",
+      "stack": "jtml",
+      "control": "reference",
+      "outcome": "pass",
+      "pass": true
+    },
+    {
+      "task": "01",
+      "stack": "react",
+      "control": "reference",
+      "outcome": "pass",
+      "pass": true
+    },
+    {
+      "task": "02",
+      "stack": "jtml",
+      "control": "reference",
+      "outcome": "pass",
+      "pass": true
+    },
+    {
+      "task": "02",
+      "stack": "react",
+      "control": "reference",
+      "outcome": "pass",
+      "pass": true
+    },
+    {
+      "task": "01",
+      "stack": "jtml",
+      "control": "seeded-confirmation-defect",
+      "outcome": "functional_failure",
+      "pass": true
+    },
+    {
+      "task": "01",
+      "stack": "react",
+      "control": "seeded-confirmation-defect",
+      "outcome": "functional_failure",
+      "pass": true
+    }
+  ]
+}

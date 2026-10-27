@@ -1,0 +1,17 @@
+{
+  "name": "jtml-ai-eval-pilot",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test harness.test.mjs agent/*.test.mjs"
+  },
+  "dependencies": {
+    "@playwright/test": "1.63.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "vite": "7.2.2"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

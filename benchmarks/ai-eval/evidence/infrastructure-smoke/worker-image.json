@@ -1,0 +1,80 @@
+{
+  "Id": "sha256:bff47eabffba34021986fa29be3318b9a48307db8354d785077ecd9bfab4a84d",
+  "RepoTags": [
+    "jtml-ai-pilot:afa7ee9"
+  ],
+  "RepoDigests": [
+    "jtml-ai-pilot@sha256:bff47eabffba34021986fa29be3318b9a48307db8354d785077ecd9bfab4a84d"
+  ],
+  "Parent": "",
+  "Comment": "buildkit.dockerfile.v0",
+  "Created": "2026-10-27T16:01:34.47762797Z",
+  "DockerVersion": "",
+  "Author": "",
+  "Config": {
+    "Hostname": "",
+    "Domainname": "",
+    "User": "node",
+    "AttachStdin": false,
+    "AttachStdout": false,
+    "AttachStderr": false,
+    "Tty": false,
+    "OpenStdin": false,
+    "StdinOnce": false,
+    "Env": [
+      "PATH=/opt/jtml/bin:/opt/deps/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "NODE_VERSION=22.23.3",
+      "YARN_VERSION=1.22.22",
+      "PLAYWRIGHT_BROWSERS_PATH=/opt/browsers"
+    ],
+    "Cmd": [
+      "sleep",
+      "infinity"
+    ],
+    "ArgsEscaped": true,
+    "Image": "",
+    "Volumes": null,
+    "WorkingDir": "/work",
+    "Entrypoint": [
+      "docker-entrypoint.sh"
+    ],
+    "OnBuild": null,
+    "Labels": {
+      "org.jtml.compiler-source": "afa7ee9754add76df6fa0f80e4a0402d327ddd67"
+    }
+  },
+  "Architecture": "arm64",
+  "Os": "linux",
+  "Size": 855821876,
+  "GraphDriver": {
+    "Data": null,
+    "Name": "overlayfs"
+  },
+  "RootFS": {
+    "Type": "layers",
+    "Layers": [
+      "sha256:c02bc3f14703b1601ba911ca2e53fd6f47eb4fcf760c32dca6c2b4485f19d78c",
+      "sha256:9ade96a84784ffcec944c32141646867cab64b38942fbf3f7b849d43cf235678",
+      "sha256:d20b95c67d4cea4792cfffea6e3641e68f0e8cd3b1a56d3a599925d24cc434b7",
+      "sha256:66aa398e34339851f3578aef48a1ea3ac1acbca57c2e27eaddee4a50c7f89734",
+      "sha256:1e6a240520afb209b3917aee48ec9a8b3d6aeb3b774e31ad4b461c60cc7d0a6d",
+      "sha256:734d7da20878e4acbcd34d1753c4f3b3bf8b755c0ca2f795e0274191a8f844b8",
+      "sha256:b76ae12932981b076c5ab80a10e9f1bc2cc168ec14f1a33dc69d76578a24db36",
+      "sha256:37ed507043c02ba1139f65e299c9edbd78e45ff2aa66c268ed0011c83140759c",
+      "sha256:a98815bcbbd7de0b1a680c2e4a0109536373b168950863cb396c15df3617b8c7",
+      "sha256:8d322537629fd50fc25d3d37066b391f5f72f1b4966eb7068fe67c6d7390d306",
+      "sha256:c80ad562dd193eca3774319f631551e358630ab8b73bc59d4e76885bcdbaab9e",
+      "sha256:22002672dc43ba7cc4db06d541b6a12947ab1e1f169bdc7d084891d89ebdbef8",
+      "sha256:7bfeb7126b9554ac8443e4e7b31bcda8be27bde5eedd54b1fbb5a931c88f8dc9",
+      "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+    ]
+  },
+  "Metadata": {
+    "LastTagTime": "2026-10-27T16:02:14.818892211Z"
+  },
+  "Descriptor": {
+    "mediaType": "application/vnd.oci.image.index.v1+json",
+    "digest": "sha256:bff47eabffba34021986fa29be3318b9a48307db8354d785077ecd9bfab4a84d",
+    "size": 856
+  }
+}

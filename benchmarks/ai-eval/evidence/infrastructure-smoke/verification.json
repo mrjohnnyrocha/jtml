@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-27",
+  "realAgentTrials": 0,
+  "paidApiCalls": 0,
+  "referenceTasks": 2,
+  "referenceStacks": [
+    "jtml",
+    "react"
+  ],
+  "unchangedAcceptance": true,
+  "historicalRC2EvidenceByteIdentical": true,
+  "mainSourceSHA": "afa7ee9754add76df6fa0f80e4a0402d327ddd67",
+  "mainCI": "success",
+  "unitTests": {
+    "pass": 19,
+    "fail": 0,
+    "skip": 0
+  },
+  "dockerIsolation": "pass",
+  "deterministicSmoke": "pass with one accepted and one rejected submission",
+  "missingImageControl": "blocked as intended",
+  "fullGate": {
+    "exitCode": 0,
+    "ctestPass": 477,
+    "browserBenchmarksCleanExit": 9,
+    "liveSmokePass": 8,
+    "verificationSkips": 0
+  },
+  "realPilotDecision": "NO-GO",
+  "fivePairedReplicatesDecision": "NO-GO"
+}

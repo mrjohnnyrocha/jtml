@@ -110,6 +110,12 @@ jobs:
         working-directory: build
         run: ctest --output-on-failure --parallel
 
+      - name: AI evaluation runner unit tests (no model calls)
+        working-directory: benchmarks/ai-eval
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm test
+
       - name: Production reference application (browser required)
         run: scripts/test_production_reference.sh
 

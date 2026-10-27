@@ -1,0 +1,146 @@
+{
+  "kind": "harness-validation",
+  "agentTrials": 0,
+  "results": [
+    {
+      "task": "01",
+      "stack": "jtml",
+      "control": "reference",
+      "outcome": "pass",
+      "expected": "pass",
+      "checks": [
+        {
+          "id": "baseline.validation-and-submit",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-confirmation",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-and-reload",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "task": "01",
+      "stack": "react",
+      "control": "reference",
+      "outcome": "pass",
+      "expected": "pass",
+      "checks": [
+        {
+          "id": "baseline.validation-and-submit",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-confirmation",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-and-reload",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "task": "02",
+      "stack": "jtml",
+      "control": "reference",
+      "outcome": "pass",
+      "expected": "pass",
+      "checks": [
+        {
+          "id": "baseline.validation-and-submit",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-confirmation",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-and-reload",
+          "pass": true
+        },
+        {
+          "id": "extension.bounds-total-snapshot-reset",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "task": "02",
+      "stack": "react",
+      "control": "reference",
+      "outcome": "pass",
+      "expected": "pass",
+      "checks": [
+        {
+          "id": "baseline.validation-and-submit",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-confirmation",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-and-reload",
+          "pass": true
+        },
+        {
+          "id": "extension.bounds-total-snapshot-reset",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "task": "01",
+      "stack": "jtml",
+      "control": "seeded-reset-defect",
+      "outcome": "functional_failure",
+      "expected": "functional_failure",
+      "caught": true,
+      "checks": [
+        {
+          "id": "baseline.validation-and-submit",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-confirmation",
+          "pass": false,
+          "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('Not reserved', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('Not reserved', { exact: true }) with timeout 5000ms\n  - waiting for getByText('Not reserved', { exact: true })\n"
+        },
+        {
+          "id": "baseline.reset-and-reload",
+          "pass": false,
+          "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('Not reserved', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('Not reserved', { exact: true }) with timeout 5000ms\n  - waiting for getByText('Not reserved', { exact: true })\n"
+        }
+      ]
+    },
+    {
+      "task": "01",
+      "stack": "react",
+      "control": "seeded-reset-defect",
+      "outcome": "functional_failure",
+      "expected": "functional_failure",
+      "caught": true,
+      "checks": [
+        {
+          "id": "baseline.validation-and-submit",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-confirmation",
+          "pass": false,
+          "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('Not reserved', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('Not reserved', { exact: true }) with timeout 5000ms\n  - waiting for getByText('Not reserved', { exact: true })\n"
+        },
+        {
+          "id": "baseline.reset-and-reload",
+          "pass": false,
+          "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('Not reserved', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('Not reserved', { exact: true }) with timeout 5000ms\n  - waiting for getByText('Not reserved', { exact: true })\n"
+        }
+      ]
+    }
+  ]
+}

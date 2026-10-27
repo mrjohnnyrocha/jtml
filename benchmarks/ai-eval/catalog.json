@@ -1,0 +1,302 @@
+[
+  {
+    "id": "01",
+    "title": "Reservation form",
+    "kind": "build",
+    "coverage": [
+      "forms",
+      "reactive state",
+      "components"
+    ],
+    "status": "pilot",
+    "split": "public-calibration",
+    "acceptanceIntent": [
+      "Empty name rejected; submit snapshots exact text; reset clears name and confirmation; no reload or HTML injection."
+    ],
+    "oracleStatus": "executable"
+  },
+  {
+    "id": "02",
+    "title": "Reservation party size and reset repair",
+    "kind": "modify-repair",
+    "coverage": [
+      "incremental modifications",
+      "regressions"
+    ],
+    "status": "pilot",
+    "split": "public-calibration",
+    "acceptanceIntent": [
+      "Repair stale reset; add bounded party size 1..6 and EUR 20 per guest; preserve baseline behavior and saved confirmation snapshot."
+    ],
+    "oracleStatus": "executable"
+  },
+  {
+    "id": "03",
+    "title": "Expense entry with required fields",
+    "kind": "build",
+    "coverage": [
+      "forms",
+      "validation"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Enter date, description and nonnegative amount; reject missing fields; successful submission adds an expense and clears only the entry fields."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "04",
+    "title": "Shipping quote with dependent options",
+    "kind": "build",
+    "coverage": [
+      "forms",
+      "reactive state"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Choose domestic/international destination and standard/express shipping; derive quote from a supplied fixed rate table; changing destination removes invalid delivery options."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "05",
+    "title": "Editable profile with cancel",
+    "kind": "build",
+    "coverage": [
+      "forms",
+      "local state"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Edit name and contact email; Save validates and commits; Cancel restores last saved values; changing draft must not update the saved profile."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "06",
+    "title": "Budget calculator with category totals",
+    "kind": "build",
+    "coverage": [
+      "reactive state"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Three category budgets and spending entries; show category remaining amounts and grand total; edits and deletions update all derived values; over-budget values remain visible."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "07",
+    "title": "Two independent timer controls",
+    "kind": "build",
+    "coverage": [
+      "components",
+      "lifecycle"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Two independently startable/stoppable elapsed-second controls; resetting one leaves the other unchanged; hiding/unmounting a control stops its timer; remount starts fresh."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "08",
+    "title": "Reusable quantity selector in cart",
+    "kind": "build",
+    "coverage": [
+      "components",
+      "events"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Three products share a quantity component; clamp quantity 0..9; propagate quantity to parent subtotal and cart total; updating one product preserves the others."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "09",
+    "title": "Nested accordion with independent state",
+    "kind": "build",
+    "coverage": [
+      "components",
+      "conditional rendering"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Nested help sections independently expand/collapse; collapsing a parent hides descendants; sibling state remains intact; controls expose expanded state and keyboard activation."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "10",
+    "title": "Shopping list add/remove/filter",
+    "kind": "build",
+    "coverage": [
+      "lists",
+      "empty states"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Add uniquely identified shopping items, toggle purchased, remove items and filter All/Open/Purchased; duplicates by label allowed; empty collection and empty-filter states are distinct."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "11",
+    "title": "Priority queue reorder preserving drafts",
+    "kind": "build",
+    "coverage": [
+      "lists",
+      "keyed identity"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Move queue entries up/down at valid boundaries; preserve focused draft text and row identity when reordered; removing another row must not redirect edits."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "12",
+    "title": "Inventory search and sort",
+    "kind": "build",
+    "coverage": [
+      "lists",
+      "derived state"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Search a supplied inventory by name case-insensitively; sort price ascending/descending; filters compose with sorting; show match count and no-results state."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "13",
+    "title": "Directory list/detail URLs",
+    "kind": "build",
+    "coverage": [
+      "routing",
+      "params"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Navigate from supplied staff directory to ID-specific detail pages; support direct URLs, back and forward; unknown IDs show a recoverable not-found view."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "14",
+    "title": "Settings tabs with back/forward",
+    "kind": "build",
+    "coverage": [
+      "routing",
+      "history"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Three settings tabs correspond to URLs; switching and browser back/forward update selected content; page reload preserves selected tab; unsaved draft behavior is explicitly reset-on-navigation."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "15",
+    "title": "Unknown route and navigation recovery",
+    "kind": "repair",
+    "coverage": [
+      "routing",
+      "errors"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Repair supplied router that renders blank for unknown paths; show a not-found page with Home navigation; known routes and browser back still work."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "16",
+    "title": "Add bulk completion to supplied checklist",
+    "kind": "modify",
+    "coverage": [
+      "lists",
+      "incremental modifications"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Extend supplied checklist with Select all visible and Complete selected; hidden items remain unchanged; preserve stable identities and existing add/delete/filter behavior."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "17",
+    "title": "Repair stale invoice total after deletion",
+    "kind": "repair",
+    "coverage": [
+      "reactive state",
+      "regressions"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Repair supplied invoice where deleting a line leaves a stale subtotal; maintain line quantity editing, tax computation using integer cents, empty invoice total and independent line state."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "18",
+    "title": "Add validation without losing form draft",
+    "kind": "modify",
+    "coverage": [
+      "forms",
+      "regressions"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Add email validation to supplied contact form; invalid submission preserves name/email/message draft and focus; successful submission keeps existing confirmation behavior."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "19",
+    "title": "Repair cross-instance counter leakage",
+    "kind": "repair",
+    "coverage": [
+      "components",
+      "state isolation"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Repair reusable counters accidentally sharing state; each instance retains independent increments and resets; removal/remount resets only that instance."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  },
+  {
+    "id": "20",
+    "title": "Add route filter persistence in URL",
+    "kind": "modify",
+    "coverage": [
+      "routing",
+      "incremental modifications"
+    ],
+    "status": "planned",
+    "split": "design-only; not held-out",
+    "acceptanceIntent": [
+      "Extend supplied searchable directory so query/filter lives in URL parameters; direct links and back/forward restore controls and results; malformed parameters fall back to documented defaults."
+    ],
+    "oracleStatus": "not implemented; requires independent oracle before evaluation"
+  }
+]

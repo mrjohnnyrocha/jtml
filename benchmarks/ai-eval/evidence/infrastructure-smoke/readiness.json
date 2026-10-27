@@ -1,0 +1,14 @@
+{
+  "kind": "pilot-readiness",
+  "ready": false,
+  "blockers": [
+    "Campaign must pin modelSnapshot",
+    "Campaign must pin reasoningEffort",
+    "Incomplete/invalid campaign: AssertionError [ERR_ASSERTION]: Exact dated model snapshot required; no floating alias",
+    "Missing JTML_EVAL_API_KEY",
+    "Provider actual-cost reconciliation readiness unverified",
+    "Live provider model/usage and actual billing attribution are unverified"
+  ],
+  "checkedAt": "2026-10-27T16:19:30.477Z",
+  "agentTrials": 0
+}

@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "phase": "public-agent-pilot",
+  "compilerSourceSHA": "afa7ee9754add76df6fa0f80e4a0402d327ddd67",
+  "workerImage": null,
+  "workerCompilerSha256": null,
+  "modelSnapshot": null,
+  "reasoningEffort": null,
+  "pricing": {
+    "source": null,
+    "inputUSDPerMillionUpperBound": null,
+    "outputUSDPerMillionUpperBound": null,
+    "tokenCountUSDPerCallUpperBound": null,
+    "evidence": null
+  },
+  "billingReadiness": null,
+  "wallSeconds": 900,
+  "tokenBudget": 30000,
+  "costBudgetUSD": 5,
+  "maxAttempts": 3,
+  "plannedAttempts": 1,
+  "maxOutputTokensPerCall": 4096,
+  "shellSeconds": 60,
+  "memory": "2g",
+  "cpus": 2,
+  "pids": 128,
+  "trials": [
+    {
+      "id": "01-jtml-r1",
+      "task": "01",
+      "stack": "jtml",
+      "keyEnv": "JTML_EVAL_API_KEY",
+      "billingProject": null
+    },
+    {
+      "id": "01-react-r1",
+      "task": "01",
+      "stack": "react",
+      "keyEnv": "JTML_EVAL_API_KEY",
+      "billingProject": null
+    },
+    {
+      "id": "02-react-r1",
+      "task": "02",
+      "stack": "react",
+      "keyEnv": "JTML_EVAL_API_KEY",
+      "billingProject": null
+    },
+    {
+      "id": "02-jtml-r1",
+      "task": "02",
+      "stack": "jtml",
+      "keyEnv": "JTML_EVAL_API_KEY",
+      "billingProject": null
+    }
+  ],
+  "mainCiEvidence": null,
+  "calibrationEvidence": null,
+  "providerEvidence": null,
+  "smokeEvidence": null
+}

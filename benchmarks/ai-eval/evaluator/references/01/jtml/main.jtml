@@ -1,0 +1,23 @@
+jtml 2
+make Reservation
+  let name = ""
+  let saved = "Not reserved"
+
+  when reserve
+    if name == ""
+      saved = "Name required"
+    else
+      saved = "Reserved for {name}"
+  when reset
+    name = ""
+    saved = "Not reserved"
+  h1 "Reservation"
+  form submit reserve
+    label "Guest name"
+      input into name aria-label "Guest name"
+
+    button "Reserve" type "submit"
+    button "Reset" type "button" click reset
+  text saved
+page
+  Reservation

@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "kind": "harness-validation",
+  "task": "01",
+  "stack": "react",
+  "startedAt": "2026-10-27T12:12:56.854Z",
+  "outcome": "functional_failure",
+  "checks": [
+    {
+      "id": "baseline.validation-and-submit",
+      "pass": true
+    },
+    {
+      "id": "baseline.reset-confirmation",
+      "pass": false,
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('Not reserved', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('Not reserved', { exact: true }) with timeout 5000ms\n  - waiting for getByText('Not reserved', { exact: true })\n"
+    },
+    {
+      "id": "baseline.reset-and-reload",
+      "pass": false,
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('Not reserved', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('Not reserved', { exact: true }) with timeout 5000ms\n  - waiting for getByText('Not reserved', { exact: true })\n"
+    }
+  ],
+  "agentMetrics": null,
+  "sourceHashes": {
+    "index.html": "d193104cbcb54766d847e8ca2be67df8965ba2fb456be817000e6877697c7305",
+    "src.jsx": "f426e06c893f4676cd7b7c3d8cfcd23f45a1c37e14e4048ec5c8255dbeb0d0b1"
+  },
+  "harnessHashes": {
+    "harness.mjs": "fef816e76c8d18d27e9689d6922ec1945924dc209a4e7a7739af3d20ef084030",
+    "evaluator/acceptance.mjs": "5faabdc8a064e3c64ab8da01d9067208e3dd89613f5f4794babeec8470adff72",
+    "package.json": "42ee8d161f2c29b7682c7b7c14f99a2bf4be8aa9e13b9dd97dd63f43b3ccb878",
+    "package-lock.json": "5945bae99c54aeb3d04fcea9839669764edb48d0eadf1a392e32c5cedb079d2b",
+    "protocol.json": "f915eeed0bae3d28286088b4b64ce9f8d9b35e1be26a5a4c9230cd400e7dadf5",
+    "tasks/01.md": "2e6bbf15465528985ea93aa36c3da5ebc7f45e6bbd9c121cfc06128041cabdcc"
+  },
+  "node": "v22.23.3",
+  "platform": "darwin/arm64",
+  "buildCommand": [
+    "/Users/joaorocha/.nvm/versions/node/v22.23.3/bin/node",
+    "/Users/joaorocha/.codex/worktrees/1ba0/jtml-v1/benchmarks/ai-eval/node_modules/vite/bin/vite.js",
+    "build",
+    "--outDir",
+    "/Users/joaorocha/.codex/worktrees/1ba0/jtml-v1/benchmarks/ai-eval/runs/post-merge-afa7ee9-sealed/reset-react-negative/source/dist"
+  ],
+  "buildExit": 0,
+  "outputHashes": {
+    "assets/index-QNlwK6VC.js": "273375e0c7422a720525ee9225204e750049befac20b1f704e9d4b3177114917",
+    "index.html": "58d9f98b8078a3ca7b46fe0c858e921514ea9fed5b262389a0ac53dcaa5077db"
+  },
+  "browser": "153.0.8010.12",
+  "baselineFailures": [
+    "baseline.reset-confirmation",
+    "baseline.reset-and-reload"
+  ],
+  "evaluatorLatencyMs": 11952
+}

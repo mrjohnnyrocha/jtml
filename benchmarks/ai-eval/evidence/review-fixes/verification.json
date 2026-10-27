@@ -1,0 +1,160 @@
+{
+  "kind": "review-fix-verification",
+  "implementationCommit": "283006d411a7fe5e6848e8fb3d1bd8d243adf842",
+  "reviewedOriginalHead": "4f0e2eeb8df86b9e389a51ca6b6a89b6dc1e4cf0",
+  "paidApiCalls": 0,
+  "realAgentTrials": 0,
+  "unitTests": {
+    "pass": 25,
+    "fail": 0,
+    "skip": 0
+  },
+  "dockerLifecycle": {
+    "kind": "docker-lifecycle-regression",
+    "workerImage": "sha256:1f27eed4cc65bf2518446cfc02deff27e8c79a4af9aba584039b5aa79ecc7d8a",
+    "paidApiCalls": 0,
+    "agentTrials": 0,
+    "pass": true,
+    "cases": [
+      {
+        "id": "normal",
+        "pass": true
+      },
+      {
+        "id": "timeout",
+        "pass": true
+      },
+      {
+        "id": "controller-killed",
+        "pass": true
+      },
+      {
+        "id": "removal-failure",
+        "pass": true
+      }
+    ]
+  },
+  "smoke": {
+    "pass": true,
+    "controllerSeal": "574834c75cb2d01f8d2e63cc09d662ad7da740913406aa6d195ecec38afb0f3f",
+    "controllerHashes": {
+      "agent/core.mjs": "fc37ba51dd9df38aff5b9788b85d6ff4aa400398148c8ad6dbf9ce0077f1fcc2",
+      "agent/worker.mjs": "7419d8b90dd589c042082d130d868da6ae1ee7595becc35ab53654c680e38e1b",
+      "agent/run.mjs": "cf4f48d86c62e7c8927356e4604f472d30640c572184389e492ba5783829110a",
+      "agent/accept-built.mjs": "a6429fbf69042bda26cb43cb0a51d7fe95d4b3c1c339acce93821b8537c1409f",
+      "agent/system.md": "0c045ab41aea2aafecea9998f5aed223f18c24288d0814e3e4b8b158ee2666b1",
+      "agent/summary.mjs": "f55788be15bac7239018dd39eb0492879d7c13901a79cbdc7b39ec31204a8fdd",
+      "agent/Worker.Dockerfile": "ed529cca0dbef46d31848a303cc2871639c1d77efc8f07b550305e4cbf81acf8",
+      "agent/Worker.Dockerfile.dockerignore": "c74eb7237e6268416c9e5f358e4e6560f1f4ff7e2852b985b4df65081426eed8",
+      "agent/stub.mjs": "74ec55e8f4de22863387639c33f23df7abcb36a02d1983e74bf0be4899243deb",
+      "agent/smoke.mjs": "ab53a0c694f654279b37c0d36f211a548254e917ae7844e1bf4136c7ce5106f8",
+      "agent/stubs/success.jtml": "1b50fdd01419ec0efc5bac02a3c262b557550cfdff0f6ed2d38f32b022b9e1c4",
+      "agent/stubs/failure.jtml": "f191342426641ae33b231d47b895a81a63770bbb208c1eb468656a6121822622",
+      "harness.mjs": "ccf33f5114fdf6241e443f83cf1d8832004b20a631b7f73dfbd575decbf5c988",
+      "evaluator/acceptance.mjs": "5faabdc8a064e3c64ab8da01d9067208e3dd89613f5f4794babeec8470adff72",
+      "package.json": "42ee8d161f2c29b7682c7b7c14f99a2bf4be8aa9e13b9dd97dd63f43b3ccb878",
+      "package-lock.json": "5945bae99c54aeb3d04fcea9839669764edb48d0eadf1a392e32c5cedb079d2b",
+      "agent/guides/jtml.md": "26c9fb656c2a9528c770866fd560974a054606858c2ad12e8c77952cb5727a2e",
+      "agent/guides/react.md": "a8bcfc6007e92b7d725bb4ff2f21df4edfddb8f71e0955083cbf23a12135e896"
+    },
+    "rawEvidenceFiles": 95
+  },
+  "calibration": {
+    "kind": "worker-calibration",
+    "workerImage": "sha256:1f27eed4cc65bf2518446cfc02deff27e8c79a4af9aba584039b5aa79ecc7d8a",
+    "workerCompilerSha256": "f1ec136a180b3fcec1227fbe025d81c33139d1a7b4dfea27b3205d4bd119f276",
+    "oracleSha256": "5faabdc8a064e3c64ab8da01d9067208e3dd89613f5f4794babeec8470adff72",
+    "pass": true,
+    "cases": [
+      {
+        "task": "01",
+        "stack": "jtml",
+        "control": "reference",
+        "outcome": "pass",
+        "pass": true
+      },
+      {
+        "task": "01",
+        "stack": "react",
+        "control": "reference",
+        "outcome": "pass",
+        "pass": true
+      },
+      {
+        "task": "02",
+        "stack": "jtml",
+        "control": "reference",
+        "outcome": "pass",
+        "pass": true
+      },
+      {
+        "task": "02",
+        "stack": "react",
+        "control": "reference",
+        "outcome": "pass",
+        "pass": true
+      },
+      {
+        "task": "01",
+        "stack": "jtml",
+        "control": "seeded-confirmation-defect",
+        "outcome": "functional_failure",
+        "pass": true
+      },
+      {
+        "task": "01",
+        "stack": "react",
+        "control": "seeded-confirmation-defect",
+        "outcome": "functional_failure",
+        "pass": true
+      }
+    ]
+  },
+  "historicalFilesByteIdentical": 10,
+  "credentialPatternMatches": 0,
+  "fullGate": {
+    "status": "pass",
+    "exitCode": 0,
+    "log": "full-gate-finalization.log.gz",
+    "ctestPassed": 477,
+    "performanceBenchmarksCleanExit": 9,
+    "productionReferenceCleanExit": true,
+    "liveSmokePassed": 8,
+    "verificationSkips": 0,
+    "playwright": "1.63.0",
+    "browser": "153.0.8010.12",
+    "command": "JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1 JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=\"$PWD/benchmarks/ai-eval\" PLAYWRIGHT_BROWSERS_PATH=/private/tmp/jtml-review-browsers JTML_BENCH_BROWSER=/private/tmp/jtml-review-browsers/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell bash scripts/verify_all.sh",
+    "limitations": [
+      "Five known native-renderer discrepancies remain",
+      "Reference HTML size remains 99953 bytes against 70000-byte microfixture budget",
+      "Python bindings disabled; no new sanitizer run"
+    ]
+  },
+  "hostedCI": {
+    "commit": "283006d411a7fe5e6848e8fb3d1bd8d243adf842",
+    "runId": 40544808339,
+    "url": "https://github.com/mrjohnnyrocha/jtml/actions/runs/40544808339",
+    "ubuntu": "success",
+    "macos": "success",
+    "evidence": "implementation-ci.json",
+    "scope": "Implementation commit only; final documentation commit CI is separate."
+  },
+  "finalizationAudit": {
+    "date": "2026-10-27",
+    "unitTestsLog": "unit-tests-finalization.log.gz",
+    "unitTests": {
+      "pass": 25,
+      "fail": 0,
+      "skip": 0
+    },
+    "controllerHashesMatchingGitAndArchive": 18,
+    "smokeRawHashesVerified": 95,
+    "regressionSourcesMatchingGit": 5,
+    "calibrationOutputManifestsVerified": 6,
+    "historicalEvidenceFilesByteIdenticalToReviewedHead": 34,
+    "priorReceipt": "verification-before-finalization.json",
+    "incompletePriorGate": "full-gate-pinned-incomplete.log.gz",
+    "credentialScan": "No OpenAI/GitHub token or private-key header pattern matches in evidence files and tar members; heuristic, not a security certification.",
+    "provenanceLimit": "Hashes establish consistency with preserved bytes, not an external attestation of execution."
+  }
+}

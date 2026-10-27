@@ -16,6 +16,10 @@ controls still fail. [Current report](POST_MERGE_REPORT.md) records source/binar
 hashes and verification. [Historical RC.2 report](REPORT.md) and all original
 RC.2 failures remain unchanged.
 
+The five independent review findings are addressed in the
+[review corrections and verification](REVIEW_FIXES.md). Historical smoke evidence
+is preserved with its actual provenance; current evidence is stored separately.
+
 ## Local reference calibration
 
 Node 22.12+ and a browser are required. From this directory:

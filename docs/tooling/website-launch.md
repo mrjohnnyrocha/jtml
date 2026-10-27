@@ -151,3 +151,38 @@ hosted-preview evidence are distinct from live Pages evidence.
 **GO for review and manual activation once checks pass.** Actual Pages source,
 environment approval, HTTPS/MIME and live browser confirmation remain pending.
 This is not a claim that the website is already deployed or that jtml.org is owned.
+
+## Post-merge CSP negative-test synchronization
+
+Main `6bf8e4e` / [run 40492187155](https://github.com/mrjohnnyrocha/jtml/actions/runs/40492187155)
+failed the final CSP event-list assertion on both Ubuntu and macOS, after the
+non-execution assertions passed. Those logs did not record the observed event
+list, so its exact contents cannot be recovered retroactively.
+
+The old test waited for document readiness, then synchronously inspected a Node
+array populated through Playwright's asynchronous exposed-function bridge.
+[CSP violation dispatch is itself a queued task](https://www.w3.org/TR/CSP3/#report-violation);
+document readiness does not synchronize either delivery stage. An instrumented
+local browser run and 100 isolated attempts passed without artificial delay.
+A controlled 100 ms bridge delay reproduced the old failure in 3/3 probes while
+both attacks remained blocked. In one probe the assertion ran at Node +104.47 ms
+with an empty array; callbacks arrived at +125.82/+190.72 ms. Browser events were
+`script-src-elem` at 10.10 ms and `script-src-attr` at 75.70 ms, both `inline` /
+`enforce`. This establishes the synchronization defect; it does not manufacture
+missing telemetry from the original hosted failure or prove a directive rename.
+
+The test now records events in the browser before navigation and waits at most
+7 seconds for both exact directives. It requires two trusted inline enforcement
+events and independently checks that the script marker is absent and the clicked
+handler did not change its button. Missing events fail with observed directives,
+execution markers and event timing, rather than a boolean-only assertion.
+
+Focused real Chromium acceptance passed across all six viewport/path combinations
+using the existing generated site. Isolated observation delayed by 100 ms also
+passed. Independent temporary policy mutations permitting only the inline script
+or only the handler each failed the oracle, exposing the corresponding executed
+marker and only the other violation. No weakened policy or delay is shipped.
+Reproduce the focused suite with the browser/tool variables documented above:
+`node tests/browser/site.cjs dist/site`. Fresh hosted results belong in the PR.
+This test/documentation correction changes no site assets, CSP, compiler/runtime,
+release artifacts or budgets; the full compiler gate is not repeated.

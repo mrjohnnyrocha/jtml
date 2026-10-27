@@ -84,14 +84,29 @@ let browser;
   await page.reload();await page.getByText('Count: 0',{exact:true}).waitFor();
   await context.close();
  }
- const negative=await browser.newPage();const blocked=[];
- await negative.exposeFunction('observeBlocked',d=>blocked.push(d));
- await negative.addInitScript(()=>document.addEventListener('securitypolicyviolation',e=>window.observeBlocked(e.effectiveDirective)));
+ const negative=await browser.newPage();negative.setDefaultTimeout(7000);
+ await negative.addInitScript(()=>{
+  window.cspNegativeEvents=[];
+  document.addEventListener('securitypolicyviolation',e=>window.cspNegativeEvents.push({
+   directive:e.effectiveDirective,blockedURI:e.blockedURI,disposition:e.disposition,
+   trusted:e.isTrusted,browserMs:performance.now(),readyState:document.readyState
+  }));
+ });
  await negative.goto(origin+'/__csp_negative__');await negative.getByRole('button',{name:'Blocked'}).click();
+ // CSP events are queued tasks; document readiness is not an event-delivery barrier.
+ // Wait in the browser to avoid racing an exposed-function callback into Node.
+ try{
+  await negative.waitForFunction(()=>['script-src-elem','script-src-attr'].every(d=>window.cspNegativeEvents.some(e=>e.directive===d)));
+ }catch(error){
+  const observed=await negative.evaluate(()=>({events:window.cspNegativeEvents,inlineRan:window.inlineRan===true,button:document.querySelector('button').textContent}));
+  throw new Error('Missing independent CSP blocks: '+JSON.stringify(observed),{cause:error});
+ }
+ const blocked=await negative.evaluate(()=>window.cspNegativeEvents);
+ assert.deepEqual(blocked.map(e=>e.directive).sort(),['script-src-attr','script-src-elem']);
+ for(const event of blocked){assert.equal(event.blockedURI,'inline');assert.equal(event.disposition,'enforce');assert.equal(event.trusted,true);}
  assert.equal(await negative.evaluate(()=>window.inlineRan),undefined);
  assert.equal(await negative.getByRole('button').textContent(),'Blocked');
- await negative.waitForFunction(()=>document.readyState==='complete');
- assert(blocked.includes('script-src-elem')&&blocked.includes('script-src-attr'),'both inline negatives must actually be blocked');
+ console.log('CSP negative evidence: '+JSON.stringify(blocked));
  await negative.close();
  assert.deepEqual(errors,[]);assert.deepEqual(violations,[]);assert(mime.length>0);
  assert(requests.every(u=>new URL(u).origin===origin),'no external runtime requests');

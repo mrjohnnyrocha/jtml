@@ -1,0 +1,42 @@
+{
+  "compiler": {
+    "path": "/Users/joaorocha/.codex/worktrees/1ba0/jtml-v1/build/jtml",
+    "sha256": "aed6dd26d4c83c3a52554d10719c6d41cfab4332d3ab311b3d86c00c38d70112",
+    "version": "jtml 0.3.0-dev"
+  },
+  "node": "v22.23.3",
+  "platform": "darwin/arm64",
+  "checks": [
+    {
+      "mode": "clean",
+      "name": "minimal-reset",
+      "pass": true
+    },
+    {
+      "mode": "clean",
+      "name": "programmatic-and-retained-inputs",
+      "pass": true
+    },
+    {
+      "mode": "compat",
+      "name": "minimal-reset",
+      "pass": true
+    },
+    {
+      "mode": "compat",
+      "name": "programmatic-and-retained-inputs",
+      "pass": true
+    },
+    {
+      "mode": "debug",
+      "name": "minimal-reset",
+      "pass": true
+    },
+    {
+      "mode": "debug",
+      "name": "programmatic-and-retained-inputs",
+      "pass": true
+    }
+  ],
+  "browser": "153.0.8010.12"
+}

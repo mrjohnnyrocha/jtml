@@ -1,0 +1,8 @@
+{
+  "publishedRelease": "https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.2",
+  "sourceSHA": "13c53ab475c9e82ac4be2b232f744d664e926dea",
+  "archiveSha256": "225b0f5e76251e1b70ef9d2fd450a028e2854edbfc3a5546891f5d4332dd94f9",
+  "binaryMember": "release/bin/jtml",
+  "binarySha256": "b96cadca3a0ff010ddcebf931eba60822a89ee40da7537be2024ac59417f17b9",
+  "archiveSource": "previously anonymously downloaded published attachment; verified against published SHA256SUMS"
+}

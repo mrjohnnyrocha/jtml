@@ -1,0 +1,10 @@
+{
+  "kind": "toolchain-probe",
+  "classification": "unresolved",
+  "sourceSha256": "aea5093492c49566dd50d1fcd13f5713b7f280d4525f18cddd48612375351284",
+  "compilerSha256": "b96cadca3a0ff010ddcebf931eba60822a89ee40da7537be2024ac59417f17b9",
+  "browser": "153.0.8010.12",
+  "stateResetVisible": true,
+  "inputResetVisible": false,
+  "error": "Error: expect(locator).toHaveValue(expected) failed\n\nLocator:  getByRole('textbox', { name: 'Draft' })\nExpected: \"\"\nReceived: \"Before reset\"\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toHaveValue\" getByRole('textbox', { name: 'Draft' }) with timeout 5000ms\n  - waiting for getByRole('textbox', { name: 'Draft' })\n    14 × locator resolved to <input aria-label=\"Draft\" data-jtml-direct-node=\"input\" data-jtml-direct-body-node=\"4\" data-jtml-direct-component-bind=\"draft\" data-jtml-direct-component-id=\"Editor_1\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,aria-label,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\"/>\n       - unexpected value \"Before reset\"\n"
+}

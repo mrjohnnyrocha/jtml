@@ -335,6 +335,32 @@ page
   button "Back to home" click goHome
 ```
 
+## Text Input State Binding
+
+`input into name` binds the control's value to state in both directions:
+input events update `name`, and action assignments to `name` update the displayed
+value, including assigning `""` to clear a dirty textbox. In a component, the
+binding target must be a simple local writable `let` name. Retained controls keep
+their identity and focus; an unchanged value must not reset the cursor selection.
+
+```jtml
+jtml 2
+make Editor
+  let name = ""
+  when clear
+    name = ""
+  input into name aria-label "Name"
+  button "Clear" click clear
+page
+  Editor
+```
+
+Published `v0.3.0-rc.2` has a defect in the static component path: it omits the
+implicit state-to-value binding. The development correction and browser evidence
+are documented in [the input synchronization investigation](../architecture/input-state-sync/README.md).
+This correction covers text-valued `input` controls; it does not establish broader
+checkbox, select, file, numeric coercion or IME guarantees.
+
 ## Semantic Styling And UI Primitives
 
 JTML supports scoped CSS through `style`, and first-slice semantic styling

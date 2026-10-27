@@ -357,6 +357,14 @@ nlohmann::json compileStaticElementParts(
                 {"raw", words[i + 1]},
                 {"exprPlan", nlohmann::json({{"kind", "literal"}, {"value", words[i + 1]}})}
             });
+            // Match Friendly lowering's state -> value half of `input into`.
+            // The listener metadata above owns only the DOM -> state half.
+            if (words.front() == "input") {
+                attrs.push_back({
+                    {"name", "value"}, {"raw", words[i + 1]},
+                    {"exprPlan", compileRuntimeExpressionPlan(words[i + 1], environment)}
+                });
+            }
             ++i;
             continue;
         }
@@ -1275,7 +1283,7 @@ void appendDirectAttributePatchStatements(std::ostringstream& out,
         if (attr.value("name", "") == "value") {
             // Dirty controls need property updates; unchanged values retain selection.
             out << "if (name === 'value' && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') "
-                << "&& el.value !== String(next[name])) el.value = next[name]; ";
+                << "&& el.type !== 'file' && el.value !== String(next[name])) el.value = next[name]; ";
             break;
         }
     }

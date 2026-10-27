@@ -49,6 +49,7 @@ JTML_REQUIRE_BROWSER_BENCH=1 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/benc
 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_production_reference.sh"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/strict_csp.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/root_conditional_mount.cjs"
+JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/input_state_sync.cjs"
 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_releasedesk.sh"
 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_taskboard_core.sh"
 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_taskboard_negative.sh"

@@ -2752,3 +2752,26 @@ TEST(RuntimePlan, GlobalArgumentPlansPreserveExpressionsTypesAndLiteralText) {
     EXPECT_EQ(arguments["label"]["value"], "literal count & growth");
     EXPECT_FALSE(arguments["value"].contains("jsExpression"));
 }
+
+TEST(RuntimePlan, InputIntoReadsAndWritesItsStateWithoutExplicitValueAttribute) {
+    auto program = parseFriendly(
+        "jtml 2\nmake Editor\n  let draft = \"\"\n  let selected = \"\"\n"
+        "  input into draft\n  if draft != \"\"\n    input into draft\n"
+        "  file into selected\npage\n  Editor\n");
+    const auto plan = jtml::buildRuntimePlan(program);
+    ASSERT_EQ(plan.componentDefinitions.size(), 1u);
+    size_t inputs = 0, files = 0;
+    for (const auto& node : plan.componentDefinitions.front().bodyPlan) {
+        if (node.head == "input") {
+            ++inputs;
+            EXPECT_TRUE(contains(node.reads, "draft"));
+            EXPECT_TRUE(contains(node.writes, "draft"));
+        } else if (node.head == "file") {
+            ++files;
+            EXPECT_FALSE(contains(node.reads, "selected"));
+            EXPECT_TRUE(contains(node.writes, "selected"));
+        }
+    }
+    EXPECT_EQ(inputs, 2u);
+    EXPECT_EQ(files, 1u);
+}

@@ -20,7 +20,7 @@ export function snapshot(source,dest,includeOutputs=false){
 export function manifest(dir){
  const out={};
  function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){
-  const f=path.join(d,e.name);if(e.isDirectory())walk(f);else out[path.relative(dir,f)]=hash(f);
+  const f=path.join(d,e.name);if(e.isSymbolicLink())throw new Error(`Symlink not allowed: ${f}`);if(e.isDirectory())walk(f);else out[path.relative(dir,f)]=hash(f);
  }} walk(dir);return out;
 }
 export function validate(task,stack){if(!['01','02'].includes(task)||!['jtml','react'].includes(stack))throw new Error('Only pilot tasks 01/02 and stacks jtml/react are executable');}
@@ -66,7 +66,8 @@ export async function evaluate(task,stack,source,out){
   let command,args;
   if(stack==='jtml'){
    command=process.env.JTML_BIN;if(!command)throw new Error('JTML_BIN required');
-   result.compiler={sha256:hash(command),version:spawnSync(command,['--version'],{encoding:'utf8'}).stdout?.trim()};
+   if(process.env.JTML_COMPILER_SHA&&!/^[a-f0-9]{40}$/.test(process.env.JTML_COMPILER_SHA))throw new Error('JTML_COMPILER_SHA must be a full source commit');
+   result.compiler={sourceCommit:process.env.JTML_COMPILER_SHA||null,sha256:hash(command),version:spawnSync(command,['--version'],{encoding:'utf8'}).stdout?.trim()};
    args=['build','main.jtml','--target','browser','--out',dist];
   }else{
    // Dependencies are provisioned by the evaluator, never by candidate package scripts.

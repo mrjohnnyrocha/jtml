@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "kind": "harness-validation",
+  "task": "01",
+  "stack": "jtml",
+  "startedAt": "2026-10-27T12:12:45.913Z",
+  "outcome": "functional_failure",
+  "checks": [
+    {
+      "id": "baseline.validation-and-submit",
+      "pass": true
+    },
+    {
+      "id": "baseline.reset-confirmation",
+      "pass": false,
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('Not reserved', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('Not reserved', { exact: true }) with timeout 5000ms\n  - waiting for getByText('Not reserved', { exact: true })\n"
+    },
+    {
+      "id": "baseline.reset-and-reload",
+      "pass": false,
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('Not reserved', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('Not reserved', { exact: true }) with timeout 5000ms\n  - waiting for getByText('Not reserved', { exact: true })\n"
+    }
+  ],
+  "agentMetrics": null,
+  "sourceHashes": {
+    "main.jtml": "f191342426641ae33b231d47b895a81a63770bbb208c1eb468656a6121822622"
+  },
+  "harnessHashes": {
+    "harness.mjs": "fef816e76c8d18d27e9689d6922ec1945924dc209a4e7a7739af3d20ef084030",
+    "evaluator/acceptance.mjs": "5faabdc8a064e3c64ab8da01d9067208e3dd89613f5f4794babeec8470adff72",
+    "package.json": "42ee8d161f2c29b7682c7b7c14f99a2bf4be8aa9e13b9dd97dd63f43b3ccb878",
+    "package-lock.json": "5945bae99c54aeb3d04fcea9839669764edb48d0eadf1a392e32c5cedb079d2b",
+    "protocol.json": "f915eeed0bae3d28286088b4b64ce9f8d9b35e1be26a5a4c9230cd400e7dadf5",
+    "tasks/01.md": "2e6bbf15465528985ea93aa36c3da5ebc7f45e6bbd9c121cfc06128041cabdcc"
+  },
+  "node": "v22.23.3",
+  "platform": "darwin/arm64",
+  "compiler": {
+    "sourceCommit": "afa7ee9754add76df6fa0f80e4a0402d327ddd67",
+    "sha256": "aed6dd26d4c83c3a52554d10719c6d41cfab4332d3ab311b3d86c00c38d70112",
+    "version": "jtml 0.3.0-dev"
+  },
+  "buildCommand": [
+    "/Users/joaorocha/.codex/worktrees/1ba0/jtml-v1/build/jtml",
+    "build",
+    "main.jtml",
+    "--target",
+    "browser",
+    "--out",
+    "/Users/joaorocha/.codex/worktrees/1ba0/jtml-v1/benchmarks/ai-eval/runs/post-merge-afa7ee9-sealed/reset-jtml-negative/source/dist"
+  ],
+  "buildExit": 0,
+  "outputHashes": {
+    "app.js": "688ec3c1b98c6ac616a4dac1d641628c49ed147b46f5c9b24b8351cc29976046",
+    "components/index.js": "db4846c1eaea566adb92233a6e900295414594e8e0d15b0cb6990c7449f10856",
+    "index.html": "11a628221f685f940d1b7a195444c578f555695d02b46f48c2df44ba3e68babe",
+    "jtml-runtime.js": "1ebea09e4c82c89bf0d26fb5cd3b1db401d8d8ba02b990bdd4db88df13b5e8c8"
+  },
+  "browser": "153.0.8010.12",
+  "baselineFailures": [
+    "baseline.reset-confirmation",
+    "baseline.reset-and-reload"
+  ],
+  "evaluatorLatencyMs": 10941
+}

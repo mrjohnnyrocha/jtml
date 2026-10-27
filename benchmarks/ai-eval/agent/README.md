@@ -141,3 +141,44 @@ token totals, actual USD and wall latency visible. Do not expand to five paired
 replicates until the four-trial methodology and failures have been reviewed.
 
 API contract reference: [official input-token counting documentation](https://developers.openai.com/api/docs/guides/token-counting).
+
+## Review fixes: lifecycle, bounded input and evidence verification
+
+Worker PID 1 is a root-owned, finite `sleep` with all capabilities dropped;
+Docker `--rm` removes the container on exit. Tool commands explicitly run as
+uid/gid 1000 and cannot stop the supervisor. The independent lifetime is at most
+900 seconds even if the controller is killed. The controller journals the name,
+launch arguments, lifetime, returned container ID and removal/absence checks.
+A failed removal is acceptable only when a successful daemon query proves the
+container is already absent. Otherwise the cohort stops without inspecting or
+evaluating the candidate. The build and evaluator also have container-side timeouts.
+
+After confirmed teardown, the controller removes only its known dependency
+symlink. Tree inspection accepts regular files and directories only, including
+inside excluded output directories. It rejects symlinks, FIFOs, sockets and
+devices before reading; limits are 4,096 entries, depth 32, 64 MiB per file and
+256 MiB total per inspected tree. Invalid submissions retain an infrastructure
+error, candidate and journal; they are never silently counted as application failures.
+
+Unknown usage takes precedence over wall expiry, which is a separate field.
+The full reservation remains charged conservatively, partial response bytes and
+available request IDs are retained, and no potentially billed request is retried.
+Counting and generation share model, reasoning, parallel-tool policy, instructions,
+conversation and tools. This is deterministic contract testing, not proof of
+live provider compatibility or actual billing.
+
+A new smoke receipt includes the frozen seal, hashes captured for the running
+controller, and a manifest of all raw run files. Keep `result.json` beside the
+complete raw evidence tree. `freeze` copies and verifies that bundle. Verification
+rejects edited source, raw evidence, receipts or different controller versions:
+
+```sh
+node --input-type=module -e 'import {verifySmokeEvidence} from "./agent/core.mjs"; verifySmokeEvidence(process.argv[1]); console.log("verified")' /absolute/smoke/result.json
+node agent/lifecycle-smoke.mjs /absolute/cohort.json /absolute/new-lifecycle-results
+```
+
+The lifecycle command covers normal completion, command timeout, controller
+SIGKILL followed by independent expiry/removal, and an injected removal failure
+against a real live container. It makes zero provider requests.
+See [historical attribution](../evidence/HISTORICAL_SMOKE_PROVENANCE.md); old
+artifacts remain unchanged and cannot qualify as current smoke evidence.

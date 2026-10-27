@@ -5,8 +5,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {root, hash, manifest, snapshot} from '../harness.mjs';
-import {Budget, validateConfig, freeze, verifySeal, packetCopy, reconcile, controllerFiles} from './core.mjs';
-import {command, isolationArgs, bind, start, stop, shell, probe} from './worker.mjs';
+import {Budget, validateConfig, freeze, verifySeal, packetCopy, reconcile, controllerFiles, verifySmokeEvidence, assertController} from './core.mjs';
+import {command, bind, start, startIsolated, stop, shell, probe} from './worker.mjs';
 const read = file => JSON.parse(fs.readFileSync(file));
 function configAt(file) {
   const c=read(file),base=path.dirname(path.resolve(file));
@@ -31,7 +31,7 @@ export async function check(config) {
     else if(JSON.parse(image.output)[0].Config.Labels?.['org.jtml.compiler-source']!==config.compilerSourceSHA)blockers.push('Worker compiler source label mismatch');
   }
   for(const [field,kind] of [['smokeEvidence','infrastructure-smoke'],['calibrationEvidence','worker-calibration']]) {
-    try {const r=read(config[field]);assert.equal(r.kind,kind);assert.equal(r.pass,true);assert.equal(r.workerImage,config.workerImage);assert.equal(r.workerCompilerSha256,config.workerCompilerSha256);assert.equal(r.oracleSha256,hash(path.join(root,'evaluator/acceptance.mjs')));if(field==='smokeEvidence')assert.deepEqual(r.controllerHashes,Object.fromEntries(controllerFiles.map(f=>[f,hash(path.join(root,f))])));}catch{blockers.push(`Missing or nonmatching successful ${field}`);}
+    try {const r=read(config[field]);assert.equal(r.kind,kind);assert.equal(r.pass,true);assert.equal(r.workerImage,config.workerImage);assert.equal(r.workerCompilerSha256,config.workerCompilerSha256);assert.equal(r.oracleSha256,hash(path.join(root,'evaluator/acceptance.mjs')));if(field==='smokeEvidence')verifySmokeEvidence(config[field]);}catch{blockers.push(`Missing or nonmatching successful ${field}`);}
   }
   try {const r=read(config.mainCiEvidence);assert.equal(r.head_sha,config.compilerSourceSHA);assert.equal(r.status,'completed');assert.equal(r.conclusion,'success');}catch{blockers.push('Campaign missing a pinned successful post-merge main CI receipt');}
   try {const r=read(config.billingReadiness.evidence);assert.equal(r.kind,'billing-readiness');assert.equal(r.supportsActualUSD,true);assert.equal(r.exclusiveProjects,true);assert.deepEqual([...r.projects].sort(),[...new Set(config.trials.map(t=>t.billingProject))].sort());}catch{blockers.push('Provider actual-cost reconciliation readiness unverified');}
@@ -45,15 +45,16 @@ export async function check(config) {
   return {kind:'pilot-readiness',ready:blockers.length===0,blockers:[...new Set(blockers)],checkedAt:new Date().toISOString(),agentTrials:0};
 }
 export async function buildAndAccept(config, trial, source, evidence, evaluatorRoot=root) {
-  fs.mkdirSync(evidence);const output=path.join(evidence,'output');fs.mkdirSync(output);fs.chmodSync(output,0o777);
+  fs.mkdirSync(evidence);const record=value=>fs.appendFileSync(path.join(evidence,'lifecycle.jsonl'),JSON.stringify({at:new Date().toISOString(),...value})+'\n');const output=path.join(evidence,'output');fs.mkdirSync(output);fs.chmodSync(output,0o777);
   snapshot(source,path.join(evidence,'source'));
   const name=`jtml-build-${crypto.randomUUID()}`;
   const buildCmd=trial.stack==='jtml' ? 'jtml build /submission/main.jtml --target browser --out /output' :
     'cp -R /submission/. /tmp/build && ln -s /opt/deps/node_modules /tmp/build/node_modules && cp /opt/deps/vite.config.mjs /tmp/runner-vite.config.mjs && vite build /tmp/build --config /tmp/runner-vite.config.mjs --outDir /output';
   let build;
-  try {build=await command(['run','--rm',...isolationArgs(config,name),...bind(path.join(evidence,'source'),'/submission',true),...bind(output,'/output'),config.workerImage,'timeout','-k','1','60','bash','-c',buildCmd],{timeout:65000});}
-  finally {await stop(name);}
-  write(path.join(evidence,'build.json'),build);
+  try {
+    await startIsolated({...config,wallSeconds:65},[...bind(path.join(evidence,'source'),'/submission',true),...bind(output,'/output')],name,10000,record);
+    build=await command(['exec','--user','1000:1000',name,'timeout','-k','1','60','bash','-c',buildCmd],{timeout:65000});
+  } finally {if(build)write(path.join(evidence,'build.json'),build);await stop(name,record);}
   if(build.exit!==0){const result={task:trial.task,stack:trial.stack,outcome:build.timedOut||[124,125,126,127,137,143].includes(build.exit)?'infrastructure_error':'build_failure',checks:[],build};write(path.join(evidence,'result.json'),result);return result;}
   manifest(output); // Reject output symlinks before any browser or evaluator is mounted.
   const accepts=path.join(evidence,'acceptance');fs.mkdirSync(accepts);fs.chmodSync(accepts,0o777);
@@ -61,9 +62,10 @@ export async function buildAndAccept(config, trial, source, evidence, evaluatorR
   for(const f of ['harness.mjs','package.json','agent/accept-built.mjs','evaluator/acceptance.mjs'])mounts.push(...bind(path.join(evaluatorRoot,f),`/opt/evaluator/${f}`,true));
   const evalName=`jtml-accept-${crypto.randomUUID()}`;
   let evaluation;
-  try {evaluation=await command(['run','--rm',...isolationArgs(config,evalName),...mounts,...bind(output,'/dist',true),...bind(accepts,'/evidence'),config.workerImage,'node','/opt/evaluator/agent/accept-built.mjs',trial.task,trial.stack,'/dist','/evidence'],{timeout:120000});}
-  finally {await stop(evalName);}
-  write(path.join(evidence,'evaluation-process.json'),evaluation);
+  try {
+    await startIsolated({...config,wallSeconds:120},[...mounts,...bind(output,'/dist',true),...bind(accepts,'/evidence')],evalName,10000,record);
+    evaluation=await command(['exec','--user','1000:1000',evalName,'timeout','-k','1','115','node','/opt/evaluator/agent/accept-built.mjs',trial.task,trial.stack,'/dist','/evidence'],{timeout:120000});
+  } finally {if(evaluation)write(path.join(evidence,'evaluation-process.json'),evaluation);await stop(evalName,record);}
   const result=fs.existsSync(path.join(accepts,'result.json'))?read(path.join(accepts,'result.json')):{task:trial.task,stack:trial.stack,outcome:'infrastructure_error',checks:[],evaluation};
   if(evaluation.timedOut || ![0,1].includes(evaluation.exit) ||
       (result.outcome==='pass'&&evaluation.exit!==0) ||
@@ -86,8 +88,18 @@ export async function calibrate(config, dest) {
   write(path.join(dest,'result.json'),result);return result;
 }
 const tools=[{type:'function',name:'shell',description:'Run a shell command inside the isolated application workspace. Use for reading/writing source, local builds and self-tests.',strict:true,parameters:{type:'object',properties:{command:{type:'string'}},required:['command'],additionalProperties:false}}];
+export function sharedRequest(config,instructions,input) {
+  return {model:config.modelSnapshot,instructions,input,tools,reasoning:{effort:config.reasoningEffort},parallel_tool_calls:false};
+}
+export function failureStatus(error,budget,wallLimitExpired) {
+  return budget.unknown?'usage_unknown':wallLimitExpired?'wall_limit':/budget exhausted/.test(String(error))?'budget_limit':'infrastructure_error';
+}
+export function stopCohort(result) {
+  return result.billingExposureUnresolved || result.teardown?.confirmed!==true ||
+    ['infrastructure_error','usage_unknown'].includes(result.status) || result.acceptance?.outcome==='infrastructure_error';
+}
 export async function runTrial(frozen, trial, dest, options={}) {
-  const seal=verifySeal(frozen);const config=configAt(path.join(frozen,'cohort.json'));
+  const seal=verifySeal(frozen);assertController(frozen);const config=configAt(path.join(frozen,'cohort.json'));
   const isStub=!!options.stub;
   if(isStub)assert.equal(config.phase,'infrastructure-smoke');
   else{validateConfig(config);assert.equal(options.authorizationSeal,seal,'Explicit operator authorization for this exact seal is required for paid calls');}
@@ -95,10 +107,13 @@ export async function runTrial(frozen, trial, dest, options={}) {
   const startedAt=new Date().toISOString(), started=performance.now(), deadline=started+config.wallSeconds*1000;
   const journal=path.join(dest,'events.jsonl');let worker,seq=0;const budget=new Budget(config);
   const workerName=`jtml-eval-${crypto.randomUUID()}`;
-  const watchdog=setTimeout(()=>{void stop(workerName);},config.wallSeconds*1000);
+
   const result={kind:isStub?'infrastructure-smoke-attempt':'agent-pilot-attempt',agentTrials:isStub?0:1,id:trial.id,task:trial.task,stack:trial.stack,billingProject:trial.billingProject,model:config.modelSnapshot,reasoningEffort:config.reasoningEffort,sessionId:crypto.randomUUID(),controllerSeal:seal,workerImage:config.workerImage,compilerSourceSHA:config.compilerSourceSHA,workerCompilerSha256:config.workerCompilerSha256,startedAt,budgets:{wallSeconds:config.wallSeconds,tokenBudget:config.tokenBudget,costBudgetUSD:config.costBudgetUSD,maxAttempts:config.maxAttempts},attempts:1,responseIds:[],actualCostUSD:null,status:'infrastructure_error',usage:[]};
   const event=value=>fs.appendFileSync(journal,JSON.stringify({at:new Date().toISOString(),...value})+'\n');
   const remaining=()=>Math.max(0,deadline-performance.now());
+  write(path.join(dest,'trial.json'),result);
+  let watchdogCleanup;
+  const watchdog=setTimeout(()=>{watchdogCleanup=stop(workerName,event).catch(error=>event({kind:'watchdog-cleanup-error',error:String(error)}));},config.wallSeconds*1000);
   async function api(endpoint,body) {
     assert(remaining()>0,'Wall budget exhausted');const id=++seq;
     write(path.join(dest,`request-${id}.json`),{endpoint,body});
@@ -107,26 +122,33 @@ export async function runTrial(frozen, trial, dest, options={}) {
       write(path.join(dest,`response-${id}.json`),response);
       event({kind:'deterministic-stub',id,endpoint});return response;
     }
+    event({kind:'api-dispatch',id,endpoint});
     const response=await fetch(`https://api.openai.com/v1/${endpoint}`,{method:'POST',headers:{Authorization:`Bearer ${process.env[trial.keyEnv]}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(Math.max(1,Math.floor(Math.min(remaining(),60000))))});
-    const raw=await response.text();fs.writeFileSync(path.join(dest,`response-${id}.json`),raw);
+    event({kind:'api-headers',id,endpoint,status:response.status,requestId:response.headers.get('x-request-id')});
+    const responseFile=path.join(dest,`response-${id}.json`);fs.writeFileSync(responseFile,'');
+    // Keep partial bytes even when reading a response is interrupted. Never log headers with credentials.
+    if(response.body)for await(const chunk of response.body)fs.appendFileSync(responseFile,chunk);
+    const raw=fs.readFileSync(responseFile,'utf8');
     event({kind:'api',id,endpoint,status:response.status,requestId:response.headers.get('x-request-id')});
     if(!response.ok)throw Error(`Provider HTTP ${response.status}; raw body preserved`);
     return JSON.parse(raw);
   }
   try {
-    worker=await start(config,candidate,workerName,Math.max(1,Math.min(60000,remaining())));
+    worker=await start(config,candidate,workerName,Math.max(1,Math.min(60000,remaining())),event);
     const inspection=await command(['inspect',worker]);write(path.join(dest,'worker-inspect.json'),JSON.parse(inspection.output));
     const init=await shell(worker,'ln -s /opt/deps/node_modules /work/node_modules',5);assert.equal(init.exit,0);
     const instructions=fs.readFileSync(path.join(frozen,'evaluator/agent/system.md'),'utf8');
     const input=[{role:'user',content:fs.readFileSync(path.join(candidate,'TASK.md'),'utf8')+'\n\n'+fs.readFileSync(path.join(candidate,'STACK.md'),'utf8')}];
     while(remaining()>0) {
-      const common={model:config.modelSnapshot,instructions,input,tools};
-      budget.countCall();const count=await api('responses/input_tokens',common);
+      const common=sharedRequest(config,instructions,input);
+      budget.countCall();let count;
+      try {count=await api('responses/input_tokens',common);}
+      catch(error){budget.unknown=true;event({kind:'api-error',endpoint:'responses/input_tokens',error:String(error)});throw error;}
       const reservation=budget.reserve(count.input_tokens);
       event({kind:'budget-reservation',...reservation,upperUSD:budget.upperUSD,tokens:budget.tokens});
       let response;
-      try {response=await api('responses',{...common,reasoning:{effort:config.reasoningEffort},store:false,include:['reasoning.encrypted_content'],parallel_tool_calls:false,max_output_tokens:reservation.outputCap});}
-      catch(error){budget.settle(null);throw error;}
+      try {response=await api('responses',{...common,store:false,include:['reasoning.encrypted_content'],max_output_tokens:reservation.outputCap});}
+      catch(error){event({kind:'api-error',endpoint:'responses',error:String(error)});try{budget.settle(null);}catch{}throw error;}
       result.responseIds.push(response.id);result.usage.push(response.usage || null);
       budget.settle(response.usage);
       assert.equal(response.model,config.modelSnapshot,'Provider returned a different model snapshot');
@@ -144,19 +166,27 @@ export async function runTrial(frozen, trial, dest, options={}) {
       }
     }
     if(result.status==='infrastructure_error')result.status='wall_limit';
-  } catch(error) {result.error=String(error);result.status=remaining()<=0?'wall_limit':budget.unknown?'usage_unknown':/budget exhausted/.test(String(error))?'budget_limit':'infrastructure_error';}
+  } catch(error) {result.error=String(error);result.status=failureStatus(error,budget,remaining()<=0);}
   finally {
-    clearTimeout(watchdog);if(worker)await stop(worker);else await stop(workerName);
+    clearTimeout(watchdog);await watchdogCleanup;
+    result.wallLimitExpired=remaining()<=0;result.billingExposureUnresolved=budget.unknown;
+    try{result.teardown=await stop(worker||workerName,event);}
+    catch(error){result.teardown={confirmed:false,error:String(error)};result.status=budget.unknown?'usage_unknown':'infrastructure_error';}
     result.finishedAt=new Date().toISOString();result.wallLatencyMs=performance.now()-started;
     result.upperCostUSD=isStub?null:budget.upperUSD;result.accountedTokens=isStub?null:budget.tokens;result.usageKnown=!isStub&&!budget.unknown;
-    if(isStub){result.stubBudgetUsage=result.usage;result.usage=[];result.telemetrySource='deterministic-stub; not provider usage';}
+    if(isStub){result.stubBudgetAccounting={tokens:budget.tokens,upperUSD:budget.upperUSD,unknown:budget.unknown};result.stubBudgetUsage=result.usage;result.usage=[];result.telemetrySource='deterministic-stub; not provider usage';}
     event({kind:'session-ended',status:result.status});write(path.join(dest,'trial.json'),result);
   }
   // Preserve even empty/failed/timed-out submissions. Evaluation feedback is never sent to the agent.
-  try {result.acceptance=await buildAndAccept(config,trial,candidate,path.join(dest,'evaluation'),path.join(frozen,'evaluator'));}
+  try {
+    assert(result.teardown.confirmed,'Submission not inspected: worker teardown unconfirmed');
+    const deps=path.join(candidate,'node_modules');
+    try{if(fs.lstatSync(deps).isSymbolicLink()&&fs.readlinkSync(deps)==='/opt/deps/node_modules')fs.unlinkSync(deps);}catch(error){if(error.code!=='ENOENT')throw error;}
+    result.acceptance=await buildAndAccept(config,trial,candidate,path.join(dest,'evaluation'),path.join(frozen,'evaluator'));}
   catch(error){result.acceptance={outcome:'infrastructure_error',error:String(error)};}
-  if(fs.existsSync(path.join(dest,'evaluation/source')))result.sourceHashes=manifest(path.join(dest,'evaluation/source'));
-  else result.sourcePreservationError='Submission snapshot could not be made; candidate and journal retained';
+  try{if(result.teardown.confirmed&&fs.existsSync(path.join(dest,'evaluation/source')))result.sourceHashes=manifest(path.join(dest,'evaluation/source'));
+  else result.sourcePreservationError='Submission snapshot could not be made; candidate and journal retained';}
+  catch(error){result.sourcePreservationError=String(error);result.acceptance={outcome:'infrastructure_error',error:String(error)};}
   result.classification=isStub?'infrastructure-validation':result.status==='infrastructure_error'||result.status==='usage_unknown'||result.acceptance.outcome==='infrastructure_error'?'infrastructure_error':result.acceptance.outcome==='pass'?'functional_pass_pending_review':'application_failure_pending_review';
   write(path.join(dest,'trial.json'),result);return result;
 }
@@ -179,7 +209,7 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
       for(const t of c.trials){
         const r=await runTrial(frozen,t,path.join(path.resolve(dest),t.id),{authorizationSeal});campaign.executed.push({id:t.id,status:r.status,acceptance:r.acceptance.outcome});
         write(path.join(dest,'campaign.json'),campaign);
-        if(['infrastructure_error','usage_unknown'].includes(r.status)||r.acceptance.outcome==='infrastructure_error'){campaign.blocker=`Infrastructure/telemetry failed at ${t.id}; stop the cohort`;break;}
+        if(stopCohort(r)){campaign.blocker=`Infrastructure/telemetry failed at ${t.id}; stop the cohort`;break;}
       }
       campaign.unstarted=c.trials.map(t=>t.id).filter(id=>!campaign.executed.some(t=>t.id===id));campaign.complete=campaign.unstarted.length===0;
       write(path.join(dest,'campaign.json'),campaign);process.exitCode=campaign.complete?0:1;

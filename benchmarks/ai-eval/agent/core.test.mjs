@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {root, manifest, hash} from '../harness.mjs';
 import {Budget, validateConfig, freeze, verifySeal, reconcile} from './core.mjs';
+import {smokeFixture} from './test-fixtures.mjs';
 import {isolationArgs} from './worker.mjs';
 const config = () => ({...JSON.parse(fs.readFileSync(path.join(root,'agent/cohort.example.json'))),workerImage:'sha256:'+'1'.repeat(64),workerCompilerSha256:'2'.repeat(64),modelSnapshot:'unit-fixture-2000-01-01',reasoningEffort:'high',pricing:{source:'unit-fixture',evidence:'unit-fixture',inputUSDPerMillionUpperBound:2,outputUSDPerMillionUpperBound:10,tokenCountUSDPerCallUpperBound:0},billingReadiness:{reviewer:'unit-test',evidence:'unit-fixture'},trials:JSON.parse(fs.readFileSync(path.join(root,'agent/cohort.example.json'))).trials.map((t,i)=>({...t,billingProject:`unit-project-${i}`}))});
 test('partial or floating model configuration cannot qualify a pilot',()=>{
@@ -44,6 +45,7 @@ test('freeze exports only one assigned task/guide and seals controller, receipts
     for(const field of ['mainCiEvidence','smokeEvidence','calibrationEvidence','providerEvidence']){c[field]=path.join(tmp,field+'.json');fs.writeFileSync(c[field],'{}');}
     const raw=path.join(tmp,'provider-raw.txt');fs.writeFileSync(raw,'unit-only provider bytes');fs.writeFileSync(c.providerEvidence,JSON.stringify({rawEvidence:'provider-raw.txt',rawEvidenceSha256:hash(raw)}));
     c.pricing.evidence=path.join(tmp,'rates.txt');fs.writeFileSync(c.pricing.evidence,'unit-only rates');
+    c.smokeEvidence=smokeFixture(tmp,c);
     const dest=path.join(tmp,'frozen');freeze(c,dest);verifySeal(dest);
     for(const t of c.trials){
       const files=Object.keys(manifest(path.join(dest,'packets',t.id)));
@@ -98,6 +100,7 @@ test('paid execution refuses authorization before creating a worker or result di
     for(const field of ['mainCiEvidence','smokeEvidence','calibrationEvidence','providerEvidence']){c[field]=path.join(tmp,field+'.json');fs.writeFileSync(c[field],'{}');}
     const raw=path.join(tmp,'provider-raw.txt');fs.writeFileSync(raw,'unit-only provider bytes');fs.writeFileSync(c.providerEvidence,JSON.stringify({rawEvidence:'provider-raw.txt',rawEvidenceSha256:hash(raw)}));
     c.pricing.evidence=path.join(tmp,'rates.txt');fs.writeFileSync(c.pricing.evidence,'unit-only rates');
+    c.smokeEvidence=smokeFixture(tmp,c);
     const frozen=path.join(tmp,'frozen');freeze(c,frozen);
     await assert.rejects(()=>runTrial(frozen,c.trials[0],path.join(tmp,'trial')),/authorization/);
     assert(!fs.existsSync(path.join(tmp,'trial')));

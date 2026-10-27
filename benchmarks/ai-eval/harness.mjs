@@ -7,21 +7,55 @@ import {fileURLToPath} from 'node:url';
 import {chromium} from '@playwright/test';
 import {acceptance} from './evaluator/acceptance.mjs';
 export const root=path.dirname(fileURLToPath(import.meta.url));
-export function hash(file){return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');}
-export function snapshot(source,dest,includeOutputs=false){
-  fs.mkdirSync(dest,{recursive:true});
-  for(const entry of fs.readdirSync(source,{withFileTypes:true})){
-    if(['node_modules','.git',...(!includeOutputs?['dist']:[])].includes(entry.name))continue;
-    const from=path.join(source,entry.name),to=path.join(dest,entry.name);
-    if(entry.isSymbolicLink())throw new Error(`Symlink not allowed: ${from}`);
-    if(entry.isDirectory())snapshot(from,to,includeOutputs);else fs.copyFileSync(from,to,fs.constants.COPYFILE_EXCL);
-  }
+// Bounds apply before reads, including to ignored build/dependency entries' types.
+export const fileLimits = Object.freeze({entries:4096, fileBytes:64*1024*1024, totalBytes:256*1024*1024, depth:32});
+function regularFile(file) {
+ if(!fs.lstatSync(file).isFile())throw Error(`Only regular files allowed: ${file}`);
+ const fd=fs.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK);
+ try {const stat=fs.fstatSync(fd);if(!stat.isFile())throw Error(`Only regular files allowed: ${file}`);return {fd,stat};}
+ catch(error){fs.closeSync(fd);throw error;}
 }
-export function manifest(dir){
- const out={};
- function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){
-  const f=path.join(d,e.name);if(e.isSymbolicLink())throw new Error(`Symlink not allowed: ${f}`);if(e.isDirectory())walk(f);else out[path.relative(dir,f)]=hash(f);
- }} walk(dir);return out;
+export function hash(file){
+ const {fd,stat}=regularFile(file);
+ try {if(stat.size>fileLimits.fileBytes)throw Error(`File size limit exceeded: ${file}`);
+ return crypto.createHash('sha256').update(fs.readFileSync(fd)).digest('hex');}finally{fs.closeSync(fd);}
+}
+export function inspectTree(dir,{includeOutputs=true,limits=fileLimits}={}) {
+ const files=[],directories=[];let entries=0,total=0;
+ function walk(d,depth){
+  if(depth>limits.depth)throw Error(`Directory depth limit exceeded: ${d}`);
+  if(!fs.lstatSync(d).isDirectory())throw Error(`Only directories allowed: ${d}`);
+  for(const e of fs.readdirSync(d,{withFileTypes:true})){
+   const f=path.join(d,e.name);
+   if(++entries>limits.entries)throw Error(`File count limit exceeded: ${f}`);
+   const st=fs.lstatSync(f);
+   if(st.isSymbolicLink())throw Error(`Symlink not allowed: ${f}`);
+   if(!st.isDirectory()&&!st.isFile())throw Error(`Only regular files and directories allowed: ${f}`);
+   if(st.isDirectory()){directories.push(f);walk(f,depth+1);}
+   else {
+    if(!st.isFile())throw Error(`Only regular files and directories allowed: ${f}`);
+    if(st.size>limits.fileBytes)throw Error(`File size limit exceeded: ${f}`);
+    total+=st.size;if(total>limits.totalBytes)throw Error(`Total byte limit exceeded: ${f}`);
+    files.push(f);
+   }
+  }
+ }
+ walk(dir,0);
+ const included=f=>includeOutputs||!path.relative(dir,f).split(path.sep).some(n=>['node_modules','.git','dist'].includes(n));
+ return {files:files.filter(included),directories:directories.filter(included)};
+}
+export function snapshot(source,dest,includeOutputs=false,limits=fileLimits){
+ const tree=inspectTree(source,{includeOutputs,limits}); // Validate the entire tree before any file read.
+ fs.mkdirSync(dest,{recursive:true});
+ for(const d of tree.directories)fs.mkdirSync(path.join(dest,path.relative(source,d)),{recursive:true});
+ for(const f of tree.files){const {fd,stat}=regularFile(f);
+  try {if(stat.size>limits.fileBytes)throw Error(`File size limit exceeded: ${f}`);
+   fs.writeFileSync(path.join(dest,path.relative(source,f)),fs.readFileSync(fd),{flag:'wx'});
+  }finally{fs.closeSync(fd);}
+ }
+}
+export function manifest(dir,limits=fileLimits){
+ const out={};for(const f of inspectTree(dir,{limits}).files)out[path.relative(dir,f)]=hash(f);return out;
 }
 export function validate(task,stack){if(!['01','02'].includes(task)||!['jtml','react'].includes(stack))throw new Error('Only pilot tasks 01/02 and stacks jtml/react are executable');}
 export function prepare(task,stack,dest){

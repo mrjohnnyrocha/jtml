@@ -3,7 +3,28 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {root, hash, manifest, snapshot, prepare} from '../harness.mjs';
 
-export const controllerFiles = ['agent/core.mjs', 'agent/worker.mjs', 'agent/run.mjs', 'agent/accept-built.mjs', 'agent/system.md', 'agent/summary.mjs', 'agent/Worker.Dockerfile', 'agent/Worker.Dockerfile.dockerignore', 'agent/stub.mjs', 'agent/smoke.mjs', 'agent/stubs/success.jtml', 'agent/stubs/failure.jtml'];
+export const controllerFiles = ['agent/core.mjs', 'agent/worker.mjs', 'agent/run.mjs', 'agent/accept-built.mjs', 'agent/system.md', 'agent/summary.mjs', 'agent/Worker.Dockerfile', 'agent/Worker.Dockerfile.dockerignore', 'agent/stub.mjs', 'agent/smoke.mjs', 'agent/stubs/success.jtml', 'agent/stubs/failure.jtml', 'harness.mjs', 'evaluator/acceptance.mjs', 'package.json', 'package-lock.json', 'agent/guides/jtml.md', 'agent/guides/react.md'];
+// Capture at module load, then reject edits made while this process is running.
+export const executedHashes=Object.fromEntries(controllerFiles.map(f=>[f,hash(path.join(root,f))]));
+export function assertController(frozen) {
+  assert.deepEqual(Object.fromEntries(controllerFiles.map(f=>[f,hash(path.join(root,f))])),executedHashes,'Controller changed during execution');
+  assert.deepEqual(Object.fromEntries(controllerFiles.map(f=>[f,hash(path.join(frozen,'evaluator',f))])),executedHashes,'Executed controller differs from frozen source');
+}
+export function verifySmokeEvidence(file,{current=true}={}) {
+  const dir=path.dirname(file),r=JSON.parse(fs.readFileSync(file));
+  assert.equal(r.kind,'infrastructure-smoke');assert.equal(r.pass,true);
+  assert.equal(r.paidApiCalls,0);assert.equal(r.agentTrials,0);
+  assert.equal(r.cases.length,2);assert(r.cases.every(c=>c.pass===true),'Both smoke controls must pass');
+  assert(r.evidenceHashes&&Object.keys(r.evidenceHashes).length>0,'Missing raw evidence manifest');
+  const actual=manifest(dir);delete actual[path.basename(file)];
+  assert.deepEqual(actual,r.evidenceHashes,'Smoke raw evidence differs from receipt');
+  assert.equal(verifySeal(path.join(dir,'frozen')),r.controllerSeal);
+  const archived=Object.fromEntries(controllerFiles.map(f=>[f,hash(path.join(dir,'frozen/evaluator',f))]));
+  assert.deepEqual(r.controllerHashes,archived,'Smoke receipt differs from executed source');
+  if(current)assert.deepEqual(archived,executedHashes,'Smoke used a different controller');
+  for(const c of r.cases){const trial=JSON.parse(fs.readFileSync(path.join(dir,c.id,'trial.json')));assert.equal(trial.controllerSeal,r.controllerSeal);assert.equal(trial.kind,'infrastructure-smoke-attempt');}
+  return r;
+}
 export function validateConfig(c) {
   assert.equal(c.version, 2);
   assert.equal(c.phase, 'public-agent-pilot');
@@ -77,11 +98,18 @@ export function freeze(config, dest, {stub=false}={}) {
   fs.mkdirSync(dest);
   const providerSource = config.providerEvidence;
   config = structuredClone(config);
-  for (const field of (stub ? [] : ['mainCiEvidence', 'smokeEvidence', 'calibrationEvidence', 'providerEvidence'])) {
+  for (const field of (stub ? [] : ['mainCiEvidence', 'calibrationEvidence', 'providerEvidence'])) {
     const to = path.resolve(dest, `${field}.json`);
     fs.copyFileSync(config[field], to); config[field] = path.basename(to);
   }
   if(!stub) {
+    const smoke=verifySmokeEvidence(config.smokeEvidence);
+    const smokeDest=path.join(dest,'smoke-evidence');fs.mkdirSync(smokeDest);
+    for(const file of [...Object.keys(smoke.evidenceHashes),path.basename(config.smokeEvidence)]){
+      const to=path.join(smokeDest,file);fs.mkdirSync(path.dirname(to),{recursive:true});
+      fs.copyFileSync(path.join(path.dirname(config.smokeEvidence),file),to);
+    }
+    config.smokeEvidence=path.join('smoke-evidence',path.basename(config.smokeEvidence));
     const original = JSON.parse(fs.readFileSync(path.join(dest,'providerEvidence.json')));
     // Keep the referenced provider bytes with the seal, not a dangling machine-local path.
     const sourceReceipt = providerSource;

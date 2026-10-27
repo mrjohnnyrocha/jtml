@@ -18,4 +18,4 @@ COPY --from=compiler /source/build/jtml /opt/jtml/bin/jtml
 RUN mkdir -p /opt/evaluator/agent /opt/evaluator/evaluator /work && ln -s /opt/deps/node_modules /opt/evaluator/node_modules && printf 'export default {};\n' > /opt/deps/vite.config.mjs && chmod -R a+rX /opt
 USER node
 WORKDIR /work
-CMD ["sleep", "infinity"]
+CMD ["sleep", "900"]

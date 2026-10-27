@@ -22,22 +22,41 @@ export function bind(source, target, readonly=false) {
   if (source.includes(',')) throw new Error('Comma in mount path is unsupported');
   return ['--mount',`type=bind,src=${path.resolve(source)},dst=${target}${readonly?',readonly':''}`];
 }
-export async function start(config, candidate, name=`jtml-eval-${crypto.randomUUID()}`, timeout=60000) {
-  const r=await command(['run','-d',...isolationArgs(config,name),...bind(candidate,'/work'),config.workerImage],{timeout});
-  if(r.exit!==0){await stop(name);throw new Error(r.output);}
+export async function start(config, candidate, name=`jtml-eval-${crypto.randomUUID()}`, timeout=60000, record=()=>{}) {
+  return startIsolated(config,bind(candidate,'/work'),name,timeout,record);
+}
+export async function startIsolated(config, mounts, name, timeout=60000, record=()=>{}) {
+  const seconds=Math.ceil(config.wallSeconds);
+  if(!Number.isFinite(seconds)||seconds<1||seconds>900)throw Error('Worker lifetime must be 1..900 seconds');
+  // Root-owned PID 1 cannot be stopped by uid 1000 tool commands. Its exit kills
+  // the entire PID namespace; Docker --rm removes it even if the controller dies.
+  const args=['run','-d','--rm',...isolationArgs(config,name),'--user','0:0','--entrypoint','/bin/sleep',...mounts,config.workerImage,String(seconds)];
+  record({kind:'worker-start-intent',name,lifetimeSeconds:seconds,args});
+  const r=await command(args,{timeout});
+  record({kind:'worker-start-result',name,...r});
+  if(r.exit!==0){await stop(name,record);throw new Error(r.output);}
   return name;
 }
-export async function stop(name) { return command(['rm','-f',name],{timeout:10000}); }
+export async function stop(name, record=()=>{}, execute=command) {
+  const removal=await execute(['rm','-f',name],{timeout:10000});
+  record({kind:'worker-removal',name,...removal});
+  // Auto-removal may already have won the race. Only a successful daemon query
+  // proving absence permits source inspection; a failed rm alone proves nothing.
+  const verification=await execute(['ps','-aq','--no-trunc','--filter',`name=^/${name}$`],{timeout:10000});
+  record({kind:'worker-teardown',name,...verification});
+  if(verification.exit!==0||verification.timedOut||verification.output.trim())throw Error(`Worker teardown unconfirmed: ${name}; removal=${removal.exit}, verification=${verification.exit}`);
+  return {name,confirmed:true,removal,verification};
+}
 export async function shell(name, text, seconds) {
   // timeout inside the container terminates command descendants; final rm kills the entire worker.
-  return command(['exec',name,'timeout','-k','1',String(seconds),'bash','-c',text],{timeout:(seconds+2)*1000});
+  return command(['exec','--user','1000:1000',name,'timeout','-k','1',String(seconds),'bash','-c',text],{timeout:(seconds+2)*1000});
 }
 export async function probe(config, directory) {
   fs.mkdirSync(directory);
   const candidate=path.join(directory,'candidate');fs.mkdirSync(candidate,{mode:0o777});
-  let name; const result={kind:'isolation-smoke',pass:false,checks:[]};
+  const name=`jtml-probe-${crypto.randomUUID()}`; const record=value=>fs.appendFileSync(path.join(directory,'lifecycle.jsonl'),JSON.stringify({at:new Date().toISOString(),...value})+'\n'); const result={kind:'isolation-smoke',pass:false,checks:[]};
   try {
-    name=await start(config,candidate);
+    await start(config,candidate,name,60000,record);
     const checks={
       'compiler-hash':'sha256sum /opt/jtml/bin/jtml',
       'root-readonly':'if touch /opt/should-not-write 2>/dev/null; then exit 1; fi',
@@ -56,6 +75,6 @@ export async function probe(config, directory) {
     result.inspectValid=i.HostConfig.NetworkMode==='none'&&i.HostConfig.ReadonlyRootfs&&i.Mounts.length===1&&i.Mounts[0].Destination==='/work';
     result.pass=result.inspectValid&&result.checks.every(c=>c.pass);
   } catch(error) {result.error=String(error);}
-  finally {if(name)await stop(name);fs.writeFileSync(path.join(directory,'result.json'),JSON.stringify(result,null,2)+'\n');}
+  finally {try{result.teardown=await stop(name,record);}catch(error){result.pass=false;result.error=String(error);}fs.writeFileSync(path.join(directory,'result.json'),JSON.stringify(result,null,2)+'\n');}
   return result;
 }

@@ -1,0 +1,11 @@
+jtml 2
+make Editor
+  let draft = ""
+  get echo = "Draft: [{draft}]"
+  when clear
+    draft = ""
+  input into draft aria-label "Draft"
+  button "Clear" click clear
+  text echo
+page
+  Editor

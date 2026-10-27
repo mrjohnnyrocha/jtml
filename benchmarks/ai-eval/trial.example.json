@@ -1,0 +1,20 @@
+{
+  "kind": "agent-trial",
+  "id": "REPLACE-cohort-01-jtml-r1",
+  "pairId": "REPLACE-cohort-r1",
+  "task": "01",
+  "stack": "jtml",
+  "model": "REPLACE-exact-provider-model-snapshot",
+  "agentVersion": "REPLACE-agent-version-and-system-prompt-hash",
+  "reasoningEffort": "REPLACE",
+  "protocolSha256": "REPLACE",
+  "guidanceSha256": "REPLACE-stack-guide-hash",
+  "pricingSnapshot": "REPLACE-provider-rate-snapshot-id",
+  "budgets": {"wallSeconds": 900, "tokenBudget": 30000, "costBudgetUSD": 5, "maxAttempts": 3},
+  "startedAt": "2026-10-27T00:00:00Z",
+  "finishedAt": "2026-10-27T00:00:01Z",
+  "classification": "unresolved",
+  "attempts": [
+    {"number": 1, "inputTokens": null, "outputTokens": null, "cachedInputTokens": null, "costUSD": null, "latencyMs": null, "evidence": "attempt-1", "transcript": "provider-transcript.jsonl"}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "phase": "public-calibration",
+  "comparison": ["jtml", "react"],
+  "model": null,
+  "agentVersion": null,
+  "reasoningEffort": null,
+  "wallSeconds": 900,
+  "tokenBudget": 30000,
+  "costBudgetUSD": 5,
+  "maxAttempts": 3,
+  "replicatesPerTaskStack": 5,
+  "permissions": "isolated candidate directory only; shell and local browser; no network after dependency provisioning; no evaluator or other stack access",
+  "feedback": "build diagnostics and self-authored tests only; acceptance tests run after final submission",
+  "order": "alternate stack order per replicate; independent fresh sessions; no cross-stack history",
+  "pricingSnapshot": null
+}

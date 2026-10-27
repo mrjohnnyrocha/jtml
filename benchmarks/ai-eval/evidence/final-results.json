@@ -1,0 +1,149 @@
+{
+  "kind": "harness-validation",
+  "agentTrials": 0,
+  "results": [
+    {
+      "task": "01",
+      "stack": "jtml",
+      "control": "reference",
+      "outcome": "functional_failure",
+      "expected": "pass",
+      "checks": [
+        {
+          "id": "baseline.validation-and-submit",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-confirmation",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-and-reload",
+          "pass": false,
+          "error": "Error: expect(locator).toHaveValue(expected) failed\n\nLocator:  getByRole('textbox', { name: 'Guest name', exact: true })\nExpected: \"\"\nReceived: \"Lin\"\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toHaveValue\" getByRole('textbox', { name: 'Guest name', exact: true }) with timeout 5000ms\n  - waiting for getByRole('textbox', { name: 'Guest name', exact: true })\n    14 × locator resolved to <input aria-label=\"Guest name\" data-jtml-direct-node=\"input\" data-jtml-direct-body-node=\"13\" data-jtml-direct-component-bind=\"name\" data-jtml-direct-component-id=\"Reservation_1\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,aria-label,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\"/>\n       - unexpected value \"Lin\"\n"
+        }
+      ]
+    },
+    {
+      "task": "01",
+      "stack": "react",
+      "control": "reference",
+      "outcome": "pass",
+      "expected": "pass",
+      "checks": [
+        {
+          "id": "baseline.validation-and-submit",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-confirmation",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-and-reload",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "task": "02",
+      "stack": "jtml",
+      "control": "reference",
+      "outcome": "functional_failure",
+      "expected": "pass",
+      "checks": [
+        {
+          "id": "baseline.validation-and-submit",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-confirmation",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-and-reload",
+          "pass": false,
+          "error": "Error: expect(locator).toHaveValue(expected) failed\n\nLocator:  getByRole('textbox', { name: 'Guest name', exact: true })\nExpected: \"\"\nReceived: \"Lin\"\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toHaveValue\" getByRole('textbox', { name: 'Guest name', exact: true }) with timeout 5000ms\n  - waiting for getByRole('textbox', { name: 'Guest name', exact: true })\n    14 × locator resolved to <input aria-label=\"Guest name\" data-jtml-direct-node=\"input\" data-jtml-direct-body-node=\"22\" data-jtml-direct-component-bind=\"name\" data-jtml-direct-component-id=\"Reservation_1\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,aria-label,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\"/>\n       - unexpected value \"Lin\"\n"
+        },
+        {
+          "id": "extension.bounds-total-snapshot-reset",
+          "pass": false,
+          "error": "Error: expect(locator).toHaveValue(expected) failed\n\nLocator:  getByRole('textbox', { name: 'Guest name', exact: true })\nExpected: \"\"\nReceived: \"Jo\"\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toHaveValue\" getByRole('textbox', { name: 'Guest name', exact: true }) with timeout 5000ms\n  - waiting for getByRole('textbox', { name: 'Guest name', exact: true })\n    14 × locator resolved to <input aria-label=\"Guest name\" data-jtml-direct-node=\"input\" data-jtml-direct-body-node=\"22\" data-jtml-direct-component-bind=\"name\" data-jtml-direct-component-id=\"Reservation_1\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,aria-label,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\"/>\n       - unexpected value \"Jo\"\n"
+        }
+      ]
+    },
+    {
+      "task": "02",
+      "stack": "react",
+      "control": "reference",
+      "outcome": "pass",
+      "expected": "pass",
+      "checks": [
+        {
+          "id": "baseline.validation-and-submit",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-confirmation",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-and-reload",
+          "pass": true
+        },
+        {
+          "id": "extension.bounds-total-snapshot-reset",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "task": "01",
+      "stack": "jtml",
+      "control": "seeded-reset-defect",
+      "outcome": "functional_failure",
+      "expected": "functional_failure",
+      "caught": true,
+      "checks": [
+        {
+          "id": "baseline.validation-and-submit",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-confirmation",
+          "pass": false,
+          "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('Not reserved', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('Not reserved', { exact: true }) with timeout 5000ms\n  - waiting for getByText('Not reserved', { exact: true })\n"
+        },
+        {
+          "id": "baseline.reset-and-reload",
+          "pass": false,
+          "error": "Error: expect(locator).toHaveValue(expected) failed\n\nLocator:  getByRole('textbox', { name: 'Guest name', exact: true })\nExpected: \"\"\nReceived: \"Lin\"\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toHaveValue\" getByRole('textbox', { name: 'Guest name', exact: true }) with timeout 5000ms\n  - waiting for getByRole('textbox', { name: 'Guest name', exact: true })\n    14 × locator resolved to <input aria-label=\"Guest name\" data-jtml-direct-node=\"input\" data-jtml-direct-body-node=\"12\" data-jtml-direct-component-bind=\"name\" data-jtml-direct-component-id=\"Reservation_1\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,aria-label,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\"/>\n       - unexpected value \"Lin\"\n"
+        }
+      ]
+    },
+    {
+      "task": "01",
+      "stack": "react",
+      "control": "seeded-reset-defect",
+      "outcome": "functional_failure",
+      "expected": "functional_failure",
+      "caught": true,
+      "checks": [
+        {
+          "id": "baseline.validation-and-submit",
+          "pass": true
+        },
+        {
+          "id": "baseline.reset-confirmation",
+          "pass": false,
+          "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('Not reserved', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('Not reserved', { exact: true }) with timeout 5000ms\n  - waiting for getByText('Not reserved', { exact: true })\n"
+        },
+        {
+          "id": "baseline.reset-and-reload",
+          "pass": false,
+          "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('Not reserved', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('Not reserved', { exact: true }) with timeout 5000ms\n  - waiting for getByText('Not reserved', { exact: true })\n"
+        }
+      ]
+    }
+  ]
+}

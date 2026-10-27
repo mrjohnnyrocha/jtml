@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-27",
+  "agentTrials": 0,
+  "unitTests": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0
+  },
+  "pilot": {
+    "directory": "pilot-verified",
+    "exitCode": 1,
+    "referencePasses": {
+      "jtml": 0,
+      "react": 2
+    },
+    "referenceCasesPerStack": 2,
+    "seededConfirmationDefectsDetected": 2,
+    "agentPerformanceEvidence": false
+  },
+  "repositoryGate": {
+    "command": "scripts/verify_all.sh",
+    "firstAttempt": "configure failed: sandbox could not download WebSocket++",
+    "retryExitCode": 0,
+    "ctestPassed": 476,
+    "browserBenchmarks": 9,
+    "browserExit": "clean for all nine",
+    "liveSmokePassed": 8,
+    "verificationSkips": 0,
+    "knownObservations": [
+      "five native body-plan complete-attribute discrepancies",
+      "reference index.html 99939 bytes exceeds 70000-byte microfixture budget"
+    ]
+  },
+  "initialNpmInstall": "sandbox DNS ENOTFOUND; approved network retry installed pinned dependencies",
+  "hostedCI": "not measured at report time"
+}

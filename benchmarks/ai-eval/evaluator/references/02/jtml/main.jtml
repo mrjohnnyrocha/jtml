@@ -1,0 +1,34 @@
+jtml 2
+make Reservation
+  let name = ""
+  let saved = "Not reserved"
+  let size = 1
+  get total = size * 20
+  when add
+    if size < 6
+      size += 1
+  when remove
+    if size > 1
+      size -= 1
+  when reserve
+    if name == ""
+      saved = "Name required"
+    else
+      saved = "Reserved for {name} ({size} guests)"
+  when reset
+    name = ""
+    saved = "Not reserved"
+    size = 1
+  h1 "Reservation"
+  form submit reserve
+    label "Guest name"
+      input into name aria-label "Guest name"
+    text "Guests: {size}"
+    text "Total: EUR {total}"
+    button "Add guest" type "button" click add
+    button "Remove guest" type "button" click remove
+    button "Reserve" type "submit"
+    button "Reset" type "button" click reset
+  text saved
+page
+  Reservation

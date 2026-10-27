@@ -1,0 +1,24 @@
+{
+  "compiler": {
+    "path": "/Users/joaorocha/.codex/worktrees/v030-rc1-distribution/jtml-v1/dist/rc2-acceptance-40353788558/extracted/darwin-bundle/release/bin/jtml",
+    "sha256": "b96cadca3a0ff010ddcebf931eba60822a89ee40da7537be2024ac59417f17b9",
+    "version": "jtml 0.3.0-rc.2"
+  },
+  "node": "v22.23.3",
+  "platform": "darwin/arm64",
+  "checks": [
+    {
+      "mode": "clean",
+      "name": "minimal-reset",
+      "pass": false,
+      "error": "AssertionError [ERR_ASSERTION]: state echo cleared: input must also clear\n\n'Before reset' !== ''\n"
+    },
+    {
+      "mode": "clean",
+      "name": "programmatic-and-retained-inputs",
+      "pass": false,
+      "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n+ actual - expected\n\n+ ''\n- 'Loaded & <safe>'\n"
+    }
+  ],
+  "browser": "153.0.8010.12"
+}

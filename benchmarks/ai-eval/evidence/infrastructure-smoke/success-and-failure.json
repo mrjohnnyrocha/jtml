@@ -1,0 +1,104 @@
+{
+  "kind": "infrastructure-smoke",
+  "provider": "deterministic-stub",
+  "paidApiCalls": 0,
+  "agentTrials": 0,
+  "pass": true,
+  "status": "passed",
+  "cases": [
+    {
+      "id": "stub-success",
+      "kind": "infrastructure-smoke-attempt",
+      "status": "submitted",
+      "applicationOutcome": "pass",
+      "expected": "pass",
+      "pass": true
+    },
+    {
+      "id": "stub-failure",
+      "kind": "infrastructure-smoke-attempt",
+      "status": "submitted",
+      "applicationOutcome": "functional_failure",
+      "expected": "functional_failure",
+      "pass": true
+    }
+  ],
+  "workerImage": "sha256:bff47eabffba34021986fa29be3318b9a48307db8354d785077ecd9bfab4a84d",
+  "workerCompilerSha256": "f1ec136a180b3fcec1227fbe025d81c33139d1a7b4dfea27b3205d4bd119f276",
+  "oracleSha256": "5faabdc8a064e3c64ab8da01d9067208e3dd89613f5f4794babeec8470adff72",
+  "controllerHashes": {
+    "agent/core.mjs": "f36d37142d150abab149d52021e964f5c85aff7451caf69928192f869251c694",
+    "agent/worker.mjs": "1f64038812cbe6d806ace17770f04b6ec69d8572f31f4274e24ab765e0f3bac1",
+    "agent/run.mjs": "6f80b84e027061359d49eb45204f818eab0857c42f3a95cb7841f09d60ff180f",
+    "agent/accept-built.mjs": "a6429fbf69042bda26cb43cb0a51d7fe95d4b3c1c339acce93821b8537c1409f",
+    "agent/system.md": "0c045ab41aea2aafecea9998f5aed223f18c24288d0814e3e4b8b158ee2666b1",
+    "agent/summary.mjs": "f55788be15bac7239018dd39eb0492879d7c13901a79cbdc7b39ec31204a8fdd",
+    "agent/Worker.Dockerfile": "9de1c6b192bc4bd2ecbfd7bf982bab091b5dd138e74e95c230b04754a7fa76cc",
+    "agent/Worker.Dockerfile.dockerignore": "c74eb7237e6268416c9e5f358e4e6560f1f4ff7e2852b985b4df65081426eed8",
+    "agent/stub.mjs": "74ec55e8f4de22863387639c33f23df7abcb36a02d1983e74bf0be4899243deb",
+    "agent/smoke.mjs": "597c4ef7d5be3f310bde4e5d6f76875c402a779328913c002898505807ed8037",
+    "agent/stubs/success.jtml": "1b50fdd01419ec0efc5bac02a3c262b557550cfdff0f6ed2d38f32b022b9e1c4",
+    "agent/stubs/failure.jtml": "f191342426641ae33b231d47b895a81a63770bbb208c1eb468656a6121822622"
+  },
+  "isolation": {
+    "kind": "isolation-smoke",
+    "pass": true,
+    "checks": [
+      {
+        "id": "compiler-hash",
+        "pass": true,
+        "exit": 0,
+        "signal": null,
+        "timedOut": false,
+        "truncated": false,
+        "output": "f1ec136a180b3fcec1227fbe025d81c33139d1a7b4dfea27b3205d4bd119f276  /opt/jtml/bin/jtml\n"
+      },
+      {
+        "id": "root-readonly",
+        "pass": true,
+        "exit": 0,
+        "signal": null,
+        "timedOut": false,
+        "truncated": false,
+        "output": ""
+      },
+      {
+        "id": "no-evaluator-or-host",
+        "pass": true,
+        "exit": 0,
+        "signal": null,
+        "timedOut": false,
+        "truncated": false,
+        "output": ""
+      },
+      {
+        "id": "no-credentials",
+        "pass": true,
+        "exit": 0,
+        "signal": null,
+        "timedOut": false,
+        "truncated": false,
+        "output": ""
+      },
+      {
+        "id": "no-network",
+        "pass": true,
+        "exit": 0,
+        "signal": null,
+        "timedOut": false,
+        "truncated": false,
+        "output": ""
+      },
+      {
+        "id": "local-browser",
+        "pass": true,
+        "exit": 0,
+        "signal": null,
+        "timedOut": false,
+        "truncated": false,
+        "output": ""
+      }
+    ],
+    "inspectValid": true
+  }
+}

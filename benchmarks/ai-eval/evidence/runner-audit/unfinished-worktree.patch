@@ -1,0 +1,47 @@
+diff --git a/benchmarks/ai-eval/harness.mjs b/benchmarks/ai-eval/harness.mjs
+index c318e3f..a023b30 100644
+--- a/benchmarks/ai-eval/harness.mjs
++++ b/benchmarks/ai-eval/harness.mjs
+@@ -20,7 +20,7 @@ export function snapshot(source,dest,includeOutputs=false){
+ export function manifest(dir){
+  const out={};
+  function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){
+-  const f=path.join(d,e.name);if(e.isDirectory())walk(f);else out[path.relative(dir,f)]=hash(f);
++  const f=path.join(d,e.name);if(e.isSymbolicLink())throw new Error(`Symlink not allowed: ${f}`);if(e.isDirectory())walk(f);else out[path.relative(dir,f)]=hash(f);
+  }} walk(dir);return out;
+ }
+ export function validate(task,stack){if(!['01','02'].includes(task)||!['jtml','react'].includes(stack))throw new Error('Only pilot tasks 01/02 and stacks jtml/react are executable');}
+@@ -66,7 +66,8 @@ export async function evaluate(task,stack,source,out){
+   let command,args;
+   if(stack==='jtml'){
+    command=process.env.JTML_BIN;if(!command)throw new Error('JTML_BIN required');
+-   result.compiler={sha256:hash(command),version:spawnSync(command,['--version'],{encoding:'utf8'}).stdout?.trim()};
++   if(process.env.JTML_COMPILER_SHA&&!/^[a-f0-9]{40}$/.test(process.env.JTML_COMPILER_SHA))throw new Error('JTML_COMPILER_SHA must be a full source commit');
++   result.compiler={sourceCommit:process.env.JTML_COMPILER_SHA||null,sha256:hash(command),version:spawnSync(command,['--version'],{encoding:'utf8'}).stdout?.trim()};
+    args=['build','main.jtml','--target','browser','--out',dist];
+   }else{
+    // Dependencies are provisioned by the evaluator, never by candidate package scripts.
+diff --git a/benchmarks/ai-eval/package.json b/benchmarks/ai-eval/package.json
+index 33d8c1e..0fc5e8d 100644
+--- a/benchmarks/ai-eval/package.json
++++ b/benchmarks/ai-eval/package.json
+@@ -2,7 +2,16 @@
+   "name": "jtml-ai-eval-pilot",
+   "private": true,
+   "type": "module",
+-  "scripts": {"test": "node --test harness.test.mjs"},
+-  "dependencies": {"@playwright/test": "1.63.0", "react": "19.2.0", "react-dom": "19.2.0", "vite": "7.2.2"},
+-  "engines": {"node": ">=22.12.0"}
++  "scripts": {
++    "test": "node --test harness.test.mjs agent/*.test.mjs"
++  },
++  "dependencies": {
++    "@playwright/test": "1.63.0",
++    "react": "19.2.0",
++    "react-dom": "19.2.0",
++    "vite": "7.2.2"
++  },
++  "engines": {
++    "node": ">=22.12.0"
++  }
+ }

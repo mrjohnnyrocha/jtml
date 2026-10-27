@@ -485,6 +485,12 @@ std::vector<std::string> templateExpressionDependencies(
     for (size_t i = 1; i < tokens.size(); ++i) {
         const std::string& token = tokens[i];
         if (token == "into") {
+            // Text inputs read state for their displayed value as well as
+            // writing it on input. Keep this dependency in the Runtime Plan so
+            // programmatic writes invalidate retained/conditional controls.
+            if (tokens.front() == "input" && i + 1 < tokens.size()) {
+                appendUnique(reads, expressionDependencies(tokens[i + 1]));
+            }
             ++i;
             continue;
         }

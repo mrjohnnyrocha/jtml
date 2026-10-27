@@ -119,6 +119,17 @@ jobs:
       - name: Root conditional component lifecycle (browser required)
         run: node tests/browser/root_conditional_mount.cjs
 
+      - name: Input state synchronization (browser required)
+        run: node tests/browser/input_state_sync.cjs
+
+      - name: Preserve input synchronization browser evidence
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: input-state-sync-${{ matrix.os }}
+          path: dist/input-state-sync
+
       - name: ReleaseDesk real persistence (browser required)
         run: scripts/test_releasedesk.sh
 

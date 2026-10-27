@@ -1,0 +1,34 @@
+jtml 2
+
+make Editor label
+  let name = ""
+  let ticks = 0
+  let shown = false
+  get echo = "Name: [{name}]"
+  when clear
+    name = ""
+  when load
+    name = "Loaded & <safe>"
+  when toggle
+    shown = !shown
+  when key event
+    if event.key == "Escape"
+      name = ""
+    if event.key == "F2"
+      name = "Focused replacement"
+    if event.key == "F3"
+      ticks += 1
+  section aria-label label
+    input into name aria-label "Name" keydown key
+    input into name aria-label "Mirror"
+    text echo
+    text "Ticks: {ticks}"
+    button "Clear" click clear
+    button "Load" click load
+    button "Toggle extra" click toggle
+    if shown
+      input into name aria-label "Extra"
+
+page
+  Editor "First editor"
+  Editor "Second editor"

@@ -1,0 +1,59 @@
+{
+  "classification": "compiler defect: static component input binding omits state-to-value emission and read dependency",
+  "date": "2026-10-27",
+  "baseSHA": "220dd89cbbb8d070872185b06c164630248d94c8",
+  "publishedRC2": {
+    "sha256": "b96cadca3a0ff010ddcebf931eba60822a89ee40da7537be2024ac59417f17b9",
+    "independentBrowserCases": {
+      "passed": 0,
+      "failed": 2,
+      "modes": [
+        "clean"
+      ]
+    },
+    "originalBenchmarkProbeExit": 1,
+    "artifactsModified": false
+  },
+  "correctedCohort": {
+    "identity": "0.3.0-dev on codex/component-input-state-sync",
+    "sha256": "aed6dd26d4c83c3a52554d10719c6d41cfab4332d3ab311b3d86c00c38d70112",
+    "independentBrowserCases": {
+      "passed": 6,
+      "failed": 0,
+      "modes": [
+        "clean",
+        "compat",
+        "debug"
+      ]
+    },
+    "originalBenchmarkProbeExit": 0,
+    "unchangedBenchmarkReferenceCases": {
+      "jtml": {
+        "passed": 2,
+        "failed": 0
+      },
+      "react": {
+        "passed": 2,
+        "failed": 0
+      }
+    },
+    "seededConfirmationDefectsDetected": 2,
+    "benchmarkSHA": "7a2cb04c270adc1ec8fe04e8b9f544b84991d706",
+    "agentTrials": 0
+  },
+  "fullGate": {
+    "command": "scripts/verify_all.sh",
+    "exitCode": 0,
+    "ctestPassed": 477,
+    "browserBenchmarks": 9,
+    "browserExit": "clean for all nine",
+    "newSyncCases": 6,
+    "liveSmokePassed": 8,
+    "verificationSkips": 0,
+    "knownFailures": [
+      "five native complete-attribute renderer observations",
+      "reference index.html 99953 bytes exceeds existing 70000-byte microfixture budget"
+    ]
+  },
+  "hostedCI": "separate evidence; pending at report time"
+}

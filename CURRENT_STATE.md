@@ -6,6 +6,19 @@ The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.
 
+## Static component text input synchronization
+
+The published RC.2 input-reset discrepancy is reproduced with its exact binary.
+The development compiler restores the implicit value expression and input read
+dependency for `input into` on local writable state. Clean/compat/debug browser
+checks cover empty/nonempty programmatic changes, retained focus/selection,
+mirrors, conditional creation and sibling isolation. Full gate: 477/477 CTests,
+nine clean-exit benchmarks and live smoke 8/8, no verification skips. Published
+RC.2 artifacts and draft benchmark PR #51's evidence remain unchanged; corrected
+references are a separately identified development cohort. Five native renderer
+discrepancies and the reference HTML-size overage remain. See
+[cause, reproduction and compatibility](docs/architecture/input-state-sync/README.md).
+
 ## Root-conditional component lifecycle
 
 Root template insertion now reuses component registration, generated static

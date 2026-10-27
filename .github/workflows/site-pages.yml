@@ -1,0 +1,112 @@
+name: Website preview and manual Pages deployment
+
+on:
+  pull_request:
+    paths:
+      - 'site/**'
+      - 'scripts/build_site.sh'
+      - 'scripts/build_public_site.py'
+      - 'tests/browser/site.cjs'
+      - 'examples/friendly_counter.jtml'
+      - 'docs/tooling/website-launch.md'
+      - '.github/workflows/site-pages.yml'
+  workflow_dispatch:
+    inputs:
+      source_revision:
+        description: 'Full reviewed website commit SHA on main; dispatch only after Pages activation approval'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jtml-website-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      SITE_BASE_URL: https://mrjohnnyrocha.github.io/jtml/
+    steps:
+      - name: Check out website source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_revision || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify selected deployment revision
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SOURCE_REVISION: ${{ inputs.source_revision }}
+        run: |
+          test "$GITHUB_REF" = refs/heads/main
+          [[ "$SOURCE_REVISION" =~ ^[0-9a-fA-F]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$(printf '%s' "$SOURCE_REVISION" | tr '[:upper:]' '[:lower:]')"
+          git merge-base --is-ancestor HEAD origin/main
+          test -z "$(git status --porcelain --untracked-files=normal)"
+      - name: Use the published and hash-pinned RC.2 compiler
+        run: |
+          mkdir -p "$RUNNER_TEMP/site-compiler"
+          curl --fail --location --output "$RUNNER_TEMP/site-compiler/rc2.tar.gz" \
+            https://github.com/mrjohnnyrocha/jtml/releases/download/v0.3.0-rc.2/jtml-0.3.0-rc.2-linux-x86_64.tar.gz
+          echo "6c3e21a53bf7729b824c27e73d1ce35ffe69182f98dd8c95f4969084c53e1d6b  $RUNNER_TEMP/site-compiler/rc2.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/site-compiler/rc2.tar.gz" -C "$RUNNER_TEMP/site-compiler"
+          test "$("$RUNNER_TEMP/site-compiler/release/bin/jtml" --version)" = 'jtml 0.3.0-rc.2'
+          echo "JTML_BIN=$RUNNER_TEMP/site-compiler/release/bin/jtml" >> "$GITHUB_ENV"
+      - name: Build genuine production demo and website
+        run: scripts/build_site.sh dist/site
+      - name: Install pinned browser test tools
+        run: |
+          export PLAYWRIGHT_BROWSERS_PATH="$RUNNER_TEMP/site-browsers"
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix "$RUNNER_TEMP/site-playwright" --no-save playwright@1.63.0
+          "$RUNNER_TEMP/site-playwright/node_modules/.bin/playwright" install chromium-headless-shell
+          echo "JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=$RUNNER_TEMP/site-playwright" >> "$GITHUB_ENV"
+          echo "JTML_BENCH_BROWSER=$(find "$PLAYWRIGHT_BROWSERS_PATH" -type f -name chrome-headless-shell -perm -111 -print -quit)" >> "$GITHUB_ENV"
+      - name: Test project paths, strict CSP, mobile and actual interactions
+        run: node tests/browser/site.cjs dist/site
+      - name: Preserve review artifact only
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-preview-${{ github.sha }}
+          path: dist/site
+          include-hidden-files: true
+          if-no-files-found: error
+      - name: Preserve browser screenshots for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-browser-${{ github.sha }}
+          path: dist/website-*.png
+          if-no-files-found: error
+      - name: Prepare Pages artifact only for manual deployment
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist/site
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Read existing Pages configuration (do not enable a domain)
+        id: pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: false
+      - name: Require the reviewed github.io fallback
+        env:
+          CONFIGURED_URL: ${{ steps.pages.outputs.base_url }}
+        run: test "${CONFIGURED_URL%/}" = https://mrjohnnyrocha.github.io/jtml
+      - name: Deploy the tested artifact after manual activation
+        id: deployment
+        uses: actions/deploy-pages@v4

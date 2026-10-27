@@ -162,6 +162,7 @@ jobs:
       - name: Predeploy site and package artifacts
         run: |
           scripts/build_site.sh dist/site
+          node tests/browser/site.cjs dist/site
           scripts/package_cli.sh dist/release
           test -f dist/site/tools.html
           test -f dist/release/bin/jtml

@@ -27,6 +27,22 @@ select values remain limitations; root-conditional mounting is repaired above;
 raw HTML/extern/live preview CSP is outside this bounded proof. See
 [transport and verification](docs/architecture/browser-root-csp.md).
 
+## Public RC.2 and website launch
+
+[v0.3.0-rc.2 is publicly released](https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.2)
+from `13c53ab475c9e82ac4be2b232f744d664e926dea`. Its exact hosted Ubuntu/macOS
+artifacts and both downloaded layouts passed physical macOS 14.4.1 acceptance;
+all 17 public attachments were downloaded anonymously and matched the approved
+hashes. This does not establish production readiness or resolve the known
+native-renderer/HTML-size limitations. Release preparation/audit entries below
+retain their historical scope; they are not new publication blockers.
+
+The website reuses the existing design with a real clean-production Counter and
+the published RC.2 compiler. Its workflow builds PR previews but deploys only on
+explicit manual dispatch from main after Pages activation. The fallback is
+`mrjohnnyrocha.github.io/jtml/`; jtml.org ownership is not assumed. No website has
+been deployed by this change. See [activation and verification](docs/tooling/website-launch.md).
+
 ## RC.1 macOS backward compatibility blocker
 
 The original macOS RC from hosted run 40150110121 fails at dyld startup on

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="JTML is an experimental, compiler-driven language for web applications. Explore Friendly JTML 2 and build the v0.3 research preview from source.">
+    <meta name="description" content="JTML is an experimental, compiler-driven language for web applications. Try a real compiled Counter and install the v0.3.0-rc.2 experimental prerelease.">
     <meta name="theme-color" content="#172026">
     <title>JTML - experimental language for web applications</title>
     <link rel="stylesheet" href="./styles.css">
@@ -16,7 +16,7 @@
       </a>
       <nav class="nav-links" aria-label="Primary">
         <a href="#syntax">Syntax</a>
-        <a href="#try">Try</a>
+        <a href="#demo">Try</a>
         <a href="./tools.html">Tools</a>
         <a href="./examples.html">Examples</a>
         <a href="./reference.html">Reference</a>
@@ -55,8 +55,8 @@ page
   button "+ Add" click add</code></pre>
           <div class="scene-preview">
             <span class="preview-bar"></span>
-            <span class="preview-title">Rendered page</span>
-            <span class="preview-heading">Simplified HTML</span>
+            <span class="preview-title">Static syntax illustration</span>
+            <span class="preview-heading">HTML-shaped UI</span>
             <span class="preview-line"></span>
             <span class="preview-button">Count: 1</span>
           </div>
@@ -68,12 +68,12 @@ page
           <p class="hero-copy">
             Write HTML-shaped markup, observable state, actions, and components in
             Friendly JTML 2. The C++17 compiler generates HTML and JavaScript for
-            supported browser-local applications. Active development targets an
-            experimental v0.3 research preview; JTML is not production-ready.
+            supported browser-local applications. The v0.3.0-rc.2 experimental prerelease
+            is available for technical testers; JTML is not production-ready.
           </p>
           <div class="hero-actions" aria-label="Primary actions">
-            <a class="button primary" href="#try">Run locally</a>
-            <a class="button secondary" href="https://github.com/mrjohnnyrocha/jtml">Source on GitHub</a>
+            <a class="button primary" href="#demo">Try the live Counter</a>
+            <a class="button secondary" href="https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.2">Download RC.2</a>
           </div>
         </div>
       </section>
@@ -81,8 +81,8 @@ page
       <section class="trust-section" aria-labelledby="trust-title">
         <div class="metric-grid" aria-label="JTML research toolchain">
           <article>
-            <strong>Build from source</strong>
-            <span>No online JTML service is required. Initial dependency downloads need network access or a cache.</span>
+            <strong>Install or build</strong>
+            <span>RC.2 packages target Ubuntu 22.04 x86_64 and Apple Silicon macOS. No hosted compiler account is required.</span>
           </article>
           <article>
             <strong>1 binary</strong>
@@ -93,8 +93,8 @@ page
             <span>Normal attributes, custom elements, boolean attrs, events, and static HTML output.</span>
           </article>
           <article>
-            <strong>Research preview</strong>
-            <span>CLI/C API and package identities default to 0.3.0-dev; editor source is independently versioned at 0.2.0. No v0.3 release is published.</span>
+            <strong>Experimental RC.2</strong>
+            <span>CLI/C API packages report 0.3.0-rc.2. Source builds default to 0.3.0-dev; editor source remains independently versioned at 0.2.0.</span>
           </article>
         </div>
       </section>
@@ -112,19 +112,33 @@ page
 
         <div class="syntax-lab">
           <div class="segmented-control" role="tablist" aria-label="Syntax comparison">
-            <button class="segment is-active" type="button" role="tab" aria-selected="true" data-snippet="jtml">JTML</button>
-            <button class="segment" type="button" role="tab" aria-selected="false" data-snippet="html">HTML</button>
-            <button class="segment" type="button" role="tab" aria-selected="false" data-snippet="react">React</button>
+            <button class="segment is-active" type="button" role="tab" aria-selected="true" id="syntax-jtml" aria-controls="syntax-panel" tabindex="0" data-snippet="jtml">JTML</button>
+            <button class="segment" type="button" role="tab" aria-selected="false" id="syntax-html" aria-controls="syntax-panel" tabindex="-1" data-snippet="html">HTML</button>
+            <button class="segment" type="button" role="tab" aria-selected="false" id="syntax-react" aria-controls="syntax-panel" tabindex="-1" data-snippet="react">React</button>
           </div>
           <div class="code-stage">
-            <pre aria-live="polite"><code id="snippet-code"></code></pre>
+            <pre id="syntax-panel" role="tabpanel" aria-labelledby="syntax-jtml"><code id="snippet-code"><!-- counter-source --></code></pre>
           </div>
+          <p class="comparison-note">The JTML tab is the complete source compiled for the Counter below. HTML and React tabs are illustrative comparisons, not its implementation.</p>
           <div class="syntax-notes" aria-label="Syntax notes">
             <span><strong>jtml 2</strong> selects Friendly syntax</span>
             <span><strong>page</strong> opens the app root</span>
             <span><strong>click</strong> wires actions to events</span>
             <span><strong>get</strong> keeps values reactive</span>
           </div>
+        </div>
+      </section>
+
+      <section class="demo-section" id="demo" aria-labelledby="demo-title">
+        <div class="section-heading">
+          <p class="eyebrow">Try JTML in your browser</p>
+          <h2 id="demo-title">A real compiled Counter.</h2>
+          <p>Click Add one, then Reset. This iframe runs genuine clean-production output from Friendly JTML, with no server or simulated counter code.</p>
+          <p><a href="./demo/counter/">Open Counter on its own</a> · <a href="./counter.jtml">Read the exact JTML source</a> · <a href="./site-build.json">Build provenance</a></p>
+        </div>
+        <div class="demo-frame-wrap">
+          <iframe title="Interactive Friendly JTML Counter" src="./demo/counter/" class="counter-demo"></iframe>
+          <noscript>The Counter needs JavaScript. You can still read its source and the installation instructions.</noscript>
         </div>
       </section>
 
@@ -162,30 +176,30 @@ page
 
       <section class="try-section" id="try" aria-labelledby="try-title">
         <div class="section-heading">
-          <p class="eyebrow">Try it locally</p>
-          <h2 id="try-title">Build and run a local example.</h2>
-          <p>
-            Start with Git, a C++17 compiler, CMake (validated with 3.31.3), and Python 3
-            to serve static files. Dependency downloads require network access or
-            a cache. No released v0.3 package is assumed.
-          </p>
+          <p class="eyebrow">Install RC.2</p>
+          <h2 id="try-title">Take the same Counter home.</h2>
+          <p>Download the matching archive and SHA256SUMS from the
+            <a href="https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.2">public v0.3.0-rc.2 prerelease</a>.
+            Ubuntu 22.04 x86_64 and Apple Silicon macOS are the tested targets.
+            The binaries are unsigned/unnotarized; read the <a href="./deploy.html">installation and platform contract</a>.</p>
         </div>
 
         <div class="steps">
           <article class="step">
             <span class="step-number">1</span>
-            <h3>Clone And Build</h3>
-            <pre><code>git clone https://github.com/mrjohnnyrocha/jtml.git
-cd jtml
-cmake -S . -B build -DJTML_BUILD_PYTHON=OFF
-cmake --build build --target jtml_cli --parallel</code></pre>
+            <h3>Verify And Extract</h3>
+            <pre><code># Example: macOS arm64 bundle
+# Run beside the downloaded tarball and SHA256SUMS.
+grep '  jtml-0.3.0-rc.2-darwin-arm64.tar.gz$' SHA256SUMS | shasum -a 256 -c -
+tar -xzf jtml-0.3.0-rc.2-darwin-arm64.tar.gz
+cd release</code></pre>
           </article>
           <article class="step">
             <span class="step-number">2</span>
             <h3>Check And Compile</h3>
-            <pre><code>./build/jtml --version
-./build/jtml check examples/friendly_counter.jtml
-./build/jtml build examples/friendly_counter.jtml --target browser --out dist/counter</code></pre>
+            <pre><code>./bin/jtml --version
+./bin/jtml check examples/friendly_counter.jtml
+./bin/jtml build examples/friendly_counter.jtml --target browser --out dist/counter</code></pre>
           </article>
           <article class="step">
             <span class="step-number">3</span>
@@ -221,6 +235,16 @@ cmake --build build --target jtml_cli --parallel</code></pre>
         </div>
       </section>
 
+      <section class="limitations-section" aria-labelledby="limitations-title">
+        <div class="section-heading">
+          <p class="eyebrow">Experimental means bounded</p>
+          <h2 id="limitations-title">What this release does not promise.</h2>
+          <p>Five native-renderer discrepancies remain. Reference HTML exceeds its 70000-byte microfixture budget (99939 bytes); the shared runtime remains within 271961/272000 bytes. Type/source-span coverage and tooling are experimental.</p>
+          <p>Direct root-loop components are unsupported; root ID/select and implicit component-input limitations remain documented. There is no stable cross-version C ABI, production-service contract, or Windows/Intel/universal Mac/Linux arm64/Python wheel/VSIX package.</p>
+          <p><a href="https://github.com/mrjohnnyrocha/jtml/blob/v0.3.0-rc.2/docs/releases/v0.3.0-rc.2.md">Read the complete RC.2 contract</a> · <a href="https://github.com/mrjohnnyrocha/jtml/blob/v0.3.0-rc.2/docs/releases/rc-feedback.md">Report an early-user finding</a></p>
+        </div>
+      </section>
+
       <section class="roadmap-section" id="roadmap" aria-labelledby="roadmap-title">
         <div class="section-heading">
           <p class="eyebrow">Roadmap</p>
@@ -241,8 +265,8 @@ cmake --build build --target jtml_cli --parallel</code></pre>
             <span>Boolean attributes, custom elements, SVG-friendly names, and void-element ergonomics.</span>
           </li>
           <li>
-            <strong>Distribution validation</strong>
-            <span>Verify documentation, local artifacts, ownership, and security boundaries before release decisions.</span>
+            <strong>External technical testing</strong>
+            <span>RC.2 is published with checksums, provenance and physical macOS 14.4.1 acceptance. Collect small reproducible reports before expanding the support contract.</span>
           </li>
         </ol>
       </section>

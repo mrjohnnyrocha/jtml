@@ -64,12 +64,13 @@ python3 -m http.server 8000 --bind 127.0.0.1 --directory counter-dist</code></pr
         </article>
         <article>
           <h2>Source builds</h2>
+          <p>For a complete form with input reset, use <a href="https://github.com/mrjohnnyrocha/jtml/blob/main/docs/getting-started.md">the first-app guide on current main</a>. RC.2 leaves the old textbox text visible after a programmatic reset; that fix is not yet released.</p>
           <p><a href="https://github.com/mrjohnnyrocha/jtml#readme">Build from source</a> with a C++17 compiler and CMake. Source builds default to 0.3.0-dev; RC.2 is selected explicitly when packaging. Optional Python bindings and VSIX publication have separate requirements.</p>
         </article>
         <article>
           <h2>Static hosting</h2>
           <p>The generated Counter needs no backend. Serve <code>index.html</code>, <code>jtml-runtime.js</code>, <code>components/index.js</code> and <code>app.js</code> together with HTML/JavaScript MIME types. Scripts use <code>script-src 'self'</code>; the example's inline styles require a separate style policy.</p>
-          <p><a href="https://github.com/mrjohnnyrocha/jtml/blob/v0.3.0-rc.2/docs/releases/v0.3.0-rc.2.md">Full RC.2 installation, checksums, provenance and limitations</a>.</p>
+          <p><a href="https://github.com/mrjohnnyrocha/jtml/blob/main/docs/releases/v0.3.0-rc.2.md">Full RC.2 installation, checksums, provenance and limitations</a>.</p>
         </article>
       </section>
     </main>

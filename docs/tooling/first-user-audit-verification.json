@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-28",
+  "branch": "codex/first-user-audit",
+  "mainBaseline": "1e65fb9425eb36474fd885afd6732e34141134ed",
+  "compilerCorrectionHead": "85b64cef73235523d54e14a4faabdcce53c751fd",
+  "compilerChangesInOnboardingPR": false,
+  "cleanCloneHead": "1e65fb9425eb36474fd885afd6732e34141134ed",
+  "sourceSHA256": {
+    ".github/workflows/ci.yml": "1ecdbec93cd9aa4f47e11077318589ca7c1cbbc5ffd80fc413d65dea6e1da6c2",
+    "README.md": "8ce48345e77a79c63e8a65a52ed6da8c504ba572967b46f40597c71893cc821e",
+    "docs/README.md": "07d7c641dffa9723085471768afe0bbb9c8135b84ab875aab7383b9e71fc2578",
+    "docs/getting-started.md": "4b6ec8c484776857629b9abfec8c4d5653db3b8e8cfaacea041395f8de530489",
+    "docs/reference/language-reference.md": "8f39cba2e2b47b81ece52a47a1909e6a250d11d1a0fa70b280a53d0e9473df80",
+    "docs/releases/v0.3.0-rc.2.md": "9a24dff09be410bc5f2c1d4d7f9f7a7cee3684c7587c384e16164b4b81c6da5c",
+    "docs/tooling/deployment.md": "6ff3466704d7b0138b1d48eb82e5d70b875846d0f01d21c5ddec018e7f15b89f",
+    "docs/tooling/first-user-audit.md": "70392906fb4f1cef65e0f403c4eb963391d999807934df00d93e535567cddc27",
+    "scripts/verify_all.sh": "fa241acfca58d1553f9d3faae59684ba98016f00a0e750d93e06a8dbdfdefa25",
+    "site/deploy.html": "99a7181aa29417f3a777554dac505f595db026ed52c5603ddccae66eb2ecca34",
+    "site/index.html": "a374fe5ee38730e9e993c34afaff2f4648519786570259fb8a8d4969d289fc31",
+    "tests/browser/first_user.cjs": "078f913a84113b9320f2a8d6da1124e665310b266a8d98bc1224678bea3d554c"
+  },
+  "preservation": {
+    "originalFiles": 12,
+    "snapshot": "/tmp/jtml-first-user.d6M2fw/post-pr53-resume/preserved-files.json",
+    "snapshotSHA256": "54ebd4d1931f71f0a828416aa3cd131f3b91a5ad37bde1d94efa00068ba30d24",
+    "retainedStashCommit": "ad9e64b724ccc84c98b4b0d8b5f3917ebee21d59"
+  },
+  "browserRuns": {
+    "strict-browser": {
+      "result": "/tmp/jtml-first-user.d6M2fw/post-pr53-resume/strict-browser/attempt-Ex9XIR/result.json",
+      "resultSHA256": "865b55bd7c12b597d11948e4f635447112c24dda2c48f8a2c9cfcbe1657ae177",
+      "compilerSHA256": "452f82a8eef9543fecf57a037013cc7eaede24552cc47d24149628a197c065f8",
+      "browser": "153.0.8010.12",
+      "traceSHA256": "be0f94590845d7db6d9f1af5a9e059d30b5f806c6cb264a7e1f911e32c2ba635",
+      "modularScreenshotSHA256": "69aa0f852c296bd17593ac24ccff96309a46412f4411457a230a8e55c249a490",
+      "coffeeScreenshotSHA256": "c1cbee541fe68d97e0931bd26abf39714cceefa7f0ef82c0d079c1af61132155"
+    },
+    "clean-clone-browser": {
+      "result": "/tmp/jtml-first-user.d6M2fw/post-pr53-resume/clean-clone-browser/attempt-nrG015/result.json",
+      "resultSHA256": "b59a420a22c4a7dc87399041097cc0e2c309754f9a7f318d920052cdee84ce09",
+      "compilerSHA256": "f49a85e32a50e2db9232381ef0c611caee9942316f7b2040883782dca4e645fc",
+      "browser": "153.0.8010.12",
+      "traceSHA256": "480754809ad3c0c2aab338f5e139aa66aab0db085feef3bfa954ad6f2595ab98",
+      "modularScreenshotSHA256": "69aa0f852c296bd17593ac24ccff96309a46412f4411457a230a8e55c249a490",
+      "coffeeScreenshotSHA256": "c1cbee541fe68d97e0931bd26abf39714cceefa7f0ef82c0d079c1af61132155"
+    },
+    "gate-first-user": {
+      "result": "/tmp/jtml-first-user.d6M2fw/post-pr53-resume/gate-first-user/attempt-BTBXt9/result.json",
+      "resultSHA256": "865b55bd7c12b597d11948e4f635447112c24dda2c48f8a2c9cfcbe1657ae177",
+      "compilerSHA256": "452f82a8eef9543fecf57a037013cc7eaede24552cc47d24149628a197c065f8",
+      "browser": "153.0.8010.12",
+      "traceSHA256": "216d49be8009a7cc08c34eade104451ca163a20a15802650588c95730a73d670",
+      "modularScreenshotSHA256": "69aa0f852c296bd17593ac24ccff96309a46412f4411457a230a8e55c249a490",
+      "coffeeScreenshotSHA256": "c1cbee541fe68d97e0931bd26abf39714cceefa7f0ef82c0d079c1af61132155"
+    }
+  },
+  "fullGate": {
+    "exit": 0,
+    "ctests": 480,
+    "performanceBenchmarksCleanExit": 9,
+    "referenceCleanExit": true,
+    "liveSmoke": 8,
+    "verificationSkips": 0,
+    "log": "/tmp/jtml-first-user.d6M2fw/post-pr53-resume/full-gate.log",
+    "logSHA256": "c6943bda5010c247c7453e2ae553a08c73689b1f643fa2ff0a79f7256d47a756",
+    "command": "JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1 JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=<Playwright prefix> JTML_BENCH_BROWSER=<Chromium> bash scripts/verify_all.sh"
+  },
+  "cleanSource": {
+    "script": "/tmp/jtml-first-user.d6M2fw/post-pr53-resume/clean-source.sh",
+    "scriptSHA256": "6e66e173df9ebf1ff45f37d374a7c73fbd4260de09fcc6e96ed811f4115588ff",
+    "logSHA256": "624a7531259cb510fbc885cfd45100e1496421803253a9f2651fb134f5fcb0cf",
+    "environment": "env -i; tools-only PATH; no installed jtml or user Git config; fresh public clone and dependency downloads; parallel build capped at four workers"
+  },
+  "rc2": {
+    "source": "13c53ab475c9e82ac4be2b232f744d664e926dea",
+    "archiveSHA256": "225b0f5e76251e1b70ef9d2fd450a028e2854edbfc3a5546891f5d4332dd94f9",
+    "cliSHA256": "b96cadca3a0ff010ddcebf931eba60822a89ee40da7537be2024ac59417f17b9",
+    "downloadInstructionsSHA256": "4ef979bc63a0466e72653a3cb52ee408bd306ea8d79ea328a47a45845c444381",
+    "downloadLogSHA256": "3521809b2a88b964e61e9f3f1f1d0487f9024d9e7a14e5fd9041074c849fbfb6",
+    "browser": {
+      "counter": true,
+      "coffeeResetExpectedFailure": true,
+      "errors": [],
+      "browser": "153.0.8010.12",
+      "inputAfterClear": "Ada"
+    },
+    "browserResultSHA256": "c9d6ad0da53a95f2d2b35d548bc467dafaabd01076809334ac06f658e090d8e6",
+    "browserTraceSHA256": "b4c3c0ae2d2cc0724f9b1c318cc1583e33e35266de6a82cd8b3018ab411cc1e6",
+    "compilerProbesSHA256": "f4de3a6929290cc4a7be2e3c93ccb072587619af4084454d9f6247efc1c71e23"
+  },
+  "boundaries": [
+    "General conditional/child/input-setter slot limitations remain; no compiler changes here",
+    "Five known native renderer discrepancies and reference HTML size overage remain",
+    "Python bindings off; no new sanitizer run",
+    "No three-developer study performed",
+    "Hosted CI is separate evidence; see exact PR head checks"
+  ],
+  "paidCalls": 0,
+  "releasePublished": false,
+  "websiteDeployed": false,
+  "merged": false
+}

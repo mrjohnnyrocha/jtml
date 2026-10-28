@@ -131,6 +131,16 @@ jobs:
       - name: Imported Friendly components (browser required)
         run: node tests/browser/imported_components.cjs
 
+      - name: First-user guide and modular starter (browser required)
+        run: node tests/browser/first_user.cjs
+
+      - name: Preserve first-user browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: first-user-${{ matrix.os }}
+          path: dist/first-user
+
       - name: Preserve imported component browser evidence
         if: always()
         uses: actions/upload-artifact@v4

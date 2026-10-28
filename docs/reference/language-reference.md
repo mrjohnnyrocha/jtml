@@ -19,6 +19,7 @@ Friendly JTML 2 is the canonical authoring dialect. Start a file with `jtml 2`:
 jtml 2
 
 let count = 0
+get doubled = count * 2
 
 when add
   count += 1

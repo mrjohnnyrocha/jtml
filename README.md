@@ -5,7 +5,7 @@ Friendly JTML 2 puts observable state, actions and HTML-shaped UI in one readabl
 file. The C++17 compiler owns dependency analysis and generates static,
 CSP-safe JavaScript; supported browser apps update locally without a JTML server.
 
-[Build and try it](#get-started-from-source) · [v0.3 support and release status](docs/releases/v0.3-readiness.md) · [Architecture](https://github.com/mrjohnnyrocha/jtml/blob/main/ARCHITECTURE.md)
+[Build and try it](#get-started-from-source) · [Write your first app](docs/getting-started.md) · [v0.3 support and release status](docs/releases/v0.3-readiness.md) · [Architecture](https://github.com/mrjohnnyrocha/jtml/blob/main/ARCHITECTURE.md)
 
 ```jtml
 jtml 2
@@ -42,10 +42,11 @@ The editor source remains independently versioned at **0.2.0** (no VSIX is shipp
 Validated component-argument repairs and remaining native-renderer limitations are
 recorded in the [independent readiness report](docs/releases/v0.3-readiness.md).
 
-For external tester packages, use the prepared [v0.3.0-rc.2 guide](docs/releases/v0.3.0-rc.2.md)
-for review downloads, exact `0.3.0-rc.2` commands, limitations and the five-minute
-smoke. No RC is published automatically; the source quickstart below builds the
-`0.3.0-dev` default.
+For published binary packages, use the [v0.3.0-rc.2 guide](docs/releases/v0.3.0-rc.2.md#install-and-five-minute-first-app-smoke).
+RC.2 runs the Counter below, but its component `input into` bindings do not
+display programmatic resets correctly. That fix is on current main and has not
+been released. The source quickstart builds `0.3.0-dev`; the
+[first-app guide](docs/getting-started.md) uses that development version.
 
 ## Get started from source
 
@@ -70,6 +71,10 @@ stop the static server with Ctrl+C. Keep all four generated assets together:
 `index.html`, `jtml-runtime.js`, `components/index.js`, `app.js`.
 No npm package or hosted JTML service is needed.
 
+Next, [write a small coffee-order form](docs/getting-started.md) with input,
+derived totals, validation and reset. The guide explains the four generated
+assets and provides a browser checklist.
+
 For the separate trusted-code, loopback-only live development backend:
 `./build/jtml serve examples/friendly_counter.jtml --port 8000 --watch`.
 Friendly is canonical; Classic is compatibility/embedding infrastructure and
@@ -86,8 +91,8 @@ Project-owned JTML source, documentation, examples, site and editor resources
 are offered under [Apache License 2.0](LICENSE), SPDX **Apache-2.0**.
 Third-party components retain their own licenses and notices; see
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). This does not relicense dependencies.
-License adoption and provenance are subject to the owner's review before merge;
-no new copyright holder or year is asserted by this PR.
+The [licensing/provenance record](docs/releases/licensing-provenance.md) records
+the owner's distribution authority and third-party provenance.
 
 ## Syntax
 
@@ -300,7 +305,9 @@ Check your install:
 ./build/jtml ui
 ```
 
-Create a starter page:
+The single-file generator currently creates a Classic compatibility example.
+For a new Friendly JTML 2 application, use the [first-app guide](docs/getting-started.md).
+To inspect the compatibility starter:
 
 ```sh
 ./build/jtml new my_page.jtml
@@ -308,13 +315,24 @@ Create a starter page:
 ./build/jtml serve my_page.jtml --port 8000
 ```
 
-Create a modular app:
+Create and compile a modular app with current main, including PR #53:
 
 ```sh
+# From the repository root, make this source build available after changing directories.
+export PATH="$PWD/build:$PATH"
 ./build/jtml new app my-app
 cd my-app
-jtml dev . --port 8000
+jtml check index.jtml
+jtml lint index.jtml
+jtml build . --target browser --out dist
+python3 -m http.server 8000 --bind 127.0.0.1 --directory dist
 ```
+
+Open [http://localhost:8000](http://localhost:8000) and verify that Add one increments
+the count. RC.2 lacks both the generated Card export and this production import
+fix; adding `export` there repairs import checking only. Use its documented
+Counter smoke or build current main for the modular starter. Stop the static
+server with Ctrl+C; for the separate live backend, run `jtml dev . --port 8000`.
 
 Install a local JTML package into an app:
 

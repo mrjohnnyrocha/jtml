@@ -3,6 +3,11 @@
 This folder is the shareable documentation set for JTML. The root stays small:
 start here, then follow the section folders.
 
+New to JTML? Start with [your first interactive application](getting-started.md).
+It covers installation choices, a complete Friendly source file, production
+compilation and a browser checklist. Architecture and restart documents below
+are background for contributors.
+
 ## Read First
 
 | Document | Use it for |

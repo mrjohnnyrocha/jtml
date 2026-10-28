@@ -24,6 +24,8 @@ cmake --build build --target jtml_cli jtml_c --parallel
 cmake --install build --prefix "$HOME/.local"
 "$HOME/.local/bin/jtml" --version
 "$HOME/.local/bin/jtml" check "$HOME/.local/share/jtml/examples/friendly_counter.jtml"
+# Optional, for `jtml` commands in this terminal:
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Data are installed under `share/jtml`, documentation/notices under

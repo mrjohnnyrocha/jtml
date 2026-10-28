@@ -6,14 +6,18 @@ The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.
 
-## RC.3 preparation
+## Published RC.3
 
-The [draft RC.3 contract](docs/releases/v0.3.0-rc.3.md) consolidates the existing
-input synchronization, imported-component and onboarding corrections after
-RC.2. The existing manual workflow prepares review-only `0.3.0-rc.3` packages
-from a pinned clean SHA; ordinary source builds remain `0.3.0-dev`. Exact hosted
-archives and physical macOS acceptance are required separately. No release/tag
-or website deployment is implied; RC.2 remains the published download.
+[v0.3.0-rc.3 is published](https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3)
+from `2cec9263d4a2e5fa859c3703615aeb6f2ed5b668`, with 17 checked public assets.
+Post-merge CI and the read-only Ubuntu/macOS RC workflow passed; both downloaded
+macOS layouts passed physical 14.4.1 acceptance, including the C API and browser
+Counter/modular/CoffeeOrder reset checks. RC.3 includes the input synchronization
+and imported-component corrections below. Ordinary source builds remain
+`0.3.0-dev`. See the [published contract and installation](docs/releases/v0.3.0-rc.3.md).
+Historical RC.2 records remain below. The website's existing Counter/Pages compiler
+is still separately pinned to RC.2; updating download recommendations does not
+rebuild or redeploy that live demo. No production readiness is inferred.
 
 ## Static component text input synchronization
 
@@ -49,7 +53,7 @@ select values remain limitations; root-conditional mounting is repaired above;
 raw HTML/extern/live preview CSP is outside this bounded proof. See
 [transport and verification](docs/architecture/browser-root-csp.md).
 
-## Public RC.2 and website launch
+## Historical RC.2 publication and website launch
 
 [v0.3.0-rc.2 is publicly released](https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.2)
 from `13c53ab475c9e82ac4be2b232f744d664e926dea`. Its exact hosted Ubuntu/macOS

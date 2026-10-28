@@ -1,6 +1,6 @@
 # Public website launch: build, verify, then activate manually
 
-The public product is the [v0.3.0-rc.2 experimental prerelease](https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.2),
+The recommended download is the [v0.3.0-rc.3 experimental prerelease](https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3),
 not an enterprise/production platform. This website slice changes the static site,
 its build/tests and deployment preparation only. No compiler/runtime or release
 artifact is changed, and no backend service is introduced.
@@ -16,7 +16,11 @@ index.html. The four-file demo lives in `demo/counter/`; the exact source is
 `counter.jtml` at the site root and is also injected as text into the JTML code tab.
 HTML/React tabs are explicitly illustrative snippets, never the demo frontend.
 
-The Pages workflow downloads the published Ubuntu RC.2 compiler bundle and checks
+The existing embedded Counter and Pages workflow remain on RC.2, independently
+of the RC.3 download recommendation. The compiler label displayed beside the
+Counter is generated from the actual build version, so local/source previews can
+identify a different compiler honestly. The Pages workflow downloads the
+published Ubuntu RC.2 compiler bundle and checks
 its approved SHA256 `6c3e21a53bf7729b824c27e73d1ce35ffe69182f98dd8c95f4969084c53e1d6b`.
 It checks the actual CLI version before compiling. No fresh JTML build or new
 release is needed. Local source gates may use their own just-built CLI through

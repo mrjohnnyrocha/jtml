@@ -4,7 +4,8 @@ This folder is the shareable documentation set for JTML. The root stays small:
 start here, then follow the section folders.
 
 New to JTML? Start with [your first interactive application](getting-started.md).
-It covers installation choices, a complete Friendly source file, production
+Use the [published RC.3 packages](releases/v0.3.0-rc.3.md#install-and-run-the-first-applications)
+or a source build. The guide covers a complete Friendly source file, production
 compilation and a browser checklist. Architecture and restart documents below
 are background for contributors.
 

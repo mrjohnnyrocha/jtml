@@ -6,22 +6,39 @@ reloading starts a new order. JTML is an experimental technical preview.
 
 ## Choose a compiler
 
-- **Current main (`0.3.0-dev`)** is required for this form's complete reset
-  behavior. The component-input synchronization fix is not in a published release.
-- **Published `0.3.0-rc.2`** has binaries for Ubuntu 22.04 x86_64 and Apple
-  Silicon macOS (tested on 14.4.1). Follow the
-  [download/checksum/Counter instructions](releases/v0.3.0-rc.2.md#install-and-five-minute-first-app-smoke)
-  if you want to try a binary first. Its Counter works, but this form's Clear
-  button leaves the old name visible. Do not interpret a successful build as
-  proof that the application behaves correctly.
+**Published `0.3.0-rc.3` is recommended for this walkthrough.** Its packages cover
+Ubuntu 22.04 x86_64 and macOS arm64 (tested physically on 14.4.1 and on hosted
+macOS 15; minimum target 14.0). Packages are unsigned/unnotarized and other
+platforms remain unverified. RC.3 includes both the component-input reset fix and
+the modular production import fix. Older RC.2 still has the documented reset and
+modular-build failures; its [historical release guide](releases/v0.3.0-rc.2.md)
+is preserved separately.
 
-For source builds, install Git, a C++17 compiler/build tools, and CMake
-(validated with 3.31.3). On macOS, Apple's Command Line Tools supply Git and
-Clang; CMake is a separate prerequisite. Python 3 serves static output in this
-guide. Check `git --version`, `c++ --version`, `cmake --version` and
-`python3 --version` before starting. Configure needs internet access to download
-the pinned WebSocket++ and Asio sources. Node/npm, Python bindings and tests are
-not required to build this application. Other platforms are not verified here.
+Follow the [RC.3 download/checksum instructions](releases/v0.3.0-rc.3.md#install-and-run-the-first-applications),
+then from the extracted `release/` directory:
+
+```sh
+./bin/jtml --version
+# Must print jtml 0.3.0-rc.3.
+export JTML="$PWD/bin/jtml"
+```
+
+Use this current online guide; the immutable archive contains earlier
+prepublication instructions. Its CoffeeOrder source is the same tested program.
+
+Keep this terminal open. `JTML` is the absolute executable path used below; no
+global install or PATH modification is needed. Python 3 serves the static output.
+The packaged CLI does not require Node/npm, CMake, a C++ compiler or Python bindings.
+Skip the optional source build if you selected a package.
+
+### Optional source build
+
+Current main (`0.3.0-dev`) also supports the complete form. Install Git, a C++17
+compiler/build tools and CMake (validated with 3.31.3). On macOS, Apple's Command
+Line Tools supply Git and Clang; CMake is separate. Check `git --version`,
+`c++ --version`, `cmake --version` and `python3 --version` before starting.
+Configure needs internet access for pinned WebSocket++ and Asio dependencies.
+Node/npm, Python bindings and tests are not needed to build this application.
 
 From a new directory:
 
@@ -32,18 +49,18 @@ git rev-parse HEAD
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJTML_BUILD_PYTHON=OFF -DJTML_BUILD_TESTS=OFF
 cmake --build build --target jtml_cli --parallel
 ./build/jtml --version
+export JTML="$PWD/build/jtml"
 ```
 
-Record the full commit printed above: main moves, and `0.3.0-dev` alone does
-not identify a build. The [audit](tooling/first-user-audit.md) records the exact
-baseline tested. The first build may take several minutes. These commands do
-not install a global `jtml` command; keep using `./build/jtml` from this repository
-root. [Prefix installation](tooling/deployment.md#install-locally-from-source)
-is optional.
+Record the full commit: main moves, and `0.3.0-dev` alone does not identify a build.
+The [audit](tooling/first-user-audit.md) records its tested baselines. The first
+build may take several minutes. [Prefix installation](tooling/deployment.md#install-locally-from-source)
+is optional; the absolute `JTML` path works after changing directories.
 
 ## Write the application
 
-Create `coffee.jtml` in the repository root and paste this complete file:
+Create `coffee.jtml` in your current directory (the extracted `release/` directory
+or the source repository root) and paste this complete file:
 
 ```jtml
 jtml 2
@@ -94,9 +111,9 @@ by assistive technology and browser tests.
 ## Check, compile and run
 
 ```sh
-./build/jtml check coffee.jtml
-./build/jtml lint coffee.jtml
-./build/jtml build coffee.jtml --target browser --out dist/coffee
+"$JTML" check coffee.jtml
+"$JTML" lint coffee.jtml
+"$JTML" build coffee.jtml --target browser --out dist/coffee
 python3 -m http.server 8000 --bind 127.0.0.1 --directory dist/coffee
 ```
 
@@ -109,7 +126,7 @@ If port 8000 is occupied, choose 8001 in both the command and URL.
 4. Add a cup: total becomes EUR 6 while the saved order still describes one cup.
 5. Place the order again: the receipt now describes two cups and EUR 6.
 6. Clear: the visible textbox empties, cups return to 1, total to EUR 3, and the
-   receipt to `No order yet`. This step fails on RC.2; use current main.
+   receipt to `No order yet`. RC.3 and current main pass; older RC.2 fails this step.
 7. Reload: initial state returns. Stop the server with Ctrl+C.
 
 Keep `index.html`, `jtml-runtime.js`, `components/index.js` and `app.js` together.
@@ -122,7 +139,7 @@ After editing the source, rerun check/lint/build and refresh the browser. A chec
 or lint error should include the file and a diagnostic; fix it before continuing.
 For example, using `{doubled}` without declaring it is an undefined-name error.
 For component imports, the imported file must declare `export make Name`.
-Current main includes PR #53's production import correction; `jtml new app`
+RC.3 and current main include PR #53's production import correction; `jtml new app`
 now generates a modular starter that checks, lints, builds and runs in a browser.
 RC.2 lacks that correction. This guide keeps CoffeeOrder in one file so its local
 input/state ownership is explicit. General slots still have limitations: conditional

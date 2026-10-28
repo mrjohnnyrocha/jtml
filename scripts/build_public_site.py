@@ -71,6 +71,8 @@ def build(output, compiler, base_url):
         if page == output / 'index.html':
             assert text.count('<!-- counter-source -->') == 1
             text = text.replace('<!-- counter-source -->', html.escape(source.read_text()))
+            assert text.count('<!-- counter-compiler -->') == 1
+            text = text.replace('<!-- counter-compiler -->', html.escape(version))
         page.write_text(text)
     for name in ASSETS[1:]:
         assert digest(demo / name) == original_hashes[name], 'Generated JavaScript must remain untouched'

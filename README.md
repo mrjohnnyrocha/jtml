@@ -335,9 +335,9 @@ python3 -m http.server 8000 --bind 127.0.0.1 --directory dist
 
 Open [http://localhost:8000](http://localhost:8000) and verify that Add one increments
 the count. RC.2 lacks both the generated Card export and this production import
-fix; adding `export` there repairs import checking only. Use its documented
-Counter smoke or build current main for the modular starter. Stop the static
-server with Ctrl+C; for the separate live backend, run `jtml dev . --port 8000`.
+fix; adding `export` there repairs import checking only. Use RC.3 or current main
+for the modular starter. Stop the static server with Ctrl+C; for the separate
+live backend, run `jtml dev . --port 8000`.
 
 Install a local JTML package into an app:
 

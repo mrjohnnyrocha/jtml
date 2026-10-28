@@ -6,6 +6,15 @@ The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.
 
+## RC.3 preparation
+
+The [draft RC.3 contract](docs/releases/v0.3.0-rc.3.md) consolidates the existing
+input synchronization, imported-component and onboarding corrections after
+RC.2. The existing manual workflow prepares review-only `0.3.0-rc.3` packages
+from a pinned clean SHA; ordinary source builds remain `0.3.0-dev`. Exact hosted
+archives and physical macOS acceptance are required separately. No release/tag
+or website deployment is implied; RC.2 remains the published download.
+
 ## Static component text input synchronization
 
 The published RC.2 input-reset discrepancy is reproduced with its exact binary.

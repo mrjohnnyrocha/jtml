@@ -48,6 +48,10 @@ display programmatic resets correctly. That fix is on current main and has not
 been released. The source quickstart builds `0.3.0-dev`; the
 [first-app guide](docs/getting-started.md) uses that development version.
 
+RC.3 is being prepared as a review-only consolidation; see the
+[draft RC.3 notes and acceptance contract](docs/releases/v0.3.0-rc.3.md).
+It is not a published download or a production-readiness claim.
+
 ## Get started from source
 
 Use Git, a C++17 compiler and a recent CMake (validated with **3.31.3**).

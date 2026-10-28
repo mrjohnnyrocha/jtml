@@ -1,0 +1,24 @@
+jtml 2
+
+use Card from "./barrel.jtml"
+
+let title = "First"
+let slotCount = 0
+
+when rename
+  title = "Renamed"
+
+when bump
+  slotCount += 1
+
+page
+  button "Rename first" click rename
+  Card title
+    text "Slot: {slotCount}"
+    button "Bump slot" click bump
+    slot extras
+      text "First extra"
+  Card "Second"
+    text "Second slot"
+    slot extras
+      text "Second extra"

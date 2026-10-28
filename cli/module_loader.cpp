@@ -562,7 +562,8 @@ FriendlyLoad loadFriendlyCompilationUnit(const std::filesystem::path& file,
 
         if (namedImport && moduleUsesExports) {
             const int indent = leadingSpaces(line);
-            if (includingSelectedExportBlock && indent > selectedExportIndent) {
+            if (includingSelectedExportBlock &&
+                (text.empty() || indent > selectedExportIndent)) {
                 appendLine(i);
                 continue;
             }

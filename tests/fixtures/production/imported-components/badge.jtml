@@ -1,0 +1,4 @@
+jtml 2
+
+export make Badge label
+  strong "Badge: {label}"

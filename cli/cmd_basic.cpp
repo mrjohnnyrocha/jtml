@@ -639,7 +639,7 @@ page class "app"
 
 static const char* kStarterAppCard = R"(jtml 2
 
-make Card title
+export make Card title
   box class "card"
     h2 title
     slot

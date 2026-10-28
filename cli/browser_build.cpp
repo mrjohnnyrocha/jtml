@@ -201,6 +201,27 @@ ParsedModuleForBrowserBuild parseStandaloneModuleForBrowserBuild(const std::stri
                 "classic"};
     }
 
+    if (!allowImportStubs) {
+        // Lower with the loader's real, validated import declarations in scope.
+        // Raw module text alone cannot resolve an imported component at a call
+        // site. Imported declarations are context, not declarations owned by this
+        // module: keep the existing provenance boundary when constructing its IR.
+        const auto normalized = normalizeCompilationSource(loadCompilationSource(file, syntax));
+        auto program = parseStandaloneNormalizedSource(normalized.text, normalized.provenance);
+        program.erase(std::remove_if(program.begin(), program.end(), [&](const auto& node) {
+            const auto& origin = node->sourceSpan.original;
+            if (!origin) {
+                // Semantic UI lowering can prepend a generated stylesheet. It
+                // is emitted from the linked document, not executable module IR.
+                if (node->getType() == ASTNodeType::JtmlElement &&
+                    static_cast<const JtmlElementNode&>(*node).tagName == "style") return true;
+                throw std::runtime_error("Cannot determine module ownership in " + file);
+            }
+            return origin->source->file != file;
+        }), program.end());
+        return {std::move(program), "friendly"};
+    }
+
     try {
         return {parseMapped(MappedSource::original(file, source), SyntaxMode::Friendly),
                 "friendly"};

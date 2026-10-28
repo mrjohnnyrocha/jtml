@@ -1,0 +1,74 @@
+{
+  "baselineCommit": "d2b31c2e33b0a2f613a3b354d9b503897dc981b6",
+  "branch": "codex/imported-friendly-production",
+  "date": "2026-10-28",
+  "platform": "macOS 14.4.1 arm64",
+  "paidCalls": 0,
+  "releasePublished": false,
+  "websiteDeployed": false,
+  "originalFailureEvidence": {
+    "file": "/tmp/jtml-imported-production.C0pZzn/before.json",
+    "sha256": "e1257b3418cf365d8beb2016c6efe3ecef2f69e32432b3fedaa79208634ade77",
+    "generatedAfterExportCheckAndLint": "pass",
+    "generatedCleanBuild": "fail Unknown Friendly JTML component Card",
+    "existingExampleCleanBuild": "same failure"
+  },
+  "implementationAndTestSHA256": {
+    ".github/workflows/ci.yml": "3034f6d6781abb81a4799626ea4f4c96a907e551df7ecd0ce4fd5046700c6273",
+    "cli/browser_build.cpp": "c3e9a69c2676c393b77b24ba9d968246b2ba8336a39b717ce99c86cab71789f0",
+    "cli/cmd_basic.cpp": "f01ce80a04d46102657daf89ca7f3ceca61d4901c9190ef97c1ef51b0f80a29b",
+    "cli/module_loader.cpp": "31868870b313a44e70d3e62afe33eeb00625b634b21f2f1ee01c086f632d168f",
+    "scripts/verify_all.sh": "f7e00ae8aab407b8a184ed6d915b7d9f31a82a3d387c57fc396c3ba55120ff13",
+    "src/friendly.cpp": "3fe318b3b72cb0756e46f870f28d93554bd3d102df388ffe6f23530771d0afd3",
+    "src/jtml/runtime/static_update_plan_emitter.cpp": "1bb4adb41f77e3cc2fe39178ce66aad713f902df2203c4884596cb3060ec7666",
+    "tests/browser/imported_components.cjs": "e168dddc90bd2d5a7df317d7b8d96dc59c3020aaa990d5901fe6d5164f6244f4",
+    "tests/fixtures/production/imported-components/badge.jtml": "21a2edacd4c0be4d0d9baf72297f1d37a078dd1a4111307833c4c8f81a842259",
+    "tests/fixtures/production/imported-components/barrel.jtml": "0c26e271f0e28ae07d013d7047b46dea1b00b2e85010583afd05bbdd171def75",
+    "tests/fixtures/production/imported-components/card.jtml": "09a37d811bfd70b6752ffb4c6c3fd58fe2aacdb16ae56298a5d80837741354af",
+    "tests/fixtures/production/imported-components/index.jtml": "13a883570fe7c6e75e01065d3eaf5594c100c1a59d23024311e788a44cd4089a",
+    "tests/test_cli_commands.cpp": "75c806314b370f8b644fd34d406cda1ddc81e7bf177e63a1e83b61baa5f72329"
+  },
+  "browser": {
+    "pass": true,
+    "version": "153.0.8010.12",
+    "executedCompilerSHA256": "f49a85e32a50e2db9232381ef0c611caee9942316f7b2040883782dca4e645fc",
+    "checks": [
+      "generated starter: real exported Card, props, slots and reactive slot action",
+      "existing Friendly imported-component example",
+      "re-export/transitive import: real nested props, independent state, retained identity, parent slots and reload"
+    ],
+    "errors": [],
+    "cspViolations": [],
+    "fallbackHelpers": "guarded to throw during static create/update",
+    "result": "/Users/joaorocha/.codex/worktrees/imported-friendly-production/jtml-v1/dist/imported-components/attempt-gc5EsZ/result.json",
+    "resultSHA256": "ae0cf43d2f490072fb7fb5eebb620911d7f64bf634767a8c361ff30fb2755073",
+    "traceSHA256": "297e5aafb872b2101e8698523af87d7dc5197fc1b59645276e927c4cf778933e",
+    "starterScreenshotSHA256": "69aa0f852c296bd17593ac24ccff96309a46412f4411457a230a8e55c249a490",
+    "nestedScreenshotSHA256": "2f2311b8860110202fc725f473ee4be4055e88774b073e0eb8e499cb2dacbb64"
+  },
+  "fullGate": {
+    "exit": 0,
+    "ctestPassed": 480,
+    "performanceBenchmarksCleanExit": 9,
+    "productionReferenceCleanExit": true,
+    "liveSmokePassed": 8,
+    "verificationSkips": 0,
+    "log": "/tmp/jtml-imported-production.C0pZzn/full-gate-final.log",
+    "logSHA256": "a6804e73838f2e92c8099e962b84faba7f0fd4faa98322c0729e93e1ec01f58d",
+    "command": "JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1 JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=<Playwright prefix> JTML_BENCH_BROWSER=<Chromium headless shell> bash scripts/verify_all.sh"
+  },
+  "limitations": [
+    "Five known native-renderer discrepancies remain",
+    "Reference HTML 99952 bytes exceeds unchanged 70000-byte microfixture budget",
+    "Python bindings off; no new sanitizer run",
+    "macOS local verification; hosted CI is separate evidence"
+  ],
+  "earlierAttempts": [
+    "Baseline negative reproductions retained",
+    "First focused CTest could not write build logs in sandbox; permitted run used thereafter",
+    "Slot/transitive development failures retained",
+    "First full gate failed an invalid DOM-marker oracle; generated text also uses that marker. Final oracle guards fallback helper execution instead."
+  ],
+  "onboardingFilesPreserved": 12,
+  "provenanceLimit": "Hashes bind preserved bytes and source; browser execution is corroborated by trace/screenshots and repeatable tests, not hashes alone."
+}

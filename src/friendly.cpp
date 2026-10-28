@@ -2469,9 +2469,15 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
             if (!bodyTokens.empty() && bodyTokens[0] == "slot") {
                 const std::string requestedSlot = bodyTokens.size() > 1 ? bodyTokens[1] : "";
                 const auto selectedSlotLines = selectSlotLines(slotLines, requestedSlot);
+                // Preserve caller-owned slot DOM across static component creation.
+                // Its expressions/events belong to the caller, not the callee.
+                const int slotIndent = lines[i].indent + 2 + bodyLine.indent;
+                expanded.push_back({slotIndent,
+                    "span data-jtml-supplied-slot " + quote(requestedSlot) +
+                        " style \"display:contents\"", lines[i].number});
                 for (const auto& slotLine : selectedSlotLines) {
                     Line injected = slotLine;
-                    injected.indent = lines[i].indent + 2 + bodyLine.indent + slotLine.indent;
+                    injected.indent = slotIndent + 2 + slotLine.indent;
                     expanded.push_back(injected);
                 }
                 continue;

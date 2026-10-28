@@ -833,11 +833,12 @@ nlohmann::json compileStaticComponentUpdatePlan(
 void appendComponentPlans(
         nlohmann::json& components,
         const std::vector<RuntimePlanComponentDefinition>& definitions,
+        const std::vector<RuntimePlanComponentDefinition>& visibleDefinitions,
         const std::set<DefinitionKey>& definitionKeys,
         const std::string& origin) {
     for (const auto& definition : definitions) {
         components.push_back(
-            compileStaticComponentUpdatePlan(definition, definitions, definitionKeys, origin));
+            compileStaticComponentUpdatePlan(definition, visibleDefinitions, definitionKeys, origin));
     }
 }
 
@@ -846,14 +847,25 @@ nlohmann::json collectComponentPlans(const RuntimeProjectPlan& plan) {
     auto linkedKeys = componentDefinitionKeys(plan.linkedPlan.componentDefinitions);
     appendComponentPlans(components,
                          plan.linkedPlan.componentDefinitions,
+                         plan.linkedPlan.componentDefinitions,
                          linkedKeys,
                          "linked");
 
+    // Resolved body nodes carry their defining module. Cross-module children
+    // need the same real definition context during static code generation;
+    // emitted ownership still comes exclusively from each module's own plan.
+    std::vector<RuntimePlanComponentDefinition> moduleDefinitions;
     for (const auto& module : plan.modules) {
         if (!module.clientExecutable) continue;
-        auto moduleKeys = componentDefinitionKeys(module.plan.componentDefinitions);
+        moduleDefinitions.insert(moduleDefinitions.end(), module.plan.componentDefinitions.begin(),
+                                 module.plan.componentDefinitions.end());
+    }
+    const auto moduleKeys = componentDefinitionKeys(moduleDefinitions);
+    for (const auto& module : plan.modules) {
+        if (!module.clientExecutable) continue;
         appendComponentPlans(components,
                              module.plan.componentDefinitions,
+                             moduleDefinitions,
                              moduleKeys,
                              "module:" + std::to_string(module.id));
     }
@@ -1661,9 +1673,15 @@ std::string directStaticSlotCreateExpression(size_t nodeIndex,
         << "else if (slotName && instance && instance.slotHtmlByName && "
         << "Object.prototype.hasOwnProperty.call(instance.slotHtmlByName, slotName)) "
         << "html = String(instance.slotHtmlByName[slotName]); "
+        << "else if (instance && !instance.parentId && instance.element) { "
+        << "const supplied = Array.from(instance.element.querySelectorAll('[data-jtml-supplied-slot]')).find(function(el) { "
+        << "return el.getAttribute('data-jtml-supplied-slot') === slotName && "
+        << "el.closest('[data-jtml-instance], [data-jtml-direct-instance]') === instance.element; }); "
+        << "if (supplied) html = supplied.innerHTML; } "
         << "return '<span data-jtml-direct-body-node=\""
         << nodeIndex
-        << "\" data-jtml-direct-region=\"slot\" style=\"display:contents\">' + html + '</span>'; "
+        << "\" data-jtml-direct-region=\"slot\" data-jtml-supplied-slot=\"' + jtml_static_escape_html(slotName) + "
+        << "'\" style=\"display:contents\">' + html + '</span>'; "
         << "})()";
     return out.str();
 }

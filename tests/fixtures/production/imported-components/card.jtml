@@ -1,0 +1,17 @@
+jtml 2
+
+use Badge from "./badge.jtml"
+
+export make Card title
+  let count = 0
+
+  when increment
+    count += 1
+
+  section aria-label title
+    h2 title
+    Badge title
+    text "Local: {count}"
+    button "Increment" click increment
+    slot
+    slot extras

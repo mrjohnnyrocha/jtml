@@ -2,6 +2,7 @@
 #include "cli/resource_paths.h"
 #include "cli/browser_build_policy.h"
 #include "cli/browser_build_schema.h"
+#include "cli/browser_build.h"
 #include "json.hpp"
 
 #include <gtest/gtest.h>
@@ -2193,7 +2194,7 @@ TEST(CliTranspile, BrowserTargetRejectsProductionAssetModeFlags) {
     EXPECT_THROW({ (void)jtml::cli::cmdTranspile(opts); }, std::runtime_error);
 }
 
-TEST(CliBuild, BrowserTargetProdRejectsSyntheticImportedComponentStubs) {
+TEST(CliBuild, BrowserTargetProdResolvesRealImportedComponentsWithoutStubs) {
     const auto root = makeTempDir("browser-prod-no-stubs");
     writeTempFile(root / "components" / "card.jtml",
         "jtml 2\n"
@@ -2213,7 +2214,34 @@ TEST(CliBuild, BrowserTargetProdRejectsSyntheticImportedComponentStubs) {
     prod.syntax = jtml::SyntaxMode::Auto;
     prod.target = "browser";
 
-    EXPECT_THROW({ (void)jtml::cli::cmdBuild(prod); }, std::runtime_error);
+    const auto prodResult = captureCommand([&] { return jtml::cli::cmdBuild(prod); });
+    ASSERT_EQ(prodResult.code, 0) << prodResult.out << prodResult.err;
+    EXPECT_FALSE(std::filesystem::exists(prodOut / "jtml-update-plans.js"));
+    const auto html = readTextFile(prodOut / "index.html");
+    EXPECT_NE(html.find("Loaded from module"), std::string::npos);
+    const auto components = readTextFile(prodOut / "components/index.js");
+    EXPECT_EQ(components.find("import-stubs"), std::string::npos);
+    EXPECT_EQ(components.find("__jtml_static_update_plans"), std::string::npos);
+    EXPECT_EQ(components.find("rootCreateOperations"), std::string::npos);
+    EXPECT_EQ(components.find("bodyHex"), std::string::npos);
+    const auto program = jtml::cli::parseProgramFromFile(prod.inputFile);
+    const auto plan = jtml::cli::buildRuntimeProjectPlanForInput(
+        prod.inputFile, prod.syntax, program, jtml::analyzeSemanticProgram(program), false);
+    ASSERT_EQ(plan.modules.size(), 2u);
+    const auto entry = std::find_if(plan.modules.begin(), plan.modules.end(),
+        [&](const auto& module) { return module.id == plan.entry; });
+    ASSERT_NE(entry, plan.modules.end());
+    EXPECT_TRUE(entry->clientExecutable);
+    EXPECT_TRUE(entry->plan.componentDefinitions.empty()) << "An import is not a local definition";
+    ASSERT_EQ(entry->plan.componentInstances.size(), 1u);
+    const auto owner = entry->plan.componentInstances[0].definitionModule;
+    EXPECT_NE(owner, entry->id);
+    const auto definition = std::find_if(plan.modules.begin(), plan.modules.end(),
+        [&](const auto& module) { return module.id == owner; });
+    ASSERT_NE(definition, plan.modules.end());
+    EXPECT_TRUE(definition->clientExecutable);
+    ASSERT_EQ(definition->plan.componentDefinitions.size(), 1u);
+    EXPECT_EQ(definition->plan.componentDefinitions[0].name, "Card");
 
     const auto compatOut = root / "dist-compat";
     jtml::cli::Options compat = prod;
@@ -2222,6 +2250,90 @@ TEST(CliBuild, BrowserTargetProdRejectsSyntheticImportedComponentStubs) {
     const auto compatResult = captureCommand([&] { return jtml::cli::cmdBuild(compat); });
     EXPECT_EQ(compatResult.code, 0) << compatResult.out << compatResult.err;
     EXPECT_TRUE(std::filesystem::exists(compatOut / "jtml-update-plans.js"));
+}
+
+TEST(CliBuild, GeneratedModularStarterBuildsCleanProduction) {
+    const auto root = makeTempDir("generated-clean-modular");
+    jtml::cli::Options create;
+    create.inputFile = "app";
+    create.outputFile = (root / "app").string();
+    ASSERT_EQ(captureCommand([&] { return jtml::cli::cmdNew(create); }).code, 0);
+    jtml::cli::Options build;
+    build.inputFile = create.outputFile;
+    build.outputFile = (root / "output").string();
+    build.target = "browser";
+    const auto result = captureCommand([&] { return jtml::cli::cmdBuild(build); });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+    EXPECT_TRUE(std::filesystem::exists(root / "output/components/index.js"));
+    EXPECT_FALSE(std::filesystem::exists(root / "output/jtml-update-plans.js"));
+    EXPECT_NE(readTextFile(root / "output/index.html").find("Interactive state"), std::string::npos);
+}
+
+TEST(CliBuild, ImportedReexportsKeepDefinitionAndNestedModuleOwnership) {
+    const auto input = std::filesystem::path(JTML_SOURCE_DIR) /
+        "tests/fixtures/production/imported-components/index.jtml";
+    const auto program = jtml::cli::parseProgramFromFile(input.string());
+    const auto project = jtml::cli::buildRuntimeProjectPlanForInput(input.string(),
+        jtml::SyntaxMode::Auto, program, jtml::analyzeSemanticProgram(program), false);
+    ASSERT_EQ(project.modules.size(), 4u);
+    jtml::SemanticModuleId badgeModule = jtml::InvalidSemanticModuleId;
+    const jtml::RuntimePlanComponentDefinition* card = nullptr;
+    for (const auto& module : project.modules) {
+        EXPECT_TRUE(module.clientExecutable);
+        const auto filename = std::filesystem::path(module.path).filename();
+        if (filename == "index.jtml" || filename == "barrel.jtml") {
+            EXPECT_TRUE(module.plan.componentDefinitions.empty());
+        } else {
+            ASSERT_EQ(module.plan.componentDefinitions.size(), 1u);
+            const auto& definition = module.plan.componentDefinitions[0];
+            EXPECT_EQ(definition.moduleId, module.id);
+            if (filename == "card.jtml") { EXPECT_EQ(definition.name, "Card"); card = &definition; }
+            if (filename == "badge.jtml") { EXPECT_EQ(definition.name, "Badge"); badgeModule = module.id; }
+        }
+    }
+    ASSERT_NE(card, nullptr);
+    ASSERT_NE(badgeModule, jtml::InvalidSemanticModuleId);
+    const auto child = std::find_if(card->bodyPlan.begin(), card->bodyPlan.end(),
+        [](const auto& node) { return node.name == "Badge"; });
+    ASSERT_NE(child, card->bodyPlan.end());
+    EXPECT_EQ(child->definitionModule, badgeModule);
+    // A blank line inside the selected export must not truncate its definition.
+    const auto linked = std::find_if(project.linkedPlan.componentDefinitions.begin(),
+        project.linkedPlan.componentDefinitions.end(), [](const auto& d) { return d.name == "Card"; });
+    ASSERT_NE(linked, project.linkedPlan.componentDefinitions.end());
+    EXPECT_EQ(linked->bodyPlan.size(), card->bodyPlan.size());
+    EXPECT_EQ(linked->localActions, card->localActions);
+}
+
+TEST(CliBuild, CleanImportedComponentErrorsRemainFailClosed) {
+    const std::vector<std::pair<std::string, std::string>> cases = {
+        {"use Card from \"./missing.jtml\"\npage\n  Card\n", "Cannot resolve import"},
+        {"use Card from \"./private.jtml\"\npage\n  Card\n", "requires exported declarations"},
+        {"use Missing from \"./card.jtml\"\npage\n  Missing\n", "Missing export"},
+        {"use Card from \"./card.jtml\"\nuse Card from \"./card.jtml\"\npage\n  Card\n", "Duplicate named import"},
+        {"use Card from \"./card.jtml\"\npage\n  Unknown\n", "Unknown Friendly JTML component"},
+        {"use Card from \"./duplicate.jtml\"\npage\n  Card\n", "Duplicate exported symbol"},
+    };
+    for (const auto& [source, expected] : cases) {
+        SCOPED_TRACE(source);
+        const auto root = makeTempDir("invalid-clean-import");
+        writeTempFile(root / "index.jtml", "jtml 2\n" + source);
+        writeTempFile(root / "card.jtml", "jtml 2\nexport make Card\n  text \"real\"\n");
+        writeTempFile(root / "private.jtml", "jtml 2\nmake Card\n  text \"private\"\n");
+        writeTempFile(root / "duplicate.jtml", "jtml 2\nexport make Card\n  text \"first\"\nexport make Card\n  text \"second\"\n");
+        jtml::cli::Options build;
+        build.inputFile = (root / "index.jtml").string();
+        build.outputFile = (root / "output").string();
+        build.target = "browser";
+        try {
+            (void)jtml::cli::cmdBuild(build);
+            FAIL() << "Invalid import compiled";
+        } catch (const std::runtime_error& error) {
+            EXPECT_NE(std::string(error.what()).find(expected), std::string::npos) << error.what();
+        }
+        for (const auto* file : {"index.html", "app.js", "jtml-runtime.js", "components/index.js"})
+            EXPECT_FALSE(std::filesystem::exists(root / "output" / file));
+    }
 }
 
 TEST(CliBuild, BrowserTargetProdUnsupportedComponentShapeReportsSourcePath) {

@@ -1,0 +1,3 @@
+jtml 2
+
+export use Card from "./card.jtml"

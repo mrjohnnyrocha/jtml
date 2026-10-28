@@ -5,6 +5,8 @@ const crypto = require('node:crypto');
 const {spawnSync} = require('node:child_process');
 const {createRequire} = require('node:module');
 const repo = path.resolve(__dirname, '../..');
+const docs = process.env.JTML_FIRST_USER_DOCS_ROOT || path.join(repo, 'docs');
+const counter = process.env.JTML_FIRST_USER_COUNTER_SOURCE || path.join(repo, 'examples/friendly_counter.jtml');
 const compiler = process.env.JTML_BIN || path.join(repo, 'build/jtml');
 assert(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT && process.env.JTML_BENCH_BROWSER,
   'real Chromium and Playwright required; no skip');
@@ -20,7 +22,7 @@ function command(args) {
   return r.stdout;
 }
 function documentedSource(file, dest) {
-  const text = fs.readFileSync(path.join(repo, file), 'utf8').match(/```jtml\n([\s\S]*?)```/);
+  const text = fs.readFileSync(path.join(docs, file), 'utf8').match(/```jtml\n([\s\S]*?)```/);
   assert(text, `Missing complete source in ${file}`);
   fs.writeFileSync(path.join(work, dest), text[1]);
   command(['check', dest]); command(['lint', dest]);
@@ -28,14 +30,14 @@ function documentedSource(file, dest) {
 let browser, server;
 (async () => {
   report.version = command(['--version']).trim();
-  documentedSource('docs/getting-started.md', 'coffee.jtml');
-  documentedSource('docs/reference/language-reference.md', 'reference.jtml');
+  documentedSource('getting-started.md', 'coffee.jtml');
+  documentedSource('reference/language-reference.md', 'reference.jtml');
   command(['new', 'app', 'modular']);
   assert.match(fs.readFileSync(path.join(work, 'modular/components/card.jtml'), 'utf8'), /^export make Card title$/m);
   assert.match(fs.readFileSync(path.join(work, 'modular/index.jtml'), 'utf8'), /use Card from "\.\/components\/card.jtml"/);
   command(['check', 'modular/index.jtml']);
   command(['lint', 'modular/index.jtml']);
-  for (const [source, name] of [['coffee.jtml','coffee'], ['modular','modular']]) {
+  for (const [source, name] of [['coffee.jtml','coffee'], ['modular','modular'], [counter,'counter']]) {
     command(['build', source, '--target', 'browser', '--out', `output/${name}`]);
     assert.deepEqual(fs.readdirSync(path.join(work, 'output', name)).sort(), ['app.js','components','index.html','jtml-runtime.js']);
     for (const file of ['index.html','jtml-runtime.js','components/index.js','app.js']) {
@@ -68,6 +70,12 @@ let browser, server;
   const text = t => page.getByText(t,{exact:true}).waitFor();
   const click = name => page.getByRole('button',{name,exact:true}).click();
   try {
+    await page.goto(origin+'/counter/');
+    await text('Count: 0'); await click('Add one'); await text('Count: 1');
+    await click('Reset'); await text('Count: 0'); await page.reload(); await text('Count: 0');
+    assert(await page.evaluate(() => window.jtml.browserBuild.cleanProduction));
+    await page.screenshot({path:path.join(work,'counter.png')});
+    report.checks.push('Counter quickstart: initial, increment, reset and reload');
     await page.goto(origin+'/modular/');
     await text('Count: 0'); await click('Add one'); await text('Count: 1');
     assert(await page.evaluate(() => window.jtml.browserBuild.cleanProduction));
@@ -99,7 +107,7 @@ let browser, server;
     await context.close();
   }
   report.pass = true;
-  console.log('PASS first user: published guide and reference snippets; generated modular app; real production browser behavior');
+  console.log('PASS first user: published guide and reference snippets; Counter; generated modular app; real production browser behavior');
 })().catch(e => {report.pass=false;report.error=String(e);console.error(e);process.exitCode=1;})
   .finally(async () => {
     if(browser)await browser.close();

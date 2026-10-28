@@ -61,12 +61,12 @@ class RcGuards(unittest.TestCase):
                 rc.prepare(self.root, self.sha, self.root / 'build')
 
     def metadata(self):
-        return dict(version='0.3.0-rc.2', sourceRevision=self.sha, sourceDirty=False,
+        return dict(version='0.3.0-rc.3', sourceRevision=self.sha, sourceDirty=False,
                     platform='linux', architecture='x86_64', sourceDateEpoch=123)
 
     def test_actual_rc_identity_is_required(self):
         rc.validate_metadata(self.metadata(), self.sha, 'linux', 'x86_64', 123)
-        for key, value in [('version', '0.3.0-dev'), ('version', '0.3.0-rc.1'), ('sourceDirty', True),
+        for key, value in [('version', '0.3.0-dev'), ('version', '0.3.0-rc.1'), ('version', '0.3.0-rc.2'), ('sourceDirty', True),
                            ('sourceRevision', '0' * 40), ('platform', 'darwin'),
                            ('architecture', 'arm64'), ('sourceDateEpoch', 0)]:
             with self.subTest(key=key), self.assertRaises(ValueError):

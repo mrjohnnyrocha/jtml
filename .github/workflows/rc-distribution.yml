@@ -26,6 +26,8 @@ jobs:
     env:
       RC_SOURCE_REVISION: ${{ inputs.source_revision }}
       PYTHONDONTWRITEBYTECODE: '1'
+      JTML_VERSION_SUFFIX: rc.3
+      JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT: '1'
     steps:
       - name: Validate pinned source input
         shell: bash
@@ -50,27 +52,85 @@ jobs:
         run: python3 tests/test_macos_distribution.py
       - name: Focused RC guards
         run: python3 tests/test_prepare_rc.py
-      - name: Prepare and verify actual RC packages
-        run: python3 scripts/prepare_rc.py --source-revision "$RC_SOURCE_REVISION"
-      - name: Browser reference using the actual RC CLI
+      - name: Install pinned browser test tools
         shell: bash
         run: |
           driver="$RUNNER_TEMP/rc-playwright"
           export PLAYWRIGHT_BROWSERS_PATH="$RUNNER_TEMP/rc-browsers"
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix "$driver" --no-save playwright@1.63.0
           "$driver/node_modules/.bin/playwright" install chromium-headless-shell
-          export JTML_BENCH_BROWSER="$(find "$PLAYWRIGHT_BROWSERS_PATH" -type f -name chrome-headless-shell -perm -111 -print -quit)"
-          test -n "$JTML_BENCH_BROWSER"
-          export JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT="$driver"
-          export JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1
-          export JTML_BIN="$PWD/dist/release/bin/jtml"
-          test "$("$JTML_BIN" --version)" = "jtml 0.3.0-rc.2"
-          scripts/test_production_reference.sh
-          echo "RC browser reference PASS for $RC_SOURCE_REVISION" >> "$GITHUB_STEP_SUMMARY"
+          browser="$(find "$PLAYWRIGHT_BROWSERS_PATH" -type f -name chrome-headless-shell -perm -111 -print -quit)"
+          test -n "$browser"
+          echo "JTML_BENCH_BROWSER=$browser" >> "$GITHUB_ENV"
+          echo "JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=$driver" >> "$GITHUB_ENV"
+      - name: Complete candidate verification gate
+        shell: bash
+        run: |
+          mkdir -p dist/rc-verification
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJTML_BUILD_PYTHON=OFF \
+            -DJTML_BUILD_TESTS=ON -DJTML_VERSION_SUFFIX="$JTML_VERSION_SUFFIX"
+          bash scripts/verify_all.sh 2>&1 | tee dist/rc-verification/full-gate.log
+      - name: Prepare and verify actual RC packages
+        run: python3 scripts/prepare_rc.py --source-revision "$RC_SOURCE_REVISION"
+      - name: Browser walkthroughs using extracted and relocated RC binaries
+        shell: bash
+        run: |
+          for layout in bundle install; do
+            extracted="$RUNNER_TEMP/rc-$layout"
+            mkdir -p "$extracted" "$RUNNER_TEMP/rc-home-$layout"
+            if [ "$layout" = bundle ]; then
+              archive="dist/rc-review/jtml-0.3.0-rc.3-${{ matrix.platform }}.tar.gz"
+              tar -xzf "$archive" -C "$extracted"
+              mv "$extracted/release" "$extracted/relocated"
+              docs="$extracted/relocated/docs"
+              counter="$extracted/relocated/examples/friendly_counter.jtml"
+              (cd "$extracted/relocated"; if command -v sha256sum >/dev/null; then sha256sum -c SHA256SUMS; else shasum -a 256 -c SHA256SUMS; fi)
+            else
+              archive="dist/rc-review/jtml-0.3.0-rc.3-${{ matrix.platform }}-install.tar.gz"
+              tar -xzf "$archive" -C "$extracted"
+              mv "$extracted/jtml-0.3.0-rc.3-${{ matrix.platform }}-install" "$extracted/relocated"
+              docs="$extracted/relocated/share/doc/jtml/docs"
+              counter="$extracted/relocated/share/jtml/examples/friendly_counter.jtml"
+            fi
+            binary="$extracted/relocated/bin/jtml"
+            test "$("$binary" --version)" = 'jtml 0.3.0-rc.3'
+            env -i PATH="$PATH" HOME="$RUNNER_TEMP/rc-home-$layout" TMPDIR="${TMPDIR:-/tmp}" \
+              JTML_BIN="$binary" JTML_FIRST_USER_DOCS_ROOT="$docs" \
+              JTML_FIRST_USER_COUNTER_SOURCE="$counter" \
+              JTML_FIRST_USER_OUT="$PWD/dist/rc-verification/first-user-$layout" \
+              JTML_BENCH_BROWSER="$JTML_BENCH_BROWSER" \
+              JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT="$JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT" \
+              node tests/browser/first_user.cjs
+          done
+          export JTML_BIN="$RUNNER_TEMP/rc-bundle/relocated/bin/jtml"
+          scripts/test_production_reference.sh 2>&1 | tee dist/rc-verification/packaged-reference.log
+          JTML_IMPORTED_COMPONENTS_OUT="$PWD/dist/rc-verification/imported-components" node tests/browser/imported_components.cjs
+          JTML_INPUT_SYNC_OUT="$PWD/dist/rc-verification/input-state-sync" node tests/browser/input_state_sync.cjs
+          echo "RC.3 packaged browser checks PASS for $RC_SOURCE_REVISION" >> "$GITHUB_STEP_SUMMARY"
+      - name: Record exact verification identities
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          root = pathlib.Path('dist/rc-verification')
+          record = {'sourceRevision': os.environ['RC_SOURCE_REVISION'], 'version': '0.3.0-rc.3', 'files': {}}
+          for file in sorted(root.rglob('*')):
+              if file.is_file():
+                  record['files'][file.relative_to(root).as_posix()] = hashlib.sha256(file.read_bytes()).hexdigest()
+          (root / 'VERIFICATION.json').write_text(json.dumps(record, sort_keys=True, indent=2) + '\n')
+          PY
+      - name: Preserve verification evidence including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jtml-0.3.0-rc.3-verification-${{ matrix.platform }}-${{ inputs.source_revision }}
+          path: dist/rc-verification/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload verified packages for review only
         uses: actions/upload-artifact@v4
         with:
-          name: jtml-0.3.0-rc.2-${{ matrix.platform }}-${{ inputs.source_revision }}
+          name: jtml-0.3.0-rc.3-${{ matrix.platform }}-${{ inputs.source_revision }}
           path: dist/rc-review/
           if-no-files-found: error
           retention-days: 14

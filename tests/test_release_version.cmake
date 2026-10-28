@@ -1,5 +1,5 @@
 set(PROJECT_VERSION "0.3.0")
-foreach(suffix "dev" "rc.1" "rc.2" "")
+foreach(suffix "dev" "rc.1" "rc.2" "rc.3" "")
     set(JTML_VERSION_SUFFIX "${suffix}")
     include("${SOURCE}/cmake/JtmlVersion.cmake")
     set(expected "0.3.0")

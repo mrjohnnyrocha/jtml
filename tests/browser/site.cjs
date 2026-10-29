@@ -62,6 +62,8 @@ let browser;
    }
   }
   await page.goto(origin+prefix);
+  assert.equal(await page.locator('#counter-compiler').innerText(),info.compilerVersion);
+  assert.equal(await page.getByRole('link',{name:'Download RC.3',exact:true}).getAttribute('href'),'https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3');
   assert.equal(await page.locator('#snippet-code').textContent(),fs.readFileSync(path.join(root,'counter.jtml'),'utf8'));
   await page.getByRole('tab',{name:'HTML',exact:true}).click();await page.keyboard.press('ArrowRight');
   assert.equal(await page.getByRole('tab',{name:'React',exact:true}).getAttribute('aria-selected'),'true');

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="JTML is an experimental, compiler-driven language for web applications. Try a real compiled Counter and install the v0.3.0-rc.2 experimental prerelease.">
+    <meta name="description" content="JTML is an experimental, compiler-driven language for web applications. Try a real compiled Counter and install the v0.3.0-rc.3 experimental prerelease.">
     <meta name="theme-color" content="#172026">
     <title>JTML - experimental language for web applications</title>
     <link rel="stylesheet" href="./styles.css">
@@ -68,12 +68,12 @@ page
           <p class="hero-copy">
             Write HTML-shaped markup, observable state, actions, and components in
             Friendly JTML 2. The C++17 compiler generates HTML and JavaScript for
-            supported browser-local applications. The v0.3.0-rc.2 experimental prerelease
+            supported browser-local applications. The v0.3.0-rc.3 experimental prerelease
             is available for technical testers; JTML is not production-ready.
           </p>
           <div class="hero-actions" aria-label="Primary actions">
             <a class="button primary" href="#demo">Try the live Counter</a>
-            <a class="button secondary" href="https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.2">Download RC.2</a>
+            <a class="button secondary" href="https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3">Download RC.3</a>
           </div>
         </div>
       </section>
@@ -82,7 +82,7 @@ page
         <div class="metric-grid" aria-label="JTML research toolchain">
           <article>
             <strong>Install or build</strong>
-            <span>RC.2 packages target Ubuntu 22.04 x86_64 and Apple Silicon macOS. No hosted compiler account is required.</span>
+            <span>RC.3 packages target Ubuntu 22.04 x86_64 and Apple Silicon macOS. No hosted compiler account is required.</span>
           </article>
           <article>
             <strong>1 binary</strong>
@@ -93,8 +93,8 @@ page
             <span>Normal attributes, custom elements, boolean attrs, events, and static HTML output.</span>
           </article>
           <article>
-            <strong>Experimental RC.2</strong>
-            <span>CLI/C API packages report 0.3.0-rc.2. Source builds default to 0.3.0-dev; editor source remains independently versioned at 0.2.0.</span>
+            <strong>Experimental RC.3</strong>
+            <span>CLI/C API packages report 0.3.0-rc.3. Source builds default to 0.3.0-dev; editor source remains independently versioned at 0.2.0.</span>
           </article>
         </div>
       </section>
@@ -134,6 +134,7 @@ page
           <p class="eyebrow">Try JTML in your browser</p>
           <h2 id="demo-title">A real compiled Counter.</h2>
           <p>Click Add one, then Reset. This iframe runs genuine clean-production output from Friendly JTML, with no server or simulated counter code.</p>
+          <p>Demo compiler: <code id="counter-compiler"><!-- counter-compiler --></code>. This is independent of the recommended RC.3 download; the current live demo and Pages compiler remain pinned to RC.2.</p>
           <p><a href="./demo/counter/">Open Counter on its own</a> · <a href="./counter.jtml">Read the exact JTML source</a> · <a href="./site-build.json">Build provenance</a></p>
         </div>
         <div class="demo-frame-wrap">
@@ -176,12 +177,13 @@ page
 
       <section class="try-section" id="try" aria-labelledby="try-title">
         <div class="section-heading">
-          <p class="eyebrow">Install RC.2</p>
-          <h2 id="try-title">Take the same Counter home.</h2>
+          <p class="eyebrow">Install RC.3</p>
+          <h2 id="try-title">Take Counter home with RC.3.</h2>
           <p>Download the matching archive and SHA256SUMS from the
-            <a href="https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.2">public v0.3.0-rc.2 prerelease</a>.
-            Ubuntu 22.04 x86_64 and Apple Silicon macOS are the tested targets.
+            <a href="https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3">public v0.3.0-rc.3 prerelease</a>.
+            Ubuntu 22.04 x86_64 and macOS arm64 are tested; macOS 14.4.1 was exercised physically and macOS 15 on hosted runners. Other platforms remain unverified.
             The binaries are unsigned/unnotarized; read the <a href="./deploy.html">installation and platform contract</a>.</p>
+          <p>RC.3 includes the component-input reset and modular production import fixes. The embedded Counter above has its own compiler provenance.</p>
         </div>
 
         <div class="steps">
@@ -190,8 +192,8 @@ page
             <h3>Verify And Extract</h3>
             <pre><code># Example: macOS arm64 bundle
 # Run beside the downloaded tarball and SHA256SUMS.
-grep '  jtml-0.3.0-rc.2-darwin-arm64.tar.gz$' SHA256SUMS | shasum -a 256 -c -
-tar -xzf jtml-0.3.0-rc.2-darwin-arm64.tar.gz
+grep '  jtml-0.3.0-rc.3-darwin-arm64.tar.gz$' SHA256SUMS | shasum -a 256 -c -
+tar -xzf jtml-0.3.0-rc.3-darwin-arm64.tar.gz
 cd release</code></pre>
           </article>
           <article class="step">
@@ -239,9 +241,9 @@ cd release</code></pre>
         <div class="section-heading">
           <p class="eyebrow">Experimental means bounded</p>
           <h2 id="limitations-title">What this release does not promise.</h2>
-          <p>Five native-renderer discrepancies remain. Reference HTML exceeds its 70000-byte microfixture budget (99939 bytes); the shared runtime remains within 271961/272000 bytes. Type/source-span coverage and tooling are experimental.</p>
-          <p>RC.2 component inputs can retain old text after a programmatic reset; the fix is on current main and has not been released. Direct root-loop components and root ID/select limitations remain documented. There is no stable cross-version C ABI, production-service contract, or Windows/Intel/universal Mac/Linux arm64/Python wheel/VSIX package.</p>
-          <p><a href="https://github.com/mrjohnnyrocha/jtml/blob/main/docs/releases/v0.3.0-rc.2.md">Read the complete RC.2 contract</a> · <a href="https://github.com/mrjohnnyrocha/jtml/blob/v0.3.0-rc.2/docs/releases/rc-feedback.md">Report an early-user finding</a></p>
+          <p>Five native-renderer discrepancies remain. Reference HTML exceeds its 70000-byte microfixture budget (99952 bytes); the shared runtime remains within 271961/272000 bytes. Type/source-span coverage and tooling are experimental.</p>
+          <p>RC.3 includes the component-input reset and modular production import fixes. General slots remain incomplete: conditional slots may lose content, slotted child components may not initialize, and caller-slot input setters may be absent. Direct root-loop components and root ID/select limitations remain documented. There is no stable cross-version C ABI, production-service contract, or Windows/Intel/universal Mac/Linux arm64/Python wheel/VSIX package.</p>
+          <p><a href="https://github.com/mrjohnnyrocha/jtml/blob/main/docs/releases/v0.3.0-rc.3.md">Read the complete RC.3 contract</a> · <a href="https://github.com/mrjohnnyrocha/jtml/blob/main/docs/releases/rc-feedback.md">Report an early-user finding</a></p>
         </div>
       </section>
 
@@ -266,7 +268,7 @@ cd release</code></pre>
           </li>
           <li>
             <strong>External technical testing</strong>
-            <span>RC.2 is published with checksums, provenance and physical macOS 14.4.1 acceptance. Collect small reproducible reports before expanding the support contract.</span>
+            <span>RC.3 is published with checksums, provenance and physical macOS 14.4.1 acceptance. Collect small reproducible reports before expanding the support contract.</span>
           </li>
         </ol>
       </section>

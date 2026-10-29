@@ -27,30 +27,30 @@
     <main>
       <section class="page-hero" aria-labelledby="deploy-title">
         <p class="eyebrow">Deploy</p>
-        <h1 id="deploy-title">Install RC.2, then publish static browser assets.</h1>
-        <p>JTML compiles supported reactive apps to static browser assets. Its separate live development server is loopback-only trusted-code tooling; the public RC.2 packages are experimental, unsigned and unnotarized.</p>
+        <h1 id="deploy-title">Install RC.3, then publish static browser assets.</h1>
+        <p>JTML compiles supported reactive apps to static browser assets. Its separate live development server is loopback-only trusted-code tooling; the public RC.3 packages are experimental, unsigned and unnotarized.</p>
       </section>
 
       <section class="reference-layout">
         <article>
           <h2>Download and verify</h2>
-          <p><a href="https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.2">Published v0.3.0-rc.2 packages and SHA256SUMS</a>. Download the bundle matching your platform. The <code>-install</code> tarball is an alternative CPack layout.</p>
+          <p><a href="https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3">Published v0.3.0-rc.3 packages and SHA256SUMS</a>. Download the bundle matching your platform. The <code>-install</code> tarball is an alternative CPack layout.</p>
           <pre><code># Linux x86_64: beside the downloaded files
-grep '  jtml-0.3.0-rc.2-linux-x86_64.tar.gz$' SHA256SUMS | sha256sum -c -
-tar -xzf jtml-0.3.0-rc.2-linux-x86_64.tar.gz
+grep '  jtml-0.3.0-rc.3-linux-x86_64.tar.gz$' SHA256SUMS | sha256sum -c -
+tar -xzf jtml-0.3.0-rc.3-linux-x86_64.tar.gz
 # macOS arm64 instead:
-grep '  jtml-0.3.0-rc.2-darwin-arm64.tar.gz$' SHA256SUMS | shasum -a 256 -c -
-tar -xzf jtml-0.3.0-rc.2-darwin-arm64.tar.gz</code></pre>
+grep '  jtml-0.3.0-rc.3-darwin-arm64.tar.gz$' SHA256SUMS | shasum -a 256 -c -
+tar -xzf jtml-0.3.0-rc.3-darwin-arm64.tar.gz</code></pre>
         </article>
         <article>
           <h2>Compile the Counter</h2>
           <pre><code>cd release
 ./bin/jtml --version
-# jtml 0.3.0-rc.2
+# jtml 0.3.0-rc.3
 ./bin/jtml check examples/friendly_counter.jtml
 ./bin/jtml build examples/friendly_counter.jtml --target browser --out counter-dist
 python3 -m http.server 8000 --bind 127.0.0.1 --directory counter-dist</code></pre>
-          <p>Open localhost:8000; Add one changes 0 to 1 and Reset returns to 0. Keep all four generated assets together. <a href="./demo/counter/">Try the same compiled application here</a>.</p>
+          <p>Open localhost:8000; Add one changes 0 to 1 and Reset returns to 0. Keep all four generated assets together. <a href="./index.html#demo">Try the embedded Counter and inspect its compiler provenance</a>.</p>
         </article>
         <article>
           <h2>Platform contract</h2>
@@ -64,13 +64,13 @@ python3 -m http.server 8000 --bind 127.0.0.1 --directory counter-dist</code></pr
         </article>
         <article>
           <h2>Source builds</h2>
-          <p>For a complete form with input reset, use <a href="https://github.com/mrjohnnyrocha/jtml/blob/main/docs/getting-started.md">the first-app guide on current main</a>. RC.2 leaves the old textbox text visible after a programmatic reset; that fix is not yet released.</p>
-          <p><a href="https://github.com/mrjohnnyrocha/jtml#readme">Build from source</a> with a C++17 compiler and CMake. Source builds default to 0.3.0-dev; RC.2 is selected explicitly when packaging. Optional Python bindings and VSIX publication have separate requirements.</p>
+          <p>RC.3 includes both the component-input reset fix and clean browser production imports. For a complete form, use <a href="https://github.com/mrjohnnyrocha/jtml/blob/main/docs/getting-started.md">the first-app guide</a>. Known general slot limitations still apply.</p>
+          <p><a href="https://github.com/mrjohnnyrocha/jtml#readme">Build from source</a> with a C++17 compiler and CMake. Source builds default to 0.3.0-dev; the published binaries report 0.3.0-rc.3. Optional Python bindings and VSIX publication have separate requirements.</p>
         </article>
         <article>
           <h2>Static hosting</h2>
           <p>The generated Counter needs no backend. Serve <code>index.html</code>, <code>jtml-runtime.js</code>, <code>components/index.js</code> and <code>app.js</code> together with HTML/JavaScript MIME types. Scripts use <code>script-src 'self'</code>; the example's inline styles require a separate style policy.</p>
-          <p><a href="https://github.com/mrjohnnyrocha/jtml/blob/main/docs/releases/v0.3.0-rc.2.md">Full RC.2 installation, checksums, provenance and limitations</a>.</p>
+          <p><a href="https://github.com/mrjohnnyrocha/jtml/blob/main/docs/releases/v0.3.0-rc.3.md">Full RC.3 installation, checksums, provenance and limitations</a>.</p>
         </article>
       </section>
     </main>

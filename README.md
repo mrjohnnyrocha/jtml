@@ -5,7 +5,7 @@ Friendly JTML 2 puts observable state, actions and HTML-shaped UI in one readabl
 file. The C++17 compiler owns dependency analysis and generates static,
 CSP-safe JavaScript; supported browser apps update locally without a JTML server.
 
-[Build and try it](#get-started-from-source) · [Write your first app](docs/getting-started.md) · [v0.3 support and release status](docs/releases/v0.3-readiness.md) · [Architecture](https://github.com/mrjohnnyrocha/jtml/blob/main/ARCHITECTURE.md)
+[Build and try it](#get-started-from-source) · [Write your first app](docs/getting-started.md) · [RC.3 support and release status](docs/releases/v0.3.0-rc.3.md) · [Architecture](https://github.com/mrjohnnyrocha/jtml/blob/main/ARCHITECTURE.md)
 
 ```jtml
 jtml 2
@@ -35,22 +35,23 @@ clicking **Add one** once, so it displays **Count: 1**.
 
 ![Actual Chromium rendering of the compiled Friendly counter after Add one](docs/images/counter-preview.png)
 
-**Research preview in development, not production-ready.** The [v0.3.0-rc.2 experimental prerelease](https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.2)
+**Research preview in development, not production-ready.** The [v0.3.0-rc.3 experimental prerelease](https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3)
 is publicly available for technical testers. Default source CLI/C API builds report
 **0.3.0-dev**; CPack and CLI archive identities use the same full version.
 The editor source remains independently versioned at **0.2.0** (no VSIX is shipped).
 Validated component-argument repairs and remaining native-renderer limitations are
-recorded in the [independent readiness report](docs/releases/v0.3-readiness.md).
+recorded in the [historical readiness report](docs/releases/v0.3-readiness.md);
+current distribution acceptance is in the [RC.3 contract](docs/releases/v0.3.0-rc.3.md).
 
-For published binary packages, use the [v0.3.0-rc.2 guide](docs/releases/v0.3.0-rc.2.md#install-and-five-minute-first-app-smoke).
-RC.2 runs the Counter below, but its component `input into` bindings do not
-display programmatic resets correctly. That fix is on current main and has not
-been released. The source quickstart builds `0.3.0-dev`; the
-[first-app guide](docs/getting-started.md) uses that development version.
-
-RC.3 is being prepared as a review-only consolidation; see the
-[draft RC.3 notes and acceptance contract](docs/releases/v0.3.0-rc.3.md).
-It is not a published download or a production-readiness claim.
+For published binary packages, use the [RC.3 installation guide](docs/releases/v0.3.0-rc.3.md#install-and-run-the-first-applications).
+RC.3 includes the component-input reset fix and clean-production imported-component
+fix: both the complete [CoffeeOrder first-app guide](docs/getting-started.md) and
+the generated modular starter work with its binaries. Release source:
+`2cec9263d4a2e5fa859c3703615aeb6f2ed5b668`.
+The verified packages target Ubuntu 22.04 x86_64 and macOS arm64 (physical 14.4.1
+and hosted macOS 15; minimum target 14.0). Packages are unsigned/unnotarized;
+other platforms remain unverified. Known slot/native-renderer limitations remain
+in the [RC.3 contract](docs/releases/v0.3.0-rc.3.md).
 
 ## Get started from source
 
@@ -319,7 +320,7 @@ To inspect the compatibility starter:
 ./build/jtml serve my_page.jtml --port 8000
 ```
 
-Create and compile a modular app with current main, including PR #53:
+Create and compile a modular app with RC.3 or current main, including PR #53:
 
 ```sh
 # From the repository root, make this source build available after changing directories.
@@ -334,9 +335,9 @@ python3 -m http.server 8000 --bind 127.0.0.1 --directory dist
 
 Open [http://localhost:8000](http://localhost:8000) and verify that Add one increments
 the count. RC.2 lacks both the generated Card export and this production import
-fix; adding `export` there repairs import checking only. Use its documented
-Counter smoke or build current main for the modular starter. Stop the static
-server with Ctrl+C; for the separate live backend, run `jtml dev . --port 8000`.
+fix; adding `export` there repairs import checking only. Use RC.3 or current main
+for the modular starter. Stop the static server with Ctrl+C; for the separate
+live backend, run `jtml dev . --port 8000`.
 
 Install a local JTML package into an app:
 

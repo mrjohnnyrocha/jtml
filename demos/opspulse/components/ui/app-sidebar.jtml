@@ -1,9 +1,9 @@
 jtml 2
 
-use "../stores/app-state.jtml"
-use "../stores/filter-state.jtml"
+use "../../stores/app-state.jtml"
+use "../../stores/filter-state.jtml"
 
-make AppSidebar
+export make AppSidebar
   nav class "{appState.sidebarClass}"
     table width "100%" cellpadding "14" cellspacing "0" bgcolor "#f8fafc"
       tr

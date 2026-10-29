@@ -110,6 +110,9 @@ jobs:
         working-directory: build
         run: ctest --output-on-failure --parallel
 
+      - name: Application import paths and public download references
+        run: python3 tests/test_application_paths.py
+
       - name: AI evaluation runner unit tests (no model calls)
         working-directory: benchmarks/ai-eval
         run: |

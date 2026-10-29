@@ -1,8 +1,8 @@
 jtml 2
 
 // ============================================================================
-// OpsPulse - Modularized Single-File JTML App
-// Demonstrates modularization patterns for medium-sized JTML applications
+// OpsPulse - Canonical Single-File Showcase
+// Static sample metrics; no backend or persistence. See README.md for tested limits.
 // ============================================================================
 
 // ============================================================================

@@ -1,7 +1,7 @@
 jtml 2
 
 // Filter state: regions, platforms, tools, priorities
-store filterState
+export store filterState
   let selectedRegion = "All"
   let selectedPlatform = "All"
   let selectedTool = "All"

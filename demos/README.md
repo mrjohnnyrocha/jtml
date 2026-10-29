@@ -1,39 +1,34 @@
-# JTML Demos
+# JTML showcases
 
-This folder contains larger JTML applications that are meant to feel closer to production surfaces than the focused examples in `examples/`.
+These are language showcases, not complete production applications. See the
+[application inventory](../docs/application-inventory.md) for measured results.
+The existing SQLite-backed application is [ReleaseDesk](../apps/releasedesk/README.md).
+Taskboard lives under `tests/fixtures/production/` as an adversarial regression
+fixture, not a second product.
 
-## Enterprise Operations Suite
+| Source | Role and data | Current boundary |
+| --- | --- | --- |
+| `index.jtml` | Enterprise Operations language showcase; literal records, `/api/users`, `/api/posts`, `/api/runtime`, POST `/api/login`, `host.notify` | Live/demo contracts; clean browser build currently rejects module ownership. No database or complete backend is supplied here. |
+| `opspulse/index.jtml` | Canonical OpsPulse single-file showcase; literal metrics and transient stores | Clean build succeeds with binding advisories; browser route/state acceptance fails. |
+| `example.jtml` | Preserved denser OpsPulse reference; `/api/usage`, `/api/users`, `/api/incidents`, lazy `/api/releases` and `/api/media` | No matching production backend; successful compilation is not functional acceptance. |
+| `opspulse/pages`, `components`, `stores` | Unfinished modular exploration | Not imported by the canonical entrypoint; see its [module audit](opspulse/README.md). |
 
-`index.jtml` is a single-file Friendly JTML app that demonstrates:
+Run source checks from the repository root:
 
-- routes, route guards, route parameters, and layouts
-- stores, effects, derived values, typed declarations, and component-local state
-- GET fetch, POST fetch, lazy route loading, refresh handles, and invalidation
-- forms, inputs, textarea, select, checkbox, buttons, and links
-- media primitives: image, audio, video, file, dropzone, canvas, SVG graphics, chart, and 3D host surfaces
-- external host actions through `extern`
-
-Run it locally:
-
-```bash
+```sh
+./build/jtml check demos/index.jtml
+./build/jtml lint demos/index.jtml
 ./build/jtml serve demos/index.jtml --port 8030
 ```
 
-Build it as a static artifact:
+The last command exercises the live backend. To test the separate clean browser
+contract, request it explicitly; currently the following reports a known error:
 
-```bash
-./build/jtml build demos --out dist/demos
+```sh
+./build/jtml build demos --target browser --out dist/demos-browser
 ```
 
-This demo intentionally describes a full-stack-ready shape using the current JTML runtime HTTP contracts. Future server blocks, database bindings, SSR, and native packaging can attach to the same app structure.
-
-## OpsPulse Reference Surface
-
-`example.jtml` is a second, denser enterprise workspace used to stress the language and tooling. It covers a dashboard shell, nested component composition, route-backed pages, fetch resources, operational forms, media upload state, charts, settings flows, and observable-first lint checks.
-
-It is intentionally kept as a source-quality demo rather than the default built artifact. Validate it with:
-
-```bash
-./build/jtml check demos/example.jtml
-./build/jtml lint demos/example.jtml
-```
+The full gate's existing `build demos --out dist/demos` is a different build mode;
+it must not be cited as clean-production/browser proof. Historical media, routes,
+guards, fetch and host-integration examples remain for coverage. No showcase is
+deleted merely because it overlaps another.

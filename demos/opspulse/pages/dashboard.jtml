@@ -1,12 +1,12 @@
 jtml 2
 
-use "../../stores/app-state.jtml"
-use "../../stores/filter-state.jtml"
-use "../layouts/shell.jtml"
-use "../ui/filter-panel.jtml"
-use "../ui/common.jtml"
+use "../stores/app-state.jtml"
+use "../stores/filter-state.jtml"
+use "../components/layouts/shell.jtml"
+use "../components/ui/filter-panel.jtml"
+use "../components/ui/common.jtml"
 
-make Dashboard
+export make Dashboard
   Shell "Dashboard" "OpsPulse"
     fieldset class "panel"
       h2 "Overview"

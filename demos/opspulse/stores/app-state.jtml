@@ -1,7 +1,7 @@
 jtml 2
 
 // Global app state: theme, sidebar, user, notifications
-store appState
+export store appState
   let currentUser = "João"
   let currentRole = "Admin"
   let sidebarOpen = true

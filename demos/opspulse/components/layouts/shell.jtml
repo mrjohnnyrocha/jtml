@@ -1,11 +1,11 @@
 jtml 2
 
-use "../stores/app-state.jtml"
-use "./app-header.jtml"
-use "./app-sidebar.jtml"
-use "./common.jtml"
+use "../../stores/app-state.jtml"
+use "../ui/app-header.jtml"
+use "../ui/app-sidebar.jtml"
+use "../ui/common.jtml"
 
-make Shell title appName
+export make Shell title appName
   page class "{appState.themeClass}"
     AppHeader title appName
     table width "100%" cellpadding "0" cellspacing "0" bgcolor "#f4f7fb"

@@ -53,6 +53,11 @@ and hosted macOS 15; minimum target 14.0). Packages are unsigned/unnotarized;
 other platforms remain unverified. Known slot/native-renderer limitations remain
 in the [RC.3 contract](docs/releases/v0.3.0-rc.3.md).
 
+See the [application inventory](docs/application-inventory.md) for actual
+entrypoints, data ownership, tested behavior and known blockers. ReleaseDesk is
+the existing SQLite-backed application; Taskboard is an adversarial compiler
+fixture. OpsPulse is a showcase with placeholder metrics, not a deployed service.
+
 ## Get started from source
 
 Use Git, a C++17 compiler and a recent CMake (validated with **3.31.3**).

@@ -19,6 +19,14 @@ Historical RC.2 records remain below. The website's existing Counter/Pages compi
 is still separately pinned to RC.2; updating download recommendations does not
 rebuild or redeploy that live demo. No production readiness is inferred.
 
+## Application inventory
+
+See the [application inventory](docs/application-inventory.md) for the existing
+portfolio, measured browser behavior and unresolved demo limitations. ReleaseDesk
+is the SQLite-backed application; Taskboard is a regression fixture. OpsPulse has
+one canonical single-file showcase and an unfinished modular exploration.
+Compiler success alone does not establish application functionality.
+
 ## Static component text input synchronization
 
 The published RC.2 input-reset discrepancy is reproduced with its exact binary.
@@ -683,7 +691,8 @@ checks visible rather than treating historical success as current evidence.
 
 Best large demo:
 
-- `demos/index.jtml` - broad single-file demo covering app-scale JTML concepts.
+- `demos/index.jtml` - broad language showcase; clean browser production currently
+  rejects module ownership. See the application inventory above.
 
 Focused examples:
 
@@ -695,10 +704,9 @@ Focused examples:
 
 Do not currently treat these as canonical production evidence:
 
-- `demos/opspulse/` - tracked modular demo (20 files at this baseline), covered
-  by the local gate. The historical uncommitted-work warning no longer describes
-  this clean starting checkout; passing smoke checks does not establish full
-  browser/live parity or production readiness.
+- `demos/opspulse/index.jtml` - canonical single-file showcase. The sibling
+  modules are an unfinished exploration and are not imported by that entrypoint.
+  Local gate success does not establish browser route/state correctness.
 - Older Classic examples - useful for compatibility regression, not public
   authoring guidance.
 

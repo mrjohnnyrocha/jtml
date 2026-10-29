@@ -89,8 +89,9 @@ scripts/verify_all.sh
 - Fallback/helper paths are migration bridges, not automatically the desired
   architecture.
 - Some docs and examples can drift; verify with code, tests, and `doctor`.
-- `demos/opspulse/` is tracked and covered by the local gate; historical freeze
-  warnings about uncommitted work are not current evidence of demo health.
+- `demos/opspulse/index.jtml` is the canonical single-file showcase. Its sibling
+  modules are not its dependency graph; consult `docs/application-inventory.md`
+  before treating gate success as browser application acceptance.
 - Versioning must remain consistent across CMake, CLI, C API, docs, and
   `doctor`.
 

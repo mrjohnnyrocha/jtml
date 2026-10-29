@@ -1,0 +1,1256 @@
+{
+  "checks": [
+    {
+      "name": "opspulse route /",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "opspulse route /usage",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "opspulse route /people",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "opspulse route /incidents",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "opspulse route /settings",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "opspulse route /missing",
+      "ok": true,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "opspulse navigation Usage",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "opspulse navigation People",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "opspulse navigation Incidents",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "opspulse navigation Settings",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "opspulse navigation Dashboard",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "opspulse state Theme",
+      "ok": false,
+      "detail": {
+        "before": "☰\t\nOpsPulse\n\nNot found\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+        "after": "☰\t\nOpsPulse\n\nNot found\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard"
+      }
+    },
+    {
+      "name": "opspulse state Portugal",
+      "ok": false,
+      "detail": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Portugal', exact: true }).visible()\u001b[22m\n"
+    },
+    {
+      "name": "opspulse no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "opspulse no failed resources",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "reference route /",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference route /usage",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference route /people",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference route /incidents",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference route /releases",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference route /media",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference route /settings",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference route /missing",
+      "ok": true,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference navigation Usage",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference navigation People",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference navigation Incidents",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference navigation Settings",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference navigation Dashboard",
+      "ok": false,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference state Theme",
+      "ok": false,
+      "detail": {
+        "before": "☰\t\n\nNot found\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+        "after": "☰\t\n\nNot found\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard"
+      }
+    },
+    {
+      "name": "reference state Portugal",
+      "ok": false,
+      "detail": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Portugal', exact: true }).visible()\u001b[22m\n"
+    },
+    {
+      "name": "reference no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "reference no failed resources",
+      "ok": false,
+      "detail": [
+        {
+          "url": "http://127.0.0.1:59292/media.data.hero",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/media.data.poster",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/incidents",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/usage",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/users",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/media.data.demo",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/media.data.audio",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/incidents",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/usage",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/users",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/users",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/incidents",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/usage",
+          "status": 404
+        }
+      ]
+    }
+  ],
+  "failures": [
+    "opspulse route /",
+    "opspulse route /usage",
+    "opspulse route /people",
+    "opspulse route /incidents",
+    "opspulse route /settings",
+    "opspulse navigation Usage",
+    "opspulse navigation People",
+    "opspulse navigation Incidents",
+    "opspulse navigation Settings",
+    "opspulse navigation Dashboard",
+    "opspulse state Theme",
+    "opspulse state Portugal",
+    "reference route /",
+    "reference route /usage",
+    "reference route /people",
+    "reference route /incidents",
+    "reference route /releases",
+    "reference route /media",
+    "reference route /settings",
+    "reference navigation Usage",
+    "reference navigation People",
+    "reference navigation Incidents",
+    "reference navigation Settings",
+    "reference navigation Dashboard",
+    "reference state Theme",
+    "reference state Portugal",
+    "reference no failed resources"
+  ],
+  "applications": [
+    {
+      "name": "opspulse",
+      "source": "demos/opspulse",
+      "routes": [
+        {
+          "route": "/",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\nOpsPulse\n\nNot found\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/usage",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\nOpsPulse\n\nNot found\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/usage",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/people",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\nOpsPulse\n\nNot found\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/people",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/incidents",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\nOpsPulse\n\nNot found\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/incidents",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/settings",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\nOpsPulse\n\nNot found\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/settings",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/missing",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\nOpsPulse\n\nNot found\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/missing",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        }
+      ],
+      "errors": [],
+      "requests": []
+    },
+    {
+      "name": "reference",
+      "source": "demos/example.jtml",
+      "routes": [
+        {
+          "route": "/",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\n\nNot found\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/usage",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\n\nNot found\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/usage",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/people",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\n\nNot found\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/people",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/incidents",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\n\nNot found\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/incidents",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/releases",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\n\nNot found\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/releases",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/media",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\n\nNot found\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/media",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/settings",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\n\nNot found\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/settings",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/missing",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\n\nNot found\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/missing",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        }
+      ],
+      "errors": [],
+      "requests": [
+        {
+          "url": "http://127.0.0.1:59292/media.data.hero",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/media.data.poster",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/incidents",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/usage",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/users",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/media.data.demo",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/media.data.audio",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/incidents",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/usage",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/users",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/users",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/incidents",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:59292/api/usage",
+          "status": 404
+        }
+      ]
+    }
+  ],
+  "browser": "153.0.8010.12"
+}

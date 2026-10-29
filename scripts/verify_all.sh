@@ -28,6 +28,7 @@ done
 "$build_dir/jtml" build "$repo_root/demos/opspulse" --out "$repo_root/dist/opspulse"
 test -f "$repo_root/dist/opspulse/index.html"
 test -f "$repo_root/dist/opspulse/assets/ops-workspace.svg"
+JTML_BIN="$build_dir/jtml" python3 "$repo_root/tests/test_application_paths.py"
 
 tmp_browser_loop="$(mktemp "${TMPDIR:-/tmp}/jtml-browser-loop.XXXXXX")"
 printf 'jtml 2\n\nlet users = [{ name: "Ada", avatar: "/ada.png", active: true }]\n\npage\n  for user in users\n    box class "person"\n      image src user.avatar alt user.name\n      if user.active\n        text user.name\n' > "$tmp_browser_loop"

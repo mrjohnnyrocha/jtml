@@ -1,8 +1,8 @@
 jtml 2
 
-use "../stores/filter-state.jtml"
+use "../../stores/filter-state.jtml"
 
-make FilterPanel
+export make FilterPanel
   fieldset class "filters"
     legend "Filters"
     table width "100%" cellpadding "8" cellspacing "0"

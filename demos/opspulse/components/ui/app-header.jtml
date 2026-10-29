@@ -1,8 +1,9 @@
 jtml 2
 
-use "../stores/app-state.jtml"
+use "../../stores/app-state.jtml"
+use "../../stores/filter-state.jtml"
 
-make AppHeader title appName
+export make AppHeader title appName
   header class "topbar"
     table width "100%" cellpadding "14" cellspacing "0" bgcolor "#ffffff"
       tr

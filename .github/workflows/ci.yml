@@ -128,6 +128,9 @@ jobs:
       - name: Root conditional component lifecycle (browser required)
         run: node tests/browser/root_conditional_mount.cjs
 
+      - name: Route declaration precedence (browser required)
+        run: node tests/browser/route_precedence.cjs
+
       - name: Input state synchronization (browser required)
         run: node tests/browser/input_state_sync.cjs
 

@@ -709,6 +709,38 @@ TEST(SemanticProgram, CanonicalizesFriendlyRouteFallbacks) {
     EXPECT_TRUE(hasEdge(semantic, "route:/user/:id", "component:UserProfile", "renders"));
 }
 
+TEST(SemanticProgram, PreservesRouteDeclarationPrecedenceThroughClientManifest) {
+    // Both orders are deliberate: preserve first-match semantics, do not rank
+    // wildcard/static/parameter patterns or alphabetize route names.
+    for (const bool fallbackFirst : {false, true}) {
+        const std::string fallback = "route \"*\" as Missing\n";
+        const std::string source = std::string("jtml 2\n") +
+            (fallbackFirst ? fallback : "") +
+            "route \"/\" as Home\n"
+            "route \"/user/new\" as NewUser\n"
+            "route \"/user/:id\" as Profile\n" +
+            (fallbackFirst ? "" : fallback) +
+            "make Home\n  h1 \"Home\"\n"
+            "make NewUser\n  h1 \"New\"\n"
+            "make Profile id\n  h1 id\n"
+            "make Missing\n  h1 \"Missing\"\n";
+        auto program = parseFriendly(source);
+        const auto semantic = jtml::analyzeSemanticProgram(program, source);
+        const auto plan = jtml::buildRuntimePlan(program, semantic);
+        const auto manifest = jtml::runtimePlanToClientJson(plan);
+        std::vector<std::string> expected = {"/", "/user/new", "/user/:id"};
+        expected.insert(fallbackFirst ? expected.begin() : expected.end(), "*");
+        ASSERT_EQ(semantic.routeRecords.size(), expected.size());
+        ASSERT_EQ(plan.routes.size(), expected.size());
+        ASSERT_EQ(manifest["routes"].size(), expected.size());
+        for (size_t i = 0; i < expected.size(); ++i) {
+            EXPECT_EQ(semantic.routeRecords[i].path, expected[i]);
+            EXPECT_EQ(plan.routes[i].path, expected[i]);
+            EXPECT_EQ(manifest["routes"][i]["path"], expected[i]);
+        }
+    }
+}
+
 TEST(SemanticProgram, CapturesFetchOptionsInStructuredRecords) {
     const std::string source =
         "jtml 2\n"

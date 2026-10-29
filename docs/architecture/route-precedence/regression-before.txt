@@ -1,0 +1,13 @@
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'*' !== '/'
+
+    at current (/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/browser/route_precedence.cjs:29:12)
+    at async /Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/browser/route_precedence.cjs:37:38 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: '*',
+  expected: '/',
+  operator: 'strictEqual',
+  diff: 'simple'
+}

@@ -469,7 +469,8 @@ struct SemanticSets {
     std::set<std::tuple<std::string, std::string, int, std::string, std::string, std::string, std::string, int, std::shared_ptr<const SourceProvenance>>> componentInstances;
     std::map<std::string, std::string> componentArguments;
     std::set<std::string> routes;
-    std::set<std::tuple<std::string, std::string, std::string, std::string>> routeRecords;
+    // Route matching is first-match: executable records must retain AST order.
+    std::vector<std::tuple<std::string, std::string, std::string, std::string>> routeRecords;
     std::set<std::string> fetches;
     std::set<std::tuple<std::string, std::string, std::string, std::string, std::string,
                         std::string, std::string, std::string, std::string, std::string, std::string,
@@ -799,7 +800,7 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
         attributeLiteral(elem, "data-jtml-route-params", routeParams);
         std::string routeLoad;
         attributeLiteral(elem, "data-jtml-route-load", routeLoad);
-        out.routeRecords.insert({value, routeName, joinValues(splitCommaList(routeParams)),
+        out.routeRecords.push_back({value, routeName, joinValues(splitCommaList(routeParams)),
                                  joinValues(splitCommaList(routeLoad))});
         if (attributeLiteral(elem, "data-jtml-route-name", routeName)) {
             insertSorted(out.routes, value + " -> " + routeName);
@@ -1240,7 +1241,7 @@ std::vector<SemanticUiUse> uiUsesToVector(
 }
 
 std::vector<SemanticRoute> routesToVector(
-    const std::set<std::tuple<std::string, std::string, std::string, std::string>>& values) {
+    const std::vector<std::tuple<std::string, std::string, std::string, std::string>>& values) {
     std::vector<SemanticRoute> routes;
     for (const auto& route : values) {
         routes.push_back({

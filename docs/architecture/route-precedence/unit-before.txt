@@ -1,0 +1,137 @@
+Internal ctest changing into directory: /Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/build
+Test project /Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/build
+    Start 357: SemanticProgram.PreservesRouteDeclarationPrecedenceThroughClientManifest
+1/1 Test #357: SemanticProgram.PreservesRouteDeclarationPrecedenceThroughClientManifest ...***Failed    0.05 sec
+Running main() from /Users/joaorocha/Documents/jtml-v1/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = SemanticProgram.PreservesRouteDeclarationPrecedenceThroughClientManifest
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from SemanticProgram
+[ RUN      ] SemanticProgram.PreservesRouteDeclarationPrecedenceThroughClientManifest
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:737: Failure
+Expected equality of these values:
+  semantic.routeRecords[i].path
+    Which is: "*"
+  expected[i]
+    Which is: "/"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:738: Failure
+Expected equality of these values:
+  plan.routes[i].path
+    Which is: "*"
+  expected[i]
+    Which is: "/"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:739: Failure
+Expected equality of these values:
+  manifest["routes"][i]["path"]
+    Which is: "*"
+  expected[i]
+    Which is: "/"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:737: Failure
+Expected equality of these values:
+  semantic.routeRecords[i].path
+    Which is: "/"
+  expected[i]
+    Which is: "/user/new"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:738: Failure
+Expected equality of these values:
+  plan.routes[i].path
+    Which is: "/"
+  expected[i]
+    Which is: "/user/new"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:739: Failure
+Expected equality of these values:
+  manifest["routes"][i]["path"]
+    Which is: "/"
+  expected[i]
+    Which is: "/user/new"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:737: Failure
+Expected equality of these values:
+  semantic.routeRecords[i].path
+    Which is: "/user/new"
+  expected[i]
+    Which is: "*"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:738: Failure
+Expected equality of these values:
+  plan.routes[i].path
+    Which is: "/user/new"
+  expected[i]
+    Which is: "*"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:739: Failure
+Expected equality of these values:
+  manifest["routes"][i]["path"]
+    Which is: "/user/new"
+  expected[i]
+    Which is: "*"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:737: Failure
+Expected equality of these values:
+  semantic.routeRecords[i].path
+    Which is: "/user/:id"
+  expected[i]
+    Which is: "/user/new"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:738: Failure
+Expected equality of these values:
+  plan.routes[i].path
+    Which is: "/user/:id"
+  expected[i]
+    Which is: "/user/new"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:739: Failure
+Expected equality of these values:
+  manifest["routes"][i]["path"]
+    Which is: "/user/:id"
+  expected[i]
+    Which is: "/user/new"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:737: Failure
+Expected equality of these values:
+  semantic.routeRecords[i].path
+    Which is: "/user/new"
+  expected[i]
+    Which is: "/user/:id"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:738: Failure
+Expected equality of these values:
+  plan.routes[i].path
+    Which is: "/user/new"
+  expected[i]
+    Which is: "/user/:id"
+
+/Users/joaorocha/.codex/worktrees/route-precedence/jtml-v1/tests/test_semantic.cpp:739: Failure
+Expected equality of these values:
+  manifest["routes"][i]["path"]
+    Which is: "/user/new"
+  expected[i]
+    Which is: "/user/:id"
+
+[  FAILED  ] SemanticProgram.PreservesRouteDeclarationPrecedenceThroughClientManifest (19 ms)
+[----------] 1 test from SemanticProgram (19 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (19 ms total)
+[  PASSED  ] 0 tests.
+[  FAILED  ] 1 test, listed below:
+[  FAILED  ] SemanticProgram.PreservesRouteDeclarationPrecedenceThroughClientManifest
+
+ 1 FAILED TEST
+
+
+0% tests passed, 1 tests failed out of 1
+
+Label Time Summary:
+unit    =   0.05 sec*proc (1 test)
+
+Total Test time (real) =   0.07 sec
+
+The following tests FAILED:
+	357 - SemanticProgram.PreservesRouteDeclarationPrecedenceThroughClientManifest (Failed) unit
+Errors while running CTest

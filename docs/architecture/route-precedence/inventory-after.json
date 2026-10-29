@@ -1,0 +1,1282 @@
+{
+  "checks": [
+    {
+      "name": "opspulse route /",
+      "ok": true,
+      "detail": [
+        "Overview",
+        "1,247",
+        "842",
+        "1.2s",
+        "€4,812"
+      ]
+    },
+    {
+      "name": "opspulse route /usage",
+      "ok": true,
+      "detail": [
+        "Usage Explorer"
+      ]
+    },
+    {
+      "name": "opspulse route /people",
+      "ok": true,
+      "detail": [
+        "People"
+      ]
+    },
+    {
+      "name": "opspulse route /incidents",
+      "ok": true,
+      "detail": [
+        "Incident Centre"
+      ]
+    },
+    {
+      "name": "opspulse route /settings",
+      "ok": true,
+      "detail": [
+        "Workspace Settings"
+      ]
+    },
+    {
+      "name": "opspulse route /missing",
+      "ok": true,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "opspulse navigation Usage",
+      "ok": true,
+      "detail": [
+        "Usage Explorer"
+      ]
+    },
+    {
+      "name": "opspulse navigation People",
+      "ok": true,
+      "detail": [
+        "People"
+      ]
+    },
+    {
+      "name": "opspulse navigation Incidents",
+      "ok": true,
+      "detail": [
+        "Incident Centre"
+      ]
+    },
+    {
+      "name": "opspulse navigation Settings",
+      "ok": true,
+      "detail": [
+        "Workspace Settings"
+      ]
+    },
+    {
+      "name": "opspulse navigation Dashboard",
+      "ok": true,
+      "detail": [
+        "Overview",
+        "1,247",
+        "842",
+        "1.2s",
+        "€4,812"
+      ]
+    },
+    {
+      "name": "opspulse state Theme",
+      "ok": false,
+      "detail": {
+        "before": "☰\t\nOpsPulse\n\nDashboard\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nOverview\nFilters\nRegion\n\nAllPortugalSpainBrazil\tPlatform\n\nAllWebMobileInternal\tTool\n\nAllChatGPTCopilotClaude\nTOTAL INTERACTIONS\n1,247\n\n30d\n\n\t\nACTIVE USERS\n842\n\nAll\n\n\t\nAVG RESPONSE\n1.2s\n\nAll\n\n\t\nCOST ESTIMATE\n€4,812\n\nAll\n\nQuick Stats\n\nInteractions: 1,247\n\nUsers: 842\n\nSuccess rate: 98.2%\n\nAvg latency: 1.2s",
+        "after": "☰\t\nOpsPulse\n\nDashboard\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nOverview\nFilters\nRegion\n\nAllPortugalSpainBrazil\tPlatform\n\nAllWebMobileInternal\tTool\n\nAllChatGPTCopilotClaude\nTOTAL INTERACTIONS\n1,247\n\n30d\n\n\t\nACTIVE USERS\n842\n\nAll\n\n\t\nAVG RESPONSE\n1.2s\n\nAll\n\n\t\nCOST ESTIMATE\n€4,812\n\nAll\n\nQuick Stats\n\nInteractions: 1,247\n\nUsers: 842\n\nSuccess rate: 98.2%\n\nAvg latency: 1.2s"
+      }
+    },
+    {
+      "name": "opspulse state Portugal",
+      "ok": false,
+      "detail": {
+        "before": "☰\t\nOpsPulse\n\nDashboard\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nOverview\nFilters\nRegion\n\nAllPortugalSpainBrazil\tPlatform\n\nAllWebMobileInternal\tTool\n\nAllChatGPTCopilotClaude\nTOTAL INTERACTIONS\n1,247\n\n30d\n\n\t\nACTIVE USERS\n842\n\nAll\n\n\t\nAVG RESPONSE\n1.2s\n\nAll\n\n\t\nCOST ESTIMATE\n€4,812\n\nAll\n\nQuick Stats\n\nInteractions: 1,247\n\nUsers: 842\n\nSuccess rate: 98.2%\n\nAvg latency: 1.2s",
+        "after": "☰\t\nOpsPulse\n\nDashboard\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nOverview\nFilters\nRegion\n\nAllPortugalSpainBrazil\tPlatform\n\nAllWebMobileInternal\tTool\n\nAllChatGPTCopilotClaude\nTOTAL INTERACTIONS\n1,247\n\n30d\n\n\t\nACTIVE USERS\n842\n\nAll\n\n\t\nAVG RESPONSE\n1.2s\n\nAll\n\n\t\nCOST ESTIMATE\n€4,812\n\nAll\n\nQuick Stats\n\nInteractions: 1,247\n\nUsers: 842\n\nSuccess rate: 98.2%\n\nAvg latency: 1.2s"
+      }
+    },
+    {
+      "name": "opspulse no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "opspulse no failed resources",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "reference route /",
+      "ok": true,
+      "detail": [
+        "Summary",
+        "{usage.data.totalInteractions}",
+        "{usage.data.activeUsers}",
+        "{usage.data.avgLatency}",
+        "{usage.data.cost}",
+        "Summary",
+        "{usage.data.totalInteractions}",
+        "{usage.data.activeUsers}",
+        "{usage.data.avgLatency}",
+        "{usage.data.cost}"
+      ]
+    },
+    {
+      "name": "reference route /usage",
+      "ok": true,
+      "detail": [
+        "Usage explorer"
+      ]
+    },
+    {
+      "name": "reference route /people",
+      "ok": true,
+      "detail": [
+        "People"
+      ]
+    },
+    {
+      "name": "reference route /incidents",
+      "ok": true,
+      "detail": [
+        "Incident centre"
+      ]
+    },
+    {
+      "name": "reference route /releases",
+      "ok": true,
+      "detail": [
+        "Release train"
+      ]
+    },
+    {
+      "name": "reference route /media",
+      "ok": true,
+      "detail": [
+        "Media hub"
+      ]
+    },
+    {
+      "name": "reference route /settings",
+      "ok": true,
+      "detail": [
+        "Workspace settings"
+      ]
+    },
+    {
+      "name": "reference route /missing",
+      "ok": true,
+      "detail": [
+        "Page not found"
+      ]
+    },
+    {
+      "name": "reference navigation Usage",
+      "ok": false,
+      "detail": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('link', { name: 'Usage', exact: true }).visible()\u001b[22m\n"
+    },
+    {
+      "name": "reference navigation People",
+      "ok": false,
+      "detail": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('link', { name: 'People', exact: true }).visible()\u001b[22m\n"
+    },
+    {
+      "name": "reference navigation Incidents",
+      "ok": false,
+      "detail": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('link', { name: 'Incidents', exact: true }).visible()\u001b[22m\n"
+    },
+    {
+      "name": "reference navigation Settings",
+      "ok": false,
+      "detail": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('link', { name: 'Settings', exact: true }).visible()\u001b[22m\n"
+    },
+    {
+      "name": "reference navigation Dashboard",
+      "ok": false,
+      "detail": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('link', { name: 'Dashboard', exact: true }).visible()\u001b[22m\n"
+    },
+    {
+      "name": "reference state Theme",
+      "ok": false,
+      "detail": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Theme', exact: true }).visible()\u001b[22m\n"
+    },
+    {
+      "name": "reference state Portugal",
+      "ok": false,
+      "detail": {
+        "before": "Summary\nFilters\nRegion\n\nAllPortugalSpainBrazil\tPlatform\n\nAllWebMobileInternal\tTool\n\nAllChatGPTCopilotMind4EDP\nTotal interactions\n{usage.data.totalInteractions}\n\n30d\n\n\t\nActive users\n{usage.data.activeUsers}\n\nAll\n\n\t\nAvg response time\n{usage.data.avgLatency}\n\nAll\n\n\t\nCost estimate\n{usage.data.cost}\n\nAll\n\nUsage by tool\nbar data usage.data.byTool by total\nRecent activity\nSummaryAdoptionQualityCost\nSummary\nTotal interactions\n{usage.data.totalInteractions}\n\n30d\n\n\t\nActive users\n{usage.data.activeUsers}\n\nAll\n\n\t\nAvg response time\n{usage.data.avgLatency}\n\nAll\n\n\t\nCost estimate\n{usage.data.cost}\n\nAll\n\nUsage by tool\nbar data usage.data.byTool by total\nRecent activity",
+        "after": "Summary\nFilters\nRegion\n\nAllPortugalSpainBrazil\tPlatform\n\nAllWebMobileInternal\tTool\n\nAllChatGPTCopilotMind4EDP\nTotal interactions\n{usage.data.totalInteractions}\n\n30d\n\n\t\nActive users\n{usage.data.activeUsers}\n\nAll\n\n\t\nAvg response time\n{usage.data.avgLatency}\n\nAll\n\n\t\nCost estimate\n{usage.data.cost}\n\nAll\n\nUsage by tool\nbar data usage.data.byTool by total\nRecent activity\nSummaryAdoptionQualityCost\nSummary\nTotal interactions\n{usage.data.totalInteractions}\n\n30d\n\n\t\nActive users\n{usage.data.activeUsers}\n\nAll\n\n\t\nAvg response time\n{usage.data.avgLatency}\n\nAll\n\n\t\nCost estimate\n{usage.data.cost}\n\nAll\n\nUsage by tool\nbar data usage.data.byTool by total\nRecent activity"
+      }
+    },
+    {
+      "name": "reference no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "reference no failed resources",
+      "ok": false,
+      "detail": [
+        {
+          "url": "http://127.0.0.1:63099/media.data.hero",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/media.data.poster",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/incidents",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/media.data.demo",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/usage",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/users",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/media.data.audio",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/incidents",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/usage",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/users",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/incidents",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/usage",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/users",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/releases",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/media",
+          "status": 404
+        }
+      ]
+    }
+  ],
+  "failures": [
+    "opspulse state Theme",
+    "opspulse state Portugal",
+    "reference navigation Usage",
+    "reference navigation People",
+    "reference navigation Incidents",
+    "reference navigation Settings",
+    "reference navigation Dashboard",
+    "reference state Theme",
+    "reference state Portugal",
+    "reference no failed resources"
+  ],
+  "applications": [
+    {
+      "name": "opspulse",
+      "source": "demos/opspulse",
+      "routes": [
+        {
+          "route": "/",
+          "headings": [
+            "Overview",
+            "1,247",
+            "842",
+            "1.2s",
+            "€4,812"
+          ],
+          "text": "☰\t\nOpsPulse\n\nDashboard\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nOverview\nFilters\nRegion\n\nAllPortugalSpainBrazil\tPlatform\n\nAllWebMobileInternal\tTool\n\nAllChatGPTCopilotClaude\nTOTAL INTERACTIONS\n1,247\n\n30d\n\n\t\nACTIVE USERS\n842\n\nAll\n\n\t\nAVG RESPONSE\n1.2s\n\nAll\n\n\t\nCOST ESTIMATE\n€4,812\n\nAll\n\nQuick Stats\n\nInteractions: 1,247\n\nUsers: 842\n\nSuccess rate: 98.2%\n\nAvg latency: 1.2s",
+          "runtime": {
+            "current": {
+              "path": "/",
+              "pattern": "/",
+              "name": "Dashboard",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/usage",
+          "headings": [
+            "Usage Explorer"
+          ],
+          "text": "☰\t\nOpsPulse\n\nUsage explorer\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nUsage Explorer\nFilters\nRegion\n\nAllPortugalSpainBrazil\tPlatform\n\nAllWebMobileInternal\tTool\n\nAllChatGPTCopilotClaude\nUsage by Tool\n\nChatGPT: 34%\n\nCopilot: 28%\n\nClaude: 22%\n\nOther: 16%\n\nBy Region\n\nPortugal: 45%\n\nSpain: 30%\n\nBrazil: 25%",
+          "runtime": {
+            "current": {
+              "path": "/usage",
+              "pattern": "/usage",
+              "name": "UsagePage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/people",
+          "headings": [
+            "People"
+          ],
+          "text": "☰\t\nOpsPulse\n\nPeople and segments\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nPeople\nProfessionals\n\nTotal: 2,341\n\nActive this month: 1,847\n\nGrowth: +12%",
+          "runtime": {
+            "current": {
+              "path": "/people",
+              "pattern": "/people",
+              "name": "PeoplePage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/incidents",
+          "headings": [
+            "Incident Centre"
+          ],
+          "text": "☰\t\nOpsPulse\n\nIncidents\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nIncident Centre\nAll\nHigh\nMedium\nLow\nRecent Incidents\n\n3 incidents open\n\nLast 7 days: 12 resolved",
+          "runtime": {
+            "current": {
+              "path": "/incidents",
+              "pattern": "/incidents",
+              "name": "IncidentsPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/settings",
+          "headings": [
+            "Workspace Settings"
+          ],
+          "text": "☰\t\nOpsPulse\n\nSettings\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nWorkspace Settings\nSave settings\nObservable State\n\nTheme: {appState.themeClass}\n\nSidebar: {appState.sidebarClass}\n\nFilters: {filterState.filterSummary}\n\nSearch active: {filterState.hasSearch}",
+          "runtime": {
+            "current": {
+              "path": "/settings",
+              "pattern": "/settings",
+              "name": "SettingsPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/missing",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\nOpsPulse\n\nNot found\n\n\tRefreshTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/missing",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        }
+      ],
+      "errors": [],
+      "requests": []
+    },
+    {
+      "name": "reference",
+      "source": "demos/example.jtml",
+      "routes": [
+        {
+          "route": "/",
+          "headings": [
+            "Summary",
+            "{usage.data.totalInteractions}",
+            "{usage.data.activeUsers}",
+            "{usage.data.avgLatency}",
+            "{usage.data.cost}",
+            "Summary",
+            "{usage.data.totalInteractions}",
+            "{usage.data.activeUsers}",
+            "{usage.data.avgLatency}",
+            "{usage.data.cost}"
+          ],
+          "text": "Summary\nFilters\nRegion\n\nAllPortugalSpainBrazil\tPlatform\n\nAllWebMobileInternal\tTool\n\nAllChatGPTCopilotMind4EDP\nTotal interactions\n{usage.data.totalInteractions}\n\n30d\n\n\t\nActive users\n{usage.data.activeUsers}\n\nAll\n\n\t\nAvg response time\n{usage.data.avgLatency}\n\nAll\n\n\t\nCost estimate\n{usage.data.cost}\n\nAll\n\nUsage by tool\nbar data usage.data.byTool by total\nRecent activity\nSummaryAdoptionQualityCost\nSummary\nTotal interactions\n{usage.data.totalInteractions}\n\n30d\n\n\t\nActive users\n{usage.data.activeUsers}\n\nAll\n\n\t\nAvg response time\n{usage.data.avgLatency}\n\nAll\n\n\t\nCost estimate\n{usage.data.cost}\n\nAll\n\nUsage by tool\nbar data usage.data.byTool by total\nRecent activity",
+          "runtime": {
+            "current": {
+              "path": "/",
+              "pattern": "/",
+              "name": "Dashboard",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/usage",
+          "headings": [
+            "Usage explorer"
+          ],
+          "text": "☰\t\n\nUsage explorer\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nFilters\nRegion\n\nAllPortugalSpainBrazil\tPlatform\n\nAllWebMobileInternal\tTool\n\nAllChatGPTCopilotMind4EDP\nUsage explorer\n\nCurrent scope: {filterSummary}\n\nDaily interactions\nbar data usage.data.daily by total\nTool breakdown",
+          "runtime": {
+            "current": {
+              "path": "/usage",
+              "pattern": "/usage",
+              "name": "UsagePage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/people",
+          "headings": [
+            "People"
+          ],
+          "text": "☰\t\n\nPeople and segments\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nPeople\nReload users",
+          "runtime": {
+            "current": {
+              "path": "/people",
+              "pattern": "/people",
+              "name": "PeoplePage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/incidents",
+          "headings": [
+            "Incident centre"
+          ],
+          "text": "☰\t\n\nIncidents\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nIncident centre\nAllHighMediumLow\n\t\nNothing here\n\nSelect an incident to inspect details.",
+          "runtime": {
+            "current": {
+              "path": "/incidents",
+              "pattern": "/incidents",
+              "name": "IncidentsPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/releases",
+          "headings": [
+            "Release train"
+          ],
+          "text": "☰\t\n\nReleases\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nRelease train",
+          "runtime": {
+            "current": {
+              "path": "/releases",
+              "pattern": "/releases",
+              "name": "ReleasesPage",
+              "params": {},
+              "load": [
+                "releases"
+              ]
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/media",
+          "headings": [
+            "Media hub"
+          ],
+          "text": "☰\t\n\nMedia and demos\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nMedia hub\n\nThis page mixes normal content with media state and externally hosted assets.",
+          "runtime": {
+            "current": {
+              "path": "/media",
+              "pattern": "/media",
+              "name": "MediaPage",
+              "params": {},
+              "load": [
+                "media"
+              ]
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/settings",
+          "headings": [
+            "Workspace settings"
+          ],
+          "text": "☰\t\n\nSettings\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nWorkspace settings\nSave settings\n\nNo recent changes\n\nObservable state\n\nTheme\n\napp\n\nSidebar\n\nsidebar sidebar-open\n\nFilters\n\nAll / All / All\n\nSearch active\n\nfalse",
+          "runtime": {
+            "current": {
+              "path": "/settings",
+              "pattern": "/settings",
+              "name": "SettingsPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        },
+        {
+          "route": "/missing",
+          "headings": [
+            "Page not found"
+          ],
+          "text": "☰\t\n\nNot found\n\n\tRefreshReload everythingTheme\n\nNavigation\nDashboard\nUsage\nPeople\nIncidents\nReleases\nMedia\nSettings\nFilters\n\n\t\nPage not found\n\nThis route does not exist.\n\nBack to dashboard",
+          "runtime": {
+            "current": {
+              "path": "/missing",
+              "pattern": "*",
+              "name": "NotFoundPage",
+              "params": {},
+              "load": []
+            },
+            "routes": [
+              {
+                "path": "/",
+                "name": "Dashboard",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/usage",
+                "name": "UsagePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/people",
+                "name": "PeoplePage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/incidents",
+                "name": "IncidentsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "/releases",
+                "name": "ReleasesPage",
+                "params": [],
+                "load": [
+                  "releases"
+                ]
+              },
+              {
+                "path": "/media",
+                "name": "MediaPage",
+                "params": [],
+                "load": [
+                  "media"
+                ]
+              },
+              {
+                "path": "/settings",
+                "name": "SettingsPage",
+                "params": [],
+                "load": []
+              },
+              {
+                "path": "*",
+                "name": "NotFoundPage",
+                "params": [],
+                "load": []
+              }
+            ]
+          }
+        }
+      ],
+      "errors": [],
+      "requests": [
+        {
+          "url": "http://127.0.0.1:63099/media.data.hero",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/media.data.poster",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/incidents",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/media.data.demo",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/usage",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/users",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/media.data.audio",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/incidents",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/usage",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/users",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/incidents",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/usage",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/users",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/releases",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:63099/api/media",
+          "status": 404
+        }
+      ]
+    }
+  ],
+  "browser": "153.0.8010.12"
+}

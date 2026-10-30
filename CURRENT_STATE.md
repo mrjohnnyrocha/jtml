@@ -6,6 +6,15 @@ The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.
 
+## Browser route declaration precedence
+
+Semantic IR now preserves AST route order through Runtime Plan and the client
+manifest. Original main sorted route records by path, placing `*` first and
+rendering NotFound at every OpsPulse route. Unchanged real-browser inventory:
+27/32 failures before, 10/32 after; all 14 route checks now pass. Theme/filter,
+reference shell/navigation and missing resources remain failures. See the
+[root cause, negative baseline and complete check ledger](docs/architecture/route-precedence/README.md).
+
 ## Published RC.3
 
 [v0.3.0-rc.3 is published](https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3)

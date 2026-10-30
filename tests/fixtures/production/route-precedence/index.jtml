@@ -1,0 +1,57 @@
+jtml 2
+
+route "/" as Home
+route "/user/new" as NewUser
+route "/user/:id" as Profile
+route "*" as Missing
+
+make Child
+  let count = 0
+  when increment
+    count += 1
+  box
+    button "Home child" click increment
+    text "Home child: {count}"
+
+make Home
+  let shown = true
+  let count = 0
+  when increment
+    count += 1
+  when toggle
+    shown = !shown
+  page
+    h1 "Home"
+    link "New user" to "/user/new"
+    link "Ada" to "/user/ada"
+    link "Missing" to "/unknown"
+    button "Toggle child" click toggle
+    if shown
+      Child
+    button "Home sibling" click increment
+    text "Home sibling: {count}"
+
+make NewUser
+  let count = 0
+  when increment
+    count += 1
+  page
+    h1 "New user form"
+    button "New child" click increment
+    text "New child: {count}"
+    link "Home" to "/"
+
+make Profile id
+  let count = 0
+  when increment
+    count += 1
+  page
+    h1 "Profile {id}"
+    button "Profile child" click increment
+    text "Profile child: {count}"
+    link "Home" to "/"
+
+make Missing
+  page
+    h1 "Missing page"
+    link "Home" to "/"

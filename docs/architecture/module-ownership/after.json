@@ -1,0 +1,137 @@
+[
+  {
+    "source": "demos/index.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "demos/index.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-after/demos/index"
+    ],
+    "exit": 0,
+    "stdout": "Built demos/index.jtml -> dist/ownership-after/demos/index/index.html\nBuilt browser runtime asset -> dist/ownership-after/demos/index/jtml-runtime.js\nBuilt browser component modules -> dist/ownership-after/demos/index/components/index.js\nBuilt browser app bootstrap -> dist/ownership-after/demos/index/app.js\nSkipped legacy browser update plans for production browser output\n",
+    "stderr": ""
+  },
+  {
+    "source": "examples/friendly_effect.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "examples/friendly_effect.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-after/examples/friendly_effect"
+    ],
+    "exit": 0,
+    "stdout": "Built examples/friendly_effect.jtml -> dist/ownership-after/examples/friendly_effect/index.html\nBuilt browser runtime asset -> dist/ownership-after/examples/friendly_effect/jtml-runtime.js\nBuilt browser component modules -> dist/ownership-after/examples/friendly_effect/components/index.js\nBuilt browser app bootstrap -> dist/ownership-after/examples/friendly_effect/app.js\nSkipped legacy browser update plans for production browser output\n",
+    "stderr": ""
+  },
+  {
+    "source": "examples/friendly_fetch_invalidate.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "examples/friendly_fetch_invalidate.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-after/examples/friendly_fetch_invalidate"
+    ],
+    "exit": 0,
+    "stdout": "Built examples/friendly_fetch_invalidate.jtml -> dist/ownership-after/examples/friendly_fetch_invalidate/index.html\nBuilt browser runtime asset -> dist/ownership-after/examples/friendly_fetch_invalidate/jtml-runtime.js\nBuilt browser component modules -> dist/ownership-after/examples/friendly_fetch_invalidate/components/index.js\nBuilt browser app bootstrap -> dist/ownership-after/examples/friendly_fetch_invalidate/app.js\nSkipped legacy browser update plans for production browser output\n",
+    "stderr": ""
+  },
+  {
+    "source": "examples/friendly_redirect.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "examples/friendly_redirect.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-after/examples/friendly_redirect"
+    ],
+    "exit": 0,
+    "stdout": "Built examples/friendly_redirect.jtml -> dist/ownership-after/examples/friendly_redirect/index.html\nBuilt browser runtime asset -> dist/ownership-after/examples/friendly_redirect/jtml-runtime.js\nBuilt browser component modules -> dist/ownership-after/examples/friendly_redirect/components/index.js\nBuilt browser app bootstrap -> dist/ownership-after/examples/friendly_redirect/app.js\nSkipped legacy browser update plans for production browser output\n",
+    "stderr": ""
+  },
+  {
+    "source": "examples/friendly_route_guards.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "examples/friendly_route_guards.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-after/examples/friendly_route_guards"
+    ],
+    "exit": 0,
+    "stdout": "Built examples/friendly_route_guards.jtml -> dist/ownership-after/examples/friendly_route_guards/index.html\nBuilt browser runtime asset -> dist/ownership-after/examples/friendly_route_guards/jtml-runtime.js\nBuilt browser component modules -> dist/ownership-after/examples/friendly_route_guards/components/index.js\nBuilt browser app bootstrap -> dist/ownership-after/examples/friendly_route_guards/app.js\nSkipped legacy browser update plans for production browser output\n",
+    "stderr": ""
+  },
+  {
+    "source": "studio/samples/effects.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "studio/samples/effects.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-after/studio/samples/effects"
+    ],
+    "exit": 0,
+    "stdout": "Built studio/samples/effects.jtml -> dist/ownership-after/studio/samples/effects/index.html\nBuilt browser runtime asset -> dist/ownership-after/studio/samples/effects/jtml-runtime.js\nBuilt browser component modules -> dist/ownership-after/studio/samples/effects/components/index.js\nBuilt browser app bootstrap -> dist/ownership-after/studio/samples/effects/app.js\nSkipped legacy browser update plans for production browser output\n",
+    "stderr": ""
+  },
+  {
+    "source": "studio/samples/fetch.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "studio/samples/fetch.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-after/studio/samples/fetch"
+    ],
+    "exit": 0,
+    "stdout": "Built studio/samples/fetch.jtml -> dist/ownership-after/studio/samples/fetch/index.html\nBuilt browser runtime asset -> dist/ownership-after/studio/samples/fetch/jtml-runtime.js\nBuilt browser component modules -> dist/ownership-after/studio/samples/fetch/components/index.js\nBuilt browser app bootstrap -> dist/ownership-after/studio/samples/fetch/app.js\nSkipped legacy browser update plans for production browser output\n",
+    "stderr": ""
+  },
+  {
+    "source": "studio/samples/redirect.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "studio/samples/redirect.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-after/studio/samples/redirect"
+    ],
+    "exit": 0,
+    "stdout": "Built studio/samples/redirect.jtml -> dist/ownership-after/studio/samples/redirect/index.html\nBuilt browser runtime asset -> dist/ownership-after/studio/samples/redirect/jtml-runtime.js\nBuilt browser component modules -> dist/ownership-after/studio/samples/redirect/components/index.js\nBuilt browser app bootstrap -> dist/ownership-after/studio/samples/redirect/app.js\nSkipped legacy browser update plans for production browser output\n",
+    "stderr": ""
+  },
+  {
+    "source": "studio/samples/routes.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "studio/samples/routes.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-after/studio/samples/routes"
+    ],
+    "exit": 0,
+    "stdout": "Built studio/samples/routes.jtml -> dist/ownership-after/studio/samples/routes/index.html\nBuilt browser runtime asset -> dist/ownership-after/studio/samples/routes/jtml-runtime.js\nBuilt browser component modules -> dist/ownership-after/studio/samples/routes/components/index.js\nBuilt browser app bootstrap -> dist/ownership-after/studio/samples/routes/app.js\nSkipped legacy browser update plans for production browser output\n",
+    "stderr": ""
+  }
+]

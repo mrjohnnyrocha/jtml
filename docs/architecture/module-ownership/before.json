@@ -1,0 +1,137 @@
+[
+  {
+    "source": "demos/index.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "demos/index.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-before/demos/index"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "error: Cannot build clean browser production module plan for /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/demos/index.jtml: Cannot determine module ownership in /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/demos/index.jtml\n"
+  },
+  {
+    "source": "examples/friendly_effect.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "examples/friendly_effect.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-before/examples/friendly_effect"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "error: Cannot build clean browser production module plan for /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/examples/friendly_effect.jtml: Cannot determine module ownership in /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/examples/friendly_effect.jtml\n"
+  },
+  {
+    "source": "examples/friendly_fetch_invalidate.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "examples/friendly_fetch_invalidate.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-before/examples/friendly_fetch_invalidate"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "error: Cannot build clean browser production module plan for /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/examples/friendly_fetch_invalidate.jtml: Cannot determine module ownership in /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/examples/friendly_fetch_invalidate.jtml\n"
+  },
+  {
+    "source": "examples/friendly_redirect.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "examples/friendly_redirect.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-before/examples/friendly_redirect"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "error: Cannot build clean browser production module plan for /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/examples/friendly_redirect.jtml: Cannot determine module ownership in /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/examples/friendly_redirect.jtml\n"
+  },
+  {
+    "source": "examples/friendly_route_guards.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "examples/friendly_route_guards.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-before/examples/friendly_route_guards"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "error: Cannot build clean browser production module plan for /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/examples/friendly_route_guards.jtml: Cannot determine module ownership in /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/examples/friendly_route_guards.jtml\n"
+  },
+  {
+    "source": "studio/samples/effects.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "studio/samples/effects.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-before/studio/samples/effects"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "error: Cannot build clean browser production module plan for /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/studio/samples/effects.jtml: Cannot determine module ownership in /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/studio/samples/effects.jtml\n"
+  },
+  {
+    "source": "studio/samples/fetch.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "studio/samples/fetch.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-before/studio/samples/fetch"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "error: Cannot build clean browser production module plan for /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/studio/samples/fetch.jtml: Cannot determine module ownership in /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/studio/samples/fetch.jtml\n"
+  },
+  {
+    "source": "studio/samples/redirect.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "studio/samples/redirect.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-before/studio/samples/redirect"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "error: Cannot build clean browser production module plan for /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/studio/samples/redirect.jtml: Cannot determine module ownership in /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/studio/samples/redirect.jtml\n"
+  },
+  {
+    "source": "studio/samples/routes.jtml",
+    "command": [
+      "./build/jtml",
+      "build",
+      "studio/samples/routes.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-before/studio/samples/routes"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "error: Cannot build clean browser production module plan for /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/studio/samples/routes.jtml: Cannot determine module ownership in /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/studio/samples/routes.jtml\n"
+  }
+]

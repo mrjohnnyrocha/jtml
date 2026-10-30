@@ -174,3 +174,59 @@ TEST(SourcePropagation, ClassicPrefixOffsetsFriendlyLocalDeclarationSites) {
     EXPECT_EQ(assignment.localDeclaration->name, "local");
     expectOrigin(assignment.sourceSpan, "entry.jtml", 3, 3, false);
 }
+
+TEST(SourcePropagation, DeferredFriendlyNodesRetainTheirAuthoredConstruct) {
+    const std::vector<std::pair<std::string, size_t>> cases = {
+        {"jtml 2\nlet count = 0\neffect count\n  show count\n", 3},
+        {"jtml 2\nwhen go\n  redirect \"/next\"\n", 3},
+        {"jtml 2\nwhen reload\n  invalidate users\n", 3},
+        {"jtml 2\nwhen reload\n  invalidate group people\n", 3},
+        {"jtml 2\nwhen reload\n  invalidate all\n", 3},
+        {"jtml 2\nlet token = false\nguard \"/private\" require token else \"/login\"\n", 3},
+    };
+    for (const auto& [source, line] : cases) {
+        SCOPED_TRACE(source);
+        const auto program = parse(jtml::MappedSource::original("authored.jtml", source), true);
+        ASSERT_FALSE(program.empty());
+        const auto& node = program.back();
+        expectOrigin(node->sourceSpan, "authored.jtml", line,
+            source.find("  redirect") != std::string::npos || source.find("  invalidate") != std::string::npos ? 3 : 1, false);
+        expectOrigin(node->clone()->sourceSpan, "authored.jtml", line,
+            source.find("  redirect") != std::string::npos || source.find("  invalidate") != std::string::npos ? 3 : 1, false);
+        auto synthetic = jtml::MappedSource{};
+        synthetic.appendSynthetic(source);
+        const auto generated = parse(synthetic, true);
+        EXPECT_FALSE(generated.back()->sourceSpan.original);
+    }
+}
+
+TEST(SourcePropagation, DeferredFriendlyNodesKeepDistinctImportedOrigins) {
+    auto input = jtml::MappedSource::original("dependency.jtml",
+        "jtml 2\nlet imported = 0\neffect imported\n  show imported\n"
+        "when importedGo\n  redirect \"/imported\"\n"
+        "when importedReload\n  invalidate group importedGroup\n"
+        "guard \"/imported\" require imported\n");
+    input.append(jtml::MappedSource::original("entry.jtml",
+        "let local = 0\neffect local\n  show local\n"
+        "when localGo\n  redirect \"/local\"\n"
+        "when localReload\n  invalidate all\n"
+        "guard \"/local\" require local\n"));
+    const auto program = parse(input, true);
+    size_t importedSubscriptions = 0, localSubscriptions = 0, importedMetadata = 0, localMetadata = 0;
+    for (const auto& node : program) {
+        ASSERT_TRUE(node->sourceSpan.original) << node->toString();
+        const auto& origin = *node->sourceSpan.original;
+        if (node->getType() == ASTNodeType::SubscribeStatement) {
+            if (origin.source->file == "dependency.jtml") ++importedSubscriptions;
+            if (origin.source->file == "entry.jtml") ++localSubscriptions;
+        }
+        if (node->getType() == ASTNodeType::JtmlElement) {
+            if (origin.source->file == "dependency.jtml") ++importedMetadata;
+            if (origin.source->file == "entry.jtml") ++localMetadata;
+        }
+    }
+    EXPECT_EQ(importedSubscriptions, 1);
+    EXPECT_EQ(localSubscriptions, 1);
+    EXPECT_EQ(importedMetadata, 3);
+    EXPECT_EQ(localMetadata, 3);
+}

@@ -3280,3 +3280,71 @@ TEST(CliResources, RelocatedInstallAndBundleIgnoreUnrelatedWorkingDirectory) {
     auto missing = jtml::cli::resourcePathsForExecutable(root / "standalone/bin/jtml");
     EXPECT_EQ(missing.examples, root / "unrelated/examples");
 }
+
+TEST(CliBuild, DeferredFriendlyOwnershipSurvivesImportedActionsAndComponents) {
+    const auto root = makeTempDir("deferred-module-ownership");
+    writeTempFile(root / "dependency.jtml",
+        "jtml 2\nexport when importedGo\n  redirect \"/imported\"\n"
+        "export when importedReload\n  invalidate group people\n"
+        "export make Card\n  page\n    text \"Imported card\"\n");
+    writeTempFile(root / "index.jtml",
+        "jtml 2\nuse { importedGo, importedReload, Card } from \"./dependency.jtml\"\n"
+        "let count = 0\neffect count\n  show count\n"
+        "when localGo\n  redirect \"/local\"\n"
+        "guard \"/private\" require count\npage\n  Card\n");
+    const auto file = (root / "index.jtml").string();
+    const auto program = jtml::cli::parseProgramFromFile(file);
+    const auto project = jtml::cli::buildRuntimeProjectPlanForInput(file,
+        jtml::SyntaxMode::Auto, program, jtml::analyzeSemanticProgram(program), false);
+    ASSERT_EQ(project.modules.size(), 2u);
+    for (const auto& module : project.modules) {
+        EXPECT_TRUE(module.clientExecutable);
+        std::vector<std::string> actions;
+        for (const auto& action : module.plan.actions) actions.push_back(action.name);
+        const bool entry = module.id == project.entry;
+        EXPECT_EQ(std::count(actions.begin(), actions.end(), "localGo"), entry ? 1 : 0);
+        EXPECT_EQ(std::count(actions.begin(), actions.end(), "importedGo"), entry ? 0 : 1);
+        EXPECT_EQ(std::count(actions.begin(), actions.end(), "importedReload"), entry ? 0 : 1);
+        EXPECT_EQ(module.plan.componentDefinitions.size(), entry ? 0u : 1u);
+        if (entry) {
+            ASSERT_EQ(module.plan.componentInstances.size(), 1u);
+            EXPECT_NE(module.plan.componentInstances[0].definitionModule, module.id);
+            EXPECT_NE(module.plan.componentInstances[0].definitionModule, jtml::InvalidSemanticModuleId);
+        }
+    }
+}
+
+TEST(CliBuild, DeferredFriendlyMinimalSourcesBuildClean) {
+    for (const auto* name : {"effect", "redirect", "invalidate", "guard"}) {
+        SCOPED_TRACE(name);
+        const auto root = makeTempDir(std::string("deferred-") + name);
+        jtml::cli::Options options;
+        options.inputFile = (std::filesystem::path(JTML_SOURCE_DIR) /
+            "tests/fixtures/production/module-ownership" / (std::string(name) + ".jtml")).string();
+        options.outputFile = root.string();
+        options.target = "browser";
+        const auto result = captureCommand([&] { return jtml::cli::cmdBuild(options); });
+        EXPECT_EQ(result.code, 0) << result.out << result.err;
+        EXPECT_TRUE(std::filesystem::exists(root / "app.js"));
+        EXPECT_FALSE(std::filesystem::exists(root / "jtml-update-plans.js"));
+    }
+}
+
+TEST(CliBuild, InventoryOwnershipSourcesBuildCleanWithoutCompatibilityAssets) {
+    for (const auto* source : {"demos/index.jtml", "examples/friendly_effect.jtml",
+            "examples/friendly_fetch_invalidate.jtml", "examples/friendly_redirect.jtml",
+            "examples/friendly_route_guards.jtml", "studio/samples/effects.jtml",
+            "studio/samples/fetch.jtml", "studio/samples/redirect.jtml", "studio/samples/routes.jtml"}) {
+        SCOPED_TRACE(source);
+        const auto root = makeTempDir("inventory-module-ownership");
+        jtml::cli::Options options;
+        options.inputFile = (std::filesystem::path(JTML_SOURCE_DIR) / source).string();
+        options.outputFile = root.string();
+        options.target = "browser";
+        const auto result = captureCommand([&] { return jtml::cli::cmdBuild(options); });
+        ASSERT_EQ(result.code, 0) << result.out << result.err;
+        EXPECT_TRUE(std::filesystem::exists(root / "app.js"));
+        EXPECT_TRUE(std::filesystem::exists(root / "components/index.js"));
+        EXPECT_FALSE(std::filesystem::exists(root / "jtml-update-plans.js"));
+    }
+}

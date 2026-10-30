@@ -3218,13 +3218,14 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
     std::vector<OpenBlock> stack;
     std::map<std::string, int> synthesizedSetters;
     // Maps action name → redirect path for client-side wiring.
-    std::map<std::string, std::string> redirectActions;
+    std::map<std::string, std::pair<std::string, int>> redirectActions;
     // Maps action name → fetch names refreshed after the action runs.
     std::map<std::string, std::vector<std::string>> invalidateActions;
     std::map<std::string, std::vector<std::string>> invalidateGroups;
     std::set<std::string> invalidateAllActions;
+    std::map<std::string, int> invalidateOrigins;
     // Guard declarations: path → {guardVar, redirectPath}
-    struct GuardDecl { std::string var; std::string redirect; };
+    struct GuardDecl { std::string var; std::string redirect; int sourceLine = 0; };
     std::vector<std::pair<std::string, GuardDecl>> guardDecls;
 
     auto closeToIndent = [&](int indent) {
@@ -3533,7 +3534,7 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
                 if (!std::isalnum(static_cast<unsigned char>(ch)) && ch != '_') ch = '_';
             }
             emitLine(out, level, "function " + fnName + "()\\\\");
-            stack.push_back({line.indent, "\\\\", {"subscribe " + fnName + " to " + tokens[1] + "\\\\"}});
+            stack.push_back({line.indent, "\\\\", {"subscribe " + fnName + " to " + tokens[1] + "\\\\"}, line.number});
         } else if (head == "page") {
             std::vector<std::string> elementTokens = tokens;
             elementTokens[0] = "main";
@@ -3603,7 +3604,7 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
             if (actionName.empty()) {
                 throw std::runtime_error("'redirect' can only be used inside a 'when' action at line " + std::to_string(line.number));
             }
-            redirectActions[actionName] = tokens[1];
+            redirectActions[actionName] = {tokens[1], line.number};
         } else if (head == "invalidate") {
             if (tokens.size() < 2) {
                 throw std::runtime_error("Expected 'invalidate fetchName [fetchName...]', 'invalidate group groupName', or 'invalidate all' at line " + std::to_string(line.number));
@@ -3612,6 +3613,8 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
             if (actionName.empty()) {
                 throw std::runtime_error("'invalidate' can only be used inside a 'when' action at line " + std::to_string(line.number));
             }
+            // Attribute the combined marker to its first authored invalidation.
+            invalidateOrigins.emplace(actionName, line.number);
             if (tokens[1] == "all") {
                 invalidateAllActions.insert(actionName);
             } else if (tokens[1] == "group") {
@@ -3685,6 +3688,7 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
                 throw std::runtime_error("Expected 'guard \"/path\" require varName [else \"/fallback\"]' at line " + std::to_string(line.number));
             }
             GuardDecl decl;
+            decl.sourceLine = line.number;
             decl.var = tokens[3];
             if (tokens.size() >= 6 && tokens[4] == "else" && isQuoted(tokens[5])) {
                 decl.redirect = tokens[5];
@@ -3741,9 +3745,10 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
 
     // Emit meta elements for redirect actions so the browser runtime can
     // intercept clicks before they go to the server.
-    for (const auto& [actionName, path] : redirectActions) {
-        out << "@meta data-jtml-redirect-action=" << quote(actionName)
-            << " data-jtml-redirect-to=" << path << "\\\\\n";
+    for (const auto& [actionName, target] : redirectActions) {
+        activeFriendlySourceLine = target.second;
+        emitLine(out, 0, "@meta data-jtml-redirect-action=" + quote(actionName) +
+            " data-jtml-redirect-to=" + target.first + "\\\\");
     }
 
     // Emit meta elements for action-driven fetch invalidation. Unlike
@@ -3770,24 +3775,26 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
             if (i > 0) groups << ",";
             groups << groupNames[i];
         }
-        out << "@meta data-jtml-invalidate-action=" << quote(actionName)
-            << " data-jtml-invalidate-fetches=" << quote(joined.str())
-            << " data-jtml-invalidate-groups=" << quote(groups.str());
+        std::string marker = "@meta data-jtml-invalidate-action=" + quote(actionName) +
+            " data-jtml-invalidate-fetches=" + quote(joined.str()) +
+            " data-jtml-invalidate-groups=" + quote(groups.str());
         if (invalidateAllActions.count(actionName)) {
-            out << " data-jtml-invalidate-all=\"true\"";
+            marker += " data-jtml-invalidate-all=\"true\"";
         }
-        out << "\\\\\n";
+        activeFriendlySourceLine = invalidateOrigins.at(actionName);
+        emitLine(out, 0, marker + "\\\\");
     }
 
     // Emit meta elements for route guards so the browser runtime can
     // block or redirect navigation when a guard condition fails.
     for (const auto& [routePath, decl] : guardDecls) {
-        out << "@meta data-jtml-route-guard=" << routePath
-            << " data-jtml-guard-var=" << quote(decl.var);
+        std::string marker = "@meta data-jtml-route-guard=" + routePath +
+            " data-jtml-guard-var=" + quote(decl.var);
         if (!decl.redirect.empty()) {
-            out << " data-jtml-guard-redirect=" << decl.redirect;
+            marker += " data-jtml-guard-redirect=" + decl.redirect;
         }
-        out << "\\\\\n";
+        activeFriendlySourceLine = decl.sourceLine;
+        emitLine(out, 0, marker + "\\\\");
     }
 
     result.classicSource = out.str();

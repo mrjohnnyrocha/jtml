@@ -215,7 +215,11 @@ ParsedModuleForBrowserBuild parseStandaloneModuleForBrowserBuild(const std::stri
                 // is emitted from the linked document, not executable module IR.
                 if (node->getType() == ASTNodeType::JtmlElement &&
                     static_cast<const JtmlElementNode&>(*node).tagName == "style") return true;
-                throw std::runtime_error("Cannot determine module ownership in " + file);
+                throw std::runtime_error("Cannot determine module ownership in " + file +
+                    ": lowered AST node at line " + std::to_string(node->sourceSpan.startLine) +
+                    " has no original source attribution. Report this source construct "
+                    "with `jtml explain " + file + " --json`; clean production cannot "
+                    "safely assign it to a module. Use --debug only to inspect migration output.");
             }
             return origin->source->file != file;
         }), program.end());

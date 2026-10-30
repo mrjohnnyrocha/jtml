@@ -1,0 +1,4 @@
+jtml 2
+let count = 0
+effect count
+  show count

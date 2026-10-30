@@ -1,0 +1,4 @@
+jtml 2
+let users = fetch "/api/users" lazy
+when reload
+  invalidate users

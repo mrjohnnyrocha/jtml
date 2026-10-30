@@ -1,0 +1,58 @@
+[
+  {
+    "command": [
+      "./build/jtml",
+      "build",
+      "tests/fixtures/production/module-ownership/effect.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-minimal-before/effect"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "error: Cannot build clean browser production module plan for /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/fixtures/production/module-ownership/effect.jtml: Cannot determine module ownership in /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/fixtures/production/module-ownership/effect.jtml\n"
+  },
+  {
+    "command": [
+      "./build/jtml",
+      "build",
+      "tests/fixtures/production/module-ownership/guard.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-minimal-before/guard"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "error: Cannot build clean browser production module plan for /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/fixtures/production/module-ownership/guard.jtml: Cannot determine module ownership in /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/fixtures/production/module-ownership/guard.jtml\n"
+  },
+  {
+    "command": [
+      "./build/jtml",
+      "build",
+      "tests/fixtures/production/module-ownership/invalidate.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-minimal-before/invalidate"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "error: Cannot build clean browser production module plan for /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/fixtures/production/module-ownership/invalidate.jtml: Cannot determine module ownership in /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/fixtures/production/module-ownership/invalidate.jtml\n"
+  },
+  {
+    "command": [
+      "./build/jtml",
+      "build",
+      "tests/fixtures/production/module-ownership/redirect.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "dist/ownership-minimal-before/redirect"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "error: Cannot build clean browser production module plan for /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/fixtures/production/module-ownership/redirect.jtml: Cannot determine module ownership in /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/fixtures/production/module-ownership/redirect.jtml\n"
+  }
+]

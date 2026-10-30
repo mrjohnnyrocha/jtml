@@ -1,0 +1,180 @@
+Internal ctest changing into directory: /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/build
+Test project /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/build
+    Start 333: SourcePropagation.DeferredFriendlyNodesRetainTheirAuthoredConstruct
+1/2 Test #333: SourcePropagation.DeferredFriendlyNodesRetainTheirAuthoredConstruct ...***Failed    0.04 sec
+Running main() from /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = SourcePropagation.DeferredFriendlyNodesRetainTheirAuthoredConstruct
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from SourcePropagation
+[ RUN      ] SourcePropagation.DeferredFriendlyNodesRetainTheirAuthoredConstruct
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:23: Failure
+Value of: span.original
+  Actual: false
+Expected: true
+Google Test trace:
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:188: jtml 2
+let count = 0
+effect count
+  show count
+
+
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:23: Failure
+Value of: span.original
+  Actual: false
+Expected: true
+Google Test trace:
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:188: jtml 2
+let count = 0
+effect count
+  show count
+
+
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:23: Failure
+Value of: span.original
+  Actual: false
+Expected: true
+Google Test trace:
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:188: jtml 2
+when go
+  redirect "/next"
+
+
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:23: Failure
+Value of: span.original
+  Actual: false
+Expected: true
+Google Test trace:
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:188: jtml 2
+when go
+  redirect "/next"
+
+
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:23: Failure
+Value of: span.original
+  Actual: false
+Expected: true
+Google Test trace:
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:188: jtml 2
+when reload
+  invalidate users
+
+
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:23: Failure
+Value of: span.original
+  Actual: false
+Expected: true
+Google Test trace:
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:188: jtml 2
+when reload
+  invalidate users
+
+
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:23: Failure
+Value of: span.original
+  Actual: false
+Expected: true
+Google Test trace:
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:188: jtml 2
+when reload
+  invalidate group people
+
+
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:23: Failure
+Value of: span.original
+  Actual: false
+Expected: true
+Google Test trace:
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:188: jtml 2
+when reload
+  invalidate group people
+
+
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:23: Failure
+Value of: span.original
+  Actual: false
+Expected: true
+Google Test trace:
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:188: jtml 2
+when reload
+  invalidate all
+
+
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:23: Failure
+Value of: span.original
+  Actual: false
+Expected: true
+Google Test trace:
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:188: jtml 2
+when reload
+  invalidate all
+
+
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:23: Failure
+Value of: span.original
+  Actual: false
+Expected: true
+Google Test trace:
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:188: jtml 2
+let token = false
+guard "/private" require token else "/login"
+
+
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:23: Failure
+Value of: span.original
+  Actual: false
+Expected: true
+Google Test trace:
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:188: jtml 2
+let token = false
+guard "/private" require token else "/login"
+
+
+[  FAILED  ] SourcePropagation.DeferredFriendlyNodesRetainTheirAuthoredConstruct (5 ms)
+[----------] 1 test from SourcePropagation (5 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (5 ms total)
+[  PASSED  ] 0 tests.
+[  FAILED  ] 1 test, listed below:
+[  FAILED  ] SourcePropagation.DeferredFriendlyNodesRetainTheirAuthoredConstruct
+
+ 1 FAILED TEST
+
+    Start 334: SourcePropagation.DeferredFriendlyNodesKeepDistinctImportedOrigins
+2/2 Test #334: SourcePropagation.DeferredFriendlyNodesKeepDistinctImportedOrigins ....***Failed    0.03 sec
+Running main() from /Users/joaorocha/.codex/worktrees/da8d/jtml-v1/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = SourcePropagation.DeferredFriendlyNodesKeepDistinctImportedOrigins
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from SourcePropagation
+[ RUN      ] SourcePropagation.DeferredFriendlyNodesKeepDistinctImportedOrigins
+/Users/joaorocha/.codex/worktrees/da8d/jtml-v1/tests/test_source_propagation.cpp:217: Failure
+Value of: node->sourceSpan.original
+  Actual: false
+Expected: true
+SubscribeStatementNode(functionName=__effect_imported_3], variableName=imported)
+
+[  FAILED  ] SourcePropagation.DeferredFriendlyNodesKeepDistinctImportedOrigins (1 ms)
+[----------] 1 test from SourcePropagation (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 0 tests.
+[  FAILED  ] 1 test, listed below:
+[  FAILED  ] SourcePropagation.DeferredFriendlyNodesKeepDistinctImportedOrigins
+
+ 1 FAILED TEST
+
+
+0% tests passed, 2 tests failed out of 2
+
+Label Time Summary:
+unit    =   0.07 sec*proc (2 tests)
+
+Total Test time (real) =   0.09 sec
+
+The following tests FAILED:
+	333 - SourcePropagation.DeferredFriendlyNodesRetainTheirAuthoredConstruct (Failed) unit
+	334 - SourcePropagation.DeferredFriendlyNodesKeepDistinctImportedOrigins (Failed) unit
+Errors while running CTest

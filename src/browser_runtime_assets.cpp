@@ -2846,6 +2846,7 @@ const char* browserRuntimeComponentChunk() {
             addComponentNameSet(changes && changes.writes || {}, node.writes && node.writes.length ? node.writes : [node.name]);
             continue;
           }
+          if (head === 'redirect' && node.wordPlans[1].kind === 'literal') { window.__jtml_redirect(node.wordPlans[1].value); continue; }
           if (node.kind === 'assignment') {
             if (!applyComponentAssignment(scope, node)) {
               return recordComponentBodyPlanFallback(instance, definition, node, 'unsupported assignment', actionContext);
@@ -3152,14 +3153,11 @@ const char* browserRuntimeComponentChunk() {
         return true;
       }
 
-      function runDirectComponentFallbackAction(componentId, actionName) {
-        if (!browserLocalRuntime) return false;
+      function runDirectComponentFallbackAction(componentId, actionName, args) {
         const instance = findRuntimeComponentInstance(componentId);
         if (!instance) return false;
-        const loweredName = instance.locals && instance.locals[actionName]
-          ? instance.locals[actionName]
-          : actionName;
-        return executeClientAction(loweredName, []);
+        const name = (instance.locals || {})[actionName] || actionName;
+        return redirect(name) || executeClientAction(name, args);
       }
 
       async function runLiveComponentAction(componentId, actionName, args) {
@@ -3209,7 +3207,7 @@ const char* browserRuntimeComponentChunk() {
           const active = document.activeElement, focusScope = button.closest('[data-jtml-focus-after-removal]');
           const handled = browserLocalRuntime
             ? (runDirectComponentAction(componentId, actionName, args) ||
-               runDirectComponentFallbackAction(componentId, actionName))
+               runDirectComponentFallbackAction(componentId, actionName, args))
             : await runLiveComponentAction(componentId, actionName, args);
           if (handled) {
             if (browserLocalRuntime && active && !active.isConnected) {
@@ -3240,7 +3238,7 @@ const char* browserRuntimeComponentChunk() {
           }
           const handled = browserLocalRuntime
             ? (runDirectComponentAction(componentId, actionName, args) ||
-               runDirectComponentFallbackAction(componentId, actionName))
+               runDirectComponentFallbackAction(componentId, actionName, args))
             : await runLiveComponentAction(componentId, actionName, args);
           if (handled) event.stopPropagation();
         });
@@ -4190,6 +4188,7 @@ const char* browserRuntimeComponentChunk() {
       }
 
       const __jtml_refresh_fns = {};
+      const redirects = Object.create(null);
       const __jtml_fetch_fns = {};
       const __jtml_invalidate_fns = {};
       const __jtml_fetch_groups = {};
@@ -5224,15 +5223,11 @@ const char* browserRuntimeDataPlatformChunk() {
         }
       }
 
+      function redirect(name) { return redirects[name] ? (window.__jtml_redirect(redirects[name]), true) : false; }
       function startRedirectBindings() {
-        document.querySelectorAll('[data-jtml-redirect-action]').forEach(function (meta) {
-          const actionName = meta.getAttribute('data-jtml-redirect-action');
-          const path = meta.getAttribute('data-jtml-redirect-to') || '/';
-          if (actionName) {
-            __jtml_refresh_fns[actionName] = function () {
-              window.__jtml_redirect(path);
-            };
-          }
+        document.querySelectorAll('[data-jtml-redirect-action]').forEach(meta => {
+          const name = meta.getAttribute('data-jtml-redirect-action');
+          if (name) redirects[name] = meta.getAttribute('data-jtml-redirect-to') || '/';
         });
       }
 
@@ -5680,9 +5675,9 @@ const char* browserRuntimeBootTransportChunk() {
 
       window.sendEvent = async function (elementId, eventType, args) {
         args = args || [];
-        // Client-side intercept for refresh actions and redirect.
         const action = parseActionCall(args[0] || '');
         const fnName = action.name;
+        if (redirect(fnName)) return;
         if (fnName && __jtml_refresh_fns[fnName]) {
           await __jtml_refresh_fns[fnName]();
           return;

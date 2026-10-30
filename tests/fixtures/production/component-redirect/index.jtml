@@ -1,0 +1,55 @@
+jtml 2
+
+let token = ""
+let received = ""
+
+when globalGo value
+  received = value
+  redirect "/destination"
+
+when receive value
+  received = value
+
+when go
+  redirect "/wrong"
+
+guard "/private" require token else "/login"
+
+make Protected
+  when go
+    redirect "/private"
+  page
+    button "Protected local" click go
+
+make Local label
+  let clicks = 0
+  when go amount
+    clicks += amount
+    redirect "/destination"
+  page
+    text "{label}: {clicks}"
+    button "{label} local" click go(2)
+    button "{label} global" click globalGo("argument")
+    button "{label} argument" click receive("argument")
+
+make Home
+  page
+    h1 "Home"
+    Local "First"
+    Local "Second"
+    Protected
+
+make Destination
+  page
+    h1 "Destination"
+    link "Home" to "/"
+
+route "/" as Home
+route "/destination" as Destination
+route "/private" as Destination
+route "/login" as Destination
+route "/wrong" as Destination
+
+page
+  button "Root global" click globalGo("root")
+  text "Received: {received}"

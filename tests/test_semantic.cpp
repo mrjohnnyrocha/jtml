@@ -720,6 +720,8 @@ TEST(SemanticProgram, PreservesRouteDeclarationPrecedenceThroughClientManifest) 
             "route \"/user/new\" as NewUser\n"
             "route \"/user/:id\" as Profile\n" +
             (fallbackFirst ? "" : fallback) +
+            // Preserve the old exact-record deduplication without moving its first occurrence.
+            "route \"/user/new\" as NewUser\n"
             "make Home\n  h1 \"Home\"\n"
             "make NewUser\n  h1 \"New\"\n"
             "make Profile id\n  h1 id\n"

@@ -800,8 +800,11 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
         attributeLiteral(elem, "data-jtml-route-params", routeParams);
         std::string routeLoad;
         attributeLiteral(elem, "data-jtml-route-load", routeLoad);
-        out.routeRecords.push_back({value, routeName, joinValues(splitCommaList(routeParams)),
-                                 joinValues(splitCommaList(routeLoad))});
+        const auto record = std::make_tuple(value, routeName, joinValues(splitCommaList(routeParams)),
+                                            joinValues(splitCommaList(routeLoad)));
+        if (std::find(out.routeRecords.begin(), out.routeRecords.end(), record) == out.routeRecords.end()) {
+            out.routeRecords.push_back(record);
+        }
         if (attributeLiteral(elem, "data-jtml-route-name", routeName)) {
             insertSorted(out.routes, value + " -> " + routeName);
             addEdge(out, "route:" + value, "component:" + routeName, "renders");

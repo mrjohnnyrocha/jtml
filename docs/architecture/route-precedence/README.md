@@ -33,8 +33,10 @@ The diagnostic string summary `semantic.routes` remains sorted; it is not the
 execution table. No runtime matcher, application source, API, release asset,
 module-ownership logic, or fallback policy changes. Declaration order defines
 first-match precedence, including an intentionally early wildcard; this is not
-an automatic specificity ranking. Duplicate declarations are retained in source
-order rather than silently deduplicated by a set.
+an automatic specificity ranking. Exact duplicate records remain deduplicated at their first occurrence,
+preserving the prior record-identity behavior without sorting the execution table.
+The regression includes two identical `/user/new` declarations; bypassing
+deduplication fails with five records instead of four (negative control verified).
 
 ## Reproduction and regression
 

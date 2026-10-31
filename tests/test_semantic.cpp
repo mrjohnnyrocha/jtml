@@ -2809,3 +2809,41 @@ TEST(RuntimePlan, InputIntoReadsAndWritesItsStateWithoutExplicitValueAttribute) 
     EXPECT_EQ(inputs, 2u);
     EXPECT_EQ(files, 1u);
 }
+
+TEST(RuntimePlan, RouteLayoutsRetainCallerOwnedSlotInstances) {
+    const std::string source =
+        "jtml 2\n"
+        "make Shell\n"
+        "  page\n"
+        "    h1 \"Shell\"\n"
+        "    slot\n"
+        "make Detail id\n"
+        "  let count = 0\n"
+        "  text id\n"
+        "  text count\n"
+        "route \"/detail/:id\" as Detail layout Shell\n";
+    auto program = parseFriendly(source);
+    const auto semantic = jtml::analyzeSemanticProgram(program, source);
+    const auto plan = jtml::buildRuntimePlan(program, semantic);
+    const auto layout = std::find_if(plan.componentInstances.begin(), plan.componentInstances.end(),
+        [](const auto& instance) { return instance.role == "layout"; });
+    const auto route = std::find_if(plan.componentInstances.begin(), plan.componentInstances.end(),
+        [](const auto& instance) { return instance.role == "route"; });
+    ASSERT_NE(layout, plan.componentInstances.end());
+    ASSERT_NE(route, plan.componentInstances.end());
+    ASSERT_FALSE(layout->slotPlan.empty());
+    ASSERT_EQ(layout->slotPlan.size(), 1u);
+    EXPECT_NE(layout->slotSource.find("Detail id\n"), std::string::npos);
+    EXPECT_EQ(layout->slotPlan[0].sourceLine, layout->sourceLine);
+    EXPECT_EQ(layout->slotPlan[0].name, "Detail");
+    EXPECT_EQ(layout->slotPlan[0].expression, "id");
+    ASSERT_EQ(route->params.size(), 1u);
+    EXPECT_EQ(route->params[0].name, "id");
+    EXPECT_EQ(route->params[0].value, "id");
+    EXPECT_EQ(route->sourceLine, layout->sourceLine);
+    ASSERT_EQ(route->locals.size(), 1u);
+    EXPECT_EQ(route->locals[0].name, "count");
+    EXPECT_FALSE(route->locals[0].value.empty());
+    const auto client = jtml::runtimePlanToClientJson(plan).dump();
+    EXPECT_EQ(client.find("\"sourceSpan\""), std::string::npos);
+}

@@ -1,0 +1,391 @@
+{
+  "loginControlSource": "jtml 2\nlet sessionToken = \"demo-token\"\nlet loginEmail = \"ada@example.com\"\nlet auditTrail = \"Ready for review.\"\nguard \"/command\" require sessionToken else \"/login\"\nwhen signIn\n  let sessionToken = loginEmail\n  let auditTrail = \"Signed in as {loginEmail}.\"\n  redirect \"/command\"\n\nwhen signOut\n  let sessionToken = \"\"\n  let auditTrail = \"Signed out.\"\n  redirect \"/login\"\n\nmake Login\n  main class \"login-page\"\n    section class \"login-card\"\n      p class \"eyebrow\" \"Protected demo\"\n      h2 \"Sign in\"\n      p \"Route guards protect command, data, media, and runtime pages. Use any email to create a local token.\"\n      input \"Email\" into loginEmail required type \"email\"\n      box class \"button-row\"\n        button \"Sign in\" click signIn\n        link \"Back home\" to \"/\" class \"button\"\n      if sessionToken\n        text \"Current session token: {sessionToken}\"\n\nmake Command\n  h2 \"Command probe\"\nroute \"/command\" as Command\nroute \"/login\" as Login\n",
+  "fullNoLayoutControl": "Original demos/index.jtml with only ` layout AppLayout` removed. This broader control has independent initialization errors and is not used to isolate login.",
+  "controlTrace": [
+    {
+      "name": "original",
+      "command": {
+        "route": {
+          "path": "/command",
+          "pattern": "/command",
+          "name": "Command",
+          "params": {},
+          "load": []
+        },
+        "state": {
+          "loginEmail": "ada@example.com",
+          "sessionToken": "demo-token",
+          "auditTrail": "Ready for review."
+        },
+        "headings": [
+          ""
+        ],
+        "inputs": [],
+        "body": "NATIVE JTML DEMO APP\n\nA single Friendly JTML file showing production app structure, live state, runtime APIs, media, graphics, routing, stores, effects, and host integrations.\n\nRelease undefined\n\nOverview\nCommand\nData\nMedia\nRuntime\nLogin\n\nJTML can author applications as readable documents without handing the user a JavaScript framework first."
+      },
+      "loginInitial": {
+        "route": {
+          "path": "/login",
+          "pattern": "/login",
+          "name": "Login",
+          "params": {},
+          "load": []
+        },
+        "state": {
+          "loginEmail": "ada@example.com",
+          "sessionToken": "demo-token",
+          "auditTrail": "Ready for review."
+        },
+        "headings": [
+          ""
+        ],
+        "inputs": [],
+        "body": "NATIVE JTML DEMO APP\n\nA single Friendly JTML file showing production app structure, live state, runtime APIs, media, graphics, routing, stores, effects, and host integrations.\n\nRelease undefined\n\nOverview\nCommand\nData\nMedia\nRuntime\nLogin\n\nJTML can author applications as readable documents without handing the user a JavaScript framework first."
+      },
+      "interactionFailure": "locator.fill: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('textbox', { name: 'Email', exact: true }).filter({ visible: true })\u001b[22m\n",
+      "calls": [
+        {
+          "name": "componentBindTargetStatus",
+          "calls": 0
+        },
+        {
+          "name": "renderDirectComponent",
+          "calls": 8
+        },
+        {
+          "name": "runDirectComponentAction",
+          "calls": 0
+        },
+        {
+          "name": "runDirectComponentFallbackAction",
+          "calls": 0
+        },
+        {
+          "name": "executeClientAction",
+          "calls": 0
+        },
+        {
+          "name": "redirect",
+          "calls": 0
+        },
+        {
+          "name": "applyRoutes",
+          "calls": 2
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "no-layout",
+      "command": {
+        "state": {
+          "loginEmail": "ada@example.com",
+          "sessionToken": "demo-token",
+          "auditTrail": "Ready for review."
+        },
+        "headings": [
+          "One JTML file, many production patterns",
+          "Needs attention",
+          "Controlled risk",
+          "Lisbon",
+          "Feature coverage",
+          "Live operations workspace",
+          "3",
+          "Controlled risk",
+          "2",
+          "Incident portfolio",
+          "GET, POST, lazy load, refresh, and invalidation",
+          "{{\"Images, audio, video, files, dropzones, charts, SVG, canvas, and 3D\"}}\n",
+          "{{\"Server contract and runtime introspection\"}}\n",
+          "Sign in",
+          "{{\"Route parameter\"}}\n",
+          "{{\"Route not found\"}}\n"
+        ],
+        "inputs": [
+          "<input data-jtml-direct-component-bind=\"searchQuery\" value=\"\" data-jtml-direct-node=\"input\" data-jtml-direct-component-id=\"Command_11\" data-jtml-direct-body-node=\"39\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,value,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\">",
+          "<input data-jtml-direct-component-bind=\"acceptedPolicy\" type=\"checkbox\" data-jtml-direct-node=\"checkbox\" data-jtml-direct-component-id=\"Command_11\" data-jtml-direct-body-node=\"45\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,type,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\">",
+          "<input data-jtml-direct-body-node=\"23\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,type,data-jtml-direct-component-id,data-jtml-direct-node\" data-jtml-direct-component-bind=\"loginEmail\" type=\"email\" data-jtml-direct-component-id=\"Data_12\" data-jtml-direct-node=\"input\">",
+          "<input id=\"elem_217\" type=\"file\" aria-label=\"Choose evidence\" accept=\"image/*,video/*,audio/*,.pdf\" data-jtml-event-change=\"[&quot;attr_159&quot;,&quot;setSelectedMedia()&quot;]\">",
+          "<input id=\"elem_224\" type=\"file\" data-jtml-dropzone=\"true\" multiple=\"multiple\" aria-label=\"Drop launch assets here\" accept=\"image/*,video/*,audio/*,.pdf\" data-jtml-event-change=\"[&quot;attr_165&quot;,&quot;setEvidenceFiles()&quot;]\">",
+          "<input data-jtml-direct-component-bind=\"loginEmail\" value=\"\" required=\"\" type=\"email\" data-jtml-direct-node=\"input\" data-jtml-direct-component-id=\"Login_15\" data-jtml-direct-body-node=\"5\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,value,required,type,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\">"
+        ],
+        "body": "WHY THIS DEMO EXISTS\n\nOne JTML file, many production patterns\n\nThis demo is intentionally dense. It is a working reference for teams evaluating whether JTML can describe real application surfaces, not only toy pages.\n\nOpen command center\nInspect runtime APIs\n\nOperations\n\nNeeds attention\n\n3 open incidents, 18% deployment risk, 2 approvals\n\nDeployment\n\nControlled risk\n\n{deploymentRisk}% calculated release risk\n\nWorkspace\n\nLisbon\n\n{workspace.tier} tier, {workspace.theme} theme theme\n\nFeature coverage\n\nRoutes and route guards\n\nLayout components and slots\n\nStores and namespaced actions\n\nEffects and derived values\n\nGET and POST fetch\n\nForm controls and submit handlers\n\nMedia, graphics, charts, and 3D hosts\n\nExternal actions for host apps\n\nCOMMAND CENTER\n\nLive operations workspace\n\nNotify host\nRefresh data\nSign out\n\nOpen incidents\n\n3\n\nPayment queue latency\n\nRisk\n\nControlled risk\n\n{deploymentRisk}% current score\n\nApprovals\n\n2\n\nApprovals in {workspace.region}\n\nIncident controls\n\nHandlers mutate state, effects update the audit trail, and the UI re-renders from reactive values.\n\nAcknowledge\nEscalate\nRisk -3\nRisk +5\n\nAudit: undefined\n\nStore controls\n\nThe workspace store is globally addressable and keeps shared application state.\n\nRegion: undefined\n\nTier: undefined\n\nSwitch region\nApprove\nReset approvals\nWorkflow form\nHigh\nMedium\nLow\nSubmit workflow\nCapture note\nReset local form\n\nPriority: undefined\n\nPolicy accepted: undefined\n\nComponent isolation\n\nEach counter owns its own state even though both are created from the same component.\n\nDeploy approvals\n\nIsolated count: 0\n\n-1\n+1\nRollback readiness\n\nIsolated count: 0\n\n-1\n+1\nIncident portfolio\n\nRUNTIME DATA\n\nGET, POST, lazy load, refresh, and invalidation\n\nThis page uses the local JTML runtime demo API. In production these URLs become your application contracts.\n\nReload posts\nInvalidate all\nUsers\nPOST login probe\nPosts\nRevenue chart\nbar data revenue by month color \"#2563eb\"\n\n{{\"Media and interaction\"}}\n\n{{\"Images, audio, video, files, dropzones, charts, SVG, canvas, and 3D\"}}\n\n{{\"JTML media primitives map to platform elements and expose state through into bindings where the runtime can safely report it.\"}}\n\n{{\"Image\"}}\n\n{{\"Images remain normal web assets with accessible alt text.\"}}\n\n{{\"Video\"}}\n\n{{(((\"Paused: \" + briefingVideo.paused) + \" | Time: \") + briefingVideo.currentTime)}}\n\n{{\"Play\"}}\n{{\"Pause\"}}\n{{\"Restart\"}}\n{{\"Audio\"}}\n\n{{(\"Audio paused: \" + releaseAudio.paused)}}\n\n{{\"Files\"}}\n{{\"Dropzone\"}}\n\n{{(\"Dropped files: \" "
+      },
+      "loginInitial": {
+        "route": null,
+        "state": {
+          "loginEmail": "ada@example.com",
+          "sessionToken": "demo-token",
+          "auditTrail": "Ready for review."
+        },
+        "headings": [
+          "Sign in",
+          "{{\"Route parameter\"}}\n",
+          "{{\"Route not found\"}}\n"
+        ],
+        "inputs": [
+          "<input data-jtml-direct-component-bind=\"loginEmail\" value=\"\" required=\"\" type=\"email\" data-jtml-direct-node=\"input\" data-jtml-direct-component-id=\"Login_15\" data-jtml-direct-body-node=\"5\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,value,required,type,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\">"
+        ],
+        "body": "PROTECTED DEMO\n\nSign in\n\nRoute guards protect command, data, media, and runtime pages. Use any email to create a local token.\n\nSign in\nBack home\n{{\"Route parameter\"}}\n\n{{(\"This page was opened with id: \" + id)}}\n\n{{\"Back to data\"}}\n{{\"Route not found\"}}\n\n{{\"The requested JTML route does not exist in this demo.\"}}\n\n{{\"Go home\"}}"
+      },
+      "interactionFailure": "locator.fill: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('textbox', { name: 'Email', exact: true }).filter({ visible: true })\u001b[22m\n",
+      "calls": [
+        {
+          "name": "componentBindTargetStatus",
+          "calls": 0
+        },
+        {
+          "name": "renderDirectComponent",
+          "calls": 5
+        },
+        {
+          "name": "runDirectComponentAction",
+          "calls": 0
+        },
+        {
+          "name": "runDirectComponentFallbackAction",
+          "calls": 0
+        },
+        {
+          "name": "executeClientAction",
+          "calls": 0
+        },
+        {
+          "name": "redirect",
+          "calls": 0
+        },
+        {
+          "name": "applyRoutes",
+          "calls": 1
+        }
+      ],
+      "errors": [
+        "Unescaped string delimiter",
+        "Unsupported component argument update"
+      ]
+    }
+  ],
+  "loginControlTrace": [
+    {
+      "name": "original",
+      "command": {
+        "route": {
+          "path": "/command",
+          "pattern": "/command",
+          "name": "Command",
+          "params": {},
+          "load": []
+        },
+        "state": {
+          "loginEmail": "ada@example.com",
+          "sessionToken": "demo-token",
+          "auditTrail": "Ready for review."
+        },
+        "headings": [
+          ""
+        ],
+        "inputs": [],
+        "body": "NATIVE JTML DEMO APP\n\nA single Friendly JTML file showing production app structure, live state, runtime APIs, media, graphics, routing, stores, effects, and host integrations.\n\nRelease undefined\n\nOverview\nCommand\nData\nMedia\nRuntime\nLogin\n\nJTML can author applications as readable documents without handing the user a JavaScript framework first."
+      },
+      "loginInitial": {
+        "route": {
+          "path": "/login",
+          "pattern": "/login",
+          "name": "Login",
+          "params": {},
+          "load": []
+        },
+        "state": {
+          "loginEmail": "ada@example.com",
+          "sessionToken": "demo-token",
+          "auditTrail": "Ready for review."
+        },
+        "headings": [
+          ""
+        ],
+        "inputs": [],
+        "body": "NATIVE JTML DEMO APP\n\nA single Friendly JTML file showing production app structure, live state, runtime APIs, media, graphics, routing, stores, effects, and host integrations.\n\nRelease undefined\n\nOverview\nCommand\nData\nMedia\nRuntime\nLogin\n\nJTML can author applications as readable documents without handing the user a JavaScript framework first."
+      },
+      "interactionFailure": "locator.fill: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[type=email]').filter({ visible: true })\u001b[22m\n",
+      "calls": [
+        {
+          "name": "componentBindTargetStatus",
+          "calls": 0
+        },
+        {
+          "name": "renderDirectComponent",
+          "calls": 8
+        },
+        {
+          "name": "runDirectComponentAction",
+          "calls": 0
+        },
+        {
+          "name": "runDirectComponentFallbackAction",
+          "calls": 0
+        },
+        {
+          "name": "executeClientAction",
+          "calls": 0
+        },
+        {
+          "name": "redirect",
+          "calls": 0
+        },
+        {
+          "name": "applyRoutes",
+          "calls": 2
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "login-control",
+      "command": {
+        "route": {
+          "path": "/command",
+          "pattern": "/command",
+          "name": "Command",
+          "params": {},
+          "load": []
+        },
+        "state": {
+          "loginEmail": "ada@example.com",
+          "sessionToken": "demo-token",
+          "auditTrail": "Ready for review."
+        },
+        "headings": [
+          "Command probe"
+        ],
+        "inputs": [],
+        "body": "Command probe"
+      },
+      "loginInitial": {
+        "route": {
+          "path": "/login",
+          "pattern": "/login",
+          "name": "Login",
+          "params": {},
+          "load": []
+        },
+        "state": {
+          "loginEmail": "ada@example.com",
+          "sessionToken": "demo-token",
+          "auditTrail": "Ready for review."
+        },
+        "headings": [
+          "Sign in"
+        ],
+        "inputs": [
+          "<input data-jtml-direct-component-bind=\"loginEmail\" value=\"\" required=\"\" type=\"email\" data-jtml-direct-node=\"input\" data-jtml-direct-component-id=\"Login_2\" data-jtml-direct-body-node=\"5\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,value,required,type,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\">"
+        ],
+        "body": "Protected demo\n\nSign in\n\nRoute guards protect command, data, media, and runtime pages. Use any email to create a local token.\n\nSign inBack home"
+      },
+      "afterInput": {
+        "route": {
+          "path": "/login",
+          "pattern": "/login",
+          "name": "Login",
+          "params": {},
+          "load": []
+        },
+        "state": {
+          "loginEmail": "ada@example.com",
+          "sessionToken": "demo-token",
+          "auditTrail": "Ready for review."
+        },
+        "headings": [
+          "Sign in"
+        ],
+        "inputs": [
+          "<input data-jtml-direct-component-bind=\"loginEmail\" value=\"\" required=\"\" type=\"email\" data-jtml-direct-node=\"input\" data-jtml-direct-component-id=\"Login_2\" data-jtml-direct-body-node=\"5\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,value,required,type,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\">"
+        ],
+        "fallbacks": [
+          {
+            "code": "JTML_UNKNOWN_INTO_TARGET",
+            "componentId": "Login_2",
+            "component": "Login",
+            "moduleId": 0,
+            "componentSourceLine": 0,
+            "bodyNodeIndex": 5,
+            "bodySourceLine": 21,
+            "bodySourceColumn": 7,
+            "nodeText": "input \"Email\" into loginEmail required type \"email\"",
+            "target": "loginEmail",
+            "message": "`into loginEmail` does not match any local let state in this component.",
+            "remediation": "Declare `let loginEmail = \"\"` inside the component, or bind the input to an existing local `let` state."
+          }
+        ],
+        "body": "Protected demo\n\nSign in\n\nRoute guards protect command, data, media, and runtime pages. Use any email to create a local token.\n\nSign inBack home"
+      },
+      "afterClick": {
+        "route": {
+          "path": "/command",
+          "pattern": "/command",
+          "name": "Command",
+          "params": {},
+          "load": []
+        },
+        "state": {
+          "loginEmail": "ada@example.com",
+          "sessionToken": "demo-token",
+          "auditTrail": "Ready for review."
+        },
+        "headings": [
+          "Command probe"
+        ],
+        "inputs": [],
+        "fallbacks": [
+          {
+            "code": "JTML_UNKNOWN_INTO_TARGET",
+            "componentId": "Login_2",
+            "component": "Login",
+            "moduleId": 0,
+            "componentSourceLine": 0,
+            "bodyNodeIndex": 5,
+            "bodySourceLine": 21,
+            "bodySourceColumn": 7,
+            "nodeText": "input \"Email\" into loginEmail required type \"email\"",
+            "target": "loginEmail",
+            "message": "`into loginEmail` does not match any local let state in this component.",
+            "remediation": "Declare `let loginEmail = \"\"` inside the component, or bind the input to an existing local `let` state."
+          }
+        ],
+        "body": "Command probe"
+      },
+      "calls": [
+        {
+          "name": "componentBindTargetStatus",
+          "calls": 1
+        },
+        {
+          "name": "renderDirectComponent",
+          "calls": 2
+        },
+        {
+          "name": "runDirectComponentAction",
+          "calls": 1
+        },
+        {
+          "name": "runDirectComponentFallbackAction",
+          "calls": 1
+        },
+        {
+          "name": "executeClientAction",
+          "calls": 0
+        },
+        {
+          "name": "redirect",
+          "calls": 1
+        },
+        {
+          "name": "applyRoutes",
+          "calls": 3
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "traceScript": "const fs=require('fs'),path=require('path'),http=require('http');\nconst {createRequire}=require('module'); const {chromium}=createRequire('/tmp/jtml-effects-browser-driver/package.json')('playwright');\nconst repo=process.cwd(), root=path.join(repo,'dist');\nconst rows=[];const server=http.createServer((req,res)=>{const p=path.join(root,new URL(req.url,'http://localhost').pathname);if(!p.startsWith(root+'/')||!fs.existsSync(p)){res.writeHead(404).end();return;}res.setHeader('Content-Security-Policy',\"script-src 'self'\");res.setHeader('Content-Type',p.endsWith('.js')?'text/javascript':'text/html');res.end(fs.readFileSync(p));});\n(async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({executablePath:process.env.JTML_BENCH_BROWSER,headless:true});\ntry{for(const [name,base] of [['original','module-ownership-audit/demos/index'],['login-control','enterprise-probes/login-control']]){\n const page=await browser.newPage();page.setDefaultTimeout(1500);const errors=[];page.on('pageerror',e=>errors.push(e.message));\n const cdp=await page.context().newCDPSession(page);await cdp.send('Profiler.enable');await cdp.send('Profiler.startPreciseCoverage',{callCount:true,detailed:true});\n const row={name};rows.push(row);\n const snapshot=()=>page.evaluate(()=>({route:jtml.getCurrentRoute?.(),state:{loginEmail:jtml.state?.loginEmail,sessionToken:jtml.state?.sessionToken,auditTrail:jtml.state?.auditTrail},headings:[...document.querySelectorAll('h1,h2')].filter(x=>x.getClientRects().length).map(x=>x.textContent),inputs:[...document.querySelectorAll('input')].filter(x=>x.getClientRects().length).map(x=>x.outerHTML),fallbacks:jtml.directComponentBindingDiagnostics,instances:jtml.componentInstances?.map(x=>({component:x.component,id:x.id,role:x.role,parentId:x.parentId,slots:x.slotPlan?.length})),body:document.body.innerText.slice(0,2500)}));\n await page.goto(`http://127.0.0.1:${server.address().port}/${base}/index.html#/command`);await page.waitForTimeout(250);row.command=await snapshot();\n await page.goto(`http://127.0.0.1:${server.address().port}/${base}/index.html#/login`);await page.waitForTimeout(250);row.loginInitial=await snapshot();\n try{await page.locator('input[type=email]').filter({visible:true}).fill('probe@example.test');row.afterInput=await snapshot();await page.getByRole('button',{name:'Sign in',exact:true}).filter({visible:true}).click();await page.waitForTimeout(100);row.afterClick=await snapshot();}catch(e){row.interactionFailure=e.message;}\n const cov=await cdp.send('Profiler.takePreciseCoverage');row.calls=cov.result.filter(x=>x.url.endsWith('jtml-runtime.js')).flatMap(x=>x.functions).filter(f=>['runDirectComponentAction','runDirectComponentFallbackAction','executeClientAction','redirect','applyRoutes','renderDirectComponent','componentBindTargetStatus'].includes(f.functionName)).map(f=>({name:f.functionName,calls:f.ranges[0]?.count}));row.errors=errors;await page.close();\n}}finally{await browser.close();await new Promise(r=>server.close(r));fs.writeFileSync('/tmp/jtml-enterprise-login-control-before.json',JSON.stringify(rows,null,2)+'\\n');console.log(JSON.stringify(rows,null,2));}})().catch(e=>{console.error(e);process.exitCode=1});\n",
+  "initialTraceScript": "const fs=require('fs'),path=require('path'),http=require('http');\nconst {createRequire}=require('module'); const {chromium}=createRequire('/tmp/jtml-effects-browser-driver/package.json')('playwright');\nconst repo=process.cwd(), root=path.join(repo,'dist');\nconst rows=[];const server=http.createServer((req,res)=>{const p=path.join(root,new URL(req.url,'http://localhost').pathname);if(!p.startsWith(root+'/')||!fs.existsSync(p)){res.writeHead(404).end();return;}res.setHeader('Content-Security-Policy',\"script-src 'self'\");res.setHeader('Content-Type',p.endsWith('.js')?'text/javascript':'text/html');res.end(fs.readFileSync(p));});\n(async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({executablePath:process.env.JTML_BENCH_BROWSER,headless:true});\ntry{for(const [name,base] of [['original','module-ownership-audit/demos/index'],['no-layout','enterprise-probes/no-layout']]){\n const page=await browser.newPage();page.setDefaultTimeout(1500);const errors=[];page.on('pageerror',e=>errors.push(e.message));\n const cdp=await page.context().newCDPSession(page);await cdp.send('Profiler.enable');await cdp.send('Profiler.startPreciseCoverage',{callCount:true,detailed:true});\n const row={name};rows.push(row);\n const snapshot=()=>page.evaluate(()=>({route:jtml.getCurrentRoute?.(),state:{loginEmail:jtml.state?.loginEmail,sessionToken:jtml.state?.sessionToken,auditTrail:jtml.state?.auditTrail},headings:[...document.querySelectorAll('h1,h2')].filter(x=>x.getClientRects().length).map(x=>x.textContent),inputs:[...document.querySelectorAll('input')].filter(x=>x.getClientRects().length).map(x=>x.outerHTML),fallbacks:jtml.directComponentBindingDiagnostics,instances:jtml.componentInstances?.map(x=>({component:x.component,id:x.id,role:x.role,parentId:x.parentId,slots:x.slotPlan?.length})),body:document.body.innerText.slice(0,2500)}));\n await page.goto(`http://127.0.0.1:${server.address().port}/${base}/index.html#/command`);await page.waitForTimeout(250);row.command=await snapshot();\n await page.goto(`http://127.0.0.1:${server.address().port}/${base}/index.html#/login`);await page.waitForTimeout(250);row.loginInitial=await snapshot();\n try{await page.getByRole('textbox',{name:'Email',exact:true}).filter({visible:true}).fill('probe@example.test');row.afterInput=await snapshot();await page.getByRole('button',{name:'Sign in',exact:true}).filter({visible:true}).click();await page.waitForTimeout(100);row.afterClick=await snapshot();}catch(e){row.interactionFailure=e.message;}\n const cov=await cdp.send('Profiler.takePreciseCoverage');row.calls=cov.result.filter(x=>x.url.endsWith('jtml-runtime.js')).flatMap(x=>x.functions).filter(f=>['runDirectComponentAction','runDirectComponentFallbackAction','executeClientAction','redirect','applyRoutes','renderDirectComponent','componentBindTargetStatus'].includes(f.functionName)).map(f=>({name:f.functionName,calls:f.ranges[0]?.count}));row.errors=errors;await page.close();\n}}finally{await browser.close();await new Promise(r=>server.close(r));fs.writeFileSync('/tmp/jtml-enterprise-trace-before.json',JSON.stringify(rows,null,2)+'\\n');console.log(JSON.stringify(rows,null,2));}})().catch(e=>{console.error(e);process.exitCode=1});\n"
+}

@@ -1,0 +1,40 @@
+{
+  "baselineCommit": "c98fb9d87e1530443f62b53522c6566b8e348fb0",
+  "command": "env JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=/tmp/jtml-effects-browser-driver JTML_BENCH_BROWSER=/tmp/jtml-review-browsers/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1 JTML_REQUIRE_BROWSER_BENCH=1 scripts/verify_all.sh",
+  "gateExit": 0,
+  "ctest": "493/493",
+  "benchmarks": [
+    "OK: browser-runtime static_counter clicks=200 initialization=54.00ms interaction=16.70ms average=0.08ms slowest=3.20ms verification=0.60ms nestedParamPatch=false keyedLifecycle=false browserExit=clean",
+    "OK: browser-runtime keyed_list clicks=200 initialization=43.10ms interaction=22.20ms average=0.11ms slowest=3.10ms verification=0.40ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime control_flow clicks=200 initialization=42.80ms interaction=22.30ms average=0.11ms slowest=2.10ms verification=0.50ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime composition clicks=200 initialization=44.70ms interaction=13.40ms average=0.07ms slowest=2.30ms verification=0.40ms nestedParamPatch=true keyedLifecycle=false browserExit=clean",
+    "OK: browser-runtime large_keyed_updates clicks=201 initialization=92.20ms interaction=696.70ms average=3.47ms slowest=8.20ms verification=7.50ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime large_keyed_reorder clicks=201 initialization=93.10ms interaction=737.30ms average=3.67ms slowest=8.40ms verification=15.80ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime nested_component_update clicks=200 initialization=43.50ms interaction=21.60ms average=0.11ms slowest=2.20ms verification=0.50ms nestedParamPatch=true keyedLifecycle=false browserExit=clean",
+    "OK: browser-runtime lifecycle_cleanup clicks=200 initialization=41.30ms interaction=35.50ms average=0.18ms slowest=2.90ms verification=0.50ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime form_focus clicks=200 initialization=40.80ms interaction=12.90ms average=0.06ms slowest=1.20ms verification=0.40ms nestedParamPatch=false keyedLifecycle=false browserExit=clean"
+  ],
+  "logSha256": "96ca3e78c69e9ed8686f2b3009f803e7e37e2fabfa722eb271192ae4fbf32e59",
+  "originalInventory": {
+    "beforeExit": 1,
+    "afterExit": 0,
+    "afterChecks": "22/22",
+    "builds": "9/9 exit 0"
+  },
+  "detailedEnterpriseAudit": {
+    "exit": 1,
+    "afterChecks": "6 pass, 5 fail"
+  },
+  "rootSlotNegativeExit": 1,
+  "budgetChanges": false,
+  "intermediateCandidate": {
+    "gateExit": 143,
+    "reason": "Stopped after measuring unnecessary expanded-route metadata duplication. Compact invocation replaces it."
+  },
+  "finalCommitAcceptance": "Exact pushed commit gate and CI are recorded on the PR; this is the pre-commit evidence snapshot.",
+  "limitations": [
+    "Reference HTML microfixture overage remains printed by existing suite.",
+    "Native conformance UNKNOWN/excluded cases remain explicit.",
+    "Detailed Enterprise audit and root-slot negative are not counted as green."
+  ]
+}

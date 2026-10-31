@@ -1,0 +1,34 @@
+// Diagnostic audit, deliberately nonzero while independent Enterprise defects remain.
+// No authentication service is supplied: /api/login remains an external requirement.
+const assert=require('node:assert/strict'),fs=require('fs'),path=require('path'),http=require('http');
+const {spawnSync}=require('child_process'),{createRequire}=require('module');
+assert(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT&&process.env.JTML_BENCH_BROWSER,'real Chromium required; no skip');
+const {chromium}=createRequire(path.join(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT,'package.json'))('playwright');
+const repo=path.resolve(__dirname,'../..'),out=path.join(repo,'dist/enterprise-audit'),checks=[],requests=[];let browser;
+const command=[process.env.JTML_BIN||path.join(repo,'build/jtml'),'build','demos/index.jtml','--target','browser','--out',out];
+const built=spawnSync(command[0],command.slice(1),{cwd:repo,encoding:'utf8'});assert.equal(built.status,0,built.stdout+built.stderr);
+const result={command,buildExit:built.status,checks,requests};
+const server=http.createServer((req,res)=>{const url=new URL(req.url,'http://localhost');requests.push({method:req.method,path:url.pathname});const file=path.join(out,url.pathname);if(!file.startsWith(out+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404).end();return;}res.setHeader('Content-Security-Policy',"script-src 'self'");res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':'text/html');res.end(fs.readFileSync(file));});
+(async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));browser=await chromium.launch({executablePath:process.env.JTML_BENCH_BROWSER,headless:true});result.browser=browser.version();
+ const base=`http://127.0.0.1:${server.address().port}/index.html`;
+ const source=await browser.newPage({javaScriptEnabled:false});await source.goto(base+'#/command');result.beforeExecution={headings:await source.locator('h2').allTextContents(),suppliedSlots:await source.locator('[data-jtml-supplied-slot]').count()};await source.close();
+ const page=await browser.newPage();page.setDefaultTimeout(2000);result.errors=[];result.failedResources=[];page.on('pageerror',e=>result.errors.push(e.message));page.on('response',r=>{if(r.status()>=400)result.failedResources.push({url:r.url(),status:r.status()});});
+ const cdp=await page.context().newCDPSession(page);await cdp.send('Profiler.enable');await cdp.send('Profiler.startPreciseCoverage',{callCount:true,detailed:true});
+ const check=async(name,fn)=>{try{await fn();checks.push({name,pass:true});}catch(e){checks.push({name,pass:false,error:e.message});}};
+ const state=()=>page.evaluate(()=>({route:jtml.getCurrentRoute?.(),loginEmail:jtml.state?.loginEmail,sessionToken:jtml.state?.sessionToken,auditTrail:jtml.state?.auditTrail,emailBindings:Object.fromEntries(Object.entries(jtml.state||{}).filter(([k])=>k.includes('loginEmail'))),bindingDiagnostics:jtml.directComponentBindingDiagnostics}));
+ await page.goto(base+'#/command');await page.waitForFunction(()=>typeof window.jtml?.getCurrentRoute==='function');
+ result.command=await state();await check('Command route selected',()=>assert.equal(result.command.route.path,'/command'));
+ await check('Command content visible',()=>page.getByRole('heading',{name:'Live operations workspace',exact:true}).waitFor());
+ await page.goto(base+'#/login');await page.waitForFunction(()=>typeof window.jtml?.getCurrentRoute==='function');result.loginInitial=await state();
+ await check('Email input visible and accessible',()=>page.getByRole('textbox',{name:'Email',exact:true}).filter({visible:true}).waitFor());
+ await check('input updates module loginEmail',async()=>{await page.getByRole('textbox',{name:'Email',exact:true}).filter({visible:true}).fill('probe@example.test');await page.getByRole('textbox',{name:'Email',exact:true}).filter({visible:true}).press('Tab');assert.equal((await state()).loginEmail,'probe@example.test');});result.afterInput=await state();
+ await check('Sign in navigates',async()=>{await page.getByRole('button',{name:'Sign in',exact:true}).filter({visible:true}).click();await page.waitForFunction(()=>jtml.getCurrentRoute()?.path==='/command');});result.afterSignIn=await state();
+ await check('Sign in executes token assignment',()=>assert.equal(result.afterSignIn.sessionToken,'probe@example.test'));
+ await check('Sign in executes audit assignment',()=>assert.equal(result.afterSignIn.auditTrail,'Signed in as probe@example.test.'));
+ await check('Sign out navigates',async()=>{await page.getByRole('button',{name:'Sign out',exact:true}).filter({visible:true}).click();await page.waitForFunction(()=>jtml.getCurrentRoute()?.path==='/login');});result.afterSignOut=await state();
+ await check('Sign out clears token',()=>assert.equal(result.afterSignOut.sessionToken,''));
+ await check('guard denies Command after sign out',async()=>{await page.getByRole('link',{name:'Command',exact:true}).filter({visible:true}).click();await page.waitForTimeout(150);assert.equal((await state()).route.path,'/login');assert.equal(await page.evaluate(()=>location.hash),'#/login');});result.afterGuard=await state();
+ const coverage=await cdp.send('Profiler.takePreciseCoverage');result.calls=coverage.result.filter(s=>s.url.endsWith('jtml-runtime.js')).flatMap(s=>s.functions).filter(f=>['redirect','executeClientAction','runDirectComponentAction','runDirectComponentFallbackAction','checkGuards','applyRoutes'].includes(f.functionName)).map(f=>({name:f.functionName,calls:f.ranges[0]?.count}));
+ await check('no page exceptions',()=>assert.deepEqual(result.errors,[]));
+ if(checks.some(c=>!c.pass))process.exitCode=1;
+})().catch(e=>{result.error=e.message;process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();await new Promise(r=>server.close(r));result.exit=process.exitCode||0;fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result,null,2));});

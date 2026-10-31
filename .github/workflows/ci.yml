@@ -131,6 +131,9 @@ jobs:
       - name: Route declaration precedence (browser required)
         run: node tests/browser/route_precedence.cjs
 
+      - name: Route layout slot composition (browser required)
+        run: node tests/browser/route_layout.cjs
+
       - name: Component button redirects (browser required)
         run: node tests/browser/component_redirect.cjs
 

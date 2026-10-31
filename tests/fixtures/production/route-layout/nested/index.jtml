@@ -1,0 +1,43 @@
+jtml 2
+
+make Shell
+  page
+    header
+      h1 "Route shell"
+    nav
+      link "Command" to "/command"
+      link "Login" to "/login"
+      link "Plain" to "/plain"
+    slot
+    footer "Shell footer"
+
+make Counter
+  let count = 0
+  when add
+    count += 1
+  box
+    text "Count: {count}"
+    button "Add" click add
+
+make Command
+  main
+    h2 "Command content"
+    Counter
+
+make Login
+  let email = ""
+  main
+    h2 "Login content"
+    input "Email" into email type "email"
+    text "Email: {email}"
+
+make Detail id
+  main
+    h2 "Detail content"
+    text "Detail: {id}"
+
+route "/detail/:id" as Detail layout Shell
+route "/command" as Command layout Shell
+route "/login" as Login layout Shell
+route "/plain" as Command
+route "/" as Command layout Shell

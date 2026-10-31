@@ -324,9 +324,11 @@ compiler emits a `<meta>` element; the browser intercepts hash navigation
 before the route section becomes visible. Guards fire on every hash change.
 
 `redirect "/path"` navigates to a route programmatically from inside a `when`
-block without a server round-trip. The compiler emits a `<meta>` marker that
-the browser runtime reads on load; clicking the triggering button is
-intercepted client-side before the server is involved:
+block without a server round-trip. Redirect does not return from the action.
+For browser-local root actions, authored assignments complete, parameters are
+restored and reactive effects flush before the action's redirect metadata requests
+navigation. Guards then observe committed state. The compiler emits a `<meta>`
+marker that the browser runtime reads on load; dispatch remains client-side:
 
 ```jtml
 when goHome

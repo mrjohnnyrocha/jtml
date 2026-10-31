@@ -1,0 +1,249 @@
+[
+  {
+    "source": "examples/friendly_redirect.jtml",
+    "command": [
+      "/Users/joaorocha/.codex/worktrees/root-action-redirect/jtml-v1/build/jtml",
+      "build",
+      "examples/friendly_redirect.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "/Users/joaorocha/.codex/worktrees/root-action-redirect/jtml-v1/dist/component-redirect/0"
+    ],
+    "exit": 0,
+    "stderr": "",
+    "checks": [
+      {
+        "name": "original component button navigates",
+        "pass": true
+      },
+      {
+        "name": "strict CSP and clean assets",
+        "pass": true
+      }
+    ],
+    "metadata": "<button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"3\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Home_1\" data-jtml-direct-component-action=\"goDashboard\" data-jtml-direct-component-args=\"[]\">Go to Dashboard</button>",
+    "traces": [
+      {
+        "label": "Go to Dashboard",
+        "trace": [
+          {
+            "name": "runDirectComponentAction",
+            "count": 1
+          },
+          {
+            "name": "runDirectComponentFallbackAction",
+            "count": 1
+          },
+          {
+            "name": "executeClientAction",
+            "count": 1
+          },
+          {
+            "name": "window.__jtml_redirect",
+            "count": 1
+          },
+          {
+            "name": "redirect",
+            "count": 1
+          },
+          {
+            "name": "checkGuards",
+            "count": 1
+          },
+          {
+            "name": "applyRoutes",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "source": "studio/samples/redirect.jtml",
+    "command": [
+      "/Users/joaorocha/.codex/worktrees/root-action-redirect/jtml-v1/build/jtml",
+      "build",
+      "studio/samples/redirect.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "/Users/joaorocha/.codex/worktrees/root-action-redirect/jtml-v1/dist/component-redirect/1"
+    ],
+    "exit": 0,
+    "stderr": "",
+    "checks": [
+      {
+        "name": "original component button navigates",
+        "pass": true
+      },
+      {
+        "name": "strict CSP and clean assets",
+        "pass": true
+      }
+    ],
+    "metadata": "<button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"5\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Home_1\" data-jtml-direct-component-action=\"openDashboard\" data-jtml-direct-component-args=\"[]\">Open dashboard</button>",
+    "traces": [
+      {
+        "label": "Open dashboard",
+        "trace": [
+          {
+            "name": "runDirectComponentAction",
+            "count": 1
+          },
+          {
+            "name": "runDirectComponentFallbackAction",
+            "count": 1
+          },
+          {
+            "name": "executeClientAction",
+            "count": 1
+          },
+          {
+            "name": "window.__jtml_redirect",
+            "count": 1
+          },
+          {
+            "name": "redirect",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "source": "tests/fixtures/production/component-redirect/index.jtml",
+    "command": [
+      "/Users/joaorocha/.codex/worktrees/root-action-redirect/jtml-v1/build/jtml",
+      "build",
+      "tests/fixtures/production/component-redirect/index.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "/Users/joaorocha/.codex/worktrees/root-action-redirect/jtml-v1/dist/component-redirect/2"
+    ],
+    "exit": 0,
+    "stderr": "",
+    "checks": [
+      {
+        "name": "Root global",
+        "pass": true
+      },
+      {
+        "name": "First global",
+        "pass": true
+      },
+      {
+        "name": "First local",
+        "pass": true
+      },
+      {
+        "name": "Second local",
+        "pass": true
+      },
+      {
+        "name": "local redirect preserves guards",
+        "pass": true
+      },
+      {
+        "name": "fallback forwards arguments",
+        "pass": true
+      },
+      {
+        "name": "strict CSP and clean assets",
+        "pass": true
+      }
+    ],
+    "metadata": "<button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"3\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Home_4__Protected_4\" data-jtml-direct-component-action=\"go\" data-jtml-direct-component-args=\"[]\">Protected local</button>",
+    "traces": [
+      {
+        "label": "Root global",
+        "trace": [
+          {
+            "name": "executeClientAction",
+            "count": 1
+          },
+          {
+            "name": "window.__jtml_redirect",
+            "count": 1
+          },
+          {
+            "name": "redirect",
+            "count": 1
+          },
+          {
+            "name": "window.sendEvent",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "label": "First global",
+        "trace": [
+          {
+            "name": "runDirectComponentAction",
+            "count": 1
+          },
+          {
+            "name": "runDirectComponentFallbackAction",
+            "count": 1
+          },
+          {
+            "name": "executeClientAction",
+            "count": 1
+          },
+          {
+            "name": "window.__jtml_redirect",
+            "count": 1
+          },
+          {
+            "name": "redirect",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "label": "First local",
+        "trace": [
+          {
+            "name": "runDirectComponentAction",
+            "count": 1
+          },
+          {
+            "name": "window.__jtml_redirect",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "label": "Second local",
+        "trace": [
+          {
+            "name": "runDirectComponentAction",
+            "count": 1
+          },
+          {
+            "name": "window.__jtml_redirect",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "label": "Protected local",
+        "trace": [
+          {
+            "name": "runDirectComponentAction",
+            "count": 1
+          },
+          {
+            "name": "window.__jtml_redirect",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "errors": []
+  }
+]

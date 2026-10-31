@@ -3159,7 +3159,7 @@ const char* browserRuntimeComponentChunk() {
         const instance = findRuntimeComponentInstance(componentId);
         if (!instance) return false;
         const name = (instance.locals || {})[actionName] || actionName;
-        return redirect(name) || executeClientAction(name, args);
+        return executeClientAction(name, args) || redirect(name);
       }
 
       async function runLiveComponentAction(componentId, actionName, args) {
@@ -4020,6 +4020,7 @@ const char* browserRuntimeComponentChunk() {
           });
         }
         applyClientState();
+        redirect(name);
         return true;
       }
 
@@ -5702,7 +5703,7 @@ const char* browserRuntimeBootTransportChunk() {
         args = args || [];
         const action = parseActionCall(args[0] || '');
         const fnName = action.name;
-        if (redirect(fnName)) return;
+        if (!browserLocalRuntime && redirect(fnName)) return;
         if (fnName && __jtml_refresh_fns[fnName]) {
           await __jtml_refresh_fns[fnName]();
           return;

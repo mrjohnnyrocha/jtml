@@ -1,0 +1,57 @@
+jtml 2
+
+let token = ""
+let value = "outer"
+let executions = 0
+let total = 0
+let tail = 0
+let observed = "initial"
+let effectHits = 0
+let restored = "initial"
+
+effect token
+  observed = "{token}:{executions}:{total}:{tail}"
+  restored = value
+  effectHits += 1
+
+when enter value amount transient
+  token = value
+  executions += 1
+  total += amount
+  redirect "/private"
+  tail += 1
+
+when leave
+  token = ""
+  executions += 1
+  redirect "/login"
+
+when only
+  redirect "/login"
+
+guard "/private" require token else "/login"
+
+make Trigger
+  page
+    button "Component enter" click enter("component", 3, "temporary")
+    button "Component leave" click leave
+    button "Component only" click only
+
+make Login
+  page
+    h1 "Login"
+
+make Private
+  page
+    h1 "Private"
+
+route "/" as Login
+route "/login" as Login
+route "/private" as Private
+
+page
+  button "Root enter" click enter("root", 2, "temporary")
+  button "Root leave" click leave
+  button "Root only" click only
+  link "Private link" to "/private"
+  Trigger

@@ -137,6 +137,11 @@ jobs:
       - name: Component button redirects (browser required)
         run: node tests/browser/component_redirect.cjs
 
+      - name: Root action state before redirects (browser required)
+        run: |
+          node tests/browser/root_action_redirect.cjs
+          node tests/browser/enterprise_action_redirect.cjs
+
       - name: Root scalar effects (browser required)
         run: node tests/browser/root_effects.cjs
 

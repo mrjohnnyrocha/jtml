@@ -6,6 +6,16 @@ The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.
 
+## Root action writes before redirect
+
+Browser-local root actions and component-triggered global actions now execute
+existing Runtime Plans, restore parameters and flush state/effects before applying
+redirect metadata. Chromium regressions cover guarded sign-out, supported-value
+Enterprise sign-in, repeated clicks, redirect-only controls and history. The
+independent component-to-module `loginEmail` input ownership failure remains;
+Enterprise is not an authentication implementation. Runtime grows 48 bytes to
+272,925 / 273,000. See [trace, negative controls and evidence](docs/architecture/root-action-redirect/README.md).
+
 ## Browser route declaration precedence
 
 Semantic IR now preserves AST route order through Runtime Plan and the client

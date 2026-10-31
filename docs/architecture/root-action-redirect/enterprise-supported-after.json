@@ -1,0 +1,123 @@
+{
+  "checks": [
+    "sign-out clears illustrative token and commits audit before navigation",
+    "guard denies Command after sign-out",
+    "sign-in uses existing valid module value and commits both assignments",
+    "strict script CSP without page exceptions; external APIs remain real missing resources"
+  ],
+  "errors": [],
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/index.html"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.jpg"
+    },
+    {
+      "method": "GET",
+      "path": "/jtml-runtime.js"
+    },
+    {
+      "method": "GET",
+      "path": "/components/index.js"
+    },
+    {
+      "method": "GET",
+      "path": "/app.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.mp4"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/release-note.mp3"
+    },
+    {
+      "method": "POST",
+      "path": "/api/login"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.jpg"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.mp4"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/release-note.mp3"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users"
+    }
+  ],
+  "observations": [
+    {
+      "stage": "initial",
+      "token": "demo-token",
+      "email": "ada@example.com",
+      "audit": "Ready for review.",
+      "route": "/command"
+    },
+    {
+      "stage": "signed-out",
+      "token": "",
+      "email": "ada@example.com",
+      "audit": "Signed out.",
+      "route": "/login",
+      "redirects": [
+        {
+          "path": "/login",
+          "token": "",
+          "audit": "Signed out."
+        }
+      ]
+    },
+    {
+      "stage": "guarded",
+      "token": "",
+      "email": "ada@example.com",
+      "audit": "Signed out.",
+      "route": "/login"
+    },
+    {
+      "stage": "signed-in",
+      "token": "ada@example.com",
+      "email": "ada@example.com",
+      "audit": "Signed in as ada@example.com.",
+      "route": "/command",
+      "redirects": [
+        {
+          "path": "/login",
+          "token": "",
+          "audit": "Signed out."
+        },
+        {
+          "path": "/login",
+          "token": "",
+          "audit": "Signed out."
+        },
+        {
+          "path": "/command",
+          "token": "ada@example.com",
+          "audit": "Signed in as ada@example.com."
+        }
+      ]
+    }
+  ],
+  "browser": "153.0.8010.12",
+  "exit": 0
+}

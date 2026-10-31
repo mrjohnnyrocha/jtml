@@ -1,0 +1,17 @@
+jtml 2
+let count = 0
+let hits = 0
+effect count
+  hits += 1
+show "probe initial {hits}"
+count = 0
+show "probe same {hits}"
+count = 1
+show "probe first {hits}"
+count = 2
+show "probe second {hits}"
+when twice
+  count = 3
+  count = 4
+twice()
+show "probe twice {hits}"

@@ -1,0 +1,482 @@
+{
+  "file": "examples/friendly_effect.jtml",
+  "effects": [
+    "count"
+  ],
+  "semantic": {
+    "attributes": {
+      "boolean": 0,
+      "event": 2,
+      "literal": 4,
+      "passthrough": 0,
+      "reactive": 0,
+      "special": 0
+    },
+    "componentDefinitions": [],
+    "componentInstances": [],
+    "dependencies": [
+      {
+        "from": "action:decrement",
+        "kind": "reads",
+        "to": "count"
+      },
+      {
+        "from": "action:decrement",
+        "kind": "writes",
+        "to": "count"
+      },
+      {
+        "from": "action:increment",
+        "kind": "reads",
+        "to": "count"
+      },
+      {
+        "from": "action:increment",
+        "kind": "writes",
+        "to": "count"
+      },
+      {
+        "from": "effect:count",
+        "kind": "reads",
+        "to": "count"
+      },
+      {
+        "from": "effect:count",
+        "kind": "subscribes",
+        "to": "count"
+      },
+      {
+        "from": "effect:count",
+        "kind": "writes",
+        "to": "last"
+      },
+      {
+        "from": "ui:@button.onClick",
+        "kind": "triggers",
+        "to": "decrement"
+      },
+      {
+        "from": "ui:@button.onClick",
+        "kind": "triggers",
+        "to": "increment"
+      },
+      {
+        "from": "ui:show",
+        "kind": "renders",
+        "to": "count"
+      },
+      {
+        "from": "ui:show",
+        "kind": "renders",
+        "to": "last"
+      }
+    ],
+    "exportRecords": [],
+    "fetchRecords": [],
+    "importRecords": [],
+    "moduleFiles": [
+      "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/examples/friendly_effect.jtml"
+    ],
+    "nodes": {
+      "actions": 2,
+      "authorThemeTokens": 0,
+      "components": 0,
+      "constants": 0,
+      "derived": 0,
+      "effects": 1,
+      "externs": 0,
+      "fetches": 0,
+      "imports": 0,
+      "moduleFiles": 1,
+      "rawCssBlocks": 0,
+      "rawHtmlBlocks": 0,
+      "rawStyleAttributes": 1,
+      "routes": 0,
+      "semanticPrimitiveRawStyleAttributes": 0,
+      "state": 2,
+      "stores": 0,
+      "styleBlocks": 0,
+      "themeTokens": 0,
+      "timelines": 0,
+      "uiPrimitives": 0
+    },
+    "project": {
+      "entry": 0,
+      "issues": [],
+      "modules": [
+        {
+          "exports": [],
+          "id": 0,
+          "imports": [],
+          "ir": {
+            "available": true,
+            "nodeCounts": [
+              {
+                "count": 3,
+                "kind": "AssignmentStatement"
+              },
+              {
+                "count": 2,
+                "kind": "DefineStatement"
+              },
+              {
+                "count": 3,
+                "kind": "FunctionDeclaration"
+              },
+              {
+                "count": 6,
+                "kind": "JtmlElement"
+              },
+              {
+                "count": 5,
+                "kind": "ShowStatement"
+              },
+              {
+                "count": 1,
+                "kind": "SubscribeStatement"
+              }
+            ],
+            "parseError": "",
+            "parseErrorColumn": 0,
+            "parseErrorLine": 0,
+            "syntax": "friendly",
+            "topLevelCount": 7,
+            "topLevelNodes": [
+              {
+                "childCount": 0,
+                "depth": 0,
+                "kind": "DefineStatement",
+                "label": "count"
+              },
+              {
+                "childCount": 0,
+                "depth": 0,
+                "kind": "DefineStatement",
+                "label": "last"
+              },
+              {
+                "childCount": 1,
+                "depth": 0,
+                "kind": "FunctionDeclaration",
+                "label": "__effect_count_6"
+              },
+              {
+                "childCount": 0,
+                "depth": 0,
+                "kind": "SubscribeStatement",
+                "label": "__effect_count_6"
+              },
+              {
+                "childCount": 1,
+                "depth": 0,
+                "kind": "FunctionDeclaration",
+                "label": "increment"
+              },
+              {
+                "childCount": 1,
+                "depth": 0,
+                "kind": "FunctionDeclaration",
+                "label": "decrement"
+              },
+              {
+                "childCount": 5,
+                "depth": 0,
+                "kind": "JtmlElement",
+                "label": "main"
+              }
+            ],
+            "totalNodeCount": 20
+          },
+          "path": "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/examples/friendly_effect.jtml",
+          "semantic": {
+            "actions": [
+              "decrement",
+              "increment"
+            ],
+            "componentDefinitionCount": 0,
+            "componentInstanceCount": 0,
+            "components": [],
+            "constants": [],
+            "dependencyCount": 11,
+            "derived": [],
+            "effects": [
+              "count"
+            ],
+            "exportCount": 0,
+            "externs": [],
+            "fetches": [],
+            "imports": [],
+            "routes": [],
+            "state": [
+              "count",
+              "last"
+            ],
+            "stores": []
+          }
+        }
+      ]
+    },
+    "routeRecords": [],
+    "sourceOfTruth": "typed AST -> semantic analysis -> observable graph",
+    "ui": {
+      "authorThemeTokens": 0,
+      "modifiers": [],
+      "primitives": [],
+      "rawCssBlocks": 0,
+      "rawHtmlBlocks": 0,
+      "rawStyleAttributes": 1,
+      "semanticPrimitiveRawStyleAttributes": 0,
+      "styleBlocks": 0,
+      "themeTokens": 0,
+      "uses": []
+    },
+    "uiModifiers": []
+  },
+  "runtimePlan": {
+    "actions": [
+      {
+        "body": [
+          {
+            "expr": "(\"Count changed to \" + count)",
+            "exprPlan": {
+              "astKind": 0,
+              "directJs": true,
+              "jsExpression": "((\"Count changed to \") + ((function(){ let value = scope == null ? undefined : scope[\"count\"]; return value; })()))",
+              "kind": "binary",
+              "left": {
+                "astKind": 3,
+                "directJs": true,
+                "jsExpression": "\"Count changed to \"",
+                "kind": "literal",
+                "producer": "typed-ir",
+                "source": "\"Count changed to \"",
+                "sourceSpan": {
+                  "endColumn": 18,
+                  "endLine": 1,
+                  "endOffset": 19,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "value": "Count changed to ",
+                "valueType": "string"
+              },
+              "operator": "+",
+              "producer": "typed-ir",
+              "right": {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"count\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "count",
+                "segments": [
+                  "count"
+                ],
+                "source": "count",
+                "sourceSpan": {
+                  "endColumn": 28,
+                  "endLine": 1,
+                  "endOffset": 27,
+                  "startColumn": 23,
+                  "startLine": 1,
+                  "startOffset": 22
+                },
+                "valueType": "number"
+              },
+              "source": "(\"Count changed to \" + count)",
+              "sourceSpan": {
+                "endColumn": 28,
+                "endLine": 1,
+                "endOffset": 27,
+                "startColumn": 1,
+                "startLine": 1,
+                "startOffset": 0
+              },
+              "valueType": "string"
+            },
+            "kind": "assign",
+            "lhs": "last"
+          }
+        ],
+        "name": "__effect_count_5",
+        "params": []
+      },
+      {
+        "body": [
+          {
+            "expr": "(count + 1.000000000000000)",
+            "exprPlan": {
+              "astKind": 0,
+              "directJs": true,
+              "jsExpression": "(((function(){ let value = scope == null ? undefined : scope[\"count\"]; return value; })()) + (1.0))",
+              "kind": "binary",
+              "left": {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"count\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "count",
+                "segments": [
+                  "count"
+                ],
+                "source": "count",
+                "sourceSpan": {
+                  "endColumn": 6,
+                  "endLine": 1,
+                  "endOffset": 5,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "number"
+              },
+              "operator": "+",
+              "producer": "typed-ir",
+              "right": {
+                "astKind": 4,
+                "directJs": true,
+                "jsExpression": "1.0",
+                "kind": "literal",
+                "producer": "typed-ir",
+                "source": "1.000000000000000",
+                "sourceSpan": {
+                  "endColumn": 26,
+                  "endLine": 1,
+                  "endOffset": 25,
+                  "startColumn": 9,
+                  "startLine": 1,
+                  "startOffset": 8
+                },
+                "value": 1.0,
+                "valueType": "number"
+              },
+              "source": "(count + 1.000000000000000)",
+              "sourceSpan": {
+                "endColumn": 26,
+                "endLine": 1,
+                "endOffset": 25,
+                "startColumn": 1,
+                "startLine": 1,
+                "startOffset": 0
+              },
+              "valueType": "number"
+            },
+            "kind": "assign",
+            "lhs": "count"
+          }
+        ],
+        "name": "increment",
+        "params": []
+      },
+      {
+        "body": [
+          {
+            "expr": "(count - 1.000000000000000)",
+            "exprPlan": {
+              "astKind": 0,
+              "directJs": true,
+              "jsExpression": "(((function(){ let value = scope == null ? undefined : scope[\"count\"]; return value; })()) - (1.0))",
+              "kind": "binary",
+              "left": {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"count\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "count",
+                "segments": [
+                  "count"
+                ],
+                "source": "count",
+                "sourceSpan": {
+                  "endColumn": 6,
+                  "endLine": 1,
+                  "endOffset": 5,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "number"
+              },
+              "operator": "-",
+              "producer": "typed-ir",
+              "right": {
+                "astKind": 4,
+                "directJs": true,
+                "jsExpression": "1.0",
+                "kind": "literal",
+                "producer": "typed-ir",
+                "source": "1.000000000000000",
+                "sourceSpan": {
+                  "endColumn": 26,
+                  "endLine": 1,
+                  "endOffset": 25,
+                  "startColumn": 9,
+                  "startLine": 1,
+                  "startOffset": 8
+                },
+                "value": 1.0,
+                "valueType": "number"
+              },
+              "source": "(count - 1.000000000000000)",
+              "sourceSpan": {
+                "endColumn": 26,
+                "endLine": 1,
+                "endOffset": 25,
+                "startColumn": 1,
+                "startLine": 1,
+                "startOffset": 0
+              },
+              "valueType": "number"
+            },
+            "kind": "assign",
+            "lhs": "count"
+          }
+        ],
+        "name": "decrement",
+        "params": []
+      }
+    ],
+    "componentDefinitions": [],
+    "componentInstances": [],
+    "derived": [],
+    "fetches": [],
+    "routes": [],
+    "semantic": {
+      "actions": [
+        "decrement",
+        "increment"
+      ],
+      "componentDefinitionCount": 0,
+      "componentInstanceCount": 0,
+      "components": [],
+      "constants": [],
+      "derived": [],
+      "effects": [
+        "count"
+      ],
+      "externs": [],
+      "fetches": [],
+      "imports": [],
+      "routes": [],
+      "state": [
+        "count",
+        "last"
+      ],
+      "stores": []
+    },
+    "sourceOfTruth": "typed AST + semantic IR",
+    "state": [
+      {
+        "expr": "0.000000000000000",
+        "name": "count"
+      },
+      {
+        "expr": "\"No changes yet.\"",
+        "name": "last"
+      }
+    ]
+  }
+}

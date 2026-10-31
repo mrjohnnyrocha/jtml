@@ -1,0 +1,189 @@
+ DefineStatementNode(identifier=count, declaredType=, isConst=false, expression=0.000000000000000)
+Interpreting node DefineStatementNode(identifier=count, declaredType=, isConst=false, expression=0.000000000000000)
+[DEBUG] Defined variable '0.count' = 0
+[RECALC_DIRTY] Dirty Set: 
+[RECALC_DIRTY] Sorted Vars: 
+[DEFINE] 0.count = 0 (Number)
+ DefineStatementNode(identifier=hits, declaredType=, isConst=false, expression=0.000000000000000)
+Interpreting node DefineStatementNode(identifier=hits, declaredType=, isConst=false, expression=0.000000000000000)
+[DEBUG] Defined variable '0.hits' = 0
+[RECALC_DIRTY] Dirty Set: 
+[RECALC_DIRTY] Sorted Vars: 
+[DEFINE] 0.hits = 0 (Number)
+ FunctionDeclarationNode(name=__effect_count_3, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=hits, rhs=(hits + 1.000000000000000)), ])
+Interpreting node FunctionDeclarationNode(name=__effect_count_3, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=hits, rhs=(hits + 1.000000000000000)), ])
+[DEBUG] Interpreting FunctionDeclarationNode: FunctionDeclarationNode(name=__effect_count_3, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=hits, rhs=(hits + 1.000000000000000)), ])
+[DEBUG] Defined function '__effect_count_3' in InstanceID 0
+[DEBUG] Defined function '__effect_count_3' with 0 parameters:
+AssignmentStatementNode(lhs=hits, rhs=(hits + 1.000000000000000)), returning 
+ SubscribeStatementNode(functionName=__effect_count_3], variableName=count)
+Interpreting node SubscribeStatementNode(functionName=__effect_count_3], variableName=count)
+[SUBSCRIBE] Function '__effect_count_3' subscribed to variable '0.count' with SubscriptionID 1
+[SUBSCRIBE] Function '__effect_count_3' subscribed to variable 'count'
+ ShowStatementNode(expr=(probe initial  + hits))
+Interpreting node ShowStatementNode(expr=(probe initial  + hits))
+[EVAL] Variable 0.hits (InstanceID: 0) = 0
+[SHOW] probe initial 0
+ AssignmentStatementNode(lhs=count, rhs=0.000000000000000)
+Interpreting node AssignmentStatementNode(lhs=count, rhs=0.000000000000000)
+ (Assignment RHS: 0
+[MARK DIRTY] Variable: 0.count (ID: 0, Priority: 1)
+[DEBUG] Set variable '0.count' = 0
+[ASSIGN] LHS=count (InstanceID: 0) => RHS=0
+[RECALC_DIRTY] Dirty Set: (0, count) 
+[RECALC_DIRTY] Sorted Vars: (0, count) 
+[RECALC_DIRTY] Updating variable: (0, count)
+[SKIP] Normal variable 'count' does not require updates.
+[DEBUG] Function '__effect_count_3' environment (InstanceID: 1001) variables:
+[DEBUG] Executing statement in function '__effect_count_3': AssignmentStatementNode(lhs=hits, rhs=(hits + 1.000000000000000))
+Interpreting node AssignmentStatementNode(lhs=hits, rhs=(hits + 1.000000000000000))
+[EVAL] Variable 0.hits (InstanceID: 0) = 0
+ (Assignment RHS: 1
+[MARK DIRTY] Variable: 0.hits (ID: 1, Priority: 1)
+[DEBUG] Set variable '0.hits' = 1
+[DEBUG] Set variable '1001.hits' = 1
+[ASSIGN] LHS=hits (InstanceID: 1001) => RHS=1
+[RECALC_DIRTY] Dirty Set: 
+[RECALC_DIRTY] Sorted Vars: 
+[DEBUG] Parent environment variables after function execution:
+  0.hits = 1
+  0.count = 0
+[RECALC_DIRTY] Dirty Set: (0, hits) 
+[RECALC_DIRTY] Sorted Vars: (0, hits) 
+[RECALC_DIRTY] Updating variable: (0, hits)
+[SKIP] Normal variable 'hits' does not require updates.
+ ShowStatementNode(expr=(probe same  + hits))
+Interpreting node ShowStatementNode(expr=(probe same  + hits))
+[EVAL] Variable 0.hits (InstanceID: 0) = 1
+[SHOW] probe same 1
+ AssignmentStatementNode(lhs=count, rhs=1.000000000000000)
+Interpreting node AssignmentStatementNode(lhs=count, rhs=1.000000000000000)
+ (Assignment RHS: 1
+[MARK DIRTY] Variable: 0.count (ID: 0, Priority: 1)
+[DEBUG] Set variable '0.count' = 1
+[ASSIGN] LHS=count (InstanceID: 0) => RHS=1
+[RECALC_DIRTY] Dirty Set: (0, count) 
+[RECALC_DIRTY] Sorted Vars: (0, count) 
+[RECALC_DIRTY] Updating variable: (0, count)
+[SKIP] Normal variable 'count' does not require updates.
+[DEBUG] Function '__effect_count_3' environment (InstanceID: 1002) variables:
+[DEBUG] Executing statement in function '__effect_count_3': AssignmentStatementNode(lhs=hits, rhs=(hits + 1.000000000000000))
+Interpreting node AssignmentStatementNode(lhs=hits, rhs=(hits + 1.000000000000000))
+[EVAL] Variable 0.hits (InstanceID: 0) = 1
+ (Assignment RHS: 2
+[MARK DIRTY] Variable: 0.hits (ID: 1, Priority: 1)
+[DEBUG] Set variable '0.hits' = 2
+[DEBUG] Set variable '1002.hits' = 2
+[ASSIGN] LHS=hits (InstanceID: 1002) => RHS=2
+[RECALC_DIRTY] Dirty Set: 
+[RECALC_DIRTY] Sorted Vars: 
+[DEBUG] Parent environment variables after function execution:
+  0.hits = 2
+  0.count = 1
+[RECALC_DIRTY] Dirty Set: (0, hits) 
+[RECALC_DIRTY] Sorted Vars: (0, hits) 
+[RECALC_DIRTY] Updating variable: (0, hits)
+[SKIP] Normal variable 'hits' does not require updates.
+ ShowStatementNode(expr=(probe first  + hits))
+Interpreting node ShowStatementNode(expr=(probe first  + hits))
+[EVAL] Variable 0.hits (InstanceID: 0) = 2
+[SHOW] probe first 2
+ AssignmentStatementNode(lhs=count, rhs=2.000000000000000)
+Interpreting node AssignmentStatementNode(lhs=count, rhs=2.000000000000000)
+ (Assignment RHS: 2
+[MARK DIRTY] Variable: 0.count (ID: 0, Priority: 1)
+[DEBUG] Set variable '0.count' = 2
+[ASSIGN] LHS=count (InstanceID: 0) => RHS=2
+[RECALC_DIRTY] Dirty Set: (0, count) 
+[RECALC_DIRTY] Sorted Vars: (0, count) 
+[RECALC_DIRTY] Updating variable: (0, count)
+[SKIP] Normal variable 'count' does not require updates.
+[DEBUG] Function '__effect_count_3' environment (InstanceID: 1003) variables:
+[DEBUG] Executing statement in function '__effect_count_3': AssignmentStatementNode(lhs=hits, rhs=(hits + 1.000000000000000))
+Interpreting node AssignmentStatementNode(lhs=hits, rhs=(hits + 1.000000000000000))
+[EVAL] Variable 0.hits (InstanceID: 0) = 2
+ (Assignment RHS: 3
+[MARK DIRTY] Variable: 0.hits (ID: 1, Priority: 1)
+[DEBUG] Set variable '0.hits' = 3
+[DEBUG] Set variable '1003.hits' = 3
+[ASSIGN] LHS=hits (InstanceID: 1003) => RHS=3
+[RECALC_DIRTY] Dirty Set: 
+[RECALC_DIRTY] Sorted Vars: 
+[DEBUG] Parent environment variables after function execution:
+  0.hits = 3
+  0.count = 2
+[RECALC_DIRTY] Dirty Set: (0, hits) 
+[RECALC_DIRTY] Sorted Vars: (0, hits) 
+[RECALC_DIRTY] Updating variable: (0, hits)
+[SKIP] Normal variable 'hits' does not require updates.
+ ShowStatementNode(expr=(probe second  + hits))
+Interpreting node ShowStatementNode(expr=(probe second  + hits))
+[EVAL] Variable 0.hits (InstanceID: 0) = 3
+[SHOW] probe second 3
+ FunctionDeclarationNode(name=twice, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=count, rhs=3.000000000000000), AssignmentStatementNode(lhs=count, rhs=4.000000000000000), ])
+Interpreting node FunctionDeclarationNode(name=twice, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=count, rhs=3.000000000000000), AssignmentStatementNode(lhs=count, rhs=4.000000000000000), ])
+[DEBUG] Interpreting FunctionDeclarationNode: FunctionDeclarationNode(name=twice, isAsync=false, parameters=[], returnType=, body=[AssignmentStatementNode(lhs=count, rhs=3.000000000000000), AssignmentStatementNode(lhs=count, rhs=4.000000000000000), ])
+[DEBUG] Defined function 'twice' in InstanceID 0
+[DEBUG] Defined function 'twice' with 0 parameters:
+AssignmentStatementNode(lhs=count, rhs=3.000000000000000), AssignmentStatementNode(lhs=count, rhs=4.000000000000000), returning 
+ ExpressionNode(expression=twice())
+Interpreting node ExpressionNode(expression=twice())
+Function call: twice()
+[DEBUG] Calling function: twice
+[DEBUG] Body of function twice value: AssignmentStatementNode(lhs=count, rhs=3.000000000000000)
+[DEBUG] Body of function twice value: AssignmentStatementNode(lhs=count, rhs=4.000000000000000)
+[DEBUG] Current environment before function call:
+  0.hits = 3
+  0.count = 2
+[DEBUG] Closure for function twice:
+  0.hits = 3
+  0.count = 2
+[DEBUG] Function 'twice' environment (InstanceID: 1004) variables:
+[DEBUG] Executing statement in function 'twice': AssignmentStatementNode(lhs=count, rhs=3.000000000000000)
+Interpreting node AssignmentStatementNode(lhs=count, rhs=3.000000000000000)
+ (Assignment RHS: 3
+[MARK DIRTY] Variable: 0.count (ID: 0, Priority: 1)
+[DEBUG] Set variable '0.count' = 3
+[DEBUG] Set variable '1004.count' = 3
+[ASSIGN] LHS=count (InstanceID: 1004) => RHS=3
+[RECALC_DIRTY] Dirty Set: 
+[RECALC_DIRTY] Sorted Vars: 
+[DEBUG] Executing statement in function 'twice': AssignmentStatementNode(lhs=count, rhs=4.000000000000000)
+Interpreting node AssignmentStatementNode(lhs=count, rhs=4.000000000000000)
+ (Assignment RHS: 4
+[DEBUG] Set variable '0.count' = 4
+[DEBUG] Set variable '1004.count' = 4
+[ASSIGN] LHS=count (InstanceID: 1004) => RHS=4
+[RECALC_DIRTY] Dirty Set: 
+[RECALC_DIRTY] Sorted Vars: 
+[DEBUG] Parent environment variables after function execution:
+  0.hits = 3
+  0.count = 4
+[DEBUG] Evaluated expression: 
+ ShowStatementNode(expr=(probe twice  + hits))
+Interpreting node ShowStatementNode(expr=(probe twice  + hits))
+[EVAL] Variable 0.hits (InstanceID: 0) = 3
+[SHOW] probe twice 3
+[RECALC_DIRTY] Dirty Set: (0, count) 
+[RECALC_DIRTY] Sorted Vars: (0, count) 
+[RECALC_DIRTY] Updating variable: (0, count)
+[SKIP] Normal variable 'count' does not require updates.
+[DEBUG] Function '__effect_count_3' environment (InstanceID: 1005) variables:
+[DEBUG] Executing statement in function '__effect_count_3': AssignmentStatementNode(lhs=hits, rhs=(hits + 1.000000000000000))
+Interpreting node AssignmentStatementNode(lhs=hits, rhs=(hits + 1.000000000000000))
+[EVAL] Variable 0.hits (InstanceID: 0) = 3
+ (Assignment RHS: 4
+[MARK DIRTY] Variable: 0.hits (ID: 1, Priority: 1)
+[DEBUG] Set variable '0.hits' = 4
+[DEBUG] Set variable '1005.hits' = 4
+[ASSIGN] LHS=hits (InstanceID: 1005) => RHS=4
+[RECALC_DIRTY] Dirty Set: 
+[RECALC_DIRTY] Sorted Vars: 
+[DEBUG] Parent environment variables after function execution:
+  0.hits = 4
+  0.count = 4
+[RECALC_DIRTY] Dirty Set: (0, hits) 
+[RECALC_DIRTY] Sorted Vars: (0, hits) 
+[RECALC_DIRTY] Updating variable: (0, hits)
+[SKIP] Normal variable 'hits' does not require updates.
+[WebSocket] Server started on 127.0.0.1:8080

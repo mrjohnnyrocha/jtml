@@ -7,6 +7,17 @@ source, not a relabelled release executable. No new application, compiler change
 release, deployment or deletion is included. Check/lint/build success is separate
 from browser acceptance.
 
+## Subsequent bounded acceptance
+
+The dated clean-build blockers and counts below are preserved as baseline evidence.
+Later [source-ownership](architecture/module-ownership/README.md),
+[component-redirect](architecture/component-redirect/README.md) and
+[root-effect](architecture/root-effects/README.md) corrections have separate
+acceptance records. The [Enterprise route-layout investigation](architecture/enterprise-browser/README.md)
+restores the original Command-content and navigation probes, while its stronger
+sign-in audit still fails module input/state mutation and post-sign-out guard
+behavior. Passing the original inventory is not full Enterprise functionality.
+
 ## Portfolio and maturity
 
 | Source / actual entrypoint | Classification | Data and persistence | Measured boundary |

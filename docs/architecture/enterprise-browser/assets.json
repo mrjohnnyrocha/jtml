@@ -1,0 +1,56 @@
+{
+  "baseline": {
+    "index.html": {
+      "raw": 794017,
+      "gzip": 65755
+    },
+    "jtml-runtime.js": {
+      "raw": 272877,
+      "gzip": 50828
+    },
+    "components/index.js": {
+      "raw": 754535,
+      "gzip": 51472
+    },
+    "app.js": {
+      "raw": 2043,
+      "gzip": 905
+    }
+  },
+  "correction": {
+    "index.html": {
+      "raw": 803485,
+      "gzip": 66513
+    },
+    "jtml-runtime.js": {
+      "raw": 272877,
+      "gzip": 50828
+    },
+    "components/index.js": {
+      "raw": 754535,
+      "gzip": 51472
+    },
+    "app.js": {
+      "raw": 2043,
+      "gzip": 905
+    }
+  },
+  "deltas": {
+    "index.html": {
+      "raw": 9468,
+      "gzip": 758
+    },
+    "jtml-runtime.js": {
+      "raw": 0,
+      "gzip": 0
+    },
+    "components/index.js": {
+      "raw": 0,
+      "gzip": 0
+    },
+    "app.js": {
+      "raw": 0,
+      "gzip": 0
+    }
+  }
+}

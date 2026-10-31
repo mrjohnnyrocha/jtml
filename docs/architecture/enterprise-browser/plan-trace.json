@@ -1,0 +1,1202 @@
+{
+  "before": {
+    "routes": [
+      {
+        "component": "Home",
+        "load": [],
+        "loads": [],
+        "name": "Home",
+        "params": [],
+        "path": "/"
+      },
+      {
+        "component": "Command",
+        "load": [],
+        "loads": [],
+        "name": "Command",
+        "params": [],
+        "path": "/command"
+      },
+      {
+        "component": "Data",
+        "load": [
+          "posts"
+        ],
+        "loads": [
+          "posts"
+        ],
+        "name": "Data",
+        "params": [],
+        "path": "/data"
+      },
+      {
+        "component": "Media",
+        "load": [],
+        "loads": [],
+        "name": "Media",
+        "params": [],
+        "path": "/media"
+      },
+      {
+        "component": "Runtime",
+        "load": [
+          "runtime"
+        ],
+        "loads": [
+          "runtime"
+        ],
+        "name": "Runtime",
+        "params": [],
+        "path": "/runtime"
+      },
+      {
+        "component": "Login",
+        "load": [],
+        "loads": [],
+        "name": "Login",
+        "params": [],
+        "path": "/login"
+      },
+      {
+        "component": "Profile",
+        "load": [],
+        "loads": [],
+        "name": "Profile",
+        "params": [
+          "id"
+        ],
+        "path": "/profile/:id"
+      },
+      {
+        "component": "NotFound",
+        "load": [],
+        "loads": [],
+        "name": "NotFound",
+        "params": [],
+        "path": "*"
+      }
+    ],
+    "layoutInstances": [
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_13",
+        "instanceId": 13,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "",
+        "slotPlan": [],
+        "slotSource": "",
+        "sourceLine": 445
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_15",
+        "instanceId": 15,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "",
+        "slotPlan": [],
+        "slotSource": "",
+        "sourceLine": 446
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_17",
+        "instanceId": 17,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "",
+        "slotPlan": [],
+        "slotSource": "",
+        "sourceLine": 447
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_19",
+        "instanceId": 19,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "",
+        "slotPlan": [],
+        "slotSource": "",
+        "sourceLine": 448
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_21",
+        "instanceId": 21,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "",
+        "slotPlan": [],
+        "slotSource": "",
+        "sourceLine": 449
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_23",
+        "instanceId": 23,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "",
+        "slotPlan": [],
+        "slotSource": "",
+        "sourceLine": 450
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_25",
+        "instanceId": 25,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "",
+        "slotPlan": [],
+        "slotSource": "",
+        "sourceLine": 451
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_5",
+        "instanceId": 5,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "",
+        "slotPlan": [],
+        "slotSource": "",
+        "sourceLine": 444
+      }
+    ],
+    "signIn": [
+      {
+        "body": [
+          {
+            "expr": "loginEmail",
+            "exprPlan": {
+              "astKind": 2,
+              "directJs": true,
+              "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"loginEmail\"]; return value; })()",
+              "kind": "path",
+              "producer": "typed-ir",
+              "root": "loginEmail",
+              "segments": [
+                "loginEmail"
+              ],
+              "source": "loginEmail",
+              "sourceSpan": {
+                "endColumn": 11,
+                "endLine": 1,
+                "endOffset": 10,
+                "startColumn": 1,
+                "startLine": 1,
+                "startOffset": 0
+              },
+              "valueType": "string"
+            },
+            "kind": "assign",
+            "lhs": "sessionToken"
+          },
+          {
+            "expr": "((\"Signed in as \" + loginEmail) + \".\")",
+            "exprPlan": {
+              "astKind": 0,
+              "directJs": true,
+              "jsExpression": "((((\"Signed in as \") + ((function(){ let value = scope == null ? undefined : scope[\"loginEmail\"]; return value; })()))) + (\".\"))",
+              "kind": "binary",
+              "left": {
+                "astKind": 0,
+                "directJs": true,
+                "jsExpression": "((\"Signed in as \") + ((function(){ let value = scope == null ? undefined : scope[\"loginEmail\"]; return value; })()))",
+                "kind": "binary",
+                "left": {
+                  "astKind": 3,
+                  "directJs": true,
+                  "jsExpression": "\"Signed in as \"",
+                  "kind": "literal",
+                  "producer": "typed-ir",
+                  "source": "\"Signed in as \"",
+                  "sourceSpan": {
+                    "endColumn": 15,
+                    "endLine": 1,
+                    "endOffset": 16,
+                    "startColumn": 2,
+                    "startLine": 1,
+                    "startOffset": 1
+                  },
+                  "value": "Signed in as ",
+                  "valueType": "string"
+                },
+                "operator": "+",
+                "producer": "typed-ir",
+                "right": {
+                  "astKind": 2,
+                  "directJs": true,
+                  "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"loginEmail\"]; return value; })()",
+                  "kind": "path",
+                  "producer": "typed-ir",
+                  "root": "loginEmail",
+                  "segments": [
+                    "loginEmail"
+                  ],
+                  "source": "loginEmail",
+                  "sourceSpan": {
+                    "endColumn": 30,
+                    "endLine": 1,
+                    "endOffset": 29,
+                    "startColumn": 20,
+                    "startLine": 1,
+                    "startOffset": 19
+                  },
+                  "valueType": "string"
+                },
+                "source": "(\"Signed in as \" + loginEmail)",
+                "sourceSpan": {
+                  "endColumn": 31,
+                  "endLine": 1,
+                  "endOffset": 30,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "string"
+              },
+              "operator": "+",
+              "producer": "typed-ir",
+              "right": {
+                "astKind": 3,
+                "directJs": true,
+                "jsExpression": "\".\"",
+                "kind": "literal",
+                "producer": "typed-ir",
+                "source": "\".\"",
+                "sourceSpan": {
+                  "endColumn": 35,
+                  "endLine": 1,
+                  "endOffset": 36,
+                  "startColumn": 34,
+                  "startLine": 1,
+                  "startOffset": 33
+                },
+                "value": ".",
+                "valueType": "string"
+              },
+              "source": "((\"Signed in as \" + loginEmail) + \".\")",
+              "sourceSpan": {
+                "endColumn": 35,
+                "endLine": 1,
+                "endOffset": 36,
+                "startColumn": 1,
+                "startLine": 1,
+                "startOffset": 0
+              },
+              "valueType": "string"
+            },
+            "kind": "assign",
+            "lhs": "auditTrail"
+          }
+        ],
+        "name": "signIn",
+        "params": []
+      },
+      {
+        "body": [
+          {
+            "expr": "\"\"",
+            "exprPlan": {
+              "astKind": 3,
+              "directJs": true,
+              "jsExpression": "\"\"",
+              "kind": "literal",
+              "producer": "typed-ir",
+              "source": "\"\"",
+              "sourceSpan": {
+                "endColumn": 1,
+                "endLine": 1,
+                "endOffset": 2,
+                "startColumn": 1,
+                "startLine": 1,
+                "startOffset": 0
+              },
+              "value": "",
+              "valueType": "string"
+            },
+            "kind": "assign",
+            "lhs": "sessionToken"
+          },
+          {
+            "expr": "\"Signed out.\"",
+            "exprPlan": {
+              "astKind": 3,
+              "directJs": true,
+              "jsExpression": "\"Signed out.\"",
+              "kind": "literal",
+              "producer": "typed-ir",
+              "source": "\"Signed out.\"",
+              "sourceSpan": {
+                "endColumn": 12,
+                "endLine": 1,
+                "endOffset": 13,
+                "startColumn": 1,
+                "startLine": 1,
+                "startOffset": 0
+              },
+              "value": "Signed out.",
+              "valueType": "string"
+            },
+            "kind": "assign",
+            "lhs": "auditTrail"
+          }
+        ],
+        "name": "signOut",
+        "params": []
+      }
+    ]
+  },
+  "after": {
+    "routes": [
+      {
+        "component": "Home",
+        "load": [],
+        "loads": [],
+        "name": "Home",
+        "params": [],
+        "path": "/"
+      },
+      {
+        "component": "Command",
+        "load": [],
+        "loads": [],
+        "name": "Command",
+        "params": [],
+        "path": "/command"
+      },
+      {
+        "component": "Data",
+        "load": [
+          "posts"
+        ],
+        "loads": [
+          "posts"
+        ],
+        "name": "Data",
+        "params": [],
+        "path": "/data"
+      },
+      {
+        "component": "Media",
+        "load": [],
+        "loads": [],
+        "name": "Media",
+        "params": [],
+        "path": "/media"
+      },
+      {
+        "component": "Runtime",
+        "load": [
+          "runtime"
+        ],
+        "loads": [
+          "runtime"
+        ],
+        "name": "Runtime",
+        "params": [],
+        "path": "/runtime"
+      },
+      {
+        "component": "Login",
+        "load": [],
+        "loads": [],
+        "name": "Login",
+        "params": [],
+        "path": "/login"
+      },
+      {
+        "component": "Profile",
+        "load": [],
+        "loads": [],
+        "name": "Profile",
+        "params": [
+          "id"
+        ],
+        "path": "/profile/:id"
+      },
+      {
+        "component": "NotFound",
+        "load": [],
+        "loads": [],
+        "name": "NotFound",
+        "params": [],
+        "path": "*"
+      }
+    ],
+    "layoutInstances": [
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_13",
+        "instanceId": 13,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "3434353a303a303a436f6d6d616e640a",
+        "slotPlan": [
+          {
+            "childIndices": [],
+            "definitionModule": null,
+            "expression": "",
+            "expressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "head": "Command",
+            "indent": 0,
+            "keyExpression": "",
+            "keyExpressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "kind": "template",
+            "name": "Command",
+            "operator": "",
+            "parentIndex": -1,
+            "reads": [],
+            "renderRoot": true,
+            "sourceColumn": 1,
+            "sourceLine": 445,
+            "text": "Command",
+            "wordPlans": [
+              {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"Command\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "Command",
+                "segments": [
+                  "Command"
+                ],
+                "source": "Command",
+                "sourceSpan": {
+                  "endColumn": 8,
+                  "endLine": 1,
+                  "endOffset": 7,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "unknown"
+              }
+            ],
+            "writes": []
+          }
+        ],
+        "slotSource": "445:0:0:Command\n",
+        "sourceLine": 445
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_15",
+        "instanceId": 15,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "3434363a303a303a446174610a",
+        "slotPlan": [
+          {
+            "childIndices": [],
+            "definitionModule": null,
+            "expression": "",
+            "expressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "head": "Data",
+            "indent": 0,
+            "keyExpression": "",
+            "keyExpressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "kind": "template",
+            "name": "Data",
+            "operator": "",
+            "parentIndex": -1,
+            "reads": [],
+            "renderRoot": true,
+            "sourceColumn": 1,
+            "sourceLine": 446,
+            "text": "Data",
+            "wordPlans": [
+              {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"Data\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "Data",
+                "segments": [
+                  "Data"
+                ],
+                "source": "Data",
+                "sourceSpan": {
+                  "endColumn": 5,
+                  "endLine": 1,
+                  "endOffset": 4,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "unknown"
+              }
+            ],
+            "writes": []
+          }
+        ],
+        "slotSource": "446:0:0:Data\n",
+        "sourceLine": 446
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_17",
+        "instanceId": 17,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "3434373a303a303a4d656469610a",
+        "slotPlan": [
+          {
+            "childIndices": [],
+            "definitionModule": null,
+            "expression": "",
+            "expressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "head": "Media",
+            "indent": 0,
+            "keyExpression": "",
+            "keyExpressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "kind": "template",
+            "name": "Media",
+            "operator": "",
+            "parentIndex": -1,
+            "reads": [],
+            "renderRoot": true,
+            "sourceColumn": 1,
+            "sourceLine": 447,
+            "text": "Media",
+            "wordPlans": [
+              {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"Media\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "Media",
+                "segments": [
+                  "Media"
+                ],
+                "source": "Media",
+                "sourceSpan": {
+                  "endColumn": 6,
+                  "endLine": 1,
+                  "endOffset": 5,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "unknown"
+              }
+            ],
+            "writes": []
+          }
+        ],
+        "slotSource": "447:0:0:Media\n",
+        "sourceLine": 447
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_19",
+        "instanceId": 19,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "3434383a303a303a52756e74696d650a",
+        "slotPlan": [
+          {
+            "childIndices": [],
+            "definitionModule": null,
+            "expression": "",
+            "expressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "head": "Runtime",
+            "indent": 0,
+            "keyExpression": "",
+            "keyExpressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "kind": "template",
+            "name": "Runtime",
+            "operator": "",
+            "parentIndex": -1,
+            "reads": [],
+            "renderRoot": true,
+            "sourceColumn": 1,
+            "sourceLine": 448,
+            "text": "Runtime",
+            "wordPlans": [
+              {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"Runtime\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "Runtime",
+                "segments": [
+                  "Runtime"
+                ],
+                "source": "Runtime",
+                "sourceSpan": {
+                  "endColumn": 8,
+                  "endLine": 1,
+                  "endOffset": 7,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "unknown"
+              }
+            ],
+            "writes": []
+          }
+        ],
+        "slotSource": "448:0:0:Runtime\n",
+        "sourceLine": 448
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_21",
+        "instanceId": 21,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "3434393a303a303a4c6f67696e0a",
+        "slotPlan": [
+          {
+            "childIndices": [],
+            "definitionModule": null,
+            "expression": "",
+            "expressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "head": "Login",
+            "indent": 0,
+            "keyExpression": "",
+            "keyExpressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "kind": "template",
+            "name": "Login",
+            "operator": "",
+            "parentIndex": -1,
+            "reads": [],
+            "renderRoot": true,
+            "sourceColumn": 1,
+            "sourceLine": 449,
+            "text": "Login",
+            "wordPlans": [
+              {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"Login\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "Login",
+                "segments": [
+                  "Login"
+                ],
+                "source": "Login",
+                "sourceSpan": {
+                  "endColumn": 6,
+                  "endLine": 1,
+                  "endOffset": 5,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "unknown"
+              }
+            ],
+            "writes": []
+          }
+        ],
+        "slotSource": "449:0:0:Login\n",
+        "sourceLine": 449
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_23",
+        "instanceId": 23,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "3435303a303a303a50726f66696c652069640a",
+        "slotPlan": [
+          {
+            "childIndices": [],
+            "definitionModule": null,
+            "expression": "id",
+            "expressionPlan": {
+              "astKind": 2,
+              "directJs": true,
+              "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"id\"]; return value; })()",
+              "kind": "path",
+              "producer": "typed-ir",
+              "root": "id",
+              "segments": [
+                "id"
+              ],
+              "source": "id",
+              "sourceSpan": {
+                "endColumn": 3,
+                "endLine": 1,
+                "endOffset": 2,
+                "startColumn": 1,
+                "startLine": 1,
+                "startOffset": 0
+              },
+              "valueType": "string"
+            },
+            "head": "Profile",
+            "indent": 0,
+            "keyExpression": "",
+            "keyExpressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "kind": "template",
+            "name": "Profile",
+            "operator": "",
+            "parentIndex": -1,
+            "reads": [
+              "id"
+            ],
+            "renderRoot": true,
+            "sourceColumn": 1,
+            "sourceLine": 450,
+            "text": "Profile id",
+            "wordPlans": [
+              {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"Profile\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "Profile",
+                "segments": [
+                  "Profile"
+                ],
+                "source": "Profile",
+                "sourceSpan": {
+                  "endColumn": 8,
+                  "endLine": 1,
+                  "endOffset": 7,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "unknown"
+              },
+              {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"id\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "id",
+                "segments": [
+                  "id"
+                ],
+                "source": "id",
+                "sourceSpan": {
+                  "endColumn": 3,
+                  "endLine": 1,
+                  "endOffset": 2,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "string"
+              }
+            ],
+            "writes": []
+          }
+        ],
+        "slotSource": "450:0:0:Profile id\n",
+        "sourceLine": 450
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_25",
+        "instanceId": 25,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "3435313a303a303a4e6f74466f756e640a",
+        "slotPlan": [
+          {
+            "childIndices": [],
+            "definitionModule": null,
+            "expression": "",
+            "expressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "head": "NotFound",
+            "indent": 0,
+            "keyExpression": "",
+            "keyExpressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "kind": "template",
+            "name": "NotFound",
+            "operator": "",
+            "parentIndex": -1,
+            "reads": [],
+            "renderRoot": true,
+            "sourceColumn": 1,
+            "sourceLine": 451,
+            "text": "NotFound",
+            "wordPlans": [
+              {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"NotFound\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "NotFound",
+                "segments": [
+                  "NotFound"
+                ],
+                "source": "NotFound",
+                "sourceSpan": {
+                  "endColumn": 9,
+                  "endLine": 1,
+                  "endOffset": 8,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "unknown"
+              }
+            ],
+            "writes": []
+          }
+        ],
+        "slotSource": "451:0:0:NotFound\n",
+        "sourceLine": 451
+      },
+      {
+        "component": "AppLayout",
+        "definitionModule": null,
+        "id": "AppLayout_5",
+        "instanceId": 5,
+        "locals": {},
+        "moduleId": null,
+        "params": {},
+        "role": "layout",
+        "slotHex": "3434343a303a303a486f6d650a",
+        "slotPlan": [
+          {
+            "childIndices": [],
+            "definitionModule": null,
+            "expression": "",
+            "expressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "head": "Home",
+            "indent": 0,
+            "keyExpression": "",
+            "keyExpressionPlan": {
+              "kind": "empty",
+              "source": ""
+            },
+            "kind": "template",
+            "name": "Home",
+            "operator": "",
+            "parentIndex": -1,
+            "reads": [],
+            "renderRoot": true,
+            "sourceColumn": 1,
+            "sourceLine": 444,
+            "text": "Home",
+            "wordPlans": [
+              {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"Home\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "Home",
+                "segments": [
+                  "Home"
+                ],
+                "source": "Home",
+                "sourceSpan": {
+                  "endColumn": 5,
+                  "endLine": 1,
+                  "endOffset": 4,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "unknown"
+              }
+            ],
+            "writes": []
+          }
+        ],
+        "slotSource": "444:0:0:Home\n",
+        "sourceLine": 444
+      }
+    ],
+    "signIn": [
+      {
+        "body": [
+          {
+            "expr": "loginEmail",
+            "exprPlan": {
+              "astKind": 2,
+              "directJs": true,
+              "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"loginEmail\"]; return value; })()",
+              "kind": "path",
+              "producer": "typed-ir",
+              "root": "loginEmail",
+              "segments": [
+                "loginEmail"
+              ],
+              "source": "loginEmail",
+              "sourceSpan": {
+                "endColumn": 11,
+                "endLine": 1,
+                "endOffset": 10,
+                "startColumn": 1,
+                "startLine": 1,
+                "startOffset": 0
+              },
+              "valueType": "string"
+            },
+            "kind": "assign",
+            "lhs": "sessionToken"
+          },
+          {
+            "expr": "((\"Signed in as \" + loginEmail) + \".\")",
+            "exprPlan": {
+              "astKind": 0,
+              "directJs": true,
+              "jsExpression": "((((\"Signed in as \") + ((function(){ let value = scope == null ? undefined : scope[\"loginEmail\"]; return value; })()))) + (\".\"))",
+              "kind": "binary",
+              "left": {
+                "astKind": 0,
+                "directJs": true,
+                "jsExpression": "((\"Signed in as \") + ((function(){ let value = scope == null ? undefined : scope[\"loginEmail\"]; return value; })()))",
+                "kind": "binary",
+                "left": {
+                  "astKind": 3,
+                  "directJs": true,
+                  "jsExpression": "\"Signed in as \"",
+                  "kind": "literal",
+                  "producer": "typed-ir",
+                  "source": "\"Signed in as \"",
+                  "sourceSpan": {
+                    "endColumn": 15,
+                    "endLine": 1,
+                    "endOffset": 16,
+                    "startColumn": 2,
+                    "startLine": 1,
+                    "startOffset": 1
+                  },
+                  "value": "Signed in as ",
+                  "valueType": "string"
+                },
+                "operator": "+",
+                "producer": "typed-ir",
+                "right": {
+                  "astKind": 2,
+                  "directJs": true,
+                  "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"loginEmail\"]; return value; })()",
+                  "kind": "path",
+                  "producer": "typed-ir",
+                  "root": "loginEmail",
+                  "segments": [
+                    "loginEmail"
+                  ],
+                  "source": "loginEmail",
+                  "sourceSpan": {
+                    "endColumn": 30,
+                    "endLine": 1,
+                    "endOffset": 29,
+                    "startColumn": 20,
+                    "startLine": 1,
+                    "startOffset": 19
+                  },
+                  "valueType": "string"
+                },
+                "source": "(\"Signed in as \" + loginEmail)",
+                "sourceSpan": {
+                  "endColumn": 31,
+                  "endLine": 1,
+                  "endOffset": 30,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "string"
+              },
+              "operator": "+",
+              "producer": "typed-ir",
+              "right": {
+                "astKind": 3,
+                "directJs": true,
+                "jsExpression": "\".\"",
+                "kind": "literal",
+                "producer": "typed-ir",
+                "source": "\".\"",
+                "sourceSpan": {
+                  "endColumn": 35,
+                  "endLine": 1,
+                  "endOffset": 36,
+                  "startColumn": 34,
+                  "startLine": 1,
+                  "startOffset": 33
+                },
+                "value": ".",
+                "valueType": "string"
+              },
+              "source": "((\"Signed in as \" + loginEmail) + \".\")",
+              "sourceSpan": {
+                "endColumn": 35,
+                "endLine": 1,
+                "endOffset": 36,
+                "startColumn": 1,
+                "startLine": 1,
+                "startOffset": 0
+              },
+              "valueType": "string"
+            },
+            "kind": "assign",
+            "lhs": "auditTrail"
+          }
+        ],
+        "name": "signIn",
+        "params": []
+      },
+      {
+        "body": [
+          {
+            "expr": "\"\"",
+            "exprPlan": {
+              "astKind": 3,
+              "directJs": true,
+              "jsExpression": "\"\"",
+              "kind": "literal",
+              "producer": "typed-ir",
+              "source": "\"\"",
+              "sourceSpan": {
+                "endColumn": 1,
+                "endLine": 1,
+                "endOffset": 2,
+                "startColumn": 1,
+                "startLine": 1,
+                "startOffset": 0
+              },
+              "value": "",
+              "valueType": "string"
+            },
+            "kind": "assign",
+            "lhs": "sessionToken"
+          },
+          {
+            "expr": "\"Signed out.\"",
+            "exprPlan": {
+              "astKind": 3,
+              "directJs": true,
+              "jsExpression": "\"Signed out.\"",
+              "kind": "literal",
+              "producer": "typed-ir",
+              "source": "\"Signed out.\"",
+              "sourceSpan": {
+                "endColumn": 12,
+                "endLine": 1,
+                "endOffset": 13,
+                "startColumn": 1,
+                "startLine": 1,
+                "startOffset": 0
+              },
+              "value": "Signed out.",
+              "valueType": "string"
+            },
+            "kind": "assign",
+            "lhs": "auditTrail"
+          }
+        ],
+        "name": "signOut",
+        "params": []
+      }
+    ]
+  },
+  "inputBoundary": {
+    "originalWarnings": [
+      "demos/index.jtml: warning[JTML_UNKNOWN_INTO_TARGET]: component Data binds `into loginEmail`, but no local `let loginEmail` state exists",
+      "demos/index.jtml: warning[JTML_UNKNOWN_INTO_TARGET]: component Login binds `into loginEmail`, but no local `let loginEmail` state exists"
+    ],
+    "compiledLoginSetterActions": [],
+    "note": "Supplied DOM has a generated setter event, but unsupported module-state component input has no client setter action; detailed audit includes Tab blur before asserting module state."
+  }
+}

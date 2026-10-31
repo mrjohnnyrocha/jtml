@@ -2375,6 +2375,23 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
                 continue;
             }
 
+            // Routed content is supplied by the caller, just like an ordinary
+            // component slot. Retain its instance identity and source attribution.
+            std::vector<Line> routeSlotLines{{0,
+                componentInstanceLine(def, routeInstanceId, localBindings,
+                                      routeParamBindings, lines[i].number, "route"),
+                lines[i].number}};
+            for (auto copy : routeBody) {
+                copy.indent += 2;
+                routeSlotLines.push_back(std::move(copy));
+            }
+            // Keep the semantic slot as an invocation, not another copy of
+            // the fully expanded route body. The supplied DOM below retains
+            // its existing routed instance and lexical bindings.
+            std::string routeSlotCall = def.name;
+            for (const auto& param : def.params) routeSlotCall += " " + param;
+            const auto routeSlotHex = serializedLinesHex({{0, routeSlotCall, lines[i].number}});
+
             std::vector<Line> layoutBody = expandComponentLinesImpl(layoutDef->body, components,
                                                                     instanceCounter,
                                                                     layoutDef->actionArity,
@@ -2385,7 +2402,7 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
                 lines[i].indent + 2,
                 componentInstanceLine(*layoutDef, layoutInstanceId, layoutBindings, {},
                                       lines[i].number, "layout",
-                                      "",
+                                      routeSlotHex,
                                       "data-jtml-layout=" + quote(layoutDef->name)),
                 lines[i].number
             });
@@ -2393,14 +2410,12 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
                 auto layoutTokens = splitTokens(layoutLine.text);
                 if (!layoutTokens.empty() && layoutTokens[0] == "slot") {
                     const int slotIndent = lines[i].indent + 4 + layoutLine.indent;
-                    expanded.push_back({
-                        slotIndent,
-                        componentInstanceLine(def, routeInstanceId, localBindings,
-                                              routeParamBindings, lines[i].number, "route"),
-                        lines[i].number
-                    });
-                    for (auto copy : routeBody) {
-                        copy.indent = slotIndent + 2 + copy.indent;
+                    const auto slotName = layoutTokens.size() > 1 ? layoutTokens[1] : "";
+                    expanded.push_back({slotIndent,
+                        "span data-jtml-supplied-slot " + quote(slotName) +
+                            " style \"display:contents\"", lines[i].number});
+                    for (auto copy : routeSlotLines) {
+                        copy.indent += slotIndent + 2;
                         expanded.push_back(std::move(copy));
                     }
                     continue;

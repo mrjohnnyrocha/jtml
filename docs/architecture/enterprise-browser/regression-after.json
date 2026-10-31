@@ -1,0 +1,17 @@
+{
+  "checks": [
+    "/plain content visible",
+    "/command content visible",
+    "/command layout visible",
+    "/login content visible",
+    "/login layout visible",
+    "/detail/ada content visible",
+    "/detail/ada parameter visible",
+    "/detail/ada layout visible",
+    "/detail/bob content visible",
+    "/detail/bob parameter visible",
+    "/detail/bob layout visible",
+    "no page errors"
+  ],
+  "exit": 0
+}

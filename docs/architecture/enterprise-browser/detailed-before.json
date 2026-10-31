@@ -1,0 +1,294 @@
+{
+  "command": {
+    "route": {
+      "path": "/command",
+      "pattern": "/command",
+      "name": "Command",
+      "params": {},
+      "load": []
+    },
+    "loginEmail": "ada@example.com",
+    "sessionToken": "demo-token",
+    "auditTrail": "Ready for review.",
+    "emailBindings": {
+      "loginEmail": "ada@example.com"
+    }
+  },
+  "buildExit": 0,
+  "checks": [
+    {
+      "name": "Command route selected",
+      "pass": true
+    },
+    {
+      "name": "Command content visible",
+      "pass": false,
+      "error": "locator.waitFor: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: 'Live operations workspace', exact: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "name": "Email input visible and accessible",
+      "pass": false,
+      "error": "locator.waitFor: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('textbox', { name: 'Email', exact: true }).filter({ visible: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "name": "input updates module loginEmail",
+      "pass": false,
+      "error": "locator.fill: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('textbox', { name: 'Email', exact: true }).filter({ visible: true })\u001b[22m\n"
+    },
+    {
+      "name": "Sign in navigates",
+      "pass": false,
+      "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Sign in', exact: true }).filter({ visible: true })\u001b[22m\n"
+    },
+    {
+      "name": "Sign in executes token assignment",
+      "pass": false,
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'demo-token'\n- 'probe@example.test'\n"
+    },
+    {
+      "name": "Sign in executes audit assignment",
+      "pass": false,
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'Ready for review.'\n- 'Signed in as probe@example.test.'\n"
+    },
+    {
+      "name": "Sign out navigates",
+      "pass": false,
+      "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Sign out', exact: true }).filter({ visible: true })\u001b[22m\n"
+    },
+    {
+      "name": "Sign out clears token",
+      "pass": false,
+      "error": "Expected values to be strictly equal:\n\n'demo-token' !== ''\n"
+    },
+    {
+      "name": "guard denies Command after sign out",
+      "pass": false,
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ '/command'\n- '/login'\n"
+    },
+    {
+      "name": "no page exceptions",
+      "pass": true
+    }
+  ],
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/index.html"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.jpg"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/product-suite.jpg"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.mp4"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/release-note.mp3"
+    },
+    {
+      "method": "GET",
+      "path": "/index.html"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.jpg"
+    },
+    {
+      "method": "GET",
+      "path": "/jtml-runtime.js"
+    },
+    {
+      "method": "GET",
+      "path": "/components/index.js"
+    },
+    {
+      "method": "GET",
+      "path": "/app.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.mp4"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/release-note.mp3"
+    },
+    {
+      "method": "POST",
+      "path": "/api/login"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users"
+    }
+  ],
+  "browser": "153.0.8010.12",
+  "beforeExecution": {
+    "headings": [
+      "{{\"One JTML file, many production patterns\"}}\n",
+      "{{operationalHealth}}\n",
+      "{{riskLabel}}\n",
+      "{{workspace.region}}\n",
+      "{{\"Feature coverage\"}}\n",
+      "{{\"Live operations workspace\"}}\n",
+      "{{incidentsOpen}}\n",
+      "{{riskLabel}}\n",
+      "{{workspace.approvals}}\n",
+      "{{\"Incident portfolio\"}}\n",
+      "{{\"GET, POST, lazy load, refresh, and invalidation\"}}\n",
+      "{{\"Images, audio, video, files, dropzones, charts, SVG, canvas, and 3D\"}}\n",
+      "{{\"Server contract and runtime introspection\"}}\n",
+      "{{\"Sign in\"}}\n",
+      "{{\"Route parameter\"}}\n",
+      "{{\"Route not found\"}}\n"
+    ],
+    "suppliedSlots": 0
+  },
+  "errors": [],
+  "failedResources": [
+    {
+      "url": "http://127.0.0.1:65294/assets/briefing.jpg",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:65294/assets/briefing.mp4",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:65294/assets/release-note.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:65294/api/login",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:65294/api/users",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:65294/api/users",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:65294/api/users",
+      "status": 404
+    }
+  ],
+  "loginInitial": {
+    "route": {
+      "path": "/login",
+      "pattern": "/login",
+      "name": "Login",
+      "params": {},
+      "load": []
+    },
+    "loginEmail": "ada@example.com",
+    "sessionToken": "demo-token",
+    "auditTrail": "Ready for review.",
+    "emailBindings": {
+      "loginEmail": "ada@example.com"
+    }
+  },
+  "afterInput": {
+    "route": {
+      "path": "/login",
+      "pattern": "/login",
+      "name": "Login",
+      "params": {},
+      "load": []
+    },
+    "loginEmail": "ada@example.com",
+    "sessionToken": "demo-token",
+    "auditTrail": "Ready for review.",
+    "emailBindings": {
+      "loginEmail": "ada@example.com"
+    }
+  },
+  "afterSignIn": {
+    "route": {
+      "path": "/login",
+      "pattern": "/login",
+      "name": "Login",
+      "params": {},
+      "load": []
+    },
+    "loginEmail": "ada@example.com",
+    "sessionToken": "demo-token",
+    "auditTrail": "Ready for review.",
+    "emailBindings": {
+      "loginEmail": "ada@example.com"
+    }
+  },
+  "afterSignOut": {
+    "route": {
+      "path": "/login",
+      "pattern": "/login",
+      "name": "Login",
+      "params": {},
+      "load": []
+    },
+    "loginEmail": "ada@example.com",
+    "sessionToken": "demo-token",
+    "auditTrail": "Ready for review.",
+    "emailBindings": {
+      "loginEmail": "ada@example.com"
+    }
+  },
+  "afterGuard": {
+    "route": {
+      "path": "/command",
+      "pattern": "/command",
+      "name": "Command",
+      "params": {},
+      "load": []
+    },
+    "loginEmail": "ada@example.com",
+    "sessionToken": "demo-token",
+    "auditTrail": "Ready for review.",
+    "emailBindings": {
+      "loginEmail": "ada@example.com"
+    }
+  },
+  "calls": [
+    {
+      "name": "runDirectComponentAction",
+      "calls": 0
+    },
+    {
+      "name": "runDirectComponentFallbackAction",
+      "calls": 0
+    },
+    {
+      "name": "executeClientAction",
+      "calls": 0
+    },
+    {
+      "name": "redirect",
+      "calls": 0
+    },
+    {
+      "name": "checkGuards",
+      "calls": 3
+    },
+    {
+      "name": "applyRoutes",
+      "calls": 3
+    }
+  ],
+  "exit": 1
+}

@@ -1,0 +1,221 @@
+[
+  {
+    "name": "original",
+    "command": {
+      "route": {
+        "path": "/command",
+        "pattern": "/command",
+        "name": "Command",
+        "params": {},
+        "load": []
+      },
+      "state": {
+        "loginEmail": "ada@example.com",
+        "sessionToken": "demo-token",
+        "auditTrail": "Ready for review."
+      },
+      "headings": [
+        ""
+      ],
+      "inputs": [],
+      "body": "NATIVE JTML DEMO APP\n\nA single Friendly JTML file showing production app structure, live state, runtime APIs, media, graphics, routing, stores, effects, and host integrations.\n\nRelease undefined\n\nOverview\nCommand\nData\nMedia\nRuntime\nLogin\n\nJTML can author applications as readable documents without handing the user a JavaScript framework first."
+    },
+    "loginInitial": {
+      "route": {
+        "path": "/login",
+        "pattern": "/login",
+        "name": "Login",
+        "params": {},
+        "load": []
+      },
+      "state": {
+        "loginEmail": "ada@example.com",
+        "sessionToken": "demo-token",
+        "auditTrail": "Ready for review."
+      },
+      "headings": [
+        ""
+      ],
+      "inputs": [],
+      "body": "NATIVE JTML DEMO APP\n\nA single Friendly JTML file showing production app structure, live state, runtime APIs, media, graphics, routing, stores, effects, and host integrations.\n\nRelease undefined\n\nOverview\nCommand\nData\nMedia\nRuntime\nLogin\n\nJTML can author applications as readable documents without handing the user a JavaScript framework first."
+    },
+    "interactionFailure": "locator.fill: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[type=email]').filter({ visible: true })\u001b[22m\n",
+    "calls": [
+      {
+        "name": "componentBindTargetStatus",
+        "calls": 0
+      },
+      {
+        "name": "renderDirectComponent",
+        "calls": 8
+      },
+      {
+        "name": "runDirectComponentAction",
+        "calls": 0
+      },
+      {
+        "name": "runDirectComponentFallbackAction",
+        "calls": 0
+      },
+      {
+        "name": "executeClientAction",
+        "calls": 0
+      },
+      {
+        "name": "redirect",
+        "calls": 0
+      },
+      {
+        "name": "applyRoutes",
+        "calls": 2
+      }
+    ],
+    "errors": []
+  },
+  {
+    "name": "login-control",
+    "command": {
+      "route": {
+        "path": "/command",
+        "pattern": "/command",
+        "name": "Command",
+        "params": {},
+        "load": []
+      },
+      "state": {
+        "loginEmail": "ada@example.com",
+        "sessionToken": "demo-token",
+        "auditTrail": "Ready for review."
+      },
+      "headings": [
+        "Command probe"
+      ],
+      "inputs": [],
+      "body": "Command probe"
+    },
+    "loginInitial": {
+      "route": {
+        "path": "/login",
+        "pattern": "/login",
+        "name": "Login",
+        "params": {},
+        "load": []
+      },
+      "state": {
+        "loginEmail": "ada@example.com",
+        "sessionToken": "demo-token",
+        "auditTrail": "Ready for review."
+      },
+      "headings": [
+        "Sign in"
+      ],
+      "inputs": [
+        "<input data-jtml-direct-component-bind=\"loginEmail\" value=\"\" required=\"\" type=\"email\" data-jtml-direct-node=\"input\" data-jtml-direct-component-id=\"Login_2\" data-jtml-direct-body-node=\"5\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,value,required,type,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\">"
+      ],
+      "body": "Protected demo\n\nSign in\n\nRoute guards protect command, data, media, and runtime pages. Use any email to create a local token.\n\nSign inBack home"
+    },
+    "afterInput": {
+      "route": {
+        "path": "/login",
+        "pattern": "/login",
+        "name": "Login",
+        "params": {},
+        "load": []
+      },
+      "state": {
+        "loginEmail": "ada@example.com",
+        "sessionToken": "demo-token",
+        "auditTrail": "Ready for review."
+      },
+      "headings": [
+        "Sign in"
+      ],
+      "inputs": [
+        "<input data-jtml-direct-component-bind=\"loginEmail\" value=\"\" required=\"\" type=\"email\" data-jtml-direct-node=\"input\" data-jtml-direct-component-id=\"Login_2\" data-jtml-direct-body-node=\"5\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,value,required,type,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\">"
+      ],
+      "fallbacks": [
+        {
+          "code": "JTML_UNKNOWN_INTO_TARGET",
+          "componentId": "Login_2",
+          "component": "Login",
+          "moduleId": 0,
+          "componentSourceLine": 0,
+          "bodyNodeIndex": 5,
+          "bodySourceLine": 21,
+          "bodySourceColumn": 7,
+          "nodeText": "input \"Email\" into loginEmail required type \"email\"",
+          "target": "loginEmail",
+          "message": "`into loginEmail` does not match any local let state in this component.",
+          "remediation": "Declare `let loginEmail = \"\"` inside the component, or bind the input to an existing local `let` state."
+        }
+      ],
+      "body": "Protected demo\n\nSign in\n\nRoute guards protect command, data, media, and runtime pages. Use any email to create a local token.\n\nSign inBack home"
+    },
+    "afterClick": {
+      "route": {
+        "path": "/command",
+        "pattern": "/command",
+        "name": "Command",
+        "params": {},
+        "load": []
+      },
+      "state": {
+        "loginEmail": "ada@example.com",
+        "sessionToken": "demo-token",
+        "auditTrail": "Ready for review."
+      },
+      "headings": [
+        "Command probe"
+      ],
+      "inputs": [],
+      "fallbacks": [
+        {
+          "code": "JTML_UNKNOWN_INTO_TARGET",
+          "componentId": "Login_2",
+          "component": "Login",
+          "moduleId": 0,
+          "componentSourceLine": 0,
+          "bodyNodeIndex": 5,
+          "bodySourceLine": 21,
+          "bodySourceColumn": 7,
+          "nodeText": "input \"Email\" into loginEmail required type \"email\"",
+          "target": "loginEmail",
+          "message": "`into loginEmail` does not match any local let state in this component.",
+          "remediation": "Declare `let loginEmail = \"\"` inside the component, or bind the input to an existing local `let` state."
+        }
+      ],
+      "body": "Command probe"
+    },
+    "calls": [
+      {
+        "name": "componentBindTargetStatus",
+        "calls": 1
+      },
+      {
+        "name": "renderDirectComponent",
+        "calls": 2
+      },
+      {
+        "name": "runDirectComponentAction",
+        "calls": 1
+      },
+      {
+        "name": "runDirectComponentFallbackAction",
+        "calls": 1
+      },
+      {
+        "name": "executeClientAction",
+        "calls": 0
+      },
+      {
+        "name": "redirect",
+        "calls": 1
+      },
+      {
+        "name": "applyRoutes",
+        "calls": 3
+      }
+    ],
+    "errors": []
+  }
+]

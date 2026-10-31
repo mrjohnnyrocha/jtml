@@ -1,0 +1,9 @@
+{
+  "checks": [
+    "/plain content visible",
+    {
+      "failure": "locator.waitFor: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: 'Command content', exact: true }) to be visible\u001b[22m\n"
+    }
+  ],
+  "exit": 1
+}

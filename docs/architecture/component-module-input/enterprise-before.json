@@ -1,0 +1,312 @@
+{
+  "command": {
+    "route": {
+      "path": "/command",
+      "pattern": "/command",
+      "name": "Command",
+      "params": {},
+      "load": []
+    },
+    "loginEmail": "ada@example.com",
+    "sessionToken": "demo-token",
+    "auditTrail": "Ready for review.",
+    "emailBindings": {
+      "loginEmail": "ada@example.com"
+    }
+  },
+  "buildExit": 0,
+  "checks": [
+    {
+      "name": "Command route selected",
+      "pass": true
+    },
+    {
+      "name": "Command content visible",
+      "pass": true
+    },
+    {
+      "name": "Email input visible and accessible",
+      "pass": true
+    },
+    {
+      "name": "input updates module loginEmail",
+      "pass": false,
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'ada@example.com'\n- 'probe@example.test'\n"
+    },
+    {
+      "name": "Sign in navigates",
+      "pass": true
+    },
+    {
+      "name": "Sign in executes token assignment",
+      "pass": false,
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'ada@example.com'\n- 'probe@example.test'\n"
+    },
+    {
+      "name": "Sign in executes audit assignment",
+      "pass": false,
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'Signed in as ada@example.com.'\n- 'Signed in as probe@example.test.'\n                ^\n"
+    },
+    {
+      "name": "Sign out navigates",
+      "pass": true
+    },
+    {
+      "name": "Sign out clears token",
+      "pass": true
+    },
+    {
+      "name": "guard denies Command after sign out",
+      "pass": true
+    },
+    {
+      "name": "no page exceptions",
+      "pass": true
+    }
+  ],
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/index.html"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.jpg"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/product-suite.jpg"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.mp4"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/release-note.mp3"
+    },
+    {
+      "method": "GET",
+      "path": "/index.html"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.jpg"
+    },
+    {
+      "method": "GET",
+      "path": "/jtml-runtime.js"
+    },
+    {
+      "method": "GET",
+      "path": "/components/index.js"
+    },
+    {
+      "method": "GET",
+      "path": "/app.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.mp4"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/release-note.mp3"
+    },
+    {
+      "method": "POST",
+      "path": "/api/login"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.jpg"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.mp4"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/release-note.mp3"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users"
+    }
+  ],
+  "browser": "153.0.8010.12",
+  "beforeExecution": {
+    "headings": [
+      "{{\"One JTML file, many production patterns\"}}\n",
+      "{{operationalHealth}}\n",
+      "{{riskLabel}}\n",
+      "{{workspace.region}}\n",
+      "{{\"Feature coverage\"}}\n",
+      "{{\"Live operations workspace\"}}\n",
+      "{{incidentsOpen}}\n",
+      "{{riskLabel}}\n",
+      "{{workspace.approvals}}\n",
+      "{{\"Incident portfolio\"}}\n",
+      "{{\"GET, POST, lazy load, refresh, and invalidation\"}}\n",
+      "{{\"Images, audio, video, files, dropzones, charts, SVG, canvas, and 3D\"}}\n",
+      "{{\"Server contract and runtime introspection\"}}\n",
+      "{{\"Sign in\"}}\n",
+      "{{\"Route parameter\"}}\n",
+      "{{\"Route not found\"}}\n"
+    ],
+    "suppliedSlots": 8
+  },
+  "errors": [],
+  "failedResources": [
+    {
+      "url": "http://127.0.0.1:54064/assets/briefing.jpg",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:54064/assets/briefing.mp4",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:54064/assets/release-note.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:54064/assets/briefing.jpg",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:54064/api/login",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:54064/api/users",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:54064/assets/briefing.mp4",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:54064/assets/release-note.mp3",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:54064/api/users",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:54064/api/users",
+      "status": 404
+    }
+  ],
+  "loginInitial": {
+    "route": {
+      "path": "/login",
+      "pattern": "/login",
+      "name": "Login",
+      "params": {},
+      "load": []
+    },
+    "loginEmail": "ada@example.com",
+    "sessionToken": "demo-token",
+    "auditTrail": "Ready for review.",
+    "emailBindings": {
+      "loginEmail": "ada@example.com"
+    }
+  },
+  "afterInput": {
+    "route": {
+      "path": "/login",
+      "pattern": "/login",
+      "name": "Login",
+      "params": {},
+      "load": []
+    },
+    "loginEmail": "ada@example.com",
+    "sessionToken": "demo-token",
+    "auditTrail": "Ready for review.",
+    "emailBindings": {
+      "loginEmail": "ada@example.com"
+    }
+  },
+  "afterSignIn": {
+    "route": {
+      "path": "/command",
+      "pattern": "/command",
+      "name": "Command",
+      "params": {},
+      "load": []
+    },
+    "loginEmail": "ada@example.com",
+    "sessionToken": "ada@example.com",
+    "auditTrail": "Signed in as ada@example.com.",
+    "emailBindings": {
+      "loginEmail": "ada@example.com"
+    }
+  },
+  "afterSignOut": {
+    "route": {
+      "path": "/login",
+      "pattern": "/login",
+      "name": "Login",
+      "params": {},
+      "load": []
+    },
+    "loginEmail": "ada@example.com",
+    "sessionToken": "",
+    "auditTrail": "Signed out.",
+    "emailBindings": {
+      "loginEmail": "ada@example.com"
+    }
+  },
+  "afterGuard": {
+    "route": {
+      "path": "/login",
+      "pattern": "/login",
+      "name": "Login",
+      "params": {},
+      "load": []
+    },
+    "loginEmail": "ada@example.com",
+    "sessionToken": "",
+    "auditTrail": "Signed out.",
+    "emailBindings": {
+      "loginEmail": "ada@example.com"
+    }
+  },
+  "calls": [
+    {
+      "name": "runDirectComponentAction",
+      "calls": 0
+    },
+    {
+      "name": "runDirectComponentFallbackAction",
+      "calls": 0
+    },
+    {
+      "name": "executeClientAction",
+      "calls": 3
+    },
+    {
+      "name": "redirect",
+      "calls": 2
+    },
+    {
+      "name": "checkGuards",
+      "calls": 6
+    },
+    {
+      "name": "applyRoutes",
+      "calls": 6
+    }
+  ],
+  "exit": 1
+}

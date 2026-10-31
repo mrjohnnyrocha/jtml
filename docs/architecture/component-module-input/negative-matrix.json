@@ -1,0 +1,189 @@
+[
+  {
+    "name": "missing",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/missing.jtml",
+    "exit": 1,
+    "error": "error: Component 'Editor' requires explicit 'bind value to mutableState' at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/missing.jtml:6:3\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/missing.jtml:6:3",
+    "pass": true
+  },
+  {
+    "name": "constant",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/constant.jtml",
+    "exit": 1,
+    "error": "error: component Editor binding at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/constant.jtml:7:3: `email` must be a mutable let owned by the entry module; constants, derived and imported bindings are read-only\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/constant.jtml:7:3",
+    "pass": true
+  },
+  {
+    "name": "derived",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/derived.jtml",
+    "exit": 1,
+    "error": "error: component Editor binding at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/derived.jtml:7:3: `email` must be a mutable let owned by the entry module; constants, derived and imported bindings are read-only\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/derived.jtml:7:3",
+    "pass": true
+  },
+  {
+    "name": "borrowed",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/borrowed.jtml",
+    "exit": 1,
+    "error": "error: component Editor binding at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/borrowed.jtml:8:3: `email` requires a literal string initializer; borrowed/collection targets are unsupported\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/borrowed.jtml:8:3",
+    "pass": true
+  },
+  {
+    "name": "collection",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/collection.jtml",
+    "exit": 1,
+    "error": "error: component Editor binding at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/collection.jtml:7:3: `email` requires a literal string initializer; borrowed/collection targets are unsupported\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/collection.jtml:7:3",
+    "pass": true
+  },
+  {
+    "name": "unknown",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/unknown.jtml",
+    "exit": 1,
+    "error": "error: component Editor binding at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/unknown.jtml:7:3: `missing` must be a mutable let owned by the entry module; constants, derived and imported bindings are read-only\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/unknown.jtml:7:3",
+    "pass": true
+  },
+  {
+    "name": "member",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/member.jtml",
+    "exit": 1,
+    "error": "error: Component 'Editor' requires explicit 'bind value to mutableState' at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/member.jtml:7:3\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/member.jtml:7:3",
+    "pass": true
+  },
+  {
+    "name": "wrong-name",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/wrong-name.jtml",
+    "exit": 1,
+    "error": "error: Component 'Editor' requires explicit 'bind value to mutableState' at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/wrong-name.jtml:7:3\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/wrong-name.jtml:7:3",
+    "pass": true
+  },
+  {
+    "name": "duplicate",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/duplicate.jtml",
+    "exit": 1,
+    "error": "error: Unexpected/duplicate binding in component 'Editor' at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/duplicate.jtml:7:3\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/duplicate.jtml:7:3",
+    "pass": true
+  },
+  {
+    "name": "local-redeclaration",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/local-redeclaration.jtml",
+    "exit": 1,
+    "error": "error: Binding parameter cannot be redeclared in component 'Editor' at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/local-redeclaration.jtml:4:3\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/local-redeclaration.jtml:4:3",
+    "pass": true
+  },
+  {
+    "name": "assignment",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/assignment.jtml",
+    "exit": 1,
+    "error": "error: component Editor binding at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/assignment.jtml:9:3: binding parameter `value` is input-only; action assignments are unsupported at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/assignment.jtml:5:5\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/assignment.jtml:9:3",
+    "pass": true
+  },
+  {
+    "name": "checkbox",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/checkbox.jtml",
+    "exit": 1,
+    "error": "error: component Editor binding at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/checkbox.jtml:7:3: binding parameters support text input only at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/checkbox.jtml:5:5\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/checkbox.jtml:7:3",
+    "pass": true
+  },
+  {
+    "name": "number",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/number.jtml",
+    "exit": 1,
+    "error": "error: component Editor binding at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/number.jtml:7:3: binding parameters support text input types only at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/number.jtml:5:5\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/number.jtml:7:3",
+    "pass": true
+  },
+  {
+    "name": "forwarding",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/forwarding.jtml",
+    "exit": 1,
+    "error": "error: Component 'Editor': binding forwarding/nested authority is unsupported at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/forwarding.jtml:7:3\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/forwarding.jtml:7:3",
+    "pass": true
+  },
+  {
+    "name": "unauthorized",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/unauthorized.jtml",
+    "exit": 1,
+    "error": "error: Component 'Editor' does not declare binding authority at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/unauthorized.jtml:7:3\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/unauthorized.jtml:7:3",
+    "pass": true
+  },
+  {
+    "name": "route",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/route.jtml",
+    "exit": 1,
+    "error": "error: Route component 'Editor' cannot receive input binding authority; use an explicitly bound root instance at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/route.jtml:6:1\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/route.jtml:6:1",
+    "pass": true
+  },
+  {
+    "name": "imported-state",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/imported-state.jtml",
+    "exit": 1,
+    "error": "error: component Editor binding at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/imported-state.jtml:7:3: `imported` must be a mutable let owned by the entry module; constants, derived and imported bindings are read-only\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/imported-state.jtml:7:3",
+    "pass": true
+  },
+  {
+    "name": "ambiguous",
+    "source": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/ambiguous.jtml",
+    "exit": 1,
+    "error": "error: component Editor binding at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/ambiguous.jtml:8:3: ambiguous module storage for `email`; input authority requires a unique owner\n",
+    "assets": [],
+    "expectedLocation": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/ambiguous.jtml:8:3",
+    "pass": true
+  },
+  {
+    "name": "imported-diagnostic",
+    "exit": 1,
+    "error": "error: component Bad binding at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/imported-diagnostic.jtml:5:3: binding parameters support text input types only at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/dist/explicit-input-negatives/bad-editor.jtml:4:5\n",
+    "assets": [],
+    "pass": true
+  },
+  {
+    "name": "unsupported-transpile",
+    "exit": 1,
+    "error": "error: component BoundEditor at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/fixtures/production/explicit-input/editor.jtml:2:8: explicit input bindings require a browser Runtime Project Plan; use build --target browser\n",
+    "pass": true
+  },
+  {
+    "name": "unsupported-build",
+    "exit": 1,
+    "error": "error: component BoundEditor at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/fixtures/production/explicit-input/editor.jtml:2:8: explicit input bindings require a browser Runtime Project Plan; use build --target browser\n",
+    "pass": true
+  },
+  {
+    "name": "unsupported-live",
+    "exit": 1,
+    "error": "error: component BoundEditor at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/fixtures/production/explicit-input/editor.jtml:2:8: explicit input bindings require a browser Runtime Project Plan; use build --target browser\n",
+    "pass": true
+  }
+]

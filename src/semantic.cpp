@@ -468,6 +468,8 @@ struct SemanticSets {
                         std::string, std::string, std::string, bool, int, int, int, int, std::shared_ptr<const SourceProvenance>>> componentDefinitions;
     std::set<std::tuple<std::string, std::string, int, std::string, std::string, std::string, std::string, int, std::shared_ptr<const SourceProvenance>>> componentInstances;
     std::map<std::string, std::string> componentArguments;
+    std::map<std::string, std::string> bindingParams;
+    std::map<std::string, std::string> bindingArguments;
     std::set<std::string> routes;
     // Route matching is first-match: executable records must retain AST order.
     std::vector<std::tuple<std::string, std::string, std::string, std::string>> routeRecords;
@@ -833,6 +835,7 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
         attributeLiteral(elem, "data-jtml-component-def-emit-payload-types", emitPayloadTypes);
         attributeLiteral(elem, "data-jtml-component-body-hex", bodyHex);
         attributeLiteral(elem, "data-jtml-source-line", sourceLine);
+        attributeLiteral(elem, "data-jtml-binding-params", out.bindingParams[value]);
         const auto summary = summarizeComponentBody(bodyHex);
         out.componentDefinitions.insert({
             value,
@@ -868,6 +871,7 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
         attributeLiteral(elem, "data-jtml-instance-id", instanceId);
         attributeLiteral(elem, "data-jtml-component-role", role);
         attributeLiteral(elem, "data-jtml-component-params", params);
+        attributeLiteral(elem, "data-jtml-binding-args", out.bindingArguments[id]);
         std::string arguments;
         if (attributeLiteral(elem, "data-jtml-component-args-hex", arguments)) out.componentArguments[id] = arguments;
         attributeLiteral(elem, "data-jtml-component-locals", locals);
@@ -1409,7 +1413,14 @@ SemanticProgram analyzeSemanticProgram(
     semantic.components = toVector(sets.components);
     semantic.componentDefinitions = componentDefinitionsToVector(sets.componentDefinitions);
     semantic.componentInstances = componentInstancesToVector(sets.componentInstances);
+    for (auto& definition : semantic.componentDefinitions)
+        definition.bindingParams = splitComponentParamList(sets.bindingParams[definition.name]);
     for (auto& instance : semantic.componentInstances) {
+        const auto bindingArgs = sets.bindingArguments.find(instance.id);
+        if (bindingArgs != sets.bindingArguments.end() && !bindingArgs->second.empty()) {
+            const auto bindings = nlohmann::json::parse(hexDecode(bindingArgs->second));
+            for (const auto& binding : bindings.items()) instance.bindingArguments.push_back({binding.key(), binding.value().get<std::string>()});
+        }
         const auto encoded = sets.componentArguments.find(instance.id);
         if (encoded == sets.componentArguments.end()) continue; // explicit Classic metadata
         const auto expressions = nlohmann::json::parse(hexDecode(encoded->second));
@@ -1720,6 +1731,7 @@ SemanticUsageReport analyzeSemanticUsage(const SemanticProgram& semantic) {
     }
     for (const auto& definition : semantic.componentDefinitions) {
         for (const auto& target : definition.localBindings) {
+            if (containsValue(definition.bindingParams, target)) continue;
             if (!isSimpleSemanticIdentifier(target)) {
                 report.warnings.push_back({
                     "JTML_INVALID_INTO_TARGET",

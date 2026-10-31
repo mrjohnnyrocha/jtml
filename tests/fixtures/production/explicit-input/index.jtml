@@ -1,0 +1,69 @@
+jtml 2
+use { BoundEditor } from "./editor.jtml"
+let email = "seed@example.test"
+let other = "other"
+let __jtml_input_value = "hygienic"
+let __jtml_input_value_ = "trailing"
+let __jtml_input_value_1 = "sentinel-1"
+let __jtml_input_value_2 = "sentinel-2"
+let __jtml_input_value_3 = "sentinel-3"
+let __jtml_input_value_4 = "sentinel-4"
+let __jtml_input_value_5 = "sentinel-5"
+let __jtml_input_value_6 = "sentinel-6"
+let __jtml_input_value_7 = "sentinel-7"
+let __jtml_input_value_8 = "sentinel-8"
+when untouched __jtml_input_value_9
+  show __jtml_input_value_9
+let hits = 0
+let observed = "initial"
+let mounted = true
+let token = ""
+let audit = "Ready"
+effect email
+  hits += 1
+  observed = email
+when reset
+  email = ""
+when restore
+  email = "restored@example.test"
+when toggle
+  mounted = !mounted
+when signIn
+  token = email
+  audit = "Signed in as {email}."
+  redirect "/private"
+when signOut
+  token = ""
+  redirect "/login"
+guard "/private" require token else "/login"
+make LocalEditor label
+  let email = "local"
+  page
+    input into email aria-label label
+    text "Local mirror: {email}"
+make Login
+  page
+    h1 "Login"
+make Private
+  page
+    h1 "Private"
+route "/" as Login
+route "/login" as Login
+route "/private" as Private
+page
+  input into other aria-label "Root"
+  if mounted
+    BoundEditor "Email" bind value to email
+  BoundEditor "Independent" bind value to other
+  BoundEditor "Hygiene" bind value to __jtml_input_value
+  LocalEditor "First local"
+  LocalEditor "Second local"
+  text "Email: {email}"
+  text "Observed: {observed}"
+  text "Hits: {hits}"
+  button "Reset" click reset
+  button "Restore" click restore
+  button "Toggle" click toggle
+  button "Sign in" click signIn
+  button "Sign out" click signOut
+  link "Private" to "/private"

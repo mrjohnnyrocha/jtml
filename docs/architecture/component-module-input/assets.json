@@ -1,0 +1,35 @@
+{
+  "runtimeBudget": 273000,
+  "budgetChanged": false,
+  "runtimeBaselineRaw": 272925,
+  "runtimeBaselineGzip": 50841,
+  "runtimeRawGrowth": 67,
+  "runtimeGzipGrowth": 52,
+  "runtimeHeadroom": 8,
+  "assets": [
+    {
+      "file": "jtml-runtime.js",
+      "raw": 272992,
+      "gzip": 50893,
+      "sha256": "b833924d342073ceb734854b29c5df5c2e39aa2272bd9163afd72fd90244a36e"
+    },
+    {
+      "file": "components/index.js",
+      "raw": 72448,
+      "gzip": 4472,
+      "sha256": "b6151d0a8340fed7cb1e3a7559be5ba0c6141cc5860aa3c2821eeb5b8404b311"
+    },
+    {
+      "file": "app.js",
+      "raw": 2043,
+      "gzip": 905,
+      "sha256": "688ec3c1b98c6ac616a4dac1d641628c49ed147b46f5c9b24b8351cc29976046"
+    },
+    {
+      "file": "index.html",
+      "raw": 57193,
+      "gzip": 5034,
+      "sha256": "fc31f22554a10933c8b64d6ac3390b8ed8c3a000eea245f071d3ee6a76fc8371"
+    }
+  ]
+}

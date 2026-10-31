@@ -14,6 +14,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -3490,4 +3491,76 @@ TEST(CliBuild, RootScalarEffectsRejectDynamicUnsubscribe) {
     catch (const std::runtime_error& error) { message = error.what(); }
     EXPECT_NE(message.find("dynamic unsubscribe"), std::string::npos) << message;
     EXPECT_NE(message.find(input.string() + ":"), std::string::npos) << message;
+}
+
+TEST(CliBuild, ExplicitInputParametersAreFreshAcrossAuthoredNamespaces) {
+    std::set<std::string> authored{"__jtml_input_value", "__jtml_input_value_"};
+    std::string source = "jtml 2\nlet __jtml_input_value = \"owner\"\nlet __jtml_input_value_ = \"tail\"\n";
+    for (int i = 0; i < 64; ++i) {
+        const auto name = "__jtml_input_value_" + std::to_string(i);
+        authored.insert(name); source += "let " + name + " = \"sentinel\"\n";
+    }
+    source += "when untouched __jtml_input_value_64\n  show __jtml_input_value_64\n";
+    source += "when __jtml_input_0_Editor_1_value\n  show \"authored\"\n";
+    source += "make Unused __jtml_input_value_65\n  let __jtml_input_value_66 = \"local\"\n  when local __jtml_input_value_67\n    show __jtml_input_value_67\n  text __jtml_input_value_66\n";
+    source += "let bind = \"ordinary\"\nmake Ordinary item\n  text item\n";
+    source += "make Editor bind value\n  input into value\npage\n  Editor bind value to __jtml_input_value\n  Editor bind value to __jtml_input_value_32\n  Ordinary bind\n  button \"Unresolved authored reference\" click __jtml_input_0_Editor_1_value_1\n";
+    for (int i = 64; i <= 67; ++i) authored.insert("__jtml_input_value_" + std::to_string(i));
+    authored.insert("__jtml_input_0_Editor_1_value");
+    authored.insert("__jtml_input_0_Editor_1_value_1");
+    const auto input = writeTempJtml("explicit-input-hygiene", source);
+    const auto output = makeTempDir("explicit-input-hygiene");
+    jtml::cli::Options options;
+    options.inputFile = input.string(); options.outputFile = output.string(); options.target = "browser";
+    ASSERT_EQ(captureCommand([&] { return jtml::cli::cmdBuild(options); }).code, 0);
+    const auto html = readTextFile(output / "index.html");
+    const std::string marker = "id=\"__jtml_client_manifest\">";
+    const auto begin = html.find(marker) + marker.size(), end = html.find("</script>", begin);
+    const auto manifest = nlohmann::json::parse(html.substr(begin, end - begin));
+    std::set<std::string> generated;
+    for (const auto& instance : manifest["componentInstances"]) {
+        if (!instance.contains("inputActions")) continue;
+        const auto name = instance["inputActions"]["value"].get<std::string>();
+        ASSERT_EQ(authored.count(name), 0u); EXPECT_TRUE(generated.insert(name).second);
+        const auto& action = manifest["actions"][name];
+        ASSERT_EQ(action["params"].size(), 1u);
+        const auto param = action["params"][0].get<std::string>();
+        EXPECT_EQ(authored.count(param), 0u); EXPECT_TRUE(generated.insert(param).second);
+        EXPECT_EQ(action["body"][0]["expr"], param);
+        EXPECT_NE(action["body"][0]["lhs"], param);
+    }
+    EXPECT_EQ(generated.size(), 4u);
+}
+
+TEST(CliBuild, ExplicitInputCapabilitySchemaIsClosedAndRejectsBrokenAuthority) {
+    const auto input = (std::filesystem::path(JTML_SOURCE_DIR) / "tests/fixtures/production/explicit-input/index.jtml").string();
+    const auto output = makeTempDir("explicit-input-schema");
+    jtml::cli::Options options;
+    options.inputFile = input; options.outputFile = output.string(); options.target = "browser";
+    ASSERT_EQ(captureCommand([&] { return jtml::cli::cmdBuild(options); }).code, 0);
+    const auto html = readTextFile(output / "index.html");
+    const std::string marker = "id=\"__jtml_client_manifest\">";
+    const auto begin = html.find(marker) + marker.size(), end = html.find("</script>", begin);
+    const auto original = nlohmann::json::parse(html.substr(begin, end - begin));
+    for (const auto* kind : {"unknown-key", "bindingOrigin", "bindingArguments", "sourceSpan", "missing-action", "non-string", "unknown-owner", "missing-param", "wrong-read", "wrong-instance", "captured-param"}) {
+        SCOPED_TRACE(kind);
+        auto manifest = original;
+        auto instance = std::find_if(manifest["componentInstances"].begin(), manifest["componentInstances"].end(),
+            [](const auto& item) { return item.contains("inputActions"); });
+        ASSERT_NE(instance, manifest["componentInstances"].end());
+        const auto action = (*instance)["inputActions"]["value"].template get<std::string>();
+        const std::string mutation = kind;
+        if (mutation == "unknown-key") (*instance)["inputTargets"] = {{"value", "email"}};
+        if (mutation == "bindingOrigin" || mutation == "bindingArguments" || mutation == "sourceSpan") (*instance)[mutation] = nlohmann::json::object();
+        if (mutation == "missing-action") manifest["actions"].erase(action);
+        if (mutation == "non-string") (*instance)["inputActions"]["value"] = true;
+        if (mutation == "unknown-owner") (*instance)["moduleId"] = 99999;
+        if (mutation == "missing-param") (*instance)["params"].erase("value");
+        if (mutation == "wrong-read") (*instance)["argumentPlans"]["value"]["root"] = "other";
+        if (mutation == "wrong-instance") (*instance)["id"] = "different";
+        if (mutation == "captured-param") manifest["actions"][action]["params"][0] = manifest["actions"][action]["body"][0]["lhs"];
+        auto changed = html; changed.replace(begin, end - begin, manifest.dump());
+        writeTempFile(output / "index.html", changed);
+        EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(output, jtml::cli::BrowserBuildMode::Production), std::runtime_error);
+    }
 }

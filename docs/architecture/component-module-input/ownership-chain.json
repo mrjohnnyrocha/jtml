@@ -1,0 +1,764 @@
+{
+  "entry": 0,
+  "semanticDefinitions": [
+    {
+      "bindingParams": [
+        "value"
+      ],
+      "bodyHex": "323a333a303a706167650a333a353a323a696e70757420696e746f2076616c756520617269612d6c6162656c206c6162656c0a343a353a323a746578742022426f756e64206d6972726f723a207b76616c75657d220a",
+      "bodyNodeCount": 3,
+      "emitArity": {},
+      "emits": [],
+      "eventBindings": [
+        "into"
+      ],
+      "hasSlot": false,
+      "localActions": [],
+      "localBindings": [
+        "value"
+      ],
+      "localDerived": [],
+      "localEffects": [],
+      "localState": [],
+      "name": "BoundEditor",
+      "params": [
+        "label",
+        "value"
+      ],
+      "rootTemplateNodeCount": 1,
+      "slotCount": 0,
+      "sourceLine": 1
+    }
+  ],
+  "semanticInstances": [
+    {
+      "bindingArguments": {
+        "value": "email"
+      },
+      "component": "BoundEditor",
+      "id": "BoundEditor_4",
+      "instanceId": 4,
+      "locals": {},
+      "params": {
+        "label": "Email",
+        "value": "email"
+      },
+      "role": "component",
+      "slotHex": "",
+      "sourceLine": 58
+    },
+    {
+      "bindingArguments": {
+        "value": "other"
+      },
+      "component": "BoundEditor",
+      "id": "BoundEditor_5",
+      "instanceId": 5,
+      "locals": {},
+      "params": {
+        "label": "Independent",
+        "value": "other"
+      },
+      "role": "component",
+      "slotHex": "",
+      "sourceLine": 59
+    },
+    {
+      "bindingArguments": {
+        "value": "__jtml_input_value"
+      },
+      "component": "BoundEditor",
+      "id": "BoundEditor_6",
+      "instanceId": 6,
+      "locals": {},
+      "params": {
+        "label": "Hygiene",
+        "value": "__jtml_input_value"
+      },
+      "role": "component",
+      "slotHex": "",
+      "sourceLine": 60
+    }
+  ],
+  "modules": [
+    {
+      "id": 0,
+      "path": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/fixtures/production/explicit-input/index.jtml",
+      "definitions": [],
+      "instances": [
+        {
+          "argumentPlans": {
+            "label": {
+              "astKind": 3,
+              "kind": "literal",
+              "producer": "typed-ir",
+              "source": "\"Email\"",
+              "value": "Email",
+              "valueType": "string"
+            },
+            "value": {
+              "astKind": 2,
+              "kind": "path",
+              "producer": "typed-ir",
+              "root": "email",
+              "segments": [
+                "email"
+              ],
+              "source": "email",
+              "valueType": "string"
+            }
+          },
+          "bindingArguments": {
+            "value": "email"
+          },
+          "bindingOrigin": {
+            "column": 5,
+            "file": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/fixtures/production/explicit-input/index.jtml",
+            "line": 56
+          },
+          "component": "BoundEditor",
+          "definitionModule": 1,
+          "id": "BoundEditor_4",
+          "inputActions": {
+            "value": "__jtml_input_0_BoundEditor_4_value"
+          },
+          "instanceId": 4,
+          "locals": {},
+          "moduleId": 0,
+          "params": {
+            "label": "Email",
+            "value": "email"
+          },
+          "role": "component",
+          "slotHex": "",
+          "slotPlan": [],
+          "slotSource": "",
+          "sourceLine": 58
+        },
+        {
+          "argumentPlans": {
+            "label": {
+              "astKind": 3,
+              "kind": "literal",
+              "producer": "typed-ir",
+              "source": "\"Independent\"",
+              "value": "Independent",
+              "valueType": "string"
+            },
+            "value": {
+              "astKind": 2,
+              "kind": "path",
+              "producer": "typed-ir",
+              "root": "other",
+              "segments": [
+                "other"
+              ],
+              "source": "other",
+              "valueType": "string"
+            }
+          },
+          "bindingArguments": {
+            "value": "other"
+          },
+          "bindingOrigin": {
+            "column": 3,
+            "file": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/fixtures/production/explicit-input/index.jtml",
+            "line": 57
+          },
+          "component": "BoundEditor",
+          "definitionModule": 1,
+          "id": "BoundEditor_5",
+          "inputActions": {
+            "value": "__jtml_input_0_BoundEditor_5_value"
+          },
+          "instanceId": 5,
+          "locals": {},
+          "moduleId": 0,
+          "params": {
+            "label": "Independent",
+            "value": "other"
+          },
+          "role": "component",
+          "slotHex": "",
+          "slotPlan": [],
+          "slotSource": "",
+          "sourceLine": 59
+        },
+        {
+          "argumentPlans": {
+            "label": {
+              "astKind": 3,
+              "kind": "literal",
+              "producer": "typed-ir",
+              "source": "\"Hygiene\"",
+              "value": "Hygiene",
+              "valueType": "string"
+            },
+            "value": {
+              "astKind": 2,
+              "kind": "path",
+              "producer": "typed-ir",
+              "root": "__jtml_input_value",
+              "segments": [
+                "__jtml_input_value"
+              ],
+              "source": "__jtml_input_value",
+              "valueType": "string"
+            }
+          },
+          "bindingArguments": {
+            "value": "__jtml_input_value"
+          },
+          "bindingOrigin": {
+            "column": 3,
+            "file": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/fixtures/production/explicit-input/index.jtml",
+            "line": 58
+          },
+          "component": "BoundEditor",
+          "definitionModule": 1,
+          "id": "BoundEditor_6",
+          "inputActions": {
+            "value": "__jtml_input_0_BoundEditor_6_value"
+          },
+          "instanceId": 6,
+          "locals": {},
+          "moduleId": 0,
+          "params": {
+            "label": "Hygiene",
+            "value": "__jtml_input_value"
+          },
+          "role": "component",
+          "slotHex": "",
+          "slotPlan": [],
+          "slotSource": "",
+          "sourceLine": 60
+        }
+      ],
+      "actions": [
+        {
+          "body": [
+            {
+              "expr": "__jtml_input_value_10",
+              "exprPlan": {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"__jtml_input_value_10\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "__jtml_input_value_10",
+                "segments": [
+                  "__jtml_input_value_10"
+                ],
+                "source": "__jtml_input_value_10",
+                "sourceSpan": {
+                  "endColumn": 22,
+                  "endLine": 1,
+                  "endOffset": 21,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "unknown"
+              },
+              "kind": "assign",
+              "lhs": "email"
+            }
+          ],
+          "name": "__jtml_input_0_BoundEditor_4_value",
+          "params": [
+            "__jtml_input_value_10"
+          ]
+        },
+        {
+          "body": [
+            {
+              "expr": "__jtml_input_value_11",
+              "exprPlan": {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"__jtml_input_value_11\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "__jtml_input_value_11",
+                "segments": [
+                  "__jtml_input_value_11"
+                ],
+                "source": "__jtml_input_value_11",
+                "sourceSpan": {
+                  "endColumn": 22,
+                  "endLine": 1,
+                  "endOffset": 21,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "unknown"
+              },
+              "kind": "assign",
+              "lhs": "other"
+            }
+          ],
+          "name": "__jtml_input_0_BoundEditor_5_value",
+          "params": [
+            "__jtml_input_value_11"
+          ]
+        },
+        {
+          "body": [
+            {
+              "expr": "__jtml_input_value_12",
+              "exprPlan": {
+                "astKind": 2,
+                "directJs": true,
+                "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"__jtml_input_value_12\"]; return value; })()",
+                "kind": "path",
+                "producer": "typed-ir",
+                "root": "__jtml_input_value_12",
+                "segments": [
+                  "__jtml_input_value_12"
+                ],
+                "source": "__jtml_input_value_12",
+                "sourceSpan": {
+                  "endColumn": 22,
+                  "endLine": 1,
+                  "endOffset": 21,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "unknown"
+              },
+              "kind": "assign",
+              "lhs": "__jtml_input_value"
+            }
+          ],
+          "name": "__jtml_input_0_BoundEditor_6_value",
+          "params": [
+            "__jtml_input_value_12"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "path": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/fixtures/production/explicit-input/editor.jtml",
+      "definitions": [
+        {
+          "bindingParams": [
+            "value"
+          ],
+          "bodyHex": "323a333a303a706167650a333a353a323a696e70757420696e746f2076616c756520617269612d6c6162656c206c6162656c0a343a353a323a746578742022426f756e64206d6972726f723a207b76616c75657d220a",
+          "bodyNodeCount": 3,
+          "bodyPlan": [
+            {
+              "childIndices": [
+                1,
+                2
+              ],
+              "definitionModule": null,
+              "expression": "",
+              "expressionPlan": {
+                "kind": "empty",
+                "source": ""
+              },
+              "head": "page",
+              "indent": 0,
+              "keyExpression": "",
+              "keyExpressionPlan": {
+                "kind": "empty",
+                "source": ""
+              },
+              "kind": "template",
+              "name": "page",
+              "operator": "",
+              "parentIndex": -1,
+              "reads": [],
+              "renderRoot": true,
+              "sourceColumn": 3,
+              "sourceLine": 2,
+              "text": "page",
+              "wordPlans": [
+                {
+                  "astKind": 2,
+                  "directJs": true,
+                  "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"page\"]; return value; })()",
+                  "kind": "path",
+                  "producer": "typed-ir",
+                  "root": "page",
+                  "segments": [
+                    "page"
+                  ],
+                  "source": "page",
+                  "sourceSpan": {
+                    "endColumn": 5,
+                    "endLine": 1,
+                    "endOffset": 4,
+                    "startColumn": 1,
+                    "startLine": 1,
+                    "startOffset": 0
+                  },
+                  "valueType": "unknown"
+                }
+              ],
+              "writes": []
+            },
+            {
+              "childIndices": [],
+              "definitionModule": null,
+              "expression": "into value aria-label label",
+              "expressionPlan": {
+                "kind": "binary",
+                "left": {
+                  "kind": "source",
+                  "source": "into value aria"
+                },
+                "operator": "-",
+                "right": {
+                  "kind": "source",
+                  "source": "label label"
+                },
+                "source": "into value aria-label label"
+              },
+              "head": "input",
+              "indent": 2,
+              "keyExpression": "",
+              "keyExpressionPlan": {
+                "kind": "empty",
+                "source": ""
+              },
+              "kind": "template",
+              "name": "input",
+              "operator": "",
+              "parentIndex": 0,
+              "reads": [
+                "value",
+                "aria",
+                "label"
+              ],
+              "renderRoot": false,
+              "sourceColumn": 5,
+              "sourceLine": 3,
+              "text": "input into value aria-label label",
+              "wordPlans": [
+                {
+                  "astKind": 2,
+                  "directJs": true,
+                  "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"input\"]; return value; })()",
+                  "kind": "path",
+                  "producer": "typed-ir",
+                  "root": "input",
+                  "segments": [
+                    "input"
+                  ],
+                  "source": "input",
+                  "sourceSpan": {
+                    "endColumn": 6,
+                    "endLine": 1,
+                    "endOffset": 5,
+                    "startColumn": 1,
+                    "startLine": 1,
+                    "startOffset": 0
+                  },
+                  "valueType": "unknown"
+                },
+                {
+                  "astKind": 2,
+                  "directJs": true,
+                  "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"into\"]; return value; })()",
+                  "kind": "path",
+                  "producer": "typed-ir",
+                  "root": "into",
+                  "segments": [
+                    "into"
+                  ],
+                  "source": "into",
+                  "sourceSpan": {
+                    "endColumn": 5,
+                    "endLine": 1,
+                    "endOffset": 4,
+                    "startColumn": 1,
+                    "startLine": 1,
+                    "startOffset": 0
+                  },
+                  "valueType": "unknown"
+                },
+                {
+                  "astKind": 2,
+                  "directJs": true,
+                  "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"value\"]; return value; })()",
+                  "kind": "path",
+                  "producer": "typed-ir",
+                  "root": "value",
+                  "segments": [
+                    "value"
+                  ],
+                  "source": "value",
+                  "sourceSpan": {
+                    "endColumn": 6,
+                    "endLine": 1,
+                    "endOffset": 5,
+                    "startColumn": 1,
+                    "startLine": 1,
+                    "startOffset": 0
+                  },
+                  "valueType": "unknown"
+                },
+                {
+                  "astKind": 0,
+                  "directJs": true,
+                  "jsExpression": "(((function(){ let value = scope == null ? undefined : scope[\"aria\"]; return value; })()) - ((function(){ let value = scope == null ? undefined : scope[\"label\"]; return value; })()))",
+                  "kind": "binary",
+                  "left": {
+                    "astKind": 2,
+                    "directJs": true,
+                    "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"aria\"]; return value; })()",
+                    "kind": "path",
+                    "producer": "typed-ir",
+                    "root": "aria",
+                    "segments": [
+                      "aria"
+                    ],
+                    "source": "aria",
+                    "sourceSpan": {
+                      "endColumn": 5,
+                      "endLine": 1,
+                      "endOffset": 4,
+                      "startColumn": 1,
+                      "startLine": 1,
+                      "startOffset": 0
+                    },
+                    "valueType": "unknown"
+                  },
+                  "operator": "-",
+                  "producer": "typed-ir",
+                  "right": {
+                    "astKind": 2,
+                    "directJs": true,
+                    "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"label\"]; return value; })()",
+                    "kind": "path",
+                    "producer": "typed-ir",
+                    "root": "label",
+                    "segments": [
+                      "label"
+                    ],
+                    "source": "label",
+                    "sourceSpan": {
+                      "endColumn": 11,
+                      "endLine": 1,
+                      "endOffset": 10,
+                      "startColumn": 6,
+                      "startLine": 1,
+                      "startOffset": 5
+                    },
+                    "valueType": "unknown"
+                  },
+                  "source": "(aria - label)",
+                  "sourceSpan": {
+                    "endColumn": 11,
+                    "endLine": 1,
+                    "endOffset": 10,
+                    "startColumn": 1,
+                    "startLine": 1,
+                    "startOffset": 0
+                  },
+                  "valueType": "unknown"
+                },
+                {
+                  "astKind": 2,
+                  "directJs": true,
+                  "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"label\"]; return value; })()",
+                  "kind": "path",
+                  "producer": "typed-ir",
+                  "root": "label",
+                  "segments": [
+                    "label"
+                  ],
+                  "source": "label",
+                  "sourceSpan": {
+                    "endColumn": 6,
+                    "endLine": 1,
+                    "endOffset": 5,
+                    "startColumn": 1,
+                    "startLine": 1,
+                    "startOffset": 0
+                  },
+                  "valueType": "unknown"
+                }
+              ],
+              "writes": [
+                "value"
+              ]
+            },
+            {
+              "childIndices": [],
+              "definitionModule": null,
+              "expression": "\"Bound mirror: {value}\"",
+              "expressionPlan": {
+                "astKind": 3,
+                "directJs": true,
+                "jsExpression": "((\"Bound mirror: \") + ((function(){ let value = scope == null ? undefined : scope[\"value\"]; return value; })()))",
+                "kind": "binary",
+                "left": {
+                  "directJs": true,
+                  "jsExpression": "\"Bound mirror: \"",
+                  "kind": "literal",
+                  "producer": "typed-ir",
+                  "source": "\"Bound mirror: \"",
+                  "value": "Bound mirror: ",
+                  "valueType": "string"
+                },
+                "operator": "+",
+                "producer": "typed-ir",
+                "right": {
+                  "astKind": 2,
+                  "directJs": true,
+                  "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"value\"]; return value; })()",
+                  "kind": "path",
+                  "producer": "typed-ir",
+                  "root": "value",
+                  "segments": [
+                    "value"
+                  ],
+                  "source": "value",
+                  "sourceSpan": {
+                    "endColumn": 22,
+                    "endLine": 1,
+                    "endOffset": 23,
+                    "startColumn": 1,
+                    "startLine": 1,
+                    "startOffset": 0
+                  },
+                  "valueType": "unknown"
+                },
+                "source": "\"Bound mirror: {value}\"",
+                "sourceSpan": {
+                  "endColumn": 22,
+                  "endLine": 1,
+                  "endOffset": 23,
+                  "startColumn": 1,
+                  "startLine": 1,
+                  "startOffset": 0
+                },
+                "valueType": "string"
+              },
+              "head": "text",
+              "indent": 2,
+              "keyExpression": "",
+              "keyExpressionPlan": {
+                "kind": "empty",
+                "source": ""
+              },
+              "kind": "template",
+              "name": "text",
+              "operator": "",
+              "parentIndex": 0,
+              "reads": [
+                "value"
+              ],
+              "renderRoot": false,
+              "sourceColumn": 5,
+              "sourceLine": 4,
+              "text": "text \"Bound mirror: {value}\"",
+              "wordPlans": [
+                {
+                  "astKind": 2,
+                  "directJs": true,
+                  "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"text\"]; return value; })()",
+                  "kind": "path",
+                  "producer": "typed-ir",
+                  "root": "text",
+                  "segments": [
+                    "text"
+                  ],
+                  "source": "text",
+                  "sourceSpan": {
+                    "endColumn": 5,
+                    "endLine": 1,
+                    "endOffset": 4,
+                    "startColumn": 1,
+                    "startLine": 1,
+                    "startOffset": 0
+                  },
+                  "valueType": "unknown"
+                },
+                {
+                  "astKind": 3,
+                  "directJs": true,
+                  "jsExpression": "((\"Bound mirror: \") + ((function(){ let value = scope == null ? undefined : scope[\"value\"]; return value; })()))",
+                  "kind": "binary",
+                  "left": {
+                    "directJs": true,
+                    "jsExpression": "\"Bound mirror: \"",
+                    "kind": "literal",
+                    "producer": "typed-ir",
+                    "source": "\"Bound mirror: \"",
+                    "value": "Bound mirror: ",
+                    "valueType": "string"
+                  },
+                  "operator": "+",
+                  "producer": "typed-ir",
+                  "right": {
+                    "astKind": 2,
+                    "directJs": true,
+                    "jsExpression": "(function(){ let value = scope == null ? undefined : scope[\"value\"]; return value; })()",
+                    "kind": "path",
+                    "producer": "typed-ir",
+                    "root": "value",
+                    "segments": [
+                      "value"
+                    ],
+                    "source": "value",
+                    "sourceSpan": {
+                      "endColumn": 22,
+                      "endLine": 1,
+                      "endOffset": 23,
+                      "startColumn": 1,
+                      "startLine": 1,
+                      "startOffset": 0
+                    },
+                    "valueType": "unknown"
+                  },
+                  "source": "\"Bound mirror: {value}\"",
+                  "sourceSpan": {
+                    "endColumn": 22,
+                    "endLine": 1,
+                    "endOffset": 23,
+                    "startColumn": 1,
+                    "startLine": 1,
+                    "startOffset": 0
+                  },
+                  "valueType": "string"
+                }
+              ],
+              "writes": []
+            }
+          ],
+          "bodySource": "2:3:0:page\n3:5:2:input into value aria-label label\n4:5:2:text \"Bound mirror: {value}\"\n",
+          "emitArity": {},
+          "emitPayloadTypes": {},
+          "emitPayloads": {},
+          "emits": [],
+          "eventBindings": [
+            "into"
+          ],
+          "hasSlot": false,
+          "localActions": [],
+          "localDerived": [],
+          "localEffects": [],
+          "localState": [],
+          "moduleId": 1,
+          "name": "BoundEditor",
+          "params": [
+            "label",
+            "value"
+          ],
+          "rootTemplateNodeCount": 1,
+          "slotCount": 0,
+          "sourceLine": 1
+        }
+      ],
+      "instances": [],
+      "actions": []
+    }
+  ]
+}

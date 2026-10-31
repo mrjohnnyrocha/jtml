@@ -39,6 +39,7 @@ struct OpenBlock {
 struct ComponentDef {
     std::string name;
     std::vector<std::string> params;
+    std::vector<std::string> bindingParams;
     std::vector<std::string> emits;
     std::map<std::string, int> emitArity;
     std::map<std::string, std::vector<std::string>> emitPayloads;
@@ -1833,9 +1834,18 @@ collectComponentDefs(const std::vector<Line>& lines) {
                 break;
             }
         }
-        std::vector<std::string> paramTokens(tokens.begin(), tokens.begin() + emitsIndex);
+        auto bind = std::find(tokens.begin() + 2, tokens.begin() + emitsIndex, "bind");
+        const size_t bindIndex = static_cast<size_t>(bind - tokens.begin());
+        std::vector<std::string> paramTokens(tokens.begin(), tokens.begin() + bindIndex);
         for (const auto& param : parseTypedIdentifiers(paramTokens, 2, lines[i].number)) {
             def.params.push_back(param.name);
+        }
+        if (bindIndex < emitsIndex) {
+            if (bindIndex + 2 != emitsIndex || !isIdentifier(tokens[bindIndex + 1]) ||
+                std::find(def.params.begin(), def.params.end(), tokens[bindIndex + 1]) != def.params.end())
+                throw FriendlySourceError("Expected one distinct 'bind name' in component '" + def.name + "'", lines[i].number, lines[i].sourceColumn);
+            def.bindingParams.push_back(tokens[bindIndex + 1]);
+            def.params.push_back(tokens[bindIndex + 1]);
         }
         if (emitsIndex < tokens.size()) {
             if (emitsIndex + 1 == tokens.size()) {
@@ -1851,6 +1861,12 @@ collectComponentDefs(const std::vector<Line>& lines) {
             }
         }
         def.body = normalizeChildBlock(lines, i + 1, end);
+        for (const auto& bodyLine : def.body) {
+            const auto bodyTokens = splitTokens(bodyLine.text);
+            if (bodyTokens.size() > 1 && (bodyTokens[0] == "let" || bodyTokens[0] == "const" || bodyTokens[0] == "get") &&
+                std::find(def.bindingParams.begin(), def.bindingParams.end(), bodyTokens[1]) != def.bindingParams.end())
+                throw FriendlySourceError("Binding parameter cannot be redeclared in component '" + def.name + "'", bodyLine.number, bodyLine.sourceColumn);
+        }
         def.actionArity = collectActionArities(def.body);
         components[def.name] = std::move(def);
         i = end - 1;
@@ -2125,7 +2141,10 @@ std::string componentDefinitionLine(const ComponentDef& def) {
          << " data-jtml-source-line=" << quote(std::to_string(def.number))
          << " data-jtml-component-body-hex=" << quote(serializedComponentBodyHex(def))
          << "\\\\";
-    return line.str();
+    auto result = line.str();
+    if (!def.bindingParams.empty()) result.insert(result.size() - 2,
+        " data-jtml-binding-params=" + quote(serializedComponentParams(def.bindingParams)));
+    return result;
 }
 
 std::string componentInstanceLine(const ComponentDef& def,
@@ -2183,18 +2202,21 @@ std::string joinParamNames(const std::vector<std::string>& params) {
 struct ComponentCallParts {
     std::vector<std::string> args;
     std::map<std::string, std::string> eventHandlers;
+    std::map<std::string, std::string> bindingArguments;
 };
 
 ComponentCallParts parseComponentCallParts(const std::vector<std::string>& tokens,
                                            size_t paramCount,
+                                           const std::vector<std::string>& bindingParams,
                                            const std::vector<std::string>& declaredEmits,
                                            const std::map<std::string, int>& emitArity,
                                            const std::map<std::string, int>& availableActions,
                                            int lineNumber,
+                                           int sourceColumn,
                                            const std::string& componentName) {
     ComponentCallParts parts;
     size_t index = 1;
-    for (size_t p = 0; p < paramCount; ++p) {
+    for (size_t p = 0; p < paramCount - bindingParams.size(); ++p) {
         if (index >= tokens.size() || tokens[index] == "on") {
             throw std::runtime_error("Component '" + componentName + "' expects " +
                                      std::to_string(paramCount) + " argument(s) at line " +
@@ -2203,8 +2225,20 @@ ComponentCallParts parseComponentCallParts(const std::vector<std::string>& token
         parts.args.push_back(tokens[index++]);
     }
 
+    for (const auto& binding : bindingParams) {
+        if (index + 3 >= tokens.size() || tokens[index] != "bind" || tokens[index + 1] != binding || tokens[index + 2] != "to" || !isIdentifier(tokens[index + 3]))
+            throw FriendlySourceError("Component '" + componentName + "' requires explicit 'bind " + binding + " to mutableState'", lineNumber, sourceColumn);
+        if (binding == "__proto__" || binding == "constructor" || binding == "prototype" || tokens[index + 3] == "__proto__" || tokens[index + 3] == "constructor" || tokens[index + 3] == "prototype")
+            throw FriendlySourceError("Component '" + componentName + "': reserved host names cannot carry binding authority", lineNumber, sourceColumn);
+        parts.bindingArguments[binding] = tokens[index + 3];
+        parts.args.push_back(tokens[index + 3]);
+        index += 4;
+    }
     while (index < tokens.size()) {
         if (tokens[index] != "on") {
+            if (bindingParams.empty() && std::find(tokens.begin() + 1, tokens.end(), "bind") != tokens.end())
+                throw FriendlySourceError("Component '" + componentName + "' does not declare binding authority", lineNumber, sourceColumn);
+            if (!bindingParams.empty()) throw FriendlySourceError("Unexpected/duplicate binding in component '" + componentName + "'", lineNumber, sourceColumn);
             throw std::runtime_error("Unexpected token '" + tokens[index] +
                                      "' in component call '" + componentName +
                                      "' at line " + std::to_string(lineNumber) +
@@ -2298,6 +2332,8 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
             }
 
             const ComponentDef& def = routeComponentIt->second;
+            if (!def.bindingParams.empty())
+                throw FriendlySourceError("Route component '" + def.name + "' cannot receive input binding authority; use an explicitly bound root instance", lines[i].number, lines[i].sourceColumn);
             const ComponentDef* layoutDef = nullptr;
             if (!layoutName.empty()) {
                 const auto layoutIt = components.find(layoutName);
@@ -2444,11 +2480,14 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
 
         const ComponentDef& def = componentIt->second;
         const auto callParts = parseComponentCallParts(tokens, def.params.size(),
+                                                       def.bindingParams,
                                                        def.emits,
                                                        def.emitArity,
                                                        availableActions,
-                                                       lines[i].number, def.name);
+                                                       lines[i].number, lines[i].sourceColumn, def.name);
 
+        if (!callParts.bindingArguments.empty() && depth > 0)
+            throw FriendlySourceError("Component '" + def.name + "': binding forwarding/nested authority is unsupported", lines[i].number, lines[i].sourceColumn);
         size_t callEnd = findBlockEnd(lines, i);
         std::vector<Line> slotLines = normalizeChildBlock(lines, i + 1, callEnd);
         slotLines = expandComponentLinesImpl(slotLines, components, instanceCounter,
@@ -2477,7 +2516,8 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
         bodyBindings.insert(bindings.begin(), bindings.end());
         const std::string instanceMarker =
             componentInstanceLine(def, instanceId, localBindings, bindings,
-                                  lines[i].number, "", slotHex);
+                                  lines[i].number, "", slotHex,
+                                  callParts.bindingArguments.empty() ? "" : "data-jtml-binding-args=" + quote(hexEncode(nlohmann::json(callParts.bindingArguments).dump())));
         expanded.push_back({lines[i].indent, instanceMarker, lines[i].number});
         for (const auto& bodyLine : body) {
             auto bodyTokens = splitTokens(bodyLine.text);

@@ -466,7 +466,7 @@ void validateClientComponentInstances(const nlohmann::json& instances,
         const auto& instance = instances[i];
         if (!requireObjectAt(instance, itemPath, issues)) continue;
         rejectUnknownKeys(instance, {"moduleId", "definitionModule", "id", "component",
-                                     "instanceId", "role", "params", "argumentPlans", "locals", "slotPlan"},
+                                     "instanceId", "role", "params", "argumentPlans", "inputActions", "locals", "slotPlan"},
                           itemPath, issues);
         requireOptionalModuleId(instance, "moduleId", itemPath, issues);
         requireOptionalModuleId(instance, "definitionModule", itemPath, issues);
@@ -481,6 +481,12 @@ void validateClientComponentInstances(const nlohmann::json& instances,
         if (instance.contains("argumentPlans") && instance["argumentPlans"].is_object()) {
             for (const auto& argument : instance["argumentPlans"].items())
                 validateClientExpressionPlan(argument.value(), itemPath + ".argumentPlans." + argument.key(), issues);
+        }
+        requireOptionalObject(instance, "inputActions", itemPath, issues);
+        if (instance.contains("inputActions") && instance["inputActions"].is_object()) {
+            for (const auto& action : instance["inputActions"].items())
+                if (!action.value().is_string() || action.value().get<std::string>().rfind("__jtml_input_", 0) != 0)
+                    issues.push_back(itemPath + ".inputActions must contain compiler-generated action identities");
         }
         requireOptionalObject(instance, "locals", itemPath, issues);
         if (instance.contains("slotPlan")) {
@@ -612,6 +618,46 @@ void validateClientRuntimePlanSchema(const nlohmann::json& manifest,
         validateClientComponentInstances(manifest.at("componentInstances"),
                                          path + ".componentInstances",
                                          issues);
+    }
+    // A capability is a compiler-issued action for this instance, with an
+    // existing one-argument assignment and the matching compiled read path.
+    if (manifest.contains("componentInstances") && manifest["componentInstances"].is_array()) {
+        for (const auto& instance : manifest["componentInstances"]) {
+            if (!instance.is_object() || !instance.contains("inputActions") || !instance["inputActions"].is_object()) continue;
+            for (const auto& input : instance["inputActions"].items()) {
+                const auto invalid = [&] { issues.push_back(path + ".inputActions has inconsistent compiler authority"); };
+                if (!input.value().is_string() || !instance.contains("moduleId") || !instance["moduleId"].is_number_unsigned() ||
+                    !instance.contains("id") || !instance["id"].is_string()) { invalid(); continue; }
+                const auto actionName = input.value().get<std::string>();
+                const auto stem = "__jtml_input_" + std::to_string(instance["moduleId"].get<unsigned>()) + "_" + instance["id"].get<std::string>() + "_" + input.key();
+                const auto suffix = actionName.size() > stem.size() ? actionName.substr(stem.size()) : std::string();
+                if (actionName != stem && (actionName.rfind(stem + "_", 0) != 0 || suffix.size() < 2 ||
+                    !std::all_of(suffix.begin() + 1, suffix.end(), [](unsigned char c) { return std::isdigit(c); }))) { invalid(); continue; }
+                if (!manifest.contains("actions") || !manifest["actions"].is_object() || !manifest["actions"].contains(actionName) ||
+                    !instance.contains("params") || !instance["params"].is_object() || !instance["params"].contains(input.key()) ||
+                    !instance.contains("argumentPlans") || !instance["argumentPlans"].is_object() || !instance["argumentPlans"].contains(input.key())) { invalid(); continue; }
+                const auto& action = manifest["actions"][actionName];
+                const auto& read = instance["argumentPlans"][input.key()];
+                if (!action.is_object() || !action.contains("params") || !action["params"].is_array() || action["params"].size() != 1 || !action["params"][0].is_string() ||
+                    !action.contains("body") || !action["body"].is_array() || action["body"].size() != 1 || !action["body"][0].is_object() ||
+                    !read.is_object() || read.value("kind", "") != "path" || !read.contains("root") || !read["root"].is_string()) { invalid(); continue; }
+                const auto& write = action["body"][0];
+                if (write.value("kind", "") != "assign" || !write.contains("lhs") || write["lhs"] != read["root"] ||
+                    !write.contains("expr") || write["expr"] != action["params"][0] || write["lhs"] == action["params"][0]) { invalid(); continue; }
+                if (manifest.contains("project") && manifest["project"].is_object()) {
+                    const auto& project = manifest["project"];
+                    bool owned = false;
+                    if (project.contains("entry") && project["entry"] == instance["moduleId"] && project.contains("modules") && project["modules"].is_array())
+                        for (const auto& module : project["modules"]) {
+                            if (!module.is_object() || !module.contains("id") || module["id"] != instance["moduleId"] || !module.contains("plan") || !module["plan"].is_object()) continue;
+                            const auto& plan = module["plan"];
+                            owned = plan.contains("state") && plan["state"].is_object() && plan["state"].contains(read["root"].get<std::string>()) &&
+                                plan.contains("actions") && plan["actions"].is_object() && plan["actions"].contains(actionName) && plan["actions"][actionName] == action;
+                        }
+                    if (!owned) invalid();
+                }
+            }
+        }
     }
     if (manifest.contains("project")) {
         if (allowProject) {

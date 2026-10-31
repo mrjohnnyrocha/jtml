@@ -43,7 +43,7 @@ private:
         if (!origin) return message + " at line " + std::to_string(line) + ":" + std::to_string(column);
         const auto position = origin->source->coordinates(origin->begin);
         return message + " at " + origin->source->file + ":" + std::to_string(position.first) +
-            ":" + std::to_string(position.second) + "; use spaces for indentation";
+            ":" + std::to_string(position.second) + (message.find("indentation") != std::string::npos ? "; use spaces for indentation" : "");
     }
 };
 

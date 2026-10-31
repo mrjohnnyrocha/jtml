@@ -1,6 +1,7 @@
 #include "jtml/runtime_plan.h"
 
 #include "jtml/expression_ir.h"
+#include "jtml/friendly.h"
 #include "jtml/expression_source.h"
 #include "jtml/lexer.h"
 #include "jtml/parser.h"
@@ -938,6 +939,7 @@ RuntimePlanComponentDefinition planComponentDefinition(
     planned.moduleId = moduleId;
     planned.name = semantic.name;
     planned.params = semantic.params;
+    planned.bindingParams = semantic.bindingParams;
     planned.emits = semantic.emits;
     planned.emitArity = semantic.emitArity;
     planned.emitPayloads = semantic.emitPayloads;
@@ -973,6 +975,7 @@ RuntimePlanComponentInstance planComponentInstance(
     planned.role = semantic.role.empty() ? "component" : semantic.role;
     planned.params = semantic.params;
     planned.argumentExpressions = semantic.argumentExpressions;
+    planned.bindingArguments = semantic.bindingArguments;
     planned.sourceSpan.provenance = semantic.provenance;
     if (semantic.provenance) planned.sourceSpan.original = semantic.provenance->inputConstruct(semantic.sourceLine);
     planned.locals = semantic.locals;
@@ -1075,6 +1078,110 @@ RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project) {
     return buildRuntimePlan(project, buildRuntimePlan(emptyProgram, project.linkedProgram));
 }
 
+namespace {
+
+// Entry-module text-input authority is proven from retained module plans. No
+// imported lookup, component-scope fallback or browser name resolution grants it.
+void planExplicitInputs(RuntimeProjectPlan& project) {
+    // Reserve the complete declared namespace before issuing any generated
+    // identifier. Every result is fresh with respect to authored bindings and
+    // prior allocations; no particular spelling or finite suffix is special.
+    std::set<std::string> occupied;
+    const auto reserve = [&](const auto& names) { occupied.insert(names.begin(), names.end()); };
+    const auto reservePlan = [&](const RuntimePlan& plan) {
+        reserve(plan.semantic.state); reserve(plan.semantic.constants);
+        reserve(plan.semantic.derived); reserve(plan.semantic.actions);
+        reserve(plan.semantic.fetches); reserve(plan.semantic.stores); reserve(plan.semantic.externs);
+        for (const auto& edge : plan.semantic.dependencies) { occupied.insert(edge.from); occupied.insert(edge.to); }
+        for (const auto& action : plan.actions) { occupied.insert(action.name); reserve(action.params); }
+        for (const auto& definition : plan.componentDefinitions) {
+            occupied.insert(definition.name); reserve(definition.params);
+            reserve(definition.localState); reserve(definition.localDerived); reserve(definition.localActions); reserve(definition.eventBindings);
+            for (const auto& node : definition.bodyPlan) {
+                occupied.insert(node.name); reserve(node.reads); reserve(node.writes);
+                if (node.kind == "action") {
+                    const auto words = splitFriendlyWords(node.text);
+                    if (words.size() > 2) occupied.insert(words.begin() + 2, words.end());
+                }
+            }
+        }
+    };
+    reservePlan(project.linkedPlan);
+    for (const auto& module : project.modules) reservePlan(module.plan);
+    const auto fresh = [&](const std::string& stem) {
+        std::string name = stem;
+        for (size_t suffix = 1; !occupied.insert(name).second; ++suffix)
+            name = stem + "_" + std::to_string(suffix);
+        return name;
+    };
+    for (auto& owner : project.modules) for (auto& instance : owner.plan.componentInstances) {
+        if (instance.bindingArguments.empty()) continue;
+        const auto fail = [&](const std::string& reason) {
+            throw std::runtime_error("component " + instance.component + " binding at " +
+                effectLocation(instance.sourceSpan) + ": " + reason);
+        };
+        if (owner.id != project.entry) fail("only an entry-module caller may authorize an input binding; imported state and binding forwarding are unsupported");
+        if (!instance.sourceSpan.original || instance.sourceSpan.original->source->file != owner.path)
+            fail("caller provenance does not match the owning entry module");
+        const RuntimePlanComponentDefinition* definition = nullptr;
+        for (const auto& module : project.modules) for (const auto& candidate : module.plan.componentDefinitions)
+            if (candidate.moduleId == instance.definitionModule && candidate.name == instance.component) definition = &candidate;
+        if (!definition) fail("binding declaration has no resolved component owner");
+        for (const auto& argument : instance.bindingArguments) {
+            for (const auto& route : owner.plan.routes)
+                if (std::find(route.params.begin(), route.params.end(), argument.value) != route.params.end())
+                    fail("route parameters cannot grant input binding authority");
+            if (std::find(definition->bindingParams.begin(), definition->bindingParams.end(), argument.name) == definition->bindingParams.end())
+                fail("unauthorized binding parameter `" + argument.name + "`");
+            const auto state = std::find_if(owner.plan.state.begin(), owner.plan.state.end(), [&](const auto& binding) { return binding.name == argument.value; });
+            if (state == owner.plan.state.end() || std::find(owner.plan.semantic.constants.begin(), owner.plan.semantic.constants.end(), argument.value) != owner.plan.semantic.constants.end())
+                fail("`" + argument.value + "` must be a mutable let owned by the entry module; constants, derived and imported bindings are read-only");
+            const auto value = parseExpressionIr(state->expr);
+            if (!value || value->kind != ExpressionIrKind::Literal || value->valueType != ExpressionValueType::String)
+                fail("`" + argument.value + "` requires a literal string initializer; borrowed/collection targets are unsupported");
+            size_t owners = 0;
+            for (const auto& module : project.modules) {
+                for (const auto& binding : module.plan.state) if (binding.name == argument.value) ++owners;
+                for (const auto& binding : module.plan.derived) if (binding.name == argument.value) ++owners;
+            }
+            if (owners != 1) fail("ambiguous module storage for `" + argument.value + "`; input authority requires a unique owner");
+            for (const auto& node : definition->bodyPlan) {
+                if (std::find(node.writes.begin(), node.writes.end(), argument.name) != node.writes.end() && node.kind == "assignment")
+                    fail("binding parameter `" + argument.name + "` is input-only; action assignments are unsupported at " + effectLocation(node.sourceSpan));
+                const auto words = splitFriendlyWords(node.text);
+                for (size_t n = 0; n + 1 < words.size(); ++n) if (words[n] == "into" && words[n + 1] == argument.name) {
+                    if (node.head != "input") fail("binding parameters support text input only at " + effectLocation(node.sourceSpan));
+                    for (size_t k = 0; k + 1 < words.size(); ++k) if (words[k] == "type" && words[k + 1] != "\"text\"" && words[k + 1] != "\"email\"" && words[k + 1] != "\"password\"" && words[k + 1] != "\"search\"" && words[k + 1] != "\"tel\"" && words[k + 1] != "\"url\"")
+                        fail("binding parameters support text input types only at " + effectLocation(node.sourceSpan));
+                }
+            }
+            const auto actionName = fresh("__jtml_input_" + std::to_string(owner.id) + "_" + instance.id + "_" + argument.name);
+            RuntimePlanAction action;
+            action.name = actionName;
+            action.params = {fresh("__jtml_input_value")};
+            RuntimePlanStatement write;
+            write.kind = "assign"; write.lhs = argument.value; write.expr = action.params.front();
+            action.body.push_back(write);
+            owner.plan.actions.push_back(action);
+            project.linkedPlan.actions.push_back(action);
+            instance.inputActions[argument.name] = actionName;
+            for (auto& linked : project.linkedPlan.componentInstances) {
+                if (linked.id != instance.id || linked.sourceLine != instance.sourceLine || linked.component != instance.component) continue;
+                if (!linked.sourceSpan.original || !instance.sourceSpan.original || linked.sourceSpan.original->source->file != instance.sourceSpan.original->source->file)
+                    fail("linked input instance lacks authoritative owner provenance");
+                linked.inputActions[argument.name] = actionName;
+                linked.moduleId = owner.id; linked.definitionModule = instance.definitionModule;
+            }
+        }
+    }
+    for (const auto& instance : project.linkedPlan.componentInstances) {
+        if (instance.bindingArguments.size() != instance.inputActions.size())
+            throw std::runtime_error("component " + instance.component + " binding at " + effectLocation(instance.sourceSpan) + ": no authoritative retained caller plan; explicit input authority cannot be issued");
+    }
+}
+
+} // namespace
+
 RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project,
                                     const RuntimePlan& linkedPlan) {
     RuntimeProjectPlan projectPlan;
@@ -1166,6 +1273,7 @@ RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project,
             if (std::find(projectPlan.linkedPlan.effectIssues.begin(), projectPlan.linkedPlan.effectIssues.end(), issue) ==
                 projectPlan.linkedPlan.effectIssues.end()) projectPlan.linkedPlan.effectIssues.push_back(issue);
     }
+    planExplicitInputs(projectPlan);
     return projectPlan;
 }
 

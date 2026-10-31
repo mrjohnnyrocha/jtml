@@ -73,6 +73,7 @@ struct RuntimePlanComponentDefinition {
     int rootTemplateNodeCount = 0;
     int slotCount = 0;
     int sourceLine = 0;
+    std::vector<std::string> bindingParams;
 };
 
 struct RuntimePlanComponentInstance {
@@ -90,6 +91,8 @@ struct RuntimePlanComponentInstance {
     int sourceLine = 0;
     std::vector<SemanticProperty> argumentExpressions;
     SourceSpan sourceSpan;
+    std::vector<SemanticProperty> bindingArguments;
+    std::map<std::string, std::string> inputActions;
 };
 
 struct RuntimePlanSubscription {

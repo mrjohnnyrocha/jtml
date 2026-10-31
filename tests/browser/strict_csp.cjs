@@ -28,7 +28,7 @@ for (const [name, source] of Object.entries(cases)) {
       assert(!/<script\b(?![^>]*\bsrc=)(?![^>]*\btype="application\/json")/i.test(text), `${name}: inline executable script`);
     }
   }
-  assert(fs.statSync(path.join(out,name,'jtml-runtime.js')).size <= 272000);
+  assert(fs.statSync(path.join(out,name,'jtml-runtime.js')).size <= 273000);
   assert(fs.statSync(path.join(out,name,'app.js')).size <= 20000);
 }
 const server = http.createServer((req, res) => {

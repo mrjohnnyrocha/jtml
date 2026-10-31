@@ -31,6 +31,8 @@ const char* browserRuntimePreludeChunk() {
       const clientDerived = {};
       const clientDerivedPlans = {};
       const clientActions = {};
+      const clientWrites = new Set();
+      let clientSubscriptions = [];
       const __jtml_extern_fns = {};
       const __jtml_media_actions = {};
       let componentInstances = [];
@@ -3280,6 +3282,14 @@ const char* browserRuntimeComponentChunk() {
         return instance;
       }
 
+      function componentEmitContract(record) {
+        return {
+          emitArity: record.emitArity && typeof record.emitArity === 'object' ? Object.assign({}, record.emitArity) : {},
+          emitPayloads: record.emitPayloads && typeof record.emitPayloads === 'object' ? Object.assign({}, record.emitPayloads) : {},
+          emitPayloadTypes: record.emitPayloadTypes && typeof record.emitPayloadTypes === 'object' ? Object.assign({}, record.emitPayloadTypes) : {},
+        };
+      }
+
       function scanComponentInstances() {
         const manifestInstances = (window.jtml && Array.isArray(window.jtml.componentInstanceManifest))
           ? window.jtml.componentInstanceManifest
@@ -3319,9 +3329,7 @@ const char* browserRuntimeComponentChunk() {
               name: record.name || '',
               params: Array.isArray(record.params) ? record.params.slice() : [],
               emits: Array.isArray(record.emits) ? record.emits.slice() : [],
-              emitArity: record.emitArity && typeof record.emitArity === 'object' ? Object.assign({}, record.emitArity) : {},
-              emitPayloads: record.emitPayloads && typeof record.emitPayloads === 'object' ? Object.assign({}, record.emitPayloads) : {},
-              emitPayloadTypes: record.emitPayloadTypes && typeof record.emitPayloadTypes === 'object' ? Object.assign({}, record.emitPayloadTypes) : {},
+              ...componentEmitContract(record),
               localState: Array.isArray(record.localState) ? record.localState.slice() : [],
               localDerived: Array.isArray(record.localDerived) ? record.localDerived.slice() : [],
               localActions: Array.isArray(record.localActions) ? record.localActions.slice() : [],
@@ -3341,9 +3349,7 @@ const char* browserRuntimeComponentChunk() {
                 bodyPlan: Array.isArray(record.bodyPlan) ? record.bodyPlan.slice() : [],
                 actions: Array.isArray(record.localActions) ? record.localActions.slice() : [],
                 emits: Array.isArray(record.emits) ? record.emits.slice() : [],
-                emitArity: record.emitArity && typeof record.emitArity === 'object' ? Object.assign({}, record.emitArity) : {},
-                emitPayloads: record.emitPayloads && typeof record.emitPayloads === 'object' ? Object.assign({}, record.emitPayloads) : {},
-                emitPayloadTypes: record.emitPayloadTypes && typeof record.emitPayloadTypes === 'object' ? Object.assign({}, record.emitPayloadTypes) : {},
+              ...componentEmitContract(record),
                 state: Array.isArray(record.localState) ? record.localState.slice() : [],
                 derived: Array.isArray(record.localDerived) ? record.localDerived.slice() : [],
                 effects: Array.isArray(record.localEffects) ? record.localEffects.slice() : []
@@ -3864,8 +3870,22 @@ const char* browserRuntimeComponentChunk() {
         }
       }
 
+      function flushRootSubscriptions() {
+        try {
+          for (const subscription of clientSubscriptions) {
+            if (!clientWrites.has(subscription.dependency)) continue;
+            const value = clientState[subscription.dependency];
+            if (!['number', 'string', 'boolean'].includes(typeof value))
+              throw Error('Root effect dependency ' + subscription.dependency + ' requires scalar writes; inspect its writers with jtml explain');
+            runClientStatements(clientActions[subscription.action].body);
+            applyClientDerived();
+          }
+        } finally { clientWrites.clear(); }
+      }
+
       function applyClientState() {
         applyClientDerived();
+        if (browserLocalRuntime) flushRootSubscriptions();
         componentInstances.forEach(function(i){
           if(!i.argumentPlans||!i.element||!i.element.isConnected)return;
           const d=componentDefinitionForInstance(i),p=i.params,s=componentScopeFor(i,d),c=changedParamNames(p,i.params);
@@ -3936,11 +3956,12 @@ const char* browserRuntimeComponentChunk() {
         });
       }
 
-      function assignClientPath(path, value) {
+      function assignClientPath(path, value, locals) {
         const parts = parseClientPathSegments(path, clientState);
         if (!parts.length) return;
         if (parts.length === 1) {
           clientState[parts[0]] = value;
+          if (browserLocalRuntime && !(locals || []).includes(parts[0])) clientWrites.add(parts[0]);
           return;
         }
         if (clientState[parts[0]] == null || typeof clientState[parts[0]] !== 'object') {
@@ -3949,12 +3970,12 @@ const char* browserRuntimeComponentChunk() {
         assignObjectPath(clientState[parts[0]], parts.slice(1), value);
       }
 
-      function runClientStatements(statements) {
+      function runClientStatements(statements, locals) {
         statements = statements || [];
         for (let i = 0; i < statements.length; i += 1) {
           const stmt = statements[i];
           if (!stmt || !stmt.kind) continue;
-          if (stmt.kind === 'assign') {
+          if (stmt.kind === 'assign' || stmt.kind === 'show') {
             const compiled = evaluateCompiledComponentExpressionResult(
               stmt.exprPlan || compileComponentExpressionPlan(stmt.expr || ''),
               stmt.expr || '',
@@ -3962,7 +3983,10 @@ const char* browserRuntimeComponentChunk() {
             const result = compiled && compiled.found
               ? compiled
               : evaluateClientBodyExpression(stmt.expr || '');
-            if (result.found) assignClientPath(stmt.lhs || '', result.value);
+            if (result.found) {
+              if (stmt.kind === 'show') console.log('[SHOW] ' + renderTemplateValue(result.value));
+              else assignClientPath(stmt.lhs || '', result.value, locals);
+            }
           } else if (stmt.kind === 'if') {
             const compiledCondition = evaluateCompiledComponentExpressionResult(
               stmt.conditionPlan || compileComponentExpressionPlan(stmt.condition || ''),
@@ -3971,7 +3995,7 @@ const char* browserRuntimeComponentChunk() {
             const condition = compiledCondition && compiledCondition.found
               ? compiledCondition
               : evaluateClientExpression(stmt.condition || '');
-            runClientStatements(condition.found && condition.value ? stmt.then : stmt.else);
+            runClientStatements(condition.found && condition.value ? stmt.then : stmt.else, locals);
           }
         }
       }
@@ -3988,7 +4012,7 @@ const char* browserRuntimeComponentChunk() {
           clientState[param] = args[index];
         });
         try {
-          runClientStatements(action.body || []);
+          runClientStatements(action.body || [], action.params);
         } finally {
           (action.params || []).forEach(function (param) {
             if (Object.prototype.hasOwnProperty.call(restore, param)) clientState[param] = restore[param];
@@ -4151,6 +4175,7 @@ const char* browserRuntimeComponentChunk() {
         Object.assign(clientDerived, manifest.derived || {});
         Object.assign(clientDerivedPlans, manifest.derivedPlans || {});
         Object.assign(clientActions, manifest.actions || {});
+        clientSubscriptions = manifest.subscriptions || [];
         window.jtml = Object.assign(window.jtml || {}, {
           state: clientState,
           statePlans: clientStatePlans,

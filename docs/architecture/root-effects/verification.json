@@ -1,0 +1,20 @@
+{
+  "baselineCommit": "138d8f729b0363f8f06f28d9a177dadce7ddf509",
+  "command": "env JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=/tmp/jtml-effects-browser-driver JTML_BENCH_BROWSER=/tmp/jtml-review-browsers/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1 JTML_REQUIRE_BROWSER_BENCH=1 scripts/verify_all.sh",
+  "gateExit": 0,
+  "ctest": "492/492 passed",
+  "focusedExit": 0,
+  "focusedTests": "8/8 passed",
+  "auditExit": 1,
+  "remainingAuditFailures": [
+    "demos/index: command page content",
+    "demos/index: sign in navigates to command"
+  ],
+  "gateLogSha256": "7ff0c53ea4fa541299459167f2673ffa78f0b00d12e46221edd7c4ba277be4b5",
+  "finalCommitCI": "pending; authoritative final-commit status recorded on PR",
+  "limitations": [
+    "Existing reference HTML 100009 > 70000 microfixture size overage is reported by existing reference suite, unchanged policy.",
+    "Conformance evidence retains native UNKNOWN and exclusions; zero exit is not universal semantic parity.",
+    "No browser benchmark skip; all nine require clean exit."
+  ]
+}

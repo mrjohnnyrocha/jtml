@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iterator>
 #include <sstream>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -534,7 +535,7 @@ void validateClientRuntimePlanSchema(const nlohmann::json& manifest,
         return;
     }
     auto allowedTopLevel = std::vector<std::string>{
-        "state", "statePlans", "derived", "derivedPlans", "actions", "routes", "fetches",
+        "state", "statePlans", "derived", "derivedPlans", "actions", "subscriptions", "routes", "fetches",
         "componentDefinitions", "componentInstances"
     };
     if (allowProject) allowedTopLevel.push_back("project");
@@ -561,6 +562,44 @@ void validateClientRuntimePlanSchema(const nlohmann::json& manifest,
     requireObject("derivedPlans");
     requireObject("actions");
 
+    if (manifest.contains("subscriptions")) {
+        const auto& subscriptions = manifest.at("subscriptions");
+        if (requireArrayAt(subscriptions, path + ".subscriptions", issues)) {
+            if (subscriptions.size() > 64) issues.push_back(path + ".subscriptions exceeds 64 entries");
+            std::set<std::pair<std::string, std::string>> identities;
+            for (const auto& subscription : subscriptions) {
+                if (!requireObjectAt(subscription, path + ".subscriptions[]", issues)) continue;
+                rejectUnknownKeys(subscription, {"action", "dependency", "moduleId"}, path + ".subscriptions[]", issues);
+                if (!subscription.contains("moduleId")) issues.push_back(path + ".subscriptions requires moduleId");
+                requireOptionalModuleId(subscription, "moduleId", path + ".subscriptions[]", issues);
+                if (!subscription.contains("action") || !subscription["action"].is_string() ||
+                    !subscription.contains("dependency") || !subscription["dependency"].is_string()) {
+                    issues.push_back(path + ".subscriptions requires string action/dependency"); continue;
+                }
+                const auto action = subscription["action"].get<std::string>();
+                const auto dependency = subscription["dependency"].get<std::string>();
+                if (!manifest.value("actions", nlohmann::json::object()).contains(action) ||
+                    !manifest.value("state", nlohmann::json::object()).contains(dependency))
+                    issues.push_back(path + ".subscriptions references missing action/state");
+                else if (!manifest["actions"][action].value("params", nlohmann::json::array()).empty())
+                    issues.push_back(path + ".subscriptions requires zero-argument callbacks");
+                if (!identities.emplace(action, dependency).second)
+                    issues.push_back(path + ".subscriptions contains duplicate binding");
+                if (manifest.contains("project") && manifest["project"].is_object() &&
+                    manifest["project"].contains("modules") && manifest["project"]["modules"].is_array()) {
+                    const auto& modules = manifest["project"]["modules"];
+                    const auto owner = std::find_if(modules.begin(), modules.end(), [&](const auto& module) {
+                        return module.is_object() && module.contains("id") && subscription.contains("moduleId") &&
+                               module["id"] == subscription["moduleId"];
+                    });
+                    if (owner == modules.end() || !owner->contains("plan") || !(*owner)["plan"].is_object() ||
+                        !(*owner)["plan"].value("state", nlohmann::json::object()).contains(dependency) ||
+                        !(*owner)["plan"].value("actions", nlohmann::json::object()).contains(action))
+                        issues.push_back(path + ".subscriptions must reference state/action in the owning module");
+                }
+            }
+        }
+    }
     if (manifest.contains("routes")) validateClientRoutes(manifest.at("routes"), path + ".routes", issues);
     if (manifest.contains("fetches")) validateClientFetches(manifest.at("fetches"), path + ".fetches", issues);
     if (manifest.contains("actions")) validateClientActions(manifest.at("actions"), path + ".actions", issues);

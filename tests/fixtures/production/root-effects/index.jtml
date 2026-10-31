@@ -1,0 +1,55 @@
+jtml 2
+use { moduleCount, moduleHits, bumpModule } from "./module.jtml"
+
+let count = 0
+let hits = 0
+let step = 0
+let chain = 0
+let order = "seed"
+let other = 0
+let summary = "initial"
+
+effect count
+  hits += 1
+  step = count
+  summary = "count {count} hits {hits}"
+  show count
+effect step
+  chain += 1
+effect count
+  order = "seen {hits}"
+
+when increment
+  count += 1
+when same
+  count = count
+when batch
+  count += 1
+  count += 1
+when unrelated
+  other += 1
+when shadow count
+  count += 1
+when branch enabled
+  if enabled
+    count += 1
+when backToZero
+  count = 0
+
+page
+  text "Count: {count}"
+  text "Hits: {hits}"
+  text "Chain: {chain}"
+  text "Order: {order}"
+  text "Summary: {summary}"
+  text "Module count: {moduleCount}"
+  text "Module hits: {moduleHits}"
+  button "Increment" click increment
+  button "Same" click same
+  button "Batch" click batch
+  button "Unrelated" click unrelated
+  button "Shadow" click shadow(20)
+  button "False branch" click branch(false)
+  button "True branch" click branch(true)
+  button "Zero" click backToZero
+  button "Module" click bumpModule

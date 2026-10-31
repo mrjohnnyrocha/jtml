@@ -477,6 +477,8 @@ struct SemanticSets {
                         std::string, std::string, bool, bool, bool>> fetchRecords;
     std::set<std::string> stores;
     std::set<std::string> effects;
+    std::vector<SemanticSubscription> subscriptions;
+    std::vector<SourceSpan> unsubscriptions;
     std::set<std::string> imports;
     std::set<std::tuple<std::string, std::string, std::string, bool, int, int>> importRecords;
     std::set<std::tuple<std::string, std::string, std::string, bool, int>> exportRecords;
@@ -498,7 +500,7 @@ struct SemanticSets {
 
 void collectFromNodes(const std::vector<std::unique_ptr<ASTNode>>& nodes,
                       SemanticSets& out,
-                      const std::string& context = "");
+                      const std::string& context = "", bool rootOwned = false);
 
 void addEdge(SemanticSets& out,
              const std::string& from,
@@ -918,7 +920,7 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
     collectFromNodes(elem.content, out, context);
 }
 
-void collectFromNode(const ASTNode& node, SemanticSets& out, const std::string& context) {
+void collectFromNode(const ASTNode& node, SemanticSets& out, const std::string& context, bool rootOwned) {
     switch (node.getType()) {
         case ASTNodeType::JtmlElement:
             collectFromElement(static_cast<const JtmlElementNode&>(node), out, context);
@@ -953,6 +955,15 @@ void collectFromNode(const ASTNode& node, SemanticSets& out, const std::string& 
         case ASTNodeType::ExpressionStatement:
             addExpressionEdges(out, "expr", static_cast<const ExpressionNode&>(node).expression.get(), "reads");
             break;
+        case ASTNodeType::UnsubscribeStatement:
+            out.unsubscriptions.push_back(node.sourceSpan);
+            break;
+        case ASTNodeType::SubscribeStatement: {
+            const auto& subscription = static_cast<const SubscribeStatementNode&>(node);
+            out.subscriptions.push_back({subscription.functionName, subscription.variableName,
+                                         node.sourceSpan, rootOwned});
+            break;
+        }
         case ASTNodeType::FunctionDeclaration: {
             const auto& stmt = static_cast<const FunctionDeclarationNode&>(node);
             const auto effectVar = effectVariableFromFunction(stmt.name);
@@ -1013,9 +1024,9 @@ void collectFromNode(const ASTNode& node, SemanticSets& out, const std::string& 
 
 void collectFromNodes(const std::vector<std::unique_ptr<ASTNode>>& nodes,
                       SemanticSets& out,
-                      const std::string& context) {
+                      const std::string& context, bool rootOwned) {
     for (const auto& node : nodes) {
-        if (node) collectFromNode(*node, out, context);
+        if (node) collectFromNode(*node, out, context, rootOwned);
     }
 }
 
@@ -1387,7 +1398,7 @@ SemanticProgram analyzeSemanticProgram(
     const std::vector<std::unique_ptr<ASTNode>>& program,
     const std::string& originalSource) {
     SemanticSets sets;
-    collectFromNodes(program, sets);
+    collectFromNodes(program, sets, "", true);
     collectFriendlySourceFallback(originalSource, sets);
 
     SemanticProgram semantic;
@@ -1411,6 +1422,8 @@ SemanticProgram analyzeSemanticProgram(
     semantic.fetchRecords = fetchesToVector(sets.fetchRecords);
     semantic.stores = toVector(sets.stores);
     semantic.effects = toVector(sets.effects);
+    semantic.subscriptions = std::move(sets.subscriptions);
+    semantic.unsubscriptions = std::move(sets.unsubscriptions);
     semantic.imports = toVector(sets.imports);
     semantic.importRecords = importsToVector(sets.importRecords);
     semantic.exportRecords = exportsToVector(sets.exportRecords);

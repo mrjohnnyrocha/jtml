@@ -1,0 +1,22 @@
+{
+  "baselineCommit": "138d8f729b0363f8f06f28d9a177dadce7ddf509",
+  "baseline": {
+    "raw": 271990,
+    "gzip": 50526,
+    "sha256": "9d06684bb1880a4e7d2e1288534a74db4166c3f64b0f3d8f9ba41521337da3fe"
+  },
+  "implementation": {
+    "raw": 272877,
+    "gzip": 50828,
+    "sha256": "5d52d07452441c332fa09c59b8631b26d938380b8be7c818d6f0f75ae5be74f7"
+  },
+  "delta": {
+    "raw": 887,
+    "gzip": 302
+  },
+  "gzipMethod": "Python gzip.compress(bytes, mtime=0)",
+  "budget": {
+    "before": 272000,
+    "proposed": 273000
+  }
+}

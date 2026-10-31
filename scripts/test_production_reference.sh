@@ -49,7 +49,7 @@ for name in assets:
     # The existing microbenchmark budgets remain in benchmark_runtime.sh.
     # This composed app reports its sizes; only the shared runtime uses that budget.
     if name == "jtml-runtime.js":
-        assert path.stat().st_size <= 272000, "shared runtime exceeds existing budget"
+        assert path.stat().st_size <= 273000, "shared runtime exceeds existing budget"
     print(f"asset: {name} {path.stat().st_size} bytes")
     source = path.read_text()
     assert not re.search(r"\bnew\s+Function\b|\beval\s*\(", source), f"dynamic compilation in {name}"

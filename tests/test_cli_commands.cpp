@@ -3,6 +3,7 @@
 #include "cli/browser_build_policy.h"
 #include "cli/browser_build_schema.h"
 #include "cli/browser_build.h"
+#include "jtml/runtime/static_update_plan_emitter.h"
 #include "json.hpp"
 
 #include <gtest/gtest.h>
@@ -3347,4 +3348,146 @@ TEST(CliBuild, InventoryOwnershipSourcesBuildCleanWithoutCompatibilityAssets) {
         EXPECT_TRUE(std::filesystem::exists(root / "components/index.js"));
         EXPECT_FALSE(std::filesystem::exists(root / "jtml-update-plans.js"));
     }
+}
+
+TEST(CliBuild, RootScalarEffectsCarryTypedOwnedSubscriptions) {
+    const auto input = (std::filesystem::path(JTML_SOURCE_DIR) /
+        "tests/fixtures/production/root-effects/index.jtml").string();
+    const auto program = jtml::cli::parseProgramFromFile(input);
+    const auto semantic = jtml::analyzeSemanticProgram(program);
+    ASSERT_EQ(semantic.subscriptions.size(), 4u);
+    for (const auto& subscription : semantic.subscriptions) {
+        EXPECT_TRUE(subscription.rootOwned);
+        EXPECT_TRUE(subscription.sourceSpan.original);
+    }
+    const auto project = jtml::cli::buildRuntimeProjectPlanForInput(input,
+        jtml::SyntaxMode::Auto, program, semantic, false);
+    ASSERT_EQ(project.linkedPlan.subscriptions.size(), 4u);
+    for (const auto& subscription : project.linkedPlan.subscriptions) {
+        EXPECT_NE(subscription.moduleId, jtml::InvalidSemanticModuleId);
+        EXPECT_TRUE(subscription.sourceSpan.original);
+        EXPECT_FALSE(subscription.writes.empty());
+    }
+    EXPECT_TRUE(jtml::validateStaticComponentModuleForProduction(project).empty());
+    const auto output = makeTempDir("root-effects");
+    jtml::cli::Options options;
+    options.inputFile = input; options.outputFile = output.string(); options.target = "browser";
+    const auto result = captureCommand([&] { return jtml::cli::cmdBuild(options); });
+    ASSERT_EQ(result.code, 0) << result.err;
+    const auto html = readTextFile(output / "index.html");
+    EXPECT_NE(html.find("\"subscriptions\""), std::string::npos);
+    EXPECT_EQ(html.find("\"effectIssues\""), std::string::npos);
+    EXPECT_EQ(html.find("\"sourceSpan\""), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(output / "jtml-update-plans.js"));
+}
+
+TEST(CliBuild, RootScalarEffectsRejectUnsupportedGraphsWithSourceDiagnostics) {
+    const std::vector<std::pair<std::string, std::string>> cases = {
+        {"const count = 0\neffect count\n  show count\n", "mutable scalar let"},
+        {"get count = 0\neffect count\n  show count\n", "mutable scalar let"},
+        {"let count = [0]\neffect count\n  show count\n", "mutable scalar let"},
+        {"let count = { x: 0 }\neffect count\n  show count\n", "mutable scalar let"},
+        {"let count = 0\neffect count\n  count += 1\n", "cyclic root effect"},
+        {"let count = 0\nlet last = 0\neffect count\n  last = count\nwhen bad\n  count = [1]\n", "requires a scalar assignment"},
+        {"let count = 0\nlet last = 0\neffect count\n  last = count\ncount = 1\n", "imperative module statements"},
+        {"let count = 0\nlet next = 0\neffect count\n  next += 1\neffect next\n  count += 1\n", "cyclic root effect"},
+        {"let count = 0\neffect count\n  missing = count\n", "existing module-owned scalar"},
+        {"let count = 0\neffect count\n  while count < 2\n    count += 1\n", "calls, loops and async"},
+        {"let count = 0\nwhen called\n  count += 1\neffect count\n  called()\n", "calls, loops and async"},
+        {"let count = 0\nif count > 0\n  effect count\n    count += 1\n", "nested subscriptions"},
+        {"make Counter\n  let count = 0\n  effect count\n    count += 1\n  page\n    text count\npage\n  Counter\n", "component-local effects"},
+    };
+    for (const auto& [source, expected] : cases) {
+        SCOPED_TRACE(source);
+        const auto input = writeTempJtml("root-effect-rejection", "jtml 2\n" + source);
+        const auto output = makeTempDir("root-effect-rejection");
+        jtml::cli::Options options;
+        options.inputFile = input.string(); options.outputFile = output.string(); options.target = "browser";
+        std::string message;
+        try { (void)captureCommand([&] { return jtml::cli::cmdBuild(options); }); }
+        catch (const std::runtime_error& error) { message = error.what(); }
+        EXPECT_FALSE(message.empty()) << "unsupported effect unexpectedly compiled";
+        EXPECT_NE(message.find(expected), std::string::npos) << message;
+        EXPECT_NE(message.find(input.string() + ":"), std::string::npos) << message;
+        EXPECT_FALSE(std::filesystem::exists(output / "app.js"));
+    }
+}
+
+TEST(CliBuild, RootScalarEffectsRetainScalarShowAndRejectAmbiguousCallbacks) {
+    const auto fixture = (std::filesystem::path(JTML_SOURCE_DIR) /
+        "tests/fixtures/production/module-ownership/effect.jtml").string();
+    const auto program = jtml::cli::parseProgramFromFile(fixture);
+    const auto plan = jtml::buildRuntimePlan(program);
+    ASSERT_EQ(plan.subscriptions.size(), 1u);
+    ASSERT_TRUE(plan.effectIssues.empty());
+    const auto action = std::find_if(plan.actions.begin(), plan.actions.end(),
+        [&](const auto& item) { return item.name == plan.subscriptions[0].action; });
+    ASSERT_NE(action, plan.actions.end());
+    ASSERT_EQ(action->body.size(), 1u);
+    EXPECT_EQ(action->body[0].kind, "show");
+    EXPECT_EQ(action->body[0].expr, "count");
+
+    const auto input = writeTempJtml("effect-duplicate-callback",
+        "define count = 0\\\\\nfunction changed()\\\\\nshow count\\\\\n\\\\\n"
+        "function changed()\\\\\nshow count\\\\\n\\\\\nsubscribe changed to count\\\\\n");
+    jtml::cli::Options options;
+    options.inputFile = input.string(); options.outputFile = makeTempDir("effect-duplicate").string();
+    options.target = "browser"; options.syntax = jtml::SyntaxMode::Classic;
+    std::string message;
+    try { (void)captureCommand([&] { return jtml::cli::cmdBuild(options); }); }
+    catch (const std::runtime_error& error) { message = error.what(); }
+    EXPECT_NE(message.find("ambiguous callback"), std::string::npos) << message;
+}
+
+TEST(CliBuild, RootScalarEffectsClosedSchemaRejectsInvalidSubscriptionRecords) {
+    const auto input = (std::filesystem::path(JTML_SOURCE_DIR) / "examples/friendly_effect.jtml").string();
+    const auto output = makeTempDir("effect-schema");
+    jtml::cli::Options options;
+    options.inputFile = input; options.outputFile = output.string(); options.target = "browser";
+    ASSERT_EQ(captureCommand([&] { return jtml::cli::cmdBuild(options); }).code, 0);
+    const auto html = readTextFile(output / "index.html");
+    const std::string marker = "id=\"__jtml_client_manifest\">";
+    const auto begin = html.find(marker) + marker.size();
+    const auto end = html.find("</script>", begin);
+    const auto original = nlohmann::json::parse(html.substr(begin, end - begin));
+    for (const auto* kind : {"unknown-key", "missing-owner", "unknown-owner", "missing-action", "duplicate"}) {
+        SCOPED_TRACE(kind);
+        auto manifest = original;
+        auto& subscriptions = manifest["subscriptions"];
+        if (std::string(kind) == "unknown-key") subscriptions[0]["surprise"] = true;
+        if (std::string(kind) == "missing-owner") subscriptions[0].erase("moduleId");
+        if (std::string(kind) == "unknown-owner") subscriptions[0]["moduleId"] = 99999;
+        if (std::string(kind) == "missing-action") subscriptions[0]["action"] = "absent";
+        if (std::string(kind) == "duplicate") subscriptions.push_back(subscriptions[0]);
+        auto changed = html;
+        changed.replace(begin, end - begin, manifest.dump());
+        writeTempFile(output / "index.html", changed);
+        EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(output, jtml::cli::BrowserBuildMode::Production), std::runtime_error);
+    }
+}
+
+TEST(CliBuild, RootScalarEffectsBoundTheSubscriptionTable) {
+    std::string source = "jtml 2\nlet count = 0\n";
+    for (size_t i = 0; i < 65; ++i) source += "effect count\n  show count\n";
+    const auto input = writeTempJtml("effect-limit", source);
+    jtml::cli::Options options;
+    options.inputFile = input.string(); options.outputFile = makeTempDir("effect-limit").string(); options.target = "browser";
+    std::string message;
+    try { (void)captureCommand([&] { return jtml::cli::cmdBuild(options); }); }
+    catch (const std::runtime_error& error) { message = error.what(); }
+    EXPECT_NE(message.find("at most 64 root subscriptions"), std::string::npos) << message;
+}
+
+TEST(CliBuild, RootScalarEffectsRejectDynamicUnsubscribe) {
+    const auto input = writeTempJtml("effect-unsubscribe",
+        "define count = 0\\\\\nfunction changed()\\\\\nshow count\\\\\n\\\\\n"
+        "subscribe changed to count\\\\\nunsubscribe changed from count\\\\\n");
+    jtml::cli::Options options;
+    options.inputFile = input.string(); options.outputFile = makeTempDir("effect-unsubscribe").string();
+    options.target = "browser"; options.syntax = jtml::SyntaxMode::Classic;
+    std::string message;
+    try { (void)captureCommand([&] { return jtml::cli::cmdBuild(options); }); }
+    catch (const std::runtime_error& error) { message = error.what(); }
+    EXPECT_NE(message.find("dynamic unsubscribe"), std::string::npos) << message;
+    EXPECT_NE(message.find(input.string() + ":"), std::string::npos) << message;
 }

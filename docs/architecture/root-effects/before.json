@@ -1,0 +1,551 @@
+{
+  "browserVersion": "153.0.8010.12",
+  "rows": [
+    {
+      "source": "demos/index",
+      "command": [
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/build/jtml",
+        "build",
+        "demos/index.jtml",
+        "--target",
+        "browser",
+        "--out",
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/dist/module-ownership-audit/demos/index"
+      ],
+      "exit": 0,
+      "checks": [
+        {
+          "name": "clean startup",
+          "pass": true
+        },
+        {
+          "name": "prefilled token permits command",
+          "pass": true
+        },
+        {
+          "name": "command page content",
+          "pass": false,
+          "error": "locator.waitFor: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: 'Live operations workspace', exact: true }) to be visible\u001b[22m\n"
+        },
+        {
+          "name": "sign in navigates to command",
+          "pass": false,
+          "error": "locator.fill: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('textbox', { name: 'Email', exact: true }).filter({ visible: true })\u001b[22m\n"
+        }
+      ],
+      "body": "NATIVE JTML DEMO APP\n\nA single Friendly JTML file showing production app structure, live state, runtime APIs, media, graphics, routing, stores, effects, and host integrations.\n\nRelease undefined\n\nOverview\nCommand\nData\nMedia\nRuntime\nLogin\n\nJTML can author applications as readable documents without handing the user a JavaScript framework first.",
+      "errors": [],
+      "failedResources": [
+        {
+          "url": "http://127.0.0.1:61345/assets/briefing.jpg",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:61345/assets/briefing.mp4",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:61345/assets/release-note.mp3",
+          "status": 404
+        },
+        {
+          "url": "http://127.0.0.1:61345/api/login",
+          "status": 404
+        }
+      ],
+      "route": {
+        "current": {
+          "path": "/login",
+          "pattern": "/login",
+          "name": "Login",
+          "params": {},
+          "load": []
+        },
+        "routes": [
+          {
+            "path": "/",
+            "name": "Home",
+            "params": [],
+            "load": []
+          },
+          {
+            "path": "/command",
+            "name": "Command",
+            "params": [],
+            "load": []
+          },
+          {
+            "path": "/data",
+            "name": "Data",
+            "params": [],
+            "load": [
+              "posts"
+            ]
+          },
+          {
+            "path": "/media",
+            "name": "Media",
+            "params": [],
+            "load": []
+          },
+          {
+            "path": "/runtime",
+            "name": "Runtime",
+            "params": [],
+            "load": [
+              "runtime"
+            ]
+          },
+          {
+            "path": "/login",
+            "name": "Login",
+            "params": [],
+            "load": []
+          },
+          {
+            "path": "/profile/:id",
+            "name": "Profile",
+            "params": [
+              "id"
+            ],
+            "load": []
+          },
+          {
+            "path": "*",
+            "name": "NotFound",
+            "params": [],
+            "load": []
+          }
+        ],
+        "links": [
+          {
+            "text": "Overview",
+            "href": "javascript:void(0)"
+          },
+          {
+            "text": "Command",
+            "href": "javascript:void(0)"
+          },
+          {
+            "text": "Data",
+            "href": "javascript:void(0)"
+          },
+          {
+            "text": "Media",
+            "href": "javascript:void(0)"
+          },
+          {
+            "text": "Runtime",
+            "href": "javascript:void(0)"
+          },
+          {
+            "text": "Login",
+            "href": "javascript:void(0)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "examples/friendly_effect",
+      "command": [
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/build/jtml",
+        "build",
+        "examples/friendly_effect.jtml",
+        "--target",
+        "browser",
+        "--out",
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/dist/module-ownership-audit/examples/friendly_effect"
+      ],
+      "exit": 0,
+      "checks": [
+        {
+          "name": "clean startup",
+          "pass": true
+        },
+        {
+          "name": "increment",
+          "pass": false,
+          "error": "page.waitForFunction: Timeout 3000ms exceeded."
+        }
+      ],
+      "body": "Effects\n\nCount: 1\n\nLast: No changes yet.\n\n+ Increment\n- Decrement",
+      "errors": [],
+      "failedResources": [],
+      "route": {
+        "current": null,
+        "routes": [],
+        "links": []
+      }
+    },
+    {
+      "source": "examples/friendly_fetch_invalidate",
+      "command": [
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/build/jtml",
+        "build",
+        "examples/friendly_fetch_invalidate.jtml",
+        "--target",
+        "browser",
+        "--out",
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/dist/module-ownership-audit/examples/friendly_fetch_invalidate"
+      ],
+      "exit": 0,
+      "checks": [
+        {
+          "name": "clean startup",
+          "pass": true
+        },
+        {
+          "name": "initial fetch",
+          "pass": true
+        },
+        {
+          "name": "invalidate repeats HTTP request",
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "failedResources": [],
+      "route": {
+        "current": null,
+        "routes": [],
+        "links": []
+      }
+    },
+    {
+      "source": "examples/friendly_redirect",
+      "command": [
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/build/jtml",
+        "build",
+        "examples/friendly_redirect.jtml",
+        "--target",
+        "browser",
+        "--out",
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/dist/module-ownership-audit/examples/friendly_redirect"
+      ],
+      "exit": 0,
+      "checks": [
+        {
+          "name": "clean startup",
+          "pass": true
+        },
+        {
+          "name": "action redirect",
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "failedResources": [],
+      "route": {
+        "current": {
+          "path": "/dashboard",
+          "pattern": "/dashboard",
+          "name": "Dashboard",
+          "params": {},
+          "load": []
+        },
+        "routes": [
+          {
+            "path": "/",
+            "name": "Home",
+            "params": [],
+            "load": []
+          },
+          {
+            "path": "/dashboard",
+            "name": "Dashboard",
+            "params": [],
+            "load": []
+          },
+          {
+            "path": "*",
+            "name": "NotFound",
+            "params": [],
+            "load": []
+          }
+        ],
+        "links": [
+          {
+            "text": "← Back",
+            "href": "javascript:void(0)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "examples/friendly_route_guards",
+      "command": [
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/build/jtml",
+        "build",
+        "examples/friendly_route_guards.jtml",
+        "--target",
+        "browser",
+        "--out",
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/dist/module-ownership-audit/examples/friendly_route_guards"
+      ],
+      "exit": 0,
+      "checks": [
+        {
+          "name": "clean startup",
+          "pass": true
+        },
+        {
+          "name": "deny empty token",
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "failedResources": [],
+      "route": {
+        "current": {
+          "path": "/login",
+          "pattern": "/login",
+          "name": "Login",
+          "params": {},
+          "load": []
+        },
+        "routes": [
+          {
+            "path": "/",
+            "name": "Home",
+            "params": [],
+            "load": []
+          },
+          {
+            "path": "/dashboard",
+            "name": "Dashboard",
+            "params": [],
+            "load": []
+          },
+          {
+            "path": "/login",
+            "name": "Login",
+            "params": [],
+            "load": []
+          }
+        ],
+        "links": [
+          {
+            "text": "Home",
+            "href": "javascript:void(0)"
+          },
+          {
+            "text": "Dashboard",
+            "href": "javascript:void(0)"
+          },
+          {
+            "text": "Login",
+            "href": "javascript:void(0)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "studio/samples/effects",
+      "command": [
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/build/jtml",
+        "build",
+        "studio/samples/effects.jtml",
+        "--target",
+        "browser",
+        "--out",
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/dist/module-ownership-audit/studio/samples/effects"
+      ],
+      "exit": 0,
+      "checks": [
+        {
+          "name": "clean startup",
+          "pass": true
+        },
+        {
+          "name": "increment",
+          "pass": false,
+          "error": "page.waitForFunction: Timeout 3000ms exceeded."
+        }
+      ],
+      "body": "Effects\n\nCount\n\n1\n\nwatched by effect\n\nDirection\n\nidle\n\nderived by effect\n\nSnapshots\n\n0\n\nmanual saves\n\nLast effect: No changes yet.\n+ Increment\n- Decrement\nSave snapshot",
+      "errors": [],
+      "failedResources": [],
+      "route": {
+        "current": null,
+        "routes": [],
+        "links": []
+      }
+    },
+    {
+      "source": "studio/samples/fetch",
+      "command": [
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/build/jtml",
+        "build",
+        "studio/samples/fetch.jtml",
+        "--target",
+        "browser",
+        "--out",
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/dist/module-ownership-audit/studio/samples/fetch"
+      ],
+      "exit": 0,
+      "checks": [
+        {
+          "name": "clean startup",
+          "pass": true
+        },
+        {
+          "name": "initial fetch",
+          "pass": true
+        },
+        {
+          "name": "invalidate repeats HTTP request",
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "failedResources": [],
+      "route": {
+        "current": null,
+        "routes": [],
+        "links": []
+      }
+    },
+    {
+      "source": "studio/samples/redirect",
+      "command": [
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/build/jtml",
+        "build",
+        "studio/samples/redirect.jtml",
+        "--target",
+        "browser",
+        "--out",
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/dist/module-ownership-audit/studio/samples/redirect"
+      ],
+      "exit": 0,
+      "checks": [
+        {
+          "name": "clean startup",
+          "pass": true
+        },
+        {
+          "name": "action redirect",
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "failedResources": [],
+      "route": {
+        "current": {
+          "path": "/dashboard",
+          "pattern": "/dashboard",
+          "name": "Dashboard",
+          "params": {},
+          "load": []
+        },
+        "routes": [
+          {
+            "path": "/",
+            "name": "Home",
+            "params": [],
+            "load": []
+          },
+          {
+            "path": "/dashboard",
+            "name": "Dashboard",
+            "params": [],
+            "load": []
+          },
+          {
+            "path": "*",
+            "name": "NotFound",
+            "params": [],
+            "load": []
+          }
+        ],
+        "links": [
+          {
+            "text": "Back home",
+            "href": "javascript:void(0)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "studio/samples/routes",
+      "command": [
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/build/jtml",
+        "build",
+        "studio/samples/routes.jtml",
+        "--target",
+        "browser",
+        "--out",
+        "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/dist/module-ownership-audit/studio/samples/routes"
+      ],
+      "exit": 0,
+      "checks": [
+        {
+          "name": "clean startup",
+          "pass": true
+        },
+        {
+          "name": "allow populated token",
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "failedResources": [],
+      "route": {
+        "current": {
+          "path": "/dashboard",
+          "pattern": "/dashboard",
+          "name": "Dashboard",
+          "params": {},
+          "load": [
+            "users"
+          ]
+        },
+        "routes": [
+          {
+            "path": "/",
+            "name": "Home",
+            "params": [],
+            "load": []
+          },
+          {
+            "path": "/dashboard",
+            "name": "Dashboard",
+            "params": [],
+            "load": [
+              "users"
+            ]
+          },
+          {
+            "path": "/login",
+            "name": "Login",
+            "params": [],
+            "load": []
+          },
+          {
+            "path": "*",
+            "name": "NotFound",
+            "params": [],
+            "load": []
+          }
+        ],
+        "links": [
+          {
+            "text": "Home",
+            "href": "javascript:void(0)"
+          },
+          {
+            "text": "Dashboard",
+            "href": "javascript:void(0)"
+          },
+          {
+            "text": "Login",
+            "href": "javascript:void(0)"
+          },
+          {
+            "text": "Back home",
+            "href": "javascript:void(0)"
+          }
+        ]
+      }
+    }
+  ]
+}

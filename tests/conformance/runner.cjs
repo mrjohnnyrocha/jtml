@@ -81,7 +81,7 @@ function prepare(fixture) {
  const html=path.join(dist,'index.html');
  assert(fs.readFileSync(html,'utf8').includes('<head>'),'CSP insertion point absent');
  fs.writeFileSync(html,fs.readFileSync(html,'utf8').replace('<head>',`<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'">`));
- assert(fs.statSync(path.join(dist,'jtml-runtime.js')).size<=272000,'runtime budget');
+ assert(fs.statSync(path.join(dist,'jtml-runtime.js')).size<=273000,'runtime budget');
  return {dir,source,request,result,dist};
 }
 async function runCase(browser,fixture) {

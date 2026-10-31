@@ -134,6 +134,9 @@ jobs:
       - name: Component button redirects (browser required)
         run: node tests/browser/component_redirect.cjs
 
+      - name: Root scalar effects (browser required)
+        run: node tests/browser/root_effects.cjs
+
       - name: Input state synchronization (browser required)
         run: node tests/browser/input_state_sync.cjs
 

@@ -92,11 +92,21 @@ struct RuntimePlanComponentInstance {
     SourceSpan sourceSpan;
 };
 
+struct RuntimePlanSubscription {
+    SemanticModuleId moduleId = InvalidSemanticModuleId;
+    std::string action;
+    std::string dependency;
+    std::vector<std::string> writes;
+    SourceSpan sourceSpan;
+};
+
 struct RuntimePlan {
     SemanticProgram semantic;
     std::vector<RuntimePlanBinding> state;
     std::vector<RuntimePlanBinding> derived;
     std::vector<RuntimePlanAction> actions;
+    std::vector<RuntimePlanSubscription> subscriptions;
+    std::vector<std::string> effectIssues;
     std::vector<SemanticRoute> routes;
     std::vector<SemanticFetch> fetches;
     std::vector<RuntimePlanComponentDefinition> componentDefinitions;

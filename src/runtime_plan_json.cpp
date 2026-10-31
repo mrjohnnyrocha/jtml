@@ -197,6 +197,7 @@ nlohmann::json runtimePlanComponentDefinitionsToJson(
             {"localActions", definition.localActions},
             {"localEffects", definition.localEffects},
             {"eventBindings", definition.eventBindings},
+            {"bindingParams", definition.bindingParams},
             {"bodySource", definition.bodySource},
             {"bodyHex", definition.bodyHex},
             {"bodyPlan", runtimePlanBodyPlanToJson(
@@ -230,6 +231,7 @@ nlohmann::json runtimePlanComponentInstancesToJson(
             {"role", instance.role},
             {"params", semanticPropertiesToJson(instance.params)},
             {"locals", semanticPropertiesToJson(instance.locals)},
+            {"bindingArguments", semanticPropertiesToJson(instance.bindingArguments)},
             {"slotSource", instance.slotSource},
             {"slotHex", instance.slotHex},
             {"slotPlan", runtimePlanBodyPlanToJson(
@@ -238,6 +240,12 @@ nlohmann::json runtimePlanComponentInstancesToJson(
             {"sourceLine", instance.sourceLine},
         });
         if (!arguments.empty()) out.back()["argumentPlans"] = arguments;
+        if (!instance.inputActions.empty()) out.back()["inputActions"] = instance.inputActions;
+        if (!instance.bindingArguments.empty() && instance.sourceSpan.original) {
+            const auto& origin = *instance.sourceSpan.original;
+            const auto [line, column] = origin.source->coordinates(origin.begin);
+            out.back()["bindingOrigin"] = {{"file", origin.source->file}, {"line", line}, {"column", column}};
+        }
     }
     return out;
 }
@@ -296,6 +304,7 @@ nlohmann::json runtimePlanComponentInstancesToClientJson(
                 RuntimePlanJsonOptions{false, &environment})},
         });
         if (!arguments.empty()) out.back()["argumentPlans"] = arguments;
+        if (!instance.inputActions.empty()) out.back()["inputActions"] = instance.inputActions;
     }
     return out;
 }

@@ -1,0 +1,45 @@
+{
+  "checks": [
+    {
+      "name": "compiler-issued action belongs to entry module and correct imported-component instance",
+      "pass": true
+    },
+    {
+      "name": "input commits owner state, effects and mirrors while retaining focus",
+      "pass": true
+    },
+    {
+      "name": "repeated changes, property synchronization and cursor preservation",
+      "pass": true
+    },
+    {
+      "name": "local shadowing, sibling isolation and root input behavior",
+      "pass": true
+    },
+    {
+      "name": "generated setter parameters cannot capture the authorized owner",
+      "pass": true
+    },
+    {
+      "name": "remount retains owner state and authorizes only the new instance",
+      "pass": true
+    },
+    {
+      "name": "explicit fixture sign-in, sign-out and guard use edited owner state",
+      "pass": true
+    },
+    {
+      "name": "unopted module writes and ordinary/derived parameters remain unauthorized",
+      "pass": true
+    },
+    {
+      "name": "strict CSP, clean assets and no page exceptions",
+      "pass": false,
+      "error": "AssertionError [ERR_ASSERTION]: leaked sourceColumn\n    at inspect (/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/browser/explicit_input.cjs:52:281)\n    at inspect (/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/browser/explicit_input.cjs:52:323)\n    at inspect (/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/browser/explicit_input.cjs:52:323)\n    at inspect (/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/browser/explicit_input.cjs:52:323)\n    at inspect (/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/browser/explicit_input.cjs:52:323)\n    at /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/browser/explicit_input.cjs:52:341\n    at async check (/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/browser/explicit_input.cjs:13:35)\n    at async /Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/browser/explicit_input.cjs:50:2"
+    }
+  ],
+  "errors": [],
+  "browser": "153.0.8010.12",
+  "runtimeBytes": 272992,
+  "exit": 1
+}

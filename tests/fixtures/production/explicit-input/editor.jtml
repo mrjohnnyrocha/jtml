@@ -1,0 +1,5 @@
+jtml 2
+export make BoundEditor label bind value
+  page
+    input into value aria-label label
+    text "Bound mirror: {value}"

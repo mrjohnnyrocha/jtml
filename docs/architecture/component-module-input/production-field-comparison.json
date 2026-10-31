@@ -1,0 +1,41 @@
+{
+  "baselineCommit": "cd8ad63f72565cf4e8faaac47074d11d3304b64b",
+  "retainedCompilerCommit": "c417c6932478a279cb0e8f265350d405ad70ec06",
+  "identicalBaselineSourceTree": "981cc6a71a0c6336e5a6e1058746fceed5d3d347",
+  "commonSource": "/tmp/jtml-input-privacy-baseline/index.jtml",
+  "sameManifest": true,
+  "sharedFixtureAssetEquality": {
+    "index.html": true,
+    "components/index.js": true,
+    "app.js": true
+  },
+  "existingCoordinates": [
+    "componentDefinitions[].bodyPlan[].sourceLine",
+    "componentDefinitions[].bodyPlan[].sourceColumn"
+  ],
+  "existingSchemaCoordinateAllowance": "validateClientBodyPlanArray also applies to componentInstances[].slotPlan[]; numeric coordinates are execution-identity inputs, not newly introduced capability metadata.",
+  "newPublicCapabilityField": "componentInstances[].inputActions: binding parameter to compiler-issued action ID",
+  "newExecutableRecords": "Generated one-argument assignment actions in the owner module and linked plan.",
+  "internalFieldsRejected": [
+    "bindingOrigin",
+    "bindingArguments",
+    "bindingParams",
+    "sourceSpan",
+    "sourcePath",
+    "originalLocation",
+    "originalRange",
+    "bodyHex",
+    "bodySource",
+    "parseMetadata"
+  ],
+  "rawBindingArgumentsRejected": true,
+  "staticPlanHashingChanged": false,
+  "rawBindingDeclarationsRejected": true,
+  "candidateLeakCorrection": "The newly introduced data-jtml-binding-params declaration marker was found in raw HTML and omitted at browser emission. The new assertion rejects both raw declaration and argument markers.",
+  "commonSourceText": "jtml 2\nmake Editor\n  let value = \"seed\"\n  input into value aria-label \"Value\"\npage\n  Editor\n",
+  "commonAssetSha256": {
+    "index.html": "7207d21a6387d40c71b3245899c372102f700e4de93b2f5e6a20a0b9a6f75d2c",
+    "components/index.js": "2f9b53037148f0810ea96cd06b50fc40b35d9539c4a8f4edfa236c64319d2044",
+    "app.js": "688ec3c1b98c6ac616a4dac1d641628c49ed147b46f5c9b24b8351cc29976046"
+  }
+}

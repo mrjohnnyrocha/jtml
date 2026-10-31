@@ -1,0 +1,226 @@
+{
+  "status": "NO-GO",
+  "reason": "Clean public body plans retain sourceLine/sourceColumn; strict privacy assertion fails.",
+  "baselineSourceCommit": "cd8ad63f72565cf4e8faaac47074d11d3304b64b",
+  "retainedCompilerCommit": "c417c6932478a279cb0e8f265350d405ad70ec06",
+  "identicalSourceTree": "981cc6a71a0c6336e5a6e1058746fceed5d3d347",
+  "baseline": [
+    {
+      "path": ".componentDefinitions[0].bodyPlan[0].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".componentDefinitions[0].bodyPlan[0].sourceLine",
+      "value": 2
+    },
+    {
+      "path": ".componentDefinitions[0].bodyPlan[1].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".componentDefinitions[0].bodyPlan[1].sourceLine",
+      "value": 3
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[0].bodyPlan[0].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[0].bodyPlan[0].sourceLine",
+      "value": 2
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[0].bodyPlan[1].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[0].bodyPlan[1].sourceLine",
+      "value": 3
+    }
+  ],
+  "candidate": [
+    {
+      "path": ".componentDefinitions[0].bodyPlan[0].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".componentDefinitions[0].bodyPlan[0].sourceLine",
+      "value": 2
+    },
+    {
+      "path": ".componentDefinitions[0].bodyPlan[1].sourceColumn",
+      "value": 5
+    },
+    {
+      "path": ".componentDefinitions[0].bodyPlan[1].sourceLine",
+      "value": 3
+    },
+    {
+      "path": ".componentDefinitions[0].bodyPlan[2].sourceColumn",
+      "value": 5
+    },
+    {
+      "path": ".componentDefinitions[0].bodyPlan[2].sourceLine",
+      "value": 4
+    },
+    {
+      "path": ".componentDefinitions[1].bodyPlan[0].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".componentDefinitions[1].bodyPlan[0].sourceLine",
+      "value": 42
+    },
+    {
+      "path": ".componentDefinitions[1].bodyPlan[1].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".componentDefinitions[1].bodyPlan[1].sourceLine",
+      "value": 43
+    },
+    {
+      "path": ".componentDefinitions[1].bodyPlan[2].sourceColumn",
+      "value": 5
+    },
+    {
+      "path": ".componentDefinitions[1].bodyPlan[2].sourceLine",
+      "value": 44
+    },
+    {
+      "path": ".componentDefinitions[1].bodyPlan[3].sourceColumn",
+      "value": 5
+    },
+    {
+      "path": ".componentDefinitions[1].bodyPlan[3].sourceLine",
+      "value": 45
+    },
+    {
+      "path": ".componentDefinitions[2].bodyPlan[0].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".componentDefinitions[2].bodyPlan[0].sourceLine",
+      "value": 47
+    },
+    {
+      "path": ".componentDefinitions[2].bodyPlan[1].sourceColumn",
+      "value": 5
+    },
+    {
+      "path": ".componentDefinitions[2].bodyPlan[1].sourceLine",
+      "value": 48
+    },
+    {
+      "path": ".componentDefinitions[3].bodyPlan[0].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".componentDefinitions[3].bodyPlan[0].sourceLine",
+      "value": 50
+    },
+    {
+      "path": ".componentDefinitions[3].bodyPlan[1].sourceColumn",
+      "value": 5
+    },
+    {
+      "path": ".componentDefinitions[3].bodyPlan[1].sourceLine",
+      "value": 51
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[0].bodyPlan[0].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[0].bodyPlan[0].sourceLine",
+      "value": 42
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[0].bodyPlan[1].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[0].bodyPlan[1].sourceLine",
+      "value": 43
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[0].bodyPlan[2].sourceColumn",
+      "value": 5
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[0].bodyPlan[2].sourceLine",
+      "value": 44
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[0].bodyPlan[3].sourceColumn",
+      "value": 5
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[0].bodyPlan[3].sourceLine",
+      "value": 45
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[1].bodyPlan[0].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[1].bodyPlan[0].sourceLine",
+      "value": 47
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[1].bodyPlan[1].sourceColumn",
+      "value": 5
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[1].bodyPlan[1].sourceLine",
+      "value": 48
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[2].bodyPlan[0].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[2].bodyPlan[0].sourceLine",
+      "value": 50
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[2].bodyPlan[1].sourceColumn",
+      "value": 5
+    },
+    {
+      "path": ".project.modules[0].plan.componentDefinitions[2].bodyPlan[1].sourceLine",
+      "value": 51
+    },
+    {
+      "path": ".project.modules[1].plan.componentDefinitions[0].bodyPlan[0].sourceColumn",
+      "value": 3
+    },
+    {
+      "path": ".project.modules[1].plan.componentDefinitions[0].bodyPlan[0].sourceLine",
+      "value": 2
+    },
+    {
+      "path": ".project.modules[1].plan.componentDefinitions[0].bodyPlan[1].sourceColumn",
+      "value": 5
+    },
+    {
+      "path": ".project.modules[1].plan.componentDefinitions[0].bodyPlan[1].sourceLine",
+      "value": 3
+    },
+    {
+      "path": ".project.modules[1].plan.componentDefinitions[0].bodyPlan[2].sourceColumn",
+      "value": 5
+    },
+    {
+      "path": ".project.modules[1].plan.componentDefinitions[0].bodyPlan[2].sourceLine",
+      "value": 4
+    }
+  ],
+  "identityDependency": [
+    "src/browser_runtime_assets.cpp:componentUpdatePlanKey",
+    "src/jtml/runtime/static_update_plan_emitter.cpp:componentUpdatePlanKey"
+  ],
+  "note": "Both hash signatures include source coordinates. Runtime also has an existing module/name fallback. Removing coordinates without coordinating identities changes key matching and would rely on that fallback; no removal or runtime workaround is introduced here.",
+  "historicalAssessment": true,
+  "currentDisposition": "Superseded: the user explicitly preserved the baseline numeric execution-coordinate contract. The new assertion now checks only baseline body/slot-plan coordinates and rejects new authorization/source metadata."
+}

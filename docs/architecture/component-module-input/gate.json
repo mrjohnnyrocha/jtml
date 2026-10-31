@@ -1,0 +1,38 @@
+{
+  "status": "PASS",
+  "phase": "precommit candidate; exact committed rerun and hosted CI linked on PR",
+  "command": "JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1 JTML_REQUIRE_BROWSER_BENCH=1 scripts/verify_all.sh",
+  "exit": 0,
+  "logSha256": "cefda88f1bbd91e6ed612e44109bce26c9fb4739adf337932f0d3fcc810a10e5",
+  "ctest": "495/495",
+  "chromium": "151.0.7922.34",
+  "playwright": "1.62.1",
+  "benchmarks": [
+    "OK: browser-runtime static_counter clicks=200 initialization=41.40ms interaction=12.20ms average=0.06ms slowest=1.30ms verification=0.50ms nestedParamPatch=false keyedLifecycle=false browserExit=clean",
+    "OK: browser-runtime keyed_list clicks=200 initialization=41.90ms interaction=20.80ms average=0.10ms slowest=2.00ms verification=0.50ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime control_flow clicks=200 initialization=42.20ms interaction=22.50ms average=0.11ms slowest=1.90ms verification=0.50ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime composition clicks=200 initialization=42.10ms interaction=13.10ms average=0.07ms slowest=2.40ms verification=0.40ms nestedParamPatch=true keyedLifecycle=false browserExit=clean",
+    "OK: browser-runtime large_keyed_updates clicks=201 initialization=90.10ms interaction=706.50ms average=3.51ms slowest=8.50ms verification=6.80ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime large_keyed_reorder clicks=201 initialization=96.00ms interaction=758.20ms average=3.77ms slowest=8.50ms verification=10.30ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime nested_component_update clicks=200 initialization=47.00ms interaction=22.60ms average=0.11ms slowest=2.30ms verification=0.50ms nestedParamPatch=true keyedLifecycle=false browserExit=clean",
+    "OK: browser-runtime lifecycle_cleanup clicks=200 initialization=43.90ms interaction=35.70ms average=0.18ms slowest=3.00ms verification=0.40ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime form_focus clicks=200 initialization=39.80ms interaction=13.00ms average=0.07ms slowest=0.90ms verification=0.40ms nestedParamPatch=false keyedLifecycle=false browserExit=clean",
+    "OK: browser-runtime reference-app clicks=4 initialization=49.20ms interaction=161.50ms average=40.38ms slowest=0.00ms verification=0.30ms nestedParamPatch=false keyedLifecycle=false browserExit=clean"
+  ],
+  "ninePerformanceFixturesClean": true,
+  "referenceBrowserClean": true,
+  "skippedToolSections": [],
+  "liveSmoke": "8/8",
+  "knownLimitations": [
+    "Existing reference-app HTML 100009 bytes exceeds its 70000-byte microfixture comparison budget; runtime budget passes.",
+    "Five existing native body-plan attribute-renderer discrepancies remain explicitly reported by their diagnostic suite."
+  ],
+  "initialInstalledChromeRun": {
+    "exit": 1,
+    "browser": "156.0.8078.76",
+    "reason": "Existing strict_csp.cjs observes a favicon.ico 404 console error. Same failure independently reproduced with unchanged-main compiler; unmodified suite passes with pinned headless shell.",
+    "candidateLogSha256": "ef5e4b61b04fb9172567cc2d1c7aacd12499d57d7322904a422adba9b987558f",
+    "baselineLogSha256": "854ae972d9783625e1c1fb6621208f54d65d3da91cd0ef24f2536c1b7531a3c1",
+    "testOrCompilerChanged": false
+  }
+}

@@ -148,6 +148,11 @@ jobs:
       - name: Input state synchronization (browser required)
         run: node tests/browser/input_state_sync.cjs
 
+      - name: Explicit caller-authorized text input (browser required)
+        run: |
+          node tests/browser/explicit_input.cjs
+          python3 tests/test_explicit_input.py
+
       - name: Imported Friendly components (browser required)
         run: node tests/browser/imported_components.cjs
 

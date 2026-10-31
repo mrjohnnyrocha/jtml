@@ -279,6 +279,7 @@ nlohmann::json semanticComponentDefinitionsToJson(const jtml::SemanticProgram& s
             {"localEffects", definition.localEffects},
             {"eventBindings", definition.eventBindings},
             {"localBindings", definition.localBindings},
+            {"bindingParams", definition.bindingParams},
             {"bodyHex", definition.bodyHex},
             {"hasSlot", definition.hasSlot},
             {"bodyNodeCount", definition.bodyNodeCount},
@@ -300,6 +301,7 @@ nlohmann::json semanticComponentInstancesToJson(const jtml::SemanticProgram& sem
             {"role", instance.role},
             {"params", semanticPropertiesToJson(instance.params)},
             {"locals", semanticPropertiesToJson(instance.locals)},
+            {"bindingArguments", semanticPropertiesToJson(instance.bindingArguments)},
             {"slotHex", instance.slotHex},
             {"sourceLine", instance.sourceLine},
         });
@@ -1256,7 +1258,11 @@ int cmdExplain(const Options& o) {
         : jtml::buildSemanticProject(moduleSources, o.inputFile, semantic);
     const auto projectIssues = jtml::analyzeSemanticProject(project);
     const auto runtimePlan = jtml::buildRuntimePlan(program, semantic);
-    const auto runtimeProjectPlan = jtml::buildRuntimePlan(project, runtimePlan);
+    const bool hasInputAuthority = std::any_of(semantic.componentDefinitions.begin(), semantic.componentDefinitions.end(),
+        [](const auto& definition) { return !definition.bindingParams.empty(); });
+    const auto runtimeProjectPlan = hasInputAuthority
+        ? buildRuntimeProjectPlanForInput(o.inputFile, o.syntax, program, semantic, false)
+        : jtml::buildRuntimePlan(project, runtimePlan);
     const auto depth = classifyDepth(semantic);
 
     // Build action profiles map for easy lookup

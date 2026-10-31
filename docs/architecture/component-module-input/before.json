@@ -1,0 +1,15 @@
+{
+  "command": [
+    "/Users/joaorocha/.codex/worktrees/root-action-redirect/jtml-v1/build/jtml",
+    "build",
+    "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1/tests/fixtures/production/explicit-input/index.jtml",
+    "--target",
+    "browser",
+    "--out",
+    "/var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-explicit-input-before-2_niue0i"
+  ],
+  "exit": 1,
+  "error": "error: Unexpected token 'to' in component call 'BoundEditor' at line 58; use 'on event handler' for emitted component events\n",
+  "assets": [],
+  "note": "New explicit syntax is unsupported on unchanged main. Retained compiler source tree equals requested merged main."
+}

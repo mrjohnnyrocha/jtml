@@ -415,11 +415,12 @@ const char* browserRuntimePreludeChunk() {
       const directComponentBindingDiags = [];
 
       function componentBindTargetStatus(definition, name) {
-        const target = String(name || '').trim(), state = Array.isArray(definition && definition.localState) ? definition.localState : [];
+        const names = key => Array.isArray(definition && definition[key]) ? definition[key] : [];
+        const target = String(name || '').trim(), state = names('localState');
         if (!target || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(target)) return { ok: false, code: 'JTML_INVALID_INTO_TARGET' };
         if (state.indexOf(target) !== -1) return { ok: true };
-        if ((Array.isArray(definition && definition.localDerived) ? definition.localDerived : []).indexOf(target) !== -1) return { ok: false, code: 'JTML_INTO_DERIVED_TARGET' };
-        if ((Array.isArray(definition && definition.params) ? definition.params : []).indexOf(target) !== -1) return { ok: false, code: 'JTML_INTO_PARAM_TARGET' };
+        if (names('localDerived').indexOf(target) !== -1) return { ok: false, code: 'JTML_INTO_DERIVED_TARGET' };
+        if (names('params').indexOf(target) !== -1) return { ok: false, code: 'JTML_INTO_PARAM_TARGET' };
         return { ok: false, code: 'JTML_UNKNOWN_INTO_TARGET' };
       }
 
@@ -3255,6 +3256,8 @@ const char* browserRuntimeComponentChunk() {
           if (!instance) return;
           const definition = componentDefinitionForInstance(instance);
           if (!definition) return;
+          const action = instance.inputActions?.[name];
+          if (typeof action === 'string') { executeClientAction(action, [el.value]); return; }
           const targetStatus = componentBindTargetStatus(definition, name);
           if (!targetStatus.ok) {
             recordDirectComponentBindingDiagnostic(instance, definition, el, name, targetStatus);

@@ -1,0 +1,29 @@
+{
+  "status": "LOCAL PASS; exact-final-commit rerun and hosted CI recorded separately on PR",
+  "base": "cd8ad63f72565cf4e8faaac47074d11d3304b64b",
+  "branch": "codex/component-module-input",
+  "candidateCommit": null,
+  "ctest": "495/495 pass with local-port permission",
+  "ctestLogSha256": "936eb10f3840820e319673b5da46b92659afa5fb6d129a14980cb25a817fa2b3",
+  "initialCtestFailure": "Sandboxed LocalServerStartup.BannerSynchronization could not bind local ports; authorized complete rerun passes.",
+  "hygieneAndSchemaCtests": "2/2 pass",
+  "chromium": "9/9 pass on Chromium headless shell 151.0.7922.34 / Playwright 1.62.1, also 9/9 on installed Chrome 156",
+  "negativeMatrix": "22/22 pass",
+  "enterprise": "8 pass / 3 fail, exit 1; original source and oracle unchanged",
+  "runtime": {
+    "raw": 272992,
+    "gzip": 50893,
+    "rawGrowth": 67,
+    "gzipGrowth": 52,
+    "budget": 273000,
+    "headroom": 8,
+    "budgetChanged": false
+  },
+  "fullGate": "PASS before commit; gate.json records full log hash, all sections executed",
+  "nineCleanExitBenchmarks": "9/9 performance fixtures and reference-app clean; gate.json",
+  "finalCommitCI": "Pending exact-head Ubuntu/macOS; PR records final results",
+  "pullRequest": null,
+  "releaseOrDeploy": false,
+  "privacyBaselineException": "production-field-comparison.json; unchanged numeric coordinates only in pre-existing body/slot execution plans",
+  "ordinaryBindArgument": "Latest build and focused hygiene CTest rerun pass after positional bind parser correction"
+}

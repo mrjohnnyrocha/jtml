@@ -112,6 +112,7 @@ struct SemanticComponentDefinition {
     int slotCount = 0;
     int sourceLine = 0;
     std::shared_ptr<const SourceProvenance> provenance;
+    std::vector<std::string> bindingParams;
 };
 
 struct SemanticComponentInstance {
@@ -125,6 +126,7 @@ struct SemanticComponentInstance {
     int sourceLine = 0;
     std::shared_ptr<const SourceProvenance> provenance;
     std::vector<SemanticProperty> argumentExpressions;
+    std::vector<SemanticProperty> bindingArguments;
 };
 
 // Executable subscription identity comes from SubscribeStatement, not function names.

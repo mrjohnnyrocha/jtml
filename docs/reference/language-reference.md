@@ -817,6 +817,41 @@ export use Card from "./card.jtml"
 Remaining module work is deeper per-file semantic ownership, imported store
 identity polish, and richer cycle recovery.
 
+## Explicit Caller-Owned Text Input
+
+Browser-local builds can opt into one text-input binding parameter:
+
+```jtml
+jtml 2
+let email = "seed@example.test"
+make EmailEditor label bind value
+  page
+    input into value aria-label label
+    text "Draft: {value}"
+page
+  EmailEditor "Account" bind value to email
+```
+
+The declaration and every call must both authorize the binding. `bind value`
+follows ordinary value parameters and precedes optional `emits`; the caller uses
+`bind value to target`, rather than a positional value argument. Ordinary
+parameters remain read-only, and ordinary component `into` keeps its local
+writable-`let` contract. Local state in sibling instances remains independent.
+
+This bounded feature permits text input to a uniquely owned entry-module `let`
+with a literal string initializer. Imported component definitions may receive it;
+imported state, immutable/derived or borrowed/collection targets, member paths,
+binding forwarding and route/layout injection are rejected. A binding parameter
+cannot be redeclared locally or assigned by component actions. Text inputs read
+current owner state on mount and retained updates; their writes run the existing
+owner action/effect pipeline. Native/live and inline backends without a retained
+browser Runtime Project Plan reject this feature.
+
+See the [contract and evidence](../architecture/component-module-input/README.md).
+The original Enterprise demo does not use this explicit contract; its implicit
+module-targeted input remains unsupported. This feature supplies no authentication
+service.
+
 ## Compatibility Backend
 
 Classic syntax is the backend compatibility layer used by older files and by

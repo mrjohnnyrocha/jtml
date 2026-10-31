@@ -83,6 +83,17 @@ void JtmlTranspiler::setRuntimeProjectPlan(const jtml::RuntimeProjectPlan& plan)
 }
 
 std::string JtmlTranspiler::transpile(const std::vector<std::unique_ptr<ASTNode>>& program) {
+    const auto bindings = jtml::analyzeSemanticProgram(program);
+    for (const auto& definition : bindings.componentDefinitions) {
+        if (!definition.bindingParams.empty() && (!browserLocalRuntime || !runtimeProjectPlan)) {
+            std::string location;
+            if (definition.provenance) if (const auto origin = definition.provenance->inputConstruct(definition.sourceLine)) {
+                const auto [line, column] = origin->source->coordinates(origin->begin);
+                location = " at " + origin->source->file + ":" + std::to_string(line) + ":" + std::to_string(column);
+            }
+            throw std::runtime_error("component " + definition.name + location + ": explicit input bindings require a browser Runtime Project Plan; use build --target browser");
+        }
+    }
     if (browserLocalRuntime) {
         for (const auto& node : program) validateRootComponentPlacement(*node);
     }
@@ -232,7 +243,7 @@ std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
     // bindings.
     for (auto& attr : elem.attributes) {
         // Compiler transport only; executable argument plans live in the manifest.
-        if (browserLocalRuntime && attr.key == "data-jtml-component-args-hex") continue;
+        if (browserLocalRuntime && (attr.key == "data-jtml-component-args-hex" || attr.key == "data-jtml-binding-args" || attr.key == "data-jtml-binding-params")) continue;
         const auto classification = classifyJtmlAttribute(attr);
 
        if (classification.kind == JtmlAttributeKind::Event) {

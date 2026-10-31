@@ -2949,6 +2949,14 @@ void Interpreter::collectComponentDefinitions(const ASTNode& node,
     const auto& elem = static_cast<const JtmlElementNode&>(node);
     const std::string name = attrValueFor(elem, "data-jtml-component-def");
     if (!name.empty()) {
+        if (!attrValueFor(elem, "data-jtml-binding-params").empty()) {
+            std::string location;
+            if (const auto& origin = elem.sourceSpan.original) {
+                const auto [line, column] = origin->source->coordinates(origin->begin);
+                location = " at " + origin->source->file + ":" + std::to_string(line) + ":" + std::to_string(column);
+            }
+            throw std::runtime_error("component " + name + location + ": explicit input bindings require a browser Runtime Project Plan; native/live execution is unsupported");
+        }
         RuntimeComponentDefinition def;
         def.moduleId =
             parseSemanticModuleId(attrValueFor(elem, "data-jtml-component-def-module"));

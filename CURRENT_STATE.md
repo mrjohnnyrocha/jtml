@@ -6,6 +6,21 @@ The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.
 
+## Explicit caller-authorized text input
+
+The browser-local compiler supports a bounded opt-in `make Editor bind value` /
+`Editor bind value to state` contract. Semantic IR retains declarations and call
+arguments; Runtime Plan proves entry-module ownership and issues hygienic setter
+actions. Imported component definitions are supported; imported state, ordinary
+parameters, derived/immutable and borrowed/collection targets stay unwritable.
+Focused Chromium checks cover owner/effect updates, local/sibling isolation,
+focus/cursor retention, remounting and guarded navigation; 22 rejection controls
+retain source locations and emit no production assets. Runtime is 272,992 / 273,000
+bytes. Existing public execution-plan coordinates remain unchanged; new internal
+authorization metadata stays out of clean output. Enterprise's implicit input is
+still NO-GO. See [contract, baseline comparison and evidence](docs/architecture/component-module-input/README.md);
+exact final-commit gate and hosted CI evidence belong to the focused PR.
+
 ## Root action writes before redirect
 
 Browser-local root actions and component-triggered global actions now execute

@@ -1,0 +1,15 @@
+jtml 2
+let email = "module"
+let parameter = "parameter"
+make Rogue
+  page
+    input into email aria-label "Unauthorized"
+make ReadOnly value
+  get derived = "derived"
+  page
+    input into value aria-label "Parameter"
+    input into derived aria-label "Derived"
+page
+  Rogue
+  ReadOnly parameter
+  text "Owner: {email}"

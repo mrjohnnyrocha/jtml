@@ -42,7 +42,7 @@ const results = Object.fromEntries(
     assert(!/\beval\s*\(|\bnew\s+Function\b/.test(source), file);
     assert(!source.includes("jtml-update-plans.js"), file);
   }
-  assert(fs.statSync(path.join(root, "jtml-runtime.js")).size <= 272000);
+  assert(fs.statSync(path.join(root, "jtml-runtime.js")).size <= 273000);
   assert.deepEqual(fs.readdirSync(path.join(root, "components")), ["index.js"]);
   const manifestText = fs
     .readFileSync(path.join(root, "index.html"), "utf8")

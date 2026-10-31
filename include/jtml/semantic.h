@@ -127,6 +127,14 @@ struct SemanticComponentInstance {
     std::vector<SemanticProperty> argumentExpressions;
 };
 
+// Executable subscription identity comes from SubscribeStatement, not function names.
+struct SemanticSubscription {
+    std::string action;
+    std::string dependency;
+    SourceSpan sourceSpan;
+    bool rootOwned = false;
+};
+
 struct SemanticProgram {
     std::vector<std::string> moduleFiles;
     std::vector<std::string> state;
@@ -142,6 +150,8 @@ struct SemanticProgram {
     std::vector<SemanticFetch> fetchRecords;
     std::vector<std::string> stores;
     std::vector<std::string> effects;
+    std::vector<SemanticSubscription> subscriptions;
+    std::vector<SourceSpan> unsubscriptions;
     std::vector<std::string> imports;
     std::vector<SemanticImport> importRecords;
     std::vector<SemanticExport> exportRecords;

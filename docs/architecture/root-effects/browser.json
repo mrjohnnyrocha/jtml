@@ -1,0 +1,78 @@
+[
+  {
+    "source": "examples/friendly_effect.jtml",
+    "command": [
+      "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/build/jtml",
+      "build",
+      "examples/friendly_effect.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/dist/root-effects/0"
+    ],
+    "exit": 0,
+    "stderr": "",
+    "checks": [
+      "non-eager initial state",
+      "increment 1",
+      "increment 2",
+      "decrement 1",
+      "decrement 0",
+      "decrement -1",
+      "strict CSP / clean assets / no errors"
+    ]
+  },
+  {
+    "source": "studio/samples/effects.jtml",
+    "command": [
+      "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/build/jtml",
+      "build",
+      "studio/samples/effects.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/dist/root-effects/1"
+    ],
+    "exit": 0,
+    "stderr": "",
+    "checks": [
+      "non-eager initial state",
+      "increment 1",
+      "increment 2",
+      "decrement 1",
+      "decrement 0",
+      "decrement -1",
+      "conditional effect body",
+      "unrelated snapshot write survives",
+      "subsequent effect after unrelated write",
+      "strict CSP / clean assets / no errors"
+    ]
+  },
+  {
+    "source": "tests/fixtures/production/root-effects/index.jtml",
+    "command": [
+      "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/build/jtml",
+      "build",
+      "tests/fixtures/production/root-effects/index.jtml",
+      "--target",
+      "browser",
+      "--out",
+      "/Users/joaorocha/.codex/worktrees/component-redirect/jtml-v1/dist/root-effects/2"
+    ],
+    "exit": 0,
+    "stderr": "",
+    "checks": [
+      "non-eager module and root registration",
+      "same-value assignment triggers",
+      "multiple writes coalesce with final visibility",
+      "unrelated and parameter-shadow writes do not trigger",
+      "conditional write and chain",
+      "repeated dispatches and reset",
+      "module-owned subscription executes once independently",
+      "scalar show executes once at the notification boundary",
+      "200 additional same-value UI dispatches execute bounded effect chains",
+      "strict CSP / clean assets / no errors"
+    ],
+    "effectInteractionMs": 73.20000000298023
+  }
+]

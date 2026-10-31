@@ -45,7 +45,7 @@ def build(output, compiler, base_url):
             if name == 'index.html':
                 assert not re.search(r'\son\w+\s*=', text, re.I)
                 assert not re.search(r'<script\b(?![^>]*\bsrc=)(?![^>]*\btype="application/json")', text, re.I)
-        assert (generated / 'jtml-runtime.js').stat().st_size <= 272000
+        assert (generated / 'jtml-runtime.js').stat().st_size <= 273000
         original_hashes = {name: digest(generated / name) for name in ASSETS}
         if output.exists():
             shutil.rmtree(output)

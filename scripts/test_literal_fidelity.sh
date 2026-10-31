@@ -17,7 +17,7 @@ assert not (root/'clean/jtml-update-plans.js').exists()
 for mode in ('clean','compat'):
  for file in (root/mode).rglob('*.js'):
   assert not re.search(r'\beval\s*\(|\bnew\s+Function\b',file.read_text()),file
- assert (root/mode/'jtml-runtime.js').stat().st_size<=272000
+ assert (root/mode/'jtml-runtime.js').stat().st_size<=273000
 PY
 node "$ROOT/tests/browser/literal_fidelity.cjs" "$OUT"
 

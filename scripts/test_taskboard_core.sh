@@ -16,7 +16,7 @@ for name in ('index.html', 'jtml-runtime.js', 'components/index.js', 'app.js'):
             assert forbidden not in source, (name, forbidden)
     print(f'asset: {name} {(root / name).stat().st_size} bytes')
 assert not (root / 'jtml-update-plans.js').exists()
-assert (root / 'jtml-runtime.js').stat().st_size <= 272000
+assert (root / 'jtml-runtime.js').stat().st_size <= 273000
 PY
 node - "${OUT}" <<'JS'
 const fs = require('node:fs'), path = require('node:path'), zlib = require('node:zlib');

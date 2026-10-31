@@ -7,8 +7,10 @@
 
 #include <algorithm>
 #include <cctype>
+#include <functional>
 #include <set>
 #include <sstream>
+#include <tuple>
 
 namespace jtml {
 namespace {
@@ -32,6 +34,11 @@ std::vector<RuntimePlanStatement> collectRuntimeStatements(
             planned.lhs = stmt.identifier;
             planned.expr = expressionSource(stmt.expression.get());
             statements.push_back(std::move(planned));
+        } else if (node->getType() == ASTNodeType::ShowStatement) {
+            RuntimePlanStatement planned;
+            planned.kind = "show";
+            planned.expr = expressionSource(static_cast<const ShowStatementNode&>(*node).expr.get());
+            statements.push_back(std::move(planned));
         } else if (node->getType() == ASTNodeType::IfStatement) {
             const auto& stmt = static_cast<const IfStatementNode&>(*node);
             RuntimePlanStatement planned;
@@ -43,6 +50,226 @@ std::vector<RuntimePlanStatement> collectRuntimeStatements(
         }
     }
     return statements;
+}
+
+std::string effectLocation(const SourceSpan& span) {
+    if (span.original) {
+        const auto& origin = *span.original;
+        const auto [line, column] = origin.source->coordinates(origin.begin);
+        return origin.source->file + ":" + std::to_string(line) + ":" + std::to_string(column);
+    }
+    return "lowered line " + std::to_string(span.startLine);
+}
+
+bool scalarEffectType(ExpressionValueType type) {
+    return type == ExpressionValueType::Number || type == ExpressionValueType::String ||
+           type == ExpressionValueType::Boolean;
+}
+
+// Stable topological order permits one finite browser pass, never recursive
+// action dispatch or render-to-convergence. Ties retain subscription source order.
+void orderRootSubscriptions(RuntimePlan& plan) {
+    const auto count = plan.subscriptions.size();
+    if (count > 64) {
+        plan.effectIssues.push_back("effect at " + effectLocation(plan.subscriptions[64].sourceSpan) +
+            ": at most 64 root subscriptions are supported; split the application");
+        return;
+    }
+    std::vector<size_t> incoming(count, 0);
+    std::vector<std::vector<size_t>> edges(count);
+    for (size_t i = 0; i < count; ++i) for (size_t j = 0; j < count; ++j) {
+        const auto& writes = plan.subscriptions[i].writes;
+        if (std::find(writes.begin(), writes.end(), plan.subscriptions[j].dependency) != writes.end()) {
+            edges[i].push_back(j);
+            ++incoming[j];
+        }
+    }
+    std::vector<RuntimePlanSubscription> ordered;
+    std::vector<bool> used(count, false);
+    for (size_t step = 0; step < count; ++step) {
+        size_t next = 0;
+        while (next < count && (used[next] || incoming[next])) ++next;
+        if (next == count) {
+            size_t pending = 0;
+            while (pending < count && used[pending]) ++pending;
+            plan.effectIssues.push_back("effect at " + effectLocation(plan.subscriptions[pending].sourceSpan) +
+                ": cyclic root effect writes involving `" + plan.subscriptions[pending].dependency +
+                "` are unsupported; remove the dependency/write cycle");
+            return;
+        }
+        used[next] = true;
+        ordered.push_back(plan.subscriptions[next]);
+        for (const auto target : edges[next]) --incoming[target];
+    }
+    plan.subscriptions = std::move(ordered);
+}
+
+void planRootSubscriptions(const std::vector<std::unique_ptr<ASTNode>>& program,
+                           RuntimePlan& plan) {
+    ExpressionTypeEnvironment types;
+    std::set<std::string> mutableRoots;
+    std::map<std::string, size_t> declarations;
+    std::map<std::string, const FunctionDeclarationNode*> functions;
+    std::set<std::string> duplicateFunctions;
+    for (const auto& node : program) {
+        if (!node) continue;
+        if (node->getType() == ASTNodeType::DefineStatement) {
+            const auto& state = static_cast<const DefineStatementNode&>(*node);
+            const auto expression = buildExpressionIr(state.expression.get(), types);
+            types.symbols[state.identifier] = expression ? expression->valueType : ExpressionValueType::Unknown;
+            ++declarations[state.identifier];
+            if (!state.isConst) mutableRoots.insert(state.identifier);
+            else mutableRoots.erase(state.identifier);
+        } else if (node->getType() == ASTNodeType::DeriveStatement) {
+            const auto& derived = static_cast<const DeriveStatementNode&>(*node);
+            ++declarations[derived.identifier];
+            mutableRoots.erase(derived.identifier);
+            const auto expression = buildExpressionIr(derived.expression.get(), types);
+            types.symbols[derived.identifier] = expression ? expression->valueType : ExpressionValueType::Unknown;
+        } else if (node->getType() == ASTNodeType::FunctionDeclaration) {
+            const auto& action = static_cast<const FunctionDeclarationNode&>(*node);
+            if (!functions.emplace(action.name, &action).second) duplicateFunctions.insert(action.name);
+        }
+    }
+    for (const auto& component : plan.semantic.componentDefinitions) {
+        if (component.localEffects.empty()) continue;
+        const auto span = component.provenance ? component.provenance->inputConstruct(component.sourceLine)
+                                               : std::optional<OriginalRange>{};
+        std::string location = "lowered line " + std::to_string(component.sourceLine);
+        if (span) {
+            const auto [line, column] = span->source->coordinates(span->begin);
+            location = span->source->file + ":" + std::to_string(line) + ":" + std::to_string(column);
+        }
+        plan.effectIssues.push_back("component " + component.name + " at " + location +
+            ": component-local effects are unsupported in clean production; use a module-owned scalar let/effect");
+    }
+    for (const auto& span : plan.semantic.unsubscriptions)
+        plan.effectIssues.push_back("effect at " + effectLocation(span) +
+            ": dynamic unsubscribe is unsupported in clean production; guard effect writes with an owned scalar flag instead");
+    for (const auto& subscription : plan.semantic.subscriptions) {
+        auto issue = [&](const std::string& reason) {
+            plan.effectIssues.push_back("effect at " + effectLocation(subscription.sourceSpan) + ": " + reason);
+        };
+        if (!subscription.rootOwned) {
+            issue("nested subscriptions are unsupported; declare the effect at module root");
+            continue;
+        }
+        if (declarations[subscription.dependency] != 1) {
+            issue("dependency must have one module-root mutable scalar let declaration; put subsequent writes in a when action");
+            continue;
+        }
+        const auto dependency = types.symbols.find(subscription.dependency);
+        if (!mutableRoots.count(subscription.dependency) || dependency == types.symbols.end() ||
+            !scalarEffectType(dependency->second)) {
+            issue("dependency `" + subscription.dependency +
+                "` must be a module-owned mutable scalar let; derived, imported, collection and parameter watches are unsupported");
+            continue;
+        }
+        const auto action = functions.find(subscription.action);
+        if (duplicateFunctions.count(subscription.action)) {
+            issue("ambiguous callback declaration; use a distinct zero-argument root action");
+            continue;
+        }
+        if (action == functions.end() || !action->second->parameters.empty()) {
+            issue("callback must be a module-root zero-argument action");
+            continue;
+        }
+        RuntimePlanSubscription record;
+        record.action = subscription.action;
+        record.dependency = subscription.dependency;
+        record.sourceSpan = subscription.sourceSpan;
+        size_t statements = 0;
+        auto expressionSupported = [&](const ExpressionStatementNode* expression) {
+            const auto ir = buildExpressionIr(expression, types);
+            return ir && expressionIrSupportsDirectJs(*ir) && scalarEffectType(ir->valueType);
+        };
+        std::function<void(const std::vector<std::unique_ptr<ASTNode>>&)> validateBody;
+        validateBody = [&](const auto& nodes) {
+            for (const auto& node : nodes) {
+                if (!node) continue;
+                if (++statements > 1024) { issue("effect body exceeds 1024 statements; simplify the effect"); return; }
+                std::string target;
+                const ExpressionStatementNode* rhs = nullptr;
+                if (node->getType() == ASTNodeType::AssignmentStatement) {
+                    const auto& assignment = static_cast<const AssignmentStatementNode&>(*node);
+                    target = expressionSource(assignment.lhs.get());
+                    rhs = assignment.rhs.get();
+                } else if (node->getType() == ASTNodeType::DefineStatement) {
+                    const auto& assignment = static_cast<const DefineStatementNode&>(*node);
+                    if (assignment.isConst) issue("constant declarations in effect bodies are unsupported; assign an existing mutable scalar let");
+                    target = assignment.identifier;
+                    rhs = assignment.expression.get();
+                } else if (node->getType() == ASTNodeType::ShowStatement) {
+                    if (!expressionSupported(static_cast<const ShowStatementNode&>(*node).expr.get()))
+                        issue("unsupported show expression; use a statically analyzable scalar expression");
+                    continue;
+                } else if (node->getType() == ASTNodeType::IfStatement) {
+                    const auto& branch = static_cast<const IfStatementNode&>(*node);
+                    if (!expressionSupported(branch.condition.get())) issue("unsupported condition; use a statically analyzable scalar condition");
+                    validateBody(branch.thenStatements);
+                    validateBody(branch.elseStatements);
+                    continue;
+                } else {
+                    issue("unsupported effect statement at " + effectLocation(node->sourceSpan) +
+                        "; use only owned scalar assignments, scalar show and if/else; calls, loops and async work are unsupported");
+                    continue;
+                }
+                if (!mutableRoots.count(target) || !scalarEffectType(types.symbols[target]) || !expressionSupported(rhs)) {
+                    issue("unsupported effect write `" + target + "` at " + effectLocation(node->sourceSpan) +
+                        "; assign an existing module-owned scalar let using a statically analyzable scalar expression");
+                }
+                if (std::find(record.writes.begin(), record.writes.end(), target) == record.writes.end()) record.writes.push_back(target);
+            }
+        };
+        validateBody(action->second->body);
+        const auto duplicate = std::find_if(plan.subscriptions.begin(), plan.subscriptions.end(), [&](const auto& item) {
+            return item.action == record.action && item.dependency == record.dependency;
+        });
+        if (duplicate == plan.subscriptions.end()) plan.subscriptions.push_back(std::move(record));
+    }
+    // Scalar watch ownership is checked at every statically visible writer.
+    // Unknown argument values retain a runtime scalar guard; known collection
+    // writes and member writes cannot satisfy the scalar dependency contract.
+    std::set<std::string> dependencies;
+    for (const auto& subscription : plan.subscriptions) dependencies.insert(subscription.dependency);
+    for (const auto& entry : functions) {
+        const auto* action = entry.second;
+        auto actionTypes = types;
+        for (const auto& param : action->parameters) actionTypes.symbols[param.name] = ExpressionValueType::Unknown;
+        std::function<void(const std::vector<std::unique_ptr<ASTNode>>&)> inspect;
+        inspect = [&](const auto& nodes) {
+            for (const auto& node : nodes) {
+                if (!node) continue;
+                if (node->getType() == ASTNodeType::IfStatement) {
+                    const auto& branch = static_cast<const IfStatementNode&>(*node);
+                    inspect(branch.thenStatements); inspect(branch.elseStatements); continue;
+                }
+                std::string target;
+                const ExpressionStatementNode* rhs = nullptr;
+                if (node->getType() == ASTNodeType::AssignmentStatement) {
+                    const auto& assignment = static_cast<const AssignmentStatementNode&>(*node);
+                    target = expressionSource(assignment.lhs.get()); rhs = assignment.rhs.get();
+                } else if (node->getType() == ASTNodeType::DefineStatement) {
+                    const auto& assignment = static_cast<const DefineStatementNode&>(*node);
+                    target = assignment.identifier; rhs = assignment.expression.get();
+                } else continue;
+                const auto root = target.substr(0, target.find_first_of(".["));
+                if (!dependencies.count(root) || std::any_of(action->parameters.begin(), action->parameters.end(),
+                    [&](const auto& param) { return param.name == root; })) continue;
+                const auto ir = buildExpressionIr(rhs, actionTypes);
+                if (root != target || (ir && ir->valueType != ExpressionValueType::Unknown && !scalarEffectType(ir->valueType)))
+                    plan.effectIssues.push_back("effect dependency writer at " + effectLocation(node->sourceSpan) +
+                        ": `" + root + "` requires a scalar assignment to its root; collections and member writes are unsupported");
+            }
+        };
+        inspect(action->body);
+    }
+    if (!dependencies.empty()) for (const auto& node : program) {
+        if (node && (node->getType() == ASTNodeType::AssignmentStatement || node->getType() == ASTNodeType::ExpressionStatement))
+            plan.effectIssues.push_back("effect program at " + effectLocation(node->sourceSpan) +
+                ": imperative module statements are unsupported in clean production; move writes/calls into a when action");
+    }
+    orderRootSubscriptions(plan);
 }
 
 int hexValue(char c) {
@@ -839,6 +1066,7 @@ RuntimePlan buildRuntimePlan(const std::vector<std::unique_ptr<ASTNode>>& progra
         }
     }
 
+    planRootSubscriptions(program, plan);
     return plan;
 }
 
@@ -866,6 +1094,7 @@ RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project,
         modulePlan.plan = modulePlan.clientExecutable
             ? buildRuntimePlan(module.ast->nodes, module.semantic)
             : buildRuntimePlan(emptyProgram, module.semantic);
+        for (auto& subscription : modulePlan.plan.subscriptions) subscription.moduleId = module.id;
         for (auto& definition : modulePlan.plan.componentDefinitions) {
             definition.moduleId = module.id;
             annotateBodyPlanComponentModules(definition.bodyPlan, module);
@@ -883,6 +1112,60 @@ RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project,
         projectPlan.modules.push_back(std::move(modulePlan));
     }
 
+    // The browser has one canonical root subscription table. Per-module plans
+    // prove ownership; linked source order determines stable ties. Never merge
+    // these tables again at bootstrap or register during rendering.
+    const bool hasSubscriptions = !projectPlan.linkedPlan.subscriptions.empty() ||
+        std::any_of(projectPlan.modules.begin(), projectPlan.modules.end(),
+            [](const auto& module) { return !module.plan.subscriptions.empty(); });
+    if (!projectPlan.modules.empty() && hasSubscriptions) {
+        std::vector<RuntimePlanSubscription> subscriptions;
+        std::set<std::tuple<SemanticModuleId, std::string, std::string>> seen;
+        auto append = [&](const RuntimePlanSubscription& subscription) {
+            if (seen.emplace(subscription.moduleId, subscription.action, subscription.dependency).second)
+                subscriptions.push_back(subscription);
+        };
+        for (const auto& original : project.linkedProgram.subscriptions) {
+            for (const auto& module : projectPlan.modules) for (const auto& subscription : module.plan.subscriptions) {
+                if (original.action != subscription.action || original.dependency != subscription.dependency) continue;
+                if (original.sourceSpan.original && subscription.sourceSpan.original &&
+                    (original.sourceSpan.original->source->file != subscription.sourceSpan.original->source->file ||
+                     original.sourceSpan.original->begin != subscription.sourceSpan.original->begin)) continue;
+                append(subscription);
+            }
+        }
+        for (const auto& module : projectPlan.modules) {
+            for (const auto& subscription : module.plan.subscriptions) append(subscription);
+            for (const auto& state : module.plan.state) {
+                if (std::none_of(projectPlan.linkedPlan.state.begin(), projectPlan.linkedPlan.state.end(),
+                    [&](const auto& item) { return item.name == state.name; })) projectPlan.linkedPlan.state.push_back(state);
+            }
+            for (const auto& action : module.plan.actions) {
+                if (std::none_of(projectPlan.linkedPlan.actions.begin(), projectPlan.linkedPlan.actions.end(),
+                    [&](const auto& item) { return item.name == action.name; })) projectPlan.linkedPlan.actions.push_back(action);
+            }
+        }
+        projectPlan.linkedPlan.subscriptions = std::move(subscriptions);
+        if (!projectPlan.linkedPlan.subscriptions.empty()) {
+            std::map<std::string, std::set<SemanticModuleId>> owners;
+            for (const auto& module : projectPlan.modules) {
+                for (const auto& state : module.plan.state) owners[state.name].insert(module.id);
+                for (const auto& action : module.plan.actions) owners[action.name].insert(module.id);
+            }
+            for (const auto& [name, modules] : owners) if (modules.size() > 1) {
+                projectPlan.linkedPlan.effectIssues.push_back("effect at " +
+                    effectLocation(projectPlan.linkedPlan.subscriptions.front().sourceSpan) +
+                    ": ambiguous module root binding `" + name +
+                    "`; root effects require distinct module state/action names");
+            }
+        }
+        orderRootSubscriptions(projectPlan.linkedPlan);
+    }
+    for (const auto& module : projectPlan.modules) {
+        for (const auto& issue : module.plan.effectIssues)
+            if (std::find(projectPlan.linkedPlan.effectIssues.begin(), projectPlan.linkedPlan.effectIssues.end(), issue) ==
+                projectPlan.linkedPlan.effectIssues.end()) projectPlan.linkedPlan.effectIssues.push_back(issue);
+    }
     return projectPlan;
 }
 

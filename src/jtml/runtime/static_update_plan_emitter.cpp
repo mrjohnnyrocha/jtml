@@ -2673,7 +2673,7 @@ std::string emitStaticUpdatePlanAsset(const RuntimeProjectPlan& plan) {
 
 std::vector<std::string> validateStaticComponentModuleForProduction(
         const RuntimeProjectPlan& plan) {
-    std::vector<std::string> issues;
+    std::vector<std::string> issues = plan.linkedPlan.effectIssues;
     std::map<SemanticModuleId, std::string> modulePaths;
     for (const auto& module : plan.modules) {
         if (module.id != InvalidSemanticModuleId && !module.path.empty()) {

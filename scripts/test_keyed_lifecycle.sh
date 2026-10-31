@@ -19,7 +19,7 @@ for fixture in ('partial', 'nested'):
         if name == 'components/index.js':
             assert '__jtml_static_update_plans' not in source
         print(f'asset: {fixture}/{name} {(root / name).stat().st_size} bytes')
-    assert (root / 'jtml-runtime.js').stat().st_size <= 272000
+    assert (root / 'jtml-runtime.js').stat().st_size <= 273000
 PYTHON
 node "${ROOT}/tests/browser/keyed_lifecycle.cjs" "${OUT}"
 node "${ROOT}/tests/browser/keyed_commit.cjs" "${OUT}"

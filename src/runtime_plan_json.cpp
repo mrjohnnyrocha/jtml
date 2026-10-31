@@ -311,6 +311,7 @@ nlohmann::json runtimePlanSemanticToJson(const SemanticProgram& semantic) {
         {"components", semantic.components},
         {"stores", semantic.stores},
         {"effects", semantic.effects},
+        {"subscriptionCount", semantic.subscriptions.size()},
         {"imports", semantic.imports},
         {"externs", semantic.externs},
         {"componentDefinitionCount", semantic.componentDefinitions.size()},
@@ -943,10 +944,21 @@ nlohmann::json runtimePlanBodyPlanToJson(
     return out;
 }
 
+nlohmann::json rootSubscriptionsToJson(const std::vector<RuntimePlanSubscription>& subscriptions) {
+    auto result = nlohmann::json::array();
+    for (const auto& subscription : subscriptions) result.push_back({
+        {"action", subscription.action}, {"dependency", subscription.dependency},
+        {"moduleId", moduleIdToJson(subscription.moduleId)}
+    });
+    return result;
+}
+
 nlohmann::json runtimePlanToExplainJson(const RuntimePlan& plan) {
     const auto environment = runtimePlanTypeEnvironment(plan);
     return {
         {"sourceOfTruth", "typed AST + semantic IR"},
+        {"subscriptions", rootSubscriptionsToJson(plan.subscriptions)},
+        {"effectIssues", plan.effectIssues},
         {"semantic", runtimePlanSemanticToJson(plan.semantic)},
         {"state", runtimePlanBindingsToJson(plan.state)},
         {"derived", runtimePlanBindingsToJson(plan.derived)},
@@ -986,6 +998,7 @@ nlohmann::json runtimePlanToClientJson(const RuntimePlan& plan) {
     const auto environment = runtimePlanTypeEnvironment(plan);
     auto client = nlohmann::json({
         {"state", runtimePlanBindingsObjectToJson(plan.state)},
+        {"subscriptions", rootSubscriptionsToJson(plan.subscriptions)},
         {"statePlans", runtimePlanBindingPlansObjectToJson(
             plan.state, environment, RuntimePlanJsonOptions{false, &environment})},
         {"derived", runtimePlanBindingsObjectToJson(plan.derived)},

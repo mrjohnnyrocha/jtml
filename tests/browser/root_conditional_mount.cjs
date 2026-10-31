@@ -14,7 +14,7 @@ for (const [name, source] of Object.entries({probe:'apps/releasedesk/probes/root
     assert(!/\bnew\s+Function\b|\beval\s*\(|\son[a-z]+\s*=/i.test(text), asset);
     if (asset==='index.html') assert(!/<script\b(?![^>]*\bsrc=)(?![^>]*\btype="application\/json")/i.test(text));
   }
-  assert(fs.statSync(path.join(out,name,'jtml-runtime.js')).size<=272000);
+  assert(fs.statSync(path.join(out,name,'jtml-runtime.js')).size<=273000);
 }
 // Independent rejection: root loops have no per-item component ownership plan.
 const rejected = path.join(out,'rejected');fs.rmSync(rejected,{recursive:true,force:true});

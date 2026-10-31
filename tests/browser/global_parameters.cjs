@@ -9,7 +9,7 @@ const {chromium}=require(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT?path.joi
  const build=spawnSync(binary,['build',source,'--target','browser','--out',dist],{encoding:'utf8',timeout:20000});
  fs.writeFileSync(path.join(output,'build.log'),(build.stdout||'')+(build.stderr||''));
  assert(!build.error&&!build.signal&&build.status===0,'global caller argument build');
- assert(fs.statSync(path.join(dist,'jtml-runtime.js')).size<=272000,'runtime budget');
+ assert(fs.statSync(path.join(dist,'jtml-runtime.js')).size<=273000,'runtime budget');
  const html=path.join(dist,'index.html');
  assert(!fs.readFileSync(html,'utf8').includes('data-jtml-component-args-hex'),'compiler expression transport must not leak into browser HTML');
  fs.writeFileSync(html,fs.readFileSync(html,'utf8').replace('<head>',`<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'none'">`));

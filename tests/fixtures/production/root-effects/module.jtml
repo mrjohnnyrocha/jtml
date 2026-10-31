@@ -1,0 +1,7 @@
+jtml 2
+export let moduleCount = 0
+export let moduleHits = 0
+effect moduleCount
+  moduleHits += 1
+export when bumpModule
+  moduleCount += 1

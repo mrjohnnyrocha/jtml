@@ -1,0 +1,17 @@
+// COST PROBE ONLY: not an integrated or shippable effect implementation.
+// executeEffect is an unresolved bridge to the existing root/component executors.
+function flushEffects(scope, definition, dirty, instance) {
+  const seen = new Set();
+  for (let turns = 0; dirty.size; ++turns) {
+    if (turns === 64) throw Error('Effect execution limit');
+    const writes = Array.from(dirty);
+    dirty.clear();
+    for (const effect of definition.effects || []) {
+      if (!effect.reads.some(name => writes.includes(name))) continue;
+      if (instance && (instance.__jtmlDestroying || !instance.element.isConnected)) continue;
+      if (seen.has(effect)) throw Error('Effect cycle');
+      seen.add(effect);
+      executeEffect(effect, scope, dirty, instance);
+    }
+  }
+}

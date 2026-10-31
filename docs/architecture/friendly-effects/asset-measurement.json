@@ -1,0 +1,16 @@
+{
+  "baseline_runtime_bytes": 271990,
+  "budget_bytes": 272000,
+  "headroom_bytes": 10,
+  "rejected_probe_bytes": 614,
+  "runtime_with_probe_bytes": 272604,
+  "over_budget_bytes": 604,
+  "baseline_gzip_bytes": 50526,
+  "runtime_with_probe_gzip_bytes": 50767,
+  "status": "rejected cost experiment; integration, write capture, generation and ordering incomplete",
+  "duplicate_normalization_blocks": 2,
+  "experimental_extraction_runtime_bytes": 271733,
+  "experimental_extraction_saving_bytes": 257,
+  "extraction_plus_rejected_probe_bytes": 272347,
+  "extraction_plus_rejected_probe_over_budget": 347
+}

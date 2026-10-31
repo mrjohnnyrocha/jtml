@@ -1,0 +1,46 @@
+{
+  "baselineCommit": "3aefe6aded95938d87a39bae8ddbd08877e9a1f5",
+  "baselineTree": "7399fe5b84fd7a88e587b2ffb10df28f181e676e",
+  "finalOracleNegativeCompilerCommit": "78b199e9289e3d872a7f32492248a48b0d8551d4",
+  "finalOracleNegativeCompilerTree": "7399fe5b84fd7a88e587b2ffb10df28f181e676e",
+  "baselineNote": "Initial audits ran the newly built unchanged-main compiler. The final oracle was also rerun against the retained identical-source-tree compiler.",
+  "command": "JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=/tmp/jtml-effects-browser-driver JTML_BENCH_BROWSER=/tmp/jtml-review-browsers/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1 JTML_REQUIRE_BROWSER_BENCH=1 scripts/verify_all.sh",
+  "gateExit": 0,
+  "ctest": "493/493",
+  "focusedCtest": "67/67",
+  "benchmarks": [
+    "OK: browser-runtime static_counter clicks=200 initialization=52.50ms interaction=16.50ms average=0.08ms slowest=3.10ms verification=0.70ms nestedParamPatch=false keyedLifecycle=false browserExit=clean",
+    "OK: browser-runtime keyed_list clicks=200 initialization=41.00ms interaction=22.60ms average=0.11ms slowest=2.90ms verification=0.50ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime control_flow clicks=200 initialization=41.50ms interaction=22.40ms average=0.11ms slowest=2.00ms verification=0.50ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime composition clicks=200 initialization=49.30ms interaction=15.30ms average=0.08ms slowest=2.40ms verification=0.60ms nestedParamPatch=true keyedLifecycle=false browserExit=clean",
+    "OK: browser-runtime large_keyed_updates clicks=201 initialization=88.10ms interaction=882.50ms average=4.39ms slowest=222.60ms verification=8.10ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime large_keyed_reorder clicks=201 initialization=307.20ms interaction=1687.00ms average=8.39ms slowest=28.20ms verification=39.00ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime nested_component_update clicks=200 initialization=81.90ms interaction=38.60ms average=0.19ms slowest=3.90ms verification=1.40ms nestedParamPatch=true keyedLifecycle=false browserExit=clean",
+    "OK: browser-runtime lifecycle_cleanup clicks=200 initialization=118.50ms interaction=77.80ms average=0.39ms slowest=6.70ms verification=0.80ms nestedParamPatch=false keyedLifecycle=true browserExit=clean",
+    "OK: browser-runtime form_focus clicks=200 initialization=47.40ms interaction=14.70ms average=0.07ms slowest=1.40ms verification=0.40ms nestedParamPatch=false keyedLifecycle=false browserExit=clean"
+  ],
+  "liveRuntimeSmoke": "8/8",
+  "newFixtureBefore": "3 pass / 6 fail, exit 1",
+  "newFixtureAfter": "9/9 pass, exit 0",
+  "supportedEnterpriseBeforeExit": 1,
+  "supportedEnterpriseAfterExit": 0,
+  "originalEnterpriseAuditAfter": "8 pass / 3 fail, exit 1; independent input ownership and its two dependent expectations remain",
+  "componentRedirectAfter": "all cases pass",
+  "budgetChanged": false,
+  "runtimeRaw": 272925,
+  "runtimeRawGrowth": 48,
+  "runtimeBudget": 273000,
+  "runtimeHeadroom": 75,
+  "logSha256": "bbf7be14f2fbf28d4d932df4b940a5e7a25cb8522b3ba3f163bda52d4eab024e",
+  "verificationSkips": [],
+  "skipLikeLines": [
+    "PASS: local server security integration; no checks skipped"
+  ],
+  "remainingLimitations": [
+    "Independent component-to-module loginEmail input binding failure remains.",
+    "External Enterprise APIs/media remain unavailable; no authentication is mocked.",
+    "Five existing native complete-attribute renderer observations remain FAIL / KNOWN DEFECT.",
+    "Reference microfixture HTML size warning and catalogued UNKNOWN/excluded native coverage remain explicit."
+  ],
+  "exactFinalCommitAcceptance": "Recorded on the PR with exact final SHA and hosted Ubuntu/macOS CI, separately from this local gate snapshot."
+}

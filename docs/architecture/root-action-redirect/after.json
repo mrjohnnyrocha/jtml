@@ -1,0 +1,85 @@
+{
+  "checks": [
+    {
+      "name": "Root: assignments, effects and parameter restoration precede redirect",
+      "pass": true
+    },
+    {
+      "name": "Root: repeated clicks execute once each",
+      "pass": true
+    },
+    {
+      "name": "Root: sign-out commits before navigation and guard denies re-entry",
+      "pass": true
+    },
+    {
+      "name": "Root: redirect-only navigates without state writes",
+      "pass": true
+    },
+    {
+      "name": "Component: assignments, effects and parameter restoration precede redirect",
+      "pass": true
+    },
+    {
+      "name": "Component: repeated clicks execute once each",
+      "pass": true
+    },
+    {
+      "name": "Component: sign-out commits before navigation and guard denies re-entry",
+      "pass": true
+    },
+    {
+      "name": "Component: redirect-only navigates without state writes",
+      "pass": true
+    },
+    {
+      "name": "strict CSP, no page exceptions or compatibility asset",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "navigations": [
+    {
+      "owner": "Root",
+      "snapshots": [
+        {
+          "path": "/private",
+          "state": {
+            "effectHits": 1,
+            "executions": 1,
+            "observed": "root:1:2:1",
+            "restored": "outer",
+            "tail": 1,
+            "token": "root",
+            "total": 2,
+            "value": "outer",
+            "activeRoute": "/",
+            "activeRouteName": "Login"
+          }
+        }
+      ]
+    },
+    {
+      "owner": "Component",
+      "snapshots": [
+        {
+          "path": "/private",
+          "state": {
+            "effectHits": 1,
+            "executions": 1,
+            "observed": "component:1:3:1",
+            "restored": "outer",
+            "tail": 1,
+            "token": "component",
+            "total": 3,
+            "value": "outer",
+            "activeRoute": "/",
+            "activeRouteName": "Login"
+          }
+        }
+      ]
+    }
+  ],
+  "browser": "153.0.8010.12",
+  "exit": 0
+}

@@ -1,0 +1,50 @@
+{
+  "budget": 273000,
+  "budgetChanged": false,
+  "assets": [
+    {
+      "file": "index.html",
+      "beforeRaw": 36595,
+      "afterRaw": 36595,
+      "rawGrowth": 0,
+      "beforeGzip": 3313,
+      "afterGzip": 3313,
+      "same": true,
+      "beforeSha256": "a35e6e528ccf6d746656ae718f784d15f26b95b1663d2f9a9864321becc53c39",
+      "afterSha256": "a35e6e528ccf6d746656ae718f784d15f26b95b1663d2f9a9864321becc53c39"
+    },
+    {
+      "file": "jtml-runtime.js",
+      "beforeRaw": 272877,
+      "afterRaw": 272925,
+      "rawGrowth": 48,
+      "beforeGzip": 50828,
+      "afterGzip": 50841,
+      "same": false,
+      "beforeSha256": "5d52d07452441c332fa09c59b8631b26d938380b8be7c818d6f0f75ae5be74f7",
+      "afterSha256": "0ea81fe5c0f82f494ae98b2082422fe84be45c8e04af87ae3e0b852b34a06b9e"
+    },
+    {
+      "file": "components/index.js",
+      "beforeRaw": 48358,
+      "afterRaw": 48358,
+      "rawGrowth": 0,
+      "beforeGzip": 3394,
+      "afterGzip": 3394,
+      "same": true,
+      "beforeSha256": "c48a63e5e1edc30d47fb098216587d04c0adf16616cd1ea0a4d8d8d23d16f52a",
+      "afterSha256": "c48a63e5e1edc30d47fb098216587d04c0adf16616cd1ea0a4d8d8d23d16f52a"
+    },
+    {
+      "file": "app.js",
+      "beforeRaw": 2043,
+      "afterRaw": 2043,
+      "rawGrowth": 0,
+      "beforeGzip": 905,
+      "afterGzip": 905,
+      "same": true,
+      "beforeSha256": "688ec3c1b98c6ac616a4dac1d641628c49ed147b46f5c9b24b8351cc29976046",
+      "afterSha256": "688ec3c1b98c6ac616a4dac1d641628c49ed147b46f5c9b24b8351cc29976046"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "checks": [
+    {
+      "name": "Root: assignments, effects and parameter restoration precede redirect",
+      "pass": false,
+      "error": "page.waitForFunction: Timeout 3000ms exceeded."
+    },
+    {
+      "name": "Root: repeated clicks execute once each",
+      "pass": false,
+      "error": "Expected values to be strictly equal:\n\n0 !== 4\n"
+    },
+    {
+      "name": "Root: sign-out commits before navigation and guard denies re-entry",
+      "pass": false,
+      "error": "Expected values to be strictly equal:\n\n0 !== 5\n"
+    },
+    {
+      "name": "Root: redirect-only navigates without state writes",
+      "pass": true
+    },
+    {
+      "name": "Component: assignments, effects and parameter restoration precede redirect",
+      "pass": false,
+      "error": "page.waitForFunction: Timeout 3000ms exceeded."
+    },
+    {
+      "name": "Component: repeated clicks execute once each",
+      "pass": false,
+      "error": "Expected values to be strictly equal:\n\n0 !== 4\n"
+    },
+    {
+      "name": "Component: sign-out commits before navigation and guard denies re-entry",
+      "pass": false,
+      "error": "Expected values to be strictly equal:\n\n0 !== 5\n"
+    },
+    {
+      "name": "Component: redirect-only navigates without state writes",
+      "pass": true
+    },
+    {
+      "name": "strict CSP, no page exceptions or compatibility asset",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "navigations": [],
+  "browser": "153.0.8010.12",
+  "exit": 1
+}

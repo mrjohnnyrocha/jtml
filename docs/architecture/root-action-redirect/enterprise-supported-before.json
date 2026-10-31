@@ -1,0 +1,65 @@
+{
+  "checks": [],
+  "errors": [
+    "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'demo-token' !== ''\n\n    at /Users/joaorocha/.codex/worktrees/root-action-redirect/jtml-v1/tests/browser/enterprise_action_redirect.cjs:25:10"
+  ],
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/index.html"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.jpg"
+    },
+    {
+      "method": "GET",
+      "path": "/jtml-runtime.js"
+    },
+    {
+      "method": "GET",
+      "path": "/components/index.js"
+    },
+    {
+      "method": "GET",
+      "path": "/app.js"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.mp4"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/release-note.mp3"
+    },
+    {
+      "method": "POST",
+      "path": "/api/login"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.jpg"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/briefing.mp4"
+    },
+    {
+      "method": "GET",
+      "path": "/assets/release-note.mp3"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users"
+    }
+  ],
+  "exit": 1
+}

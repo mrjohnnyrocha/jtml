@@ -1,0 +1,78 @@
+jtml 2
+
+use { SiteNav, SiteFooter, SitePages } from "./shared/layout.jtml"
+
+make SecurityPage
+  box class "website content-page"
+    a "Skip to content" href "#page-start" class "skip-link"
+    SiteNav "./index.html#syntax" "./index.html#demo"
+    main
+      SitePages
+      section class "page-hero" aria-labelledby "security-title"
+        p "Security and operations" class "eyebrow"
+        h1 "Built for local control and auditability." id "security-title"
+        p "JTML keeps the authoring loop local, emits inspectable artifacts, and separates static publishing from live runtime deployment."
+      section aria-labelledby "security-grid-title"
+        box class "section-heading"
+          p "Readiness checklist" class "eyebrow"
+          h2 "Evidence and experimental boundaries." id "security-grid-title"
+        box class "enterprise-grid"
+          article
+            h3 "Local-First Tooling"
+            p "No hosted compiler or SaaS account is required. Studio, tutorial, checker, formatter, linter, examples, and packager run on the developer machine."
+          article
+            h3 "Artifact Verification"
+            p
+              code "scripts/verify_all.sh"
+              span " runs unit tests, example smoke tests, static site generation, release packaging, and artifact existence checks."
+          article
+            h3 "Static By Default"
+            p
+              code "jtml build --target browser"
+              span " writes four clean static browser assets. Live serve/Studio is loopback-only trusted development tooling, not a supported public service."
+          article
+            h3 "Published RC.3 evidence"
+            p
+              span "The "
+              a "public prerelease" href "https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3"
+              span " includes SHA-256 checksums, source provenance, hosted Ubuntu/macOS checks and physical macOS 14.4.1 acceptance. This does not establish production readiness."
+          article
+            h3 "Operational Boundary"
+            p
+              span "The live server exposes HTTP, WebSocket, and "
+              code "/api/event"
+              span " fallback endpoints. Use "
+              code "--watch"
+              span " only for local development."
+          article
+            h3 "Readable Source"
+            p "JTML files stay close to HTML, which makes review, diffs, and policy scanning simpler than opaque generated frontend bundles."
+      section class "try-section" aria-labelledby "ops-title"
+        box class "section-heading"
+          p "Operational commands" class "eyebrow"
+          h2 "Verify before publish." id "ops-title"
+        box class "steps"
+          article class "step"
+            span "1" class "step-number"
+            h3 "Health Check"
+            pre
+              code "jtml doctor --json"
+          article class "step"
+            span "2" class "step-number"
+            h3 "Full Verification"
+            pre
+              code "scripts/verify_all.sh"
+          article class "step"
+            span "3" class "step-number"
+            h3 "Inspect local package checksums"
+            pre
+              code "cat dist/release/MANIFEST.txt\ncat dist/release/SHA256SUMS"
+      box class "legacy-links"
+        a "Toolchain" href "./tools.html"
+    box class "footer-note"
+      a "Apache-2.0 (JTML-owned material)" href "https://www.apache.org/licenses/LICENSE-2.0"
+      span "JTML"
+      span "Local control, inspectable output, explicit runtime."
+    SiteFooter
+
+SecurityPage

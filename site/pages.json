@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "pages": [
+    {
+      "id": "homepage",
+      "entry": "index.jtml",
+      "output": "index.html",
+      "assetDirectory": ".",
+      "css": [
+        "home.css"
+      ],
+      "title": "JTML — readable source, observable behavior",
+      "description": "Friendly JTML 2: markup, state, actions and components in a readable UI language. Explore the experimental RC.3 release and a genuine compiled Counter."
+    },
+    {
+      "id": "reference",
+      "entry": "reference.jtml",
+      "output": "reference.html",
+      "assetDirectory": "reference-assets",
+      "css": [
+        "home.css",
+        "reference.css"
+      ],
+      "title": "JTML Reference — Friendly JTML 2",
+      "description": "JTML language reference: canonical Friendly JTML 2 syntax, state, actions, routing, semantic UI, media and explicit interop. Experimental RC.3."
+    },
+    {
+      "id": "examples",
+      "entry": "examples.jtml",
+      "output": "examples.html",
+      "assetDirectory": "examples-assets",
+      "css": [
+        "home.css",
+        "content.css"
+      ],
+      "title": "JTML Examples",
+      "description": "JTML example gallery for tiny reactive HTML pages."
+    },
+    {
+      "id": "tools",
+      "entry": "tools.jtml",
+      "output": "tools.html",
+      "assetDirectory": "tools-assets",
+      "css": [
+        "home.css",
+        "content.css"
+      ],
+      "title": "JTML Tools",
+      "description": "JTML local tools: editor support, runner, tutorial, studio, tester, and release packaging."
+    },
+    {
+      "id": "security",
+      "entry": "security.jtml",
+      "output": "security.html",
+      "assetDirectory": "security-assets",
+      "css": [
+        "home.css",
+        "content.css"
+      ],
+      "title": "JTML Security And Operations",
+      "description": "JTML experimental security boundaries, local tools and public release verification.",
+      "themeColor": "#172026"
+    },
+    {
+      "id": "deploy",
+      "entry": "deploy.jtml",
+      "output": "deploy.html",
+      "assetDirectory": "deploy-assets",
+      "css": [
+        "home.css",
+        "content.css"
+      ],
+      "title": "Deploy JTML",
+      "description": "Deploy JTML as static HTML or a live runtime."
+    }
+  ]
+}

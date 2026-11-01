@@ -1,0 +1,340 @@
+{
+  "accounting": "Repeated bodyPlan arrays use canonical compact JSON bytes beyond the first identical occurrence; not a proposed removable-byte budget.",
+  "compression": "gzip level 9, mtime 0, each asset independently; estimates, not hosted transfer headers",
+  "crossPage": {
+    "additionalRuntimeBytes": {
+      "gzip": 254175,
+      "raw": 1361850
+    },
+    "identicalRuntimeCopies": true,
+    "runtimeBytesPerCopy": {
+      "gzip": 50835,
+      "raw": 272370
+    },
+    "runtimeCopies": 6
+  },
+  "pages": {
+    "deploy.html": {
+      "byType": {
+        "css": {
+          "gzip": 3416,
+          "raw": 12650
+        },
+        "html": {
+          "gzip": 17984,
+          "raw": 202742
+        },
+        "js": {
+          "gzip": 66031,
+          "raw": 490927
+        }
+      },
+      "files": {
+        "content.css": {
+          "gzip": 970,
+          "raw": 3436
+        },
+        "deploy-assets/app.js": {
+          "gzip": 905,
+          "raw": 2043
+        },
+        "deploy-assets/components/index.js": {
+          "gzip": 14291,
+          "raw": 216514
+        },
+        "deploy-assets/jtml-runtime.js": {
+          "gzip": 50835,
+          "raw": 272370
+        },
+        "deploy.html": {
+          "gzip": 17984,
+          "raw": 202742
+        },
+        "home.css": {
+          "gzip": 2446,
+          "raw": 9214
+        }
+      },
+      "generatedData": {
+        "bodyPlanOccurrences": 8,
+        "clientManifest": {
+          "gzip": 12140,
+          "raw": 176650
+        },
+        "exactRepeatedBodyPlanBytes": 20557
+      },
+      "total": {
+        "gzip": 87431,
+        "raw": 706319
+      }
+    },
+    "examples.html": {
+      "byType": {
+        "css": {
+          "gzip": 3416,
+          "raw": 12650
+        },
+        "html": {
+          "gzip": 13045,
+          "raw": 154240
+        },
+        "js": {
+          "gzip": 63462,
+          "raw": 455885
+        }
+      },
+      "files": {
+        "content.css": {
+          "gzip": 970,
+          "raw": 3436
+        },
+        "examples-assets/app.js": {
+          "gzip": 905,
+          "raw": 2043
+        },
+        "examples-assets/components/index.js": {
+          "gzip": 11722,
+          "raw": 181472
+        },
+        "examples-assets/jtml-runtime.js": {
+          "gzip": 50835,
+          "raw": 272370
+        },
+        "examples.html": {
+          "gzip": 13045,
+          "raw": 154240
+        },
+        "home.css": {
+          "gzip": 2446,
+          "raw": 9214
+        }
+      },
+      "generatedData": {
+        "bodyPlanOccurrences": 8,
+        "clientManifest": {
+          "gzip": 9152,
+          "raw": 136254
+        },
+        "exactRepeatedBodyPlanBytes": 20557
+      },
+      "total": {
+        "gzip": 79923,
+        "raw": 622775
+      }
+    },
+    "index.html": {
+      "byType": {
+        "css": {
+          "gzip": 2446,
+          "raw": 9214
+        },
+        "html": {
+          "gzip": 27034,
+          "raw": 293672
+        },
+        "js": {
+          "gzip": 69553,
+          "raw": 578831
+        }
+      },
+      "files": {
+        "app.js": {
+          "gzip": 905,
+          "raw": 2043
+        },
+        "components/index.js": {
+          "gzip": 17813,
+          "raw": 304418
+        },
+        "home.css": {
+          "gzip": 2446,
+          "raw": 9214
+        },
+        "index.html": {
+          "gzip": 27034,
+          "raw": 293672
+        },
+        "jtml-runtime.js": {
+          "gzip": 50835,
+          "raw": 272370
+        }
+      },
+      "generatedData": {
+        "bodyPlanOccurrences": 11,
+        "clientManifest": {
+          "gzip": 18832,
+          "raw": 259635
+        },
+        "exactRepeatedBodyPlanBytes": 35319
+      },
+      "total": {
+        "gzip": 99033,
+        "raw": 881717
+      }
+    },
+    "reference.html": {
+      "byType": {
+        "css": {
+          "gzip": 3370,
+          "raw": 12084
+        },
+        "html": {
+          "gzip": 24845,
+          "raw": 295702
+        },
+        "js": {
+          "gzip": 74116,
+          "raw": 624050
+        }
+      },
+      "files": {
+        "home.css": {
+          "gzip": 2446,
+          "raw": 9214
+        },
+        "reference-assets/app.js": {
+          "gzip": 905,
+          "raw": 2043
+        },
+        "reference-assets/components/index.js": {
+          "gzip": 22376,
+          "raw": 349637
+        },
+        "reference-assets/jtml-runtime.js": {
+          "gzip": 50835,
+          "raw": 272370
+        },
+        "reference.css": {
+          "gzip": 924,
+          "raw": 2870
+        },
+        "reference.html": {
+          "gzip": 24845,
+          "raw": 295702
+        }
+      },
+      "generatedData": {
+        "bodyPlanOccurrences": 9,
+        "clientManifest": {
+          "gzip": 17231,
+          "raw": 260761
+        },
+        "exactRepeatedBodyPlanBytes": 84981
+      },
+      "total": {
+        "gzip": 102331,
+        "raw": 931836
+      }
+    },
+    "security.html": {
+      "byType": {
+        "css": {
+          "gzip": 3416,
+          "raw": 12650
+        },
+        "html": {
+          "gzip": 16032,
+          "raw": 192556
+        },
+        "js": {
+          "gzip": 65020,
+          "raw": 493777
+        }
+      },
+      "files": {
+        "content.css": {
+          "gzip": 970,
+          "raw": 3436
+        },
+        "home.css": {
+          "gzip": 2446,
+          "raw": 9214
+        },
+        "security-assets/app.js": {
+          "gzip": 905,
+          "raw": 2043
+        },
+        "security-assets/components/index.js": {
+          "gzip": 13280,
+          "raw": 219364
+        },
+        "security-assets/jtml-runtime.js": {
+          "gzip": 50835,
+          "raw": 272370
+        },
+        "security.html": {
+          "gzip": 16032,
+          "raw": 192556
+        }
+      },
+      "generatedData": {
+        "bodyPlanOccurrences": 8,
+        "clientManifest": {
+          "gzip": 11132,
+          "raw": 170764
+        },
+        "exactRepeatedBodyPlanBytes": 20557
+      },
+      "total": {
+        "gzip": 84468,
+        "raw": 698983
+      }
+    },
+    "tools.html": {
+      "byType": {
+        "css": {
+          "gzip": 3416,
+          "raw": 12650
+        },
+        "html": {
+          "gzip": 17648,
+          "raw": 215345
+        },
+        "js": {
+          "gzip": 66028,
+          "raw": 513343
+        }
+      },
+      "files": {
+        "content.css": {
+          "gzip": 970,
+          "raw": 3436
+        },
+        "home.css": {
+          "gzip": 2446,
+          "raw": 9214
+        },
+        "tools-assets/app.js": {
+          "gzip": 905,
+          "raw": 2043
+        },
+        "tools-assets/components/index.js": {
+          "gzip": 14288,
+          "raw": 238930
+        },
+        "tools-assets/jtml-runtime.js": {
+          "gzip": 50835,
+          "raw": 272370
+        },
+        "tools.html": {
+          "gzip": 17648,
+          "raw": 215345
+        }
+      },
+      "generatedData": {
+        "bodyPlanOccurrences": 8,
+        "clientManifest": {
+          "gzip": 12226,
+          "raw": 191228
+        },
+        "exactRepeatedBodyPlanBytes": 20557
+      },
+      "total": {
+        "gzip": 87092,
+        "raw": 741338
+      }
+    }
+  },
+  "schema": 2,
+  "zlibVersion": "1.2.12"
+}

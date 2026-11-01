@@ -10,9 +10,11 @@ on:
       - 'tests/browser/site.cjs'
       - 'tests/fixtures/site/**'
       - 'tests/test_application_paths.py'
+      - 'tests/test_site_registry.py'
       - 'examples/friendly_counter.jtml'
       - 'docs/tooling/website-launch.md'
       - 'docs/tooling/website-reference/**'
+      - 'docs/tooling/website-six-pages/**'
       - '.github/workflows/site-pages.yml'
   workflow_dispatch:
     inputs:
@@ -51,6 +53,8 @@ jobs:
           test "$(git rev-parse HEAD)" = "$(printf '%s' "$SOURCE_REVISION" | tr '[:upper:]' '[:lower:]')"
           git merge-base --is-ancestor HEAD origin/main
           test -z "$(git status --porcelain --untracked-files=normal)"
+      - name: Validate declarative page registry
+        run: python3 tests/test_site_registry.py
       - name: Build genuine production demo and website
         run: scripts/build_site.sh dist/site
       - name: Install pinned browser test tools

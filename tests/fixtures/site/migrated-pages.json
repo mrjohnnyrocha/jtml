@@ -1,0 +1,466 @@
+{
+  "examples.html": {
+    "headings": [
+      {
+        "tag": "h1",
+        "text": "Small pages, readable source."
+      },
+      {
+        "tag": "h3",
+        "text": "JTML Studio"
+      },
+      {
+        "tag": "h3",
+        "text": "Friendly Counter"
+      },
+      {
+        "tag": "h3",
+        "text": "Friendly Elements"
+      },
+      {
+        "tag": "h3",
+        "text": "Live Input"
+      },
+      {
+        "tag": "h3",
+        "text": "Fetch Dashboard"
+      },
+      {
+        "tag": "h3",
+        "text": "Routes"
+      },
+      {
+        "tag": "h3",
+        "text": "Tutorial"
+      }
+    ],
+    "paragraphs": [
+      "Examples",
+      "Use these as starting points for prototypes, lessons, and server-backed UI.",
+      "The native authoring surface with samples, snippets, linting, formatting, HTML export, diagnostics, and live preview.",
+      "State, actions and reactive DOM updates. Open the real compiled Counter.",
+      "Friendly element aliases, boolean attributes, custom names, media, and events.",
+      "Input events flowing into JTML functions without hand-written JavaScript.",
+      "Async data, loading/error states, refresh, stale data, and invalidation patterns.",
+      "Hash routes, parameters, layouts, active links, route loads, and guards.",
+      "A split-view learning environment with prose, editor, and live preview."
+    ],
+    "code": [
+      "jtml demo --port 8000",
+      "jtml serve examples/friendly_counter.jtml --port 8000",
+      "jtml serve examples/friendly_elements.jtml --port 8000",
+      "jtml serve examples/live_input.jtml --port 8000",
+      "jtml serve examples/friendly_fetch_refresh.jtml --port 8000",
+      "jtml serve examples/friendly_route_layout.jtml --port 8000",
+      "jtml tutorial --port 8000"
+    ],
+    "links": [
+      {
+        "href": "./index.html",
+        "text": "JTML home"
+      },
+      {
+        "href": "./index.html#syntax",
+        "text": "Syntax"
+      },
+      {
+        "href": "./tools.html",
+        "text": "Tools"
+      },
+      {
+        "href": "./examples.html",
+        "text": "Examples"
+      },
+      {
+        "href": "./reference.html",
+        "text": "Reference"
+      },
+      {
+        "href": "./security.html",
+        "text": "Security"
+      },
+      {
+        "href": "./deploy.html",
+        "text": "Deploy"
+      },
+      {
+        "href": "./index.html#try",
+        "text": "Get started"
+      },
+      {
+        "href": "./demo/counter/",
+        "text": "Open the real compiled Counter"
+      },
+      {
+        "href": "https://www.apache.org/licenses/LICENSE-2.0",
+        "text": "Apache-2.0 (JTML-owned material)"
+      }
+    ],
+    "footer": "Apache-2.0 (JTML-owned material) JTML Example gallery for tiny reactive pages."
+  },
+  "tools.html": {
+    "headings": [
+      {
+        "tag": "h1",
+        "text": "A local experimental toolkit."
+      },
+      {
+        "tag": "h2",
+        "text": "One binary, several loops."
+      },
+      {
+        "tag": "h2",
+        "text": "Build everything locally."
+      },
+      {
+        "tag": "h3",
+        "text": "Runner"
+      },
+      {
+        "tag": "h3",
+        "text": "Tutorial IDE"
+      },
+      {
+        "tag": "h3",
+        "text": "Studio"
+      },
+      {
+        "tag": "h3",
+        "text": "Tester"
+      },
+      {
+        "tag": "h3",
+        "text": "Doctor"
+      },
+      {
+        "tag": "h3",
+        "text": "Static Build"
+      },
+      {
+        "tag": "h3",
+        "text": "Release Kit"
+      },
+      {
+        "tag": "h3",
+        "text": "Install"
+      },
+      {
+        "tag": "h3",
+        "text": "Package"
+      },
+      {
+        "tag": "h3",
+        "text": "Verify"
+      },
+      {
+        "tag": "h3",
+        "text": "Build Site"
+      },
+      {
+        "tag": "h3",
+        "text": "Package CLI"
+      }
+    ],
+    "paragraphs": [
+      "Local toolkit",
+      "JTML ships as a local CLI with Studio, runner, tutorial IDE, checker, formatter, linter, smoke tester, VS Code support, static site artifact builder, release packager, and predeploy verification.",
+      "Commands",
+      "Serve a JTML file with HTTP, WebSocket updates, and event fallback.",
+      "Launch guided lessons with editable code and live preview.",
+      "Open the native Studio with Run, Lint, Fix, Format, Export HTML, diagnostics, compiler artifacts, command palette, autosaved drafts, versioned local Save/history, and live preview.",
+      "Parse, lint, transpile, and smoke-test every bundled example.",
+      "Check the local toolkit folders, scripts, tutorial, site, editor assets, and emit JSON for CI.",
+      "Compile a file or app folder to a distributable static HTML output.",
+      "Create the predeploy site artifact and local CLI release archive.",
+      "Install the CLI into a prefix for team machines or build images.",
+      "Generate a local release directory, archive, manifest, and checksums.",
+      "Predeploy",
+      "These scripts stop one step before publishing a public domain. They produce local artifacts under dist/."
+    ],
+    "code": [
+      "jtml serve examples/friendly_counter.jtml --port 8000 --watch",
+      "jtml tutorial --port 8000",
+      "jtml demo --port 8000",
+      "jtml test",
+      "jtml doctor --json",
+      "jtml build examples/friendly_import_page.jtml --target browser --out dist/app",
+      "scripts/verify_all.sh",
+      "cmake --install build --prefix ~/.local",
+      "scripts/package_cli.sh dist/release",
+      "dist/",
+      "scripts/verify_all.sh",
+      "scripts/build_site.sh dist/site",
+      "scripts/package_cli.sh dist/release"
+    ],
+    "links": [
+      {
+        "href": "./index.html",
+        "text": "JTML home"
+      },
+      {
+        "href": "./index.html#syntax",
+        "text": "Syntax"
+      },
+      {
+        "href": "./tools.html",
+        "text": "Tools"
+      },
+      {
+        "href": "./examples.html",
+        "text": "Examples"
+      },
+      {
+        "href": "./reference.html",
+        "text": "Reference"
+      },
+      {
+        "href": "./security.html",
+        "text": "Security"
+      },
+      {
+        "href": "./deploy.html",
+        "text": "Deploy"
+      },
+      {
+        "href": "./index.html#try",
+        "text": "Get started"
+      },
+      {
+        "href": "https://www.apache.org/licenses/LICENSE-2.0",
+        "text": "Apache-2.0 (JTML-owned material)"
+      }
+    ],
+    "footer": "Apache-2.0 (JTML-owned material) JTML Local tools ready before public deployment."
+  },
+  "security.html": {
+    "headings": [
+      {
+        "tag": "h1",
+        "text": "Built for local control and auditability."
+      },
+      {
+        "tag": "h2",
+        "text": "Evidence and experimental boundaries."
+      },
+      {
+        "tag": "h2",
+        "text": "Verify before publish."
+      },
+      {
+        "tag": "h3",
+        "text": "Local-First Tooling"
+      },
+      {
+        "tag": "h3",
+        "text": "Artifact Verification"
+      },
+      {
+        "tag": "h3",
+        "text": "Static By Default"
+      },
+      {
+        "tag": "h3",
+        "text": "Published RC.3 evidence"
+      },
+      {
+        "tag": "h3",
+        "text": "Operational Boundary"
+      },
+      {
+        "tag": "h3",
+        "text": "Readable Source"
+      },
+      {
+        "tag": "h3",
+        "text": "Health Check"
+      },
+      {
+        "tag": "h3",
+        "text": "Full Verification"
+      },
+      {
+        "tag": "h3",
+        "text": "Inspect local package checksums"
+      }
+    ],
+    "paragraphs": [
+      "Security and operations",
+      "JTML keeps the authoring loop local, emits inspectable artifacts, and separates static publishing from live runtime deployment.",
+      "Readiness checklist",
+      "No hosted compiler or SaaS account is required. Studio, tutorial, checker, formatter, linter, examples, and packager run on the developer machine.",
+      "scripts/verify_all.sh runs unit tests, example smoke tests, static site generation, release packaging, and artifact existence checks.",
+      "jtml build --target browser writes four clean static browser assets. Live serve/Studio is loopback-only trusted development tooling, not a supported public service.",
+      "The public prerelease includes SHA-256 checksums, source provenance, hosted Ubuntu/macOS checks and physical macOS 14.4.1 acceptance. This does not establish production readiness.",
+      "The live server exposes HTTP, WebSocket, and /api/event fallback endpoints. Use --watch only for local development.",
+      "JTML files stay close to HTML, which makes review, diffs, and policy scanning simpler than opaque generated frontend bundles.",
+      "Operational commands"
+    ],
+    "code": [
+      "scripts/verify_all.sh",
+      "jtml build --target browser",
+      "/api/event",
+      "--watch",
+      "jtml doctor --json",
+      "scripts/verify_all.sh",
+      "cat dist/release/MANIFEST.txt\ncat dist/release/SHA256SUMS"
+    ],
+    "links": [
+      {
+        "href": "./index.html",
+        "text": "JTML home"
+      },
+      {
+        "href": "./index.html#syntax",
+        "text": "Syntax"
+      },
+      {
+        "href": "./tools.html",
+        "text": "Tools"
+      },
+      {
+        "href": "./examples.html",
+        "text": "Examples"
+      },
+      {
+        "href": "./reference.html",
+        "text": "Reference"
+      },
+      {
+        "href": "./security.html",
+        "text": "Security"
+      },
+      {
+        "href": "./deploy.html",
+        "text": "Deploy"
+      },
+      {
+        "href": "./tools.html",
+        "text": "Toolchain"
+      },
+      {
+        "href": "https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3",
+        "text": "public prerelease"
+      },
+      {
+        "href": "https://www.apache.org/licenses/LICENSE-2.0",
+        "text": "Apache-2.0 (JTML-owned material)"
+      }
+    ],
+    "footer": "Apache-2.0 (JTML-owned material) JTML Local control, inspectable output, explicit runtime."
+  },
+  "deploy.html": {
+    "headings": [
+      {
+        "tag": "h1",
+        "text": "Install RC.3, then publish static browser assets."
+      },
+      {
+        "tag": "h2",
+        "text": "Download and verify"
+      },
+      {
+        "tag": "h2",
+        "text": "Compile the Counter"
+      },
+      {
+        "tag": "h2",
+        "text": "Platform contract"
+      },
+      {
+        "tag": "h2",
+        "text": "Local Studio"
+      },
+      {
+        "tag": "h2",
+        "text": "Source builds"
+      },
+      {
+        "tag": "h2",
+        "text": "Static hosting"
+      }
+    ],
+    "paragraphs": [
+      "Deploy",
+      "JTML compiles supported reactive apps to static browser assets. Its separate live development server is loopback-only trusted-code tooling; the public RC.3 packages are experimental, unsigned and unnotarized.",
+      "Published v0.3.0-rc.3 packages and SHA256SUMS. Download the bundle matching your platform. The -install tarball is an alternative CPack layout.",
+      "Open localhost:8000; Add one changes 0 to 1 and Reset returns to 0. Keep all four generated assets together. Try the homepage Counter and inspect build provenance.",
+      "Ubuntu 22.04 x86_64; Apple Silicon macOS with minimum deployment target 14.0, tested physically on 14.4.1 and hosted on 15. Other distributions/versions are not independently certified. No Windows, Linux arm64, Intel/universal Mac, Python wheel or VSIX package is included.",
+      "Unsigned/unnotarized downloads may be subject to local OS policy. Matching header/library C API smoke tests do not establish a stable cross-version ABI.",
+      "Studio, tutorial and live serve bind to loopback and execute trusted local code. They are not public production servers. Packaged resources are discovered relative to the executable.",
+      "RC.3 includes both the component-input reset fix and clean browser production imports. For a complete form, use the first-app guide. Known general slot limitations still apply.",
+      "Build from source with a C++17 compiler and CMake. Source builds default to 0.3.0-dev; the published binaries report 0.3.0-rc.3. Optional Python bindings and VSIX publication have separate requirements.",
+      "The generated Counter needs no backend. Serve index.html, jtml-runtime.js, components/index.js and app.js together with HTML/JavaScript MIME types. Scripts use script-src 'self'; the example's inline styles require a separate style policy.",
+      "Full RC.3 installation, checksums, provenance and limitations."
+    ],
+    "code": [
+      "-install",
+      "# Linux x86_64: beside the downloaded files\ngrep '  jtml-0.3.0-rc.3-linux-x86_64.tar.gz$' SHA256SUMS | sha256sum -c -\ntar -xzf jtml-0.3.0-rc.3-linux-x86_64.tar.gz\n# macOS arm64 instead:\ngrep '  jtml-0.3.0-rc.3-darwin-arm64.tar.gz$' SHA256SUMS | shasum -a 256 -c -\ntar -xzf jtml-0.3.0-rc.3-darwin-arm64.tar.gz",
+      "cd release\n./bin/jtml --version\n# jtml 0.3.0-rc.3\n./bin/jtml check examples/friendly_counter.jtml\n./bin/jtml build examples/friendly_counter.jtml --target browser --out counter-dist\npython3 -m http.server 8000 --bind 127.0.0.1 --directory counter-dist",
+      "./bin/jtml studio --port 8001",
+      "index.html",
+      "jtml-runtime.js",
+      "components/index.js",
+      "app.js",
+      "script-src 'self'"
+    ],
+    "links": [
+      {
+        "href": "./index.html",
+        "text": "JTML home"
+      },
+      {
+        "href": "./index.html#syntax",
+        "text": "Syntax"
+      },
+      {
+        "href": "./tools.html",
+        "text": "Tools"
+      },
+      {
+        "href": "./examples.html",
+        "text": "Examples"
+      },
+      {
+        "href": "./reference.html",
+        "text": "Reference"
+      },
+      {
+        "href": "./security.html",
+        "text": "Security"
+      },
+      {
+        "href": "./deploy.html",
+        "text": "Deploy"
+      },
+      {
+        "href": "./index.html#try",
+        "text": "Get started"
+      },
+      {
+        "href": "https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3",
+        "text": "Published v0.3.0-rc.3 packages and SHA256SUMS"
+      },
+      {
+        "href": "./index.html#demo",
+        "text": "Try the homepage Counter and inspect build provenance"
+      },
+      {
+        "href": "https://github.com/mrjohnnyrocha/jtml/blob/main/docs/getting-started.md",
+        "text": "the first-app guide"
+      },
+      {
+        "href": "https://github.com/mrjohnnyrocha/jtml#readme",
+        "text": "Build from source"
+      },
+      {
+        "href": "https://github.com/mrjohnnyrocha/jtml/blob/main/docs/releases/v0.3.0-rc.3.md",
+        "text": "Full RC.3 installation, checksums, provenance and limitations"
+      },
+      {
+        "href": "https://www.apache.org/licenses/LICENSE-2.0",
+        "text": "Apache-2.0 (JTML-owned material)"
+      }
+    ],
+    "footer": "Apache-2.0 (JTML-owned material) JTML See docs/tooling/deployment.md for the full deployment guide."
+  }
+}

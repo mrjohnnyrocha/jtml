@@ -1,0 +1,41 @@
+/* Presentation only. All six page bodies are authored in Friendly JTML. */
+html:has(.content-page) { scroll-behavior: auto; }
+.site-pages { display: flex; flex-wrap: wrap; gap: 16px 26px; padding: 20px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.site-pages a:hover, .content-page p a:hover, .footer-note a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.content-page .page-hero { padding: 65px 0 50px; border-bottom: 1px solid var(--line); margin-bottom: 45px; }
+.content-page h1 { font-size: clamp(39px,4.6vw,66px); max-width: 930px; margin-bottom: 25px; }
+.content-page .page-hero p:not(.eyebrow) { max-width: 800px; color: var(--muted); font-size: 17px; }
+.content-page h2 { font-size: 34px; margin-bottom: 22px; max-width: none; }
+.content-page h3 { line-height: 1.25; }
+.content-page .example-grid, .content-page .enterprise-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 22px; }
+.content-page .example-card, .content-page .enterprise-grid article { padding: 26px; border: 1px solid var(--line); border-radius: 4px; min-width: 0; }
+.content-page p { color: var(--muted); font-size: 15px; }
+.content-page p a { color: var(--green); text-decoration: underline; text-underline-offset: 3px; }
+.content-page code { font-size: .85em; overflow-wrap: anywhere; }
+.content-page .example-card>code { display: block; margin-top: 22px; padding: 16px; background: #e8ebdf; border-radius: 3px; line-height: 1.7; }
+.content-page .reference-layout { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 38px; margin-bottom: 45px; }
+.content-page .reference-layout article { padding-bottom: 28px; border-bottom: 1px solid var(--line); min-width: 0; }
+.content-page .reference-layout article p { margin-bottom: 20px; }
+.content-page pre { background: #1c2925; color: var(--lime); padding: 24px; margin: 22px 0; border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.9; }
+.content-page .section-heading { margin: 50px 0 30px; }
+.content-page .try-section { margin-top: 55px; border-top: 1px solid var(--line); padding-top: 10px; }
+.content-page .steps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 22px; }
+.content-page .step { min-width: 0; }
+.content-page .step-number { display: block; font: 12px monospace; color: var(--green); margin-bottom: 16px; }
+.legacy-links { padding: 30px 0; font-size: 14px; color: var(--green); }
+.footer-note { display: flex; gap: 15px 24px; flex-wrap: wrap; padding: 30px 0; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); margin-top: 25px; }
+@media(max-width:1000px) {
+  .content-page .example-grid, .content-page .enterprise-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .content-page .reference-layout { gap: 25px; }
+}
+@media(max-width:700px) {
+  .content-page .page-hero { padding: 45px 0 35px; margin-bottom: 30px; }
+  .content-page h1 { font-size: 43px; }
+  .content-page .page-hero p:not(.eyebrow) { font-size: 16px; }
+  .content-page h2 { font-size: 29px; }
+  .content-page .example-grid, .content-page .enterprise-grid, .content-page .reference-layout, .content-page .steps { grid-template-columns: 1fr; }
+  .content-page .example-card, .content-page .enterprise-grid article { padding: 23px; }
+  .content-page pre { padding: 20px; }
+  .site-pages { gap: 16px 22px; font-size: 12px; }
+  .content-page .try-section { margin-top: 35px; }
+}

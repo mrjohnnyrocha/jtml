@@ -1,0 +1,119 @@
+{
+  "accounting": "Repeated bodyPlan arrays use canonical compact JSON bytes beyond the first identical occurrence; not a proposed removable-byte budget.",
+  "compression": "gzip level 9, mtime 0, each asset independently; estimates, not hosted transfer headers",
+  "crossPage": {
+    "additionalRuntimeBytes": {
+      "gzip": 50835,
+      "raw": 272370
+    },
+    "identicalRuntimeCopies": true
+  },
+  "pages": {
+    "index.html": {
+      "byType": {
+        "css": {
+          "gzip": 2446,
+          "raw": 9214
+        },
+        "html": {
+          "gzip": 26634,
+          "raw": 285599
+        },
+        "js": {
+          "gzip": 69162,
+          "raw": 566534
+        }
+      },
+      "files": {
+        "app.js": {
+          "gzip": 905,
+          "raw": 2043
+        },
+        "components/index.js": {
+          "gzip": 17422,
+          "raw": 292121
+        },
+        "home.css": {
+          "gzip": 2446,
+          "raw": 9214
+        },
+        "index.html": {
+          "gzip": 26634,
+          "raw": 285599
+        },
+        "jtml-runtime.js": {
+          "gzip": 50835,
+          "raw": 272370
+        }
+      },
+      "generatedData": {
+        "bodyPlanOccurrences": 10,
+        "clientManifest": {
+          "gzip": 18426,
+          "raw": 251566
+        },
+        "exactRepeatedBodyPlanBytes": 35319
+      },
+      "total": {
+        "gzip": 98242,
+        "raw": 861347
+      }
+    },
+    "reference.html": {
+      "byType": {
+        "css": {
+          "gzip": 3370,
+          "raw": 12084
+        },
+        "html": {
+          "gzip": 24473,
+          "raw": 287629
+        },
+        "js": {
+          "gzip": 73745,
+          "raw": 611779
+        }
+      },
+      "files": {
+        "home.css": {
+          "gzip": 2446,
+          "raw": 9214
+        },
+        "reference-assets/app.js": {
+          "gzip": 905,
+          "raw": 2043
+        },
+        "reference-assets/components/index.js": {
+          "gzip": 22005,
+          "raw": 337366
+        },
+        "reference-assets/jtml-runtime.js": {
+          "gzip": 50835,
+          "raw": 272370
+        },
+        "reference.css": {
+          "gzip": 924,
+          "raw": 2870
+        },
+        "reference.html": {
+          "gzip": 24473,
+          "raw": 287629
+        }
+      },
+      "generatedData": {
+        "bodyPlanOccurrences": 8,
+        "clientManifest": {
+          "gzip": 16859,
+          "raw": 252692
+        },
+        "exactRepeatedBodyPlanBytes": 84981
+      },
+      "total": {
+        "gzip": 101588,
+        "raw": 911492
+      }
+    }
+  },
+  "schema": 1,
+  "zlibVersion": "1.2.12"
+}

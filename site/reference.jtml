@@ -1,0 +1,116 @@
+jtml 2
+
+use { SiteNav, SiteFooter } from "./shared/layout.jtml"
+
+make ReferenceTopics
+  let examplesVisible = true
+  get toggleLabel = examplesVisible ? "Hide code examples" : "Show code examples"
+  when toggleExamples
+    examplesVisible = !examplesVisible
+  box class "reference-body"
+    box class "reference-toolbar"
+      p "09 TOPICS / FRIENDLY JTML 2" class "eyebrow"
+      button toggleLabel class "button quiet" aria-expanded examplesVisible aria-controls "reference-topics" click toggleExamples
+    box id "reference-topics" class "reference-topics"
+      article id "canonical-syntax" class "reference-topic"
+        box class "topic-copy"
+          h2 "Canonical Syntax"
+          p "Use Friendly jtml 2 for new apps, tutorials, Studio, docs, examples, and AI-authored code. The Classic backend remains available for migration and artifacts."
+        if examplesVisible
+          pre
+            code "jtml 2\n\npage class \"profile\"\n  h1 \"Hello\""
+      article id "state" class "reference-topic"
+        box class "topic-copy"
+          h2 "State"
+          p "let is mutable, const is immutable, and get tracks dependencies through the semantic graph."
+        if examplesVisible
+          pre
+            code "let count = 0\nconst limit = 10\nget doubled = count * 2\ncount += 1"
+      article id "actions" class "reference-topic"
+        box class "topic-copy"
+          h2 "Actions"
+          p "Friendly event sugar calls JTML actions without user JavaScript."
+        if examplesVisible
+          pre
+            code "when add\n  count += 1\n\nbutton \"Add one\" click add"
+      article id "fetch" class "reference-topic"
+        box class "topic-copy"
+          h2 "Fetch"
+          p "Fetch values expose loading, data, error, stale, retry, and request metadata."
+        if examplesVisible
+          pre
+            code "let users = fetch \"/api/users\" stale keep retry 2\n\npage\n  if users.loading\n    text \"Loading...\"\n  for user in users.data\n    text user.name"
+      article id "routes" class "reference-topic"
+        box class "topic-copy"
+          h2 "Routes"
+          p "Validated browser routes include hash/history navigation, parameters and route lifecycle. Broader routing combinations remain experimental."
+        if examplesVisible
+          pre
+            code "route \"/\" as Home\nroute \"/user/:id\" as User\nroute \"*\" as NotFound\n\nlink \"Open user\" to \"/user/42\""
+      article id "semantic-ui" class "reference-topic"
+        box class "topic-copy"
+          h2 "Semantic UI"
+          p "Semantic primitives lower to ordinary HTML and generated classes while remaining visible to tooling."
+        if examplesVisible
+          pre
+            code "theme\n  color primary \"#2563eb\"\n\npanel title \"Usage\" pad lg shadow md\n  grid cols 4 gap md\n    metric \"Users\" total \"Active\" tone good"
+      article id "media-and-graphics" class "reference-topic"
+        box class "topic-copy"
+          h2 "Media And Graphics"
+          p "JTML includes media bindings, SVG-first chart/shape aliases, and 3D canvas mounts with host renderer hooks."
+        if examplesVisible
+          pre
+            code "file \"Choose image\" accept \"image/*\" into selected\nimage src selected.preview alt selected.name\nchart bar data rows by label value total\nscene3d \"Product\" scene model into sceneState"
+      article id "interop" class "reference-topic"
+        box class "topic-copy"
+          h2 "Interop"
+          p "Escape hatches are explicit and reported by lint/semantic tooling for production review."
+        if examplesVisible
+          pre
+            code "extern notify from \"host.notify\"\nhtml raw \"<host-widget></host-widget>\"\ncss raw\n  host-widget \u007b display: block; \u007d"
+      article id "keyword-index" class "reference-topic"
+        box class "topic-copy"
+          h2 "Keyword Index"
+          p "Run jtml keywords --json for the machine-readable mini-reference used by editor tooling, and see the full Friendly keyword index in language-reference.md."
+          a "Full Friendly keyword index ↗" href "./language-reference.md" class "text-link"
+        if examplesVisible
+          pre
+            code "let const get when make fetch route guard\ntheme panel grid metric image chart scene3d\nextern html raw css raw"
+
+make ReferencePage
+  box class "website reference-page"
+    a "Skip to reference" href "#reference-start" class "skip-link"
+    SiteNav "./index.html#syntax" "./index.html#demo"
+    main
+      section class "reference-hero" aria-labelledby "reference-title"
+        p "THE LANGUAGE / REFERENCE" class "eyebrow"
+        h1 "A guide to the experimental language." id "reference-title"
+        p "Friendly JTML 2 is the canonical authoring syntax. Explore the essentials here, then follow the complete versioned reference for details and supported boundaries." class "intro"
+        box class "actions"
+          a "Full language reference ↗" id "reference-start" href "./language-reference.md" class "button primary"
+          a "Your first application ↗" href "./docs/getting-started.md" class "button quiet"
+        p "v0.3.0-rc.3 · Experimental prerelease · Not production-ready" class "release-note"
+      box class "reference-layout"
+        nav class "reference-contents" aria-label "Reference topics"
+          p "ON THIS PAGE" class "eyebrow"
+          a "Canonical Syntax" href "#canonical-syntax"
+          a "State" href "#state"
+          a "Actions" href "#actions"
+          a "Fetch" href "#fetch"
+          a "Routes" href "#routes"
+          a "Semantic UI" href "#semantic-ui"
+          a "Media And Graphics" href "#media-and-graphics"
+          a "Interop" href "#interop"
+          a "Keyword Index" href "#keyword-index"
+          a "Download RC.3 ↗" href "https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3" class "text-link"
+        ReferenceTopics
+      section class "reference-more"
+        h2 "Keep the full reference close."
+        p "The versioned reference ships with every site artifact. Classic remains compatibility and migration infrastructure; use Friendly JTML 2 for new source."
+        box class "actions"
+          a "Versioned documentation ↗" href "./docs/reference/language-reference.md" class "text-link"
+          a "RC.3 release contract ↗" href "./docs/releases/v0.3.0-rc.3.md" class "text-link"
+          a "Read this page’s JTML ↗" href "./reference.jtml" class "text-link"
+    SiteFooter
+
+ReferencePage

@@ -7,9 +7,24 @@ assert(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT && process.env.JTML_BENCH_
 const {chromium} = createRequire(path.resolve(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT,'package.json'))('playwright');
 const sha = p => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const info = JSON.parse(fs.readFileSync(path.join(root,'site-build.json')));
-assert.equal(info.schema,2);
+assert.equal(info.schema,3);
 assert.equal(sha(path.join(root,'index.jtml')),info.homepageSourceSHA256);
 assert.equal(info.compiler.binarySHA256.length,64);
+for(const [page,entry] of Object.entries(info.pages)){
+ for(const [file,hash] of Object.entries(entry.sourceInputsSHA256))assert.equal(sha(path.join(root,file.replace(/^site\//,''))),hash);
+ for(const name of ['jtml-runtime.js','components/index.js','app.js'])assert.equal(sha(path.join(root,entry.assetDirectory,name)),entry.generatedAssetsSHA256[name]);
+}
+assert.deepEqual(fs.readdirSync(path.join(root,'reference-assets')).sort(),['app.js','components','jtml-runtime.js']);
+assert(!/\bCounter\b/.test(fs.readFileSync(path.join(root,'reference-assets/components/index.js'),'utf8')),'Reference must not include homepage Counter');
+assert(!/\bReferenceTopics\b/.test(fs.readFileSync(path.join(root,'components/index.js'),'utf8')),'homepage must not include Reference state');
+const payload=JSON.parse(fs.readFileSync(path.join(root,'site-payloads.json')));
+for(const entry of Object.values(payload.pages))for(const [file,size] of Object.entries(entry.files)){
+ const bytes=fs.readFileSync(path.join(root,file));assert.equal(bytes.length,size.raw);assert(size.gzip>0&&size.gzip<=size.raw,'gzip measurement bounds');
+}
+const snippets=JSON.parse(fs.readFileSync(path.join(__dirname,'../fixtures/site/reference-snippets.json')));
+const baselineInput=process.argv[3]||process.env.JTML_WEBSITE_BASELINE;
+const baseline=baselineInput ? path.resolve(baselineInput) : null;
+if(baseline)for(const file of ['examples.html','tools.html','security.html','deploy.html','styles.css'])assert(fs.readFileSync(path.join(root,file)).equals(fs.readFileSync(path.join(baseline,file))),'unchanged inherited page '+file);
 for(const name of ['jtml-runtime.js','components/index.js','app.js'])assert.equal(sha(path.join(root,name)),info.homepageGeneratedAssetsSHA256[name]);
 assert.equal(info.baseURL,'https://mrjohnnyrocha.github.io/jtml/');
 assert(!fs.existsSync(path.join(root,'CNAME')));
@@ -31,8 +46,10 @@ const server=http.createServer((req,res)=>{
     const meta=fs.readFileSync(path.join(root,'index.html'),'utf8').match(/<meta http-equiv="Content-Security-Policy"[^>]*>/)[0];
     res.setHeader('Content-Type','text/html');res.end(`${meta}<script>window.inlineRan=true</script><button onclick="this.textContent='FAILED'">Blocked</button>`);return;
   }
-  const file=path.resolve(root,'.'+relative);
-  if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end('Not found');return;}
+  let fileRoot=root;
+  if(baseline&&relative.startsWith('/__baseline/')){fileRoot=baseline;relative=relative.slice('/__baseline'.length);}
+  const file=path.resolve(fileRoot,'.'+relative);
+  if(!file.startsWith(fileRoot+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end('Not found');return;}
   const type={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.jtml':'text/plain','.md':'text/plain','.png':'image/png','.txt':'text/plain','.xml':'application/xml','.svg':'image/svg+xml'}[path.extname(file)]||'application/octet-stream';
   res.setHeader('Content-Type',type);res.end(fs.readFileSync(file));
 });
@@ -49,7 +66,14 @@ let browser;
   await page.exposeFunction('observeWebsiteCSP',e=>violations.push(e));
   await page.addInitScript(()=>document.addEventListener('securitypolicyviolation',e=>window.observeWebsiteCSP(e.effectiveDirective)));
   for(const file of pages){
+   const requestStart=requests.length;
    await page.goto(origin+prefix+file);
+   if(info.pages[file]){
+    assert(await page.evaluate(()=>jtml.browserBuild.cleanProduction));
+    const assetRoot=new URL(info.pages[file].assetDirectory+'/',origin+prefix).pathname;
+    const js=requests.slice(requestStart).filter(url=>new URL(url).pathname.endsWith('.js')).map(url=>new URL(url).pathname).sort();
+    assert.deepEqual(js,['app.js','components/index.js','jtml-runtime.js'].map(name=>assetRoot+name).sort(),'isolated page bundle '+file);
+   }
    assert.equal(await page.locator('meta[http-equiv="Content-Security-Policy"]').count(),1);
    assert.equal(await page.locator('link[rel="icon"]').count(),1);
    assert((await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content')).includes("script-src 'self'"));
@@ -98,13 +122,51 @@ let browser;
   await page.screenshot({path:path.join(root,`../website-${prefix==='/'?'root':'project'}-${viewport.width}.png`),fullPage:true});
   await page.evaluate(()=>scrollTo({top:0,left:0,behavior:'instant'}));
   await page.screenshot({path:path.join(root,`../website-viewport-${prefix==='/'?'root':'project'}-${viewport.width}.png`)});
+  if(baseline){
+   // Same engine/viewport; compare rendered homepage pixels, not generated IDs.
+   await page.goto(origin+prefix);
+   const current=await page.screenshot({fullPage:true});
+   await page.goto(origin+'/__baseline/');
+   assert(current.equals(await page.screenshot({fullPage:true})),'homepage visual regression against clean-main baseline');
+  }
+  await page.goto(origin+prefix+'reference.html');
+  assert.equal(await page.title(),'JTML Reference — Friendly JTML 2');
+  assert.equal(await page.locator('main').count(),1);assert.equal(await page.locator('h1').count(),1);
+  assert.equal(await page.locator('html').getAttribute('lang'),'en');
+  await page.keyboard.press('Tab');
+  assert.equal(await page.locator(':focus').textContent(),'Skip to reference');
+  await page.keyboard.press('Enter');
+  assert.equal(await page.locator(':focus').getAttribute('id'),'reference-start');
+  assert.deepEqual(await page.locator('.reference-topic pre code').allTextContents(),snippets.map(item=>item.code),'preserve all original source examples literally');
+  const toggle=page.getByRole('button',{name:'Hide code examples',exact:true});
+  assert.equal(await toggle.getAttribute('aria-expanded'),'true');
+  await toggle.click();
+  assert.equal(await page.locator('.reference-topic pre').count(),0);
+  const show=page.getByRole('button',{name:'Show code examples',exact:true});
+  assert(await show.evaluate(el=>el===document.activeElement),'toggle retains keyboard focus');
+  assert.equal(await show.getAttribute('aria-expanded'),'false');
+  await show.press('Enter');
+  assert.equal(await page.locator('.reference-topic pre').count(),9);
+  await page.getByRole('button',{name:'Hide code examples',exact:true}).press('Space');
+  assert.equal(await page.locator('.reference-topic pre').count(),0);
+  await page.reload();assert.equal(await page.locator('.reference-topic pre').count(),9);
+  for(const item of snippets){
+   await page.getByRole('navigation',{name:'Reference topics',exact:true}).getByRole('link',{name:item.title,exact:true}).click();
+   assert.equal(new URL(page.url()).hash,'#'+item.id);
+   assert.equal(await page.locator('#'+item.id+' h2').textContent(),item.title);
+  }
+  await page.getByRole('navigation',{name:'Primary',exact:true}).getByRole('link',{name:'Language',exact:true}).click();
+  assert.equal(new URL(page.url()).pathname,prefix+'index.html');assert.equal(new URL(page.url()).hash,'#syntax');
+  await page.goto(origin+prefix+'reference.html');
+  await page.evaluate(()=>scrollTo({top:0,left:0,behavior:'instant'}));
+  await page.screenshot({path:path.join(root,`../website-reference-${prefix==='/'?'root':'project'}-${viewport.width}.png`),fullPage:true});
   await page.goto(origin+prefix+'demo/counter/');
   assert(await page.evaluate(()=>jtml.browserBuild.cleanProduction));
   await page.getByRole('button',{name:'Add one',exact:true}).click();await page.getByText('Count: 1',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Add one',exact:true}).press('Enter');await page.getByText('Count: 2',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Reset',exact:true}).click();await page.getByText('Count: 0',{exact:true}).waitFor();
   await page.reload();await page.getByText('Count: 0',{exact:true}).waitFor();
-  console.log(`PASS ${prefix} ${viewport.width}px: all six pages, homepage Counter and original Counter`);
+  console.log(`PASS ${prefix} ${viewport.width}px: all six pages, isolated JTML Reference/disclosure, homepage Counter and original Counter`);
   await context.close();
  }
  const negative=await browser.newPage();negative.setDefaultTimeout(7000);
@@ -134,5 +196,5 @@ let browser;
  assert.deepEqual(errors,[]);assert.deepEqual(violations,[]);assert(mime.length>0);
  assert(requests.every(u=>new URL(u).origin===origin),'no external runtime requests');
  assert(!requests.some(u=>/\/api\/|\/ws\b/.test(u)),'no backend or live runtime dependency');
- console.log('PASS website: root/project paths; all HTML navigation/assets and JS MIME; desktop/mobile no overflow; real JTML homepage component and standalone Counter click/keyboard/reset/reload; strict meta script CSP with independent inline-script/handler negatives; skip link and visible mobile navigation; no unexpected console/CSP/backend requests');
+ console.log('PASS website: root/project paths; all HTML navigation/assets and JS MIME; desktop/mobile no overflow; isolated JTML Reference disclosure and both Counters; strict meta script CSP with independent inline-script/handler negatives; skip link and visible mobile navigation; no unexpected console/CSP/backend requests');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();await new Promise(r=>server.close(r));});

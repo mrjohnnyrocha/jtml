@@ -1,0 +1,47 @@
+[
+  {
+    "id": "canonical-syntax",
+    "title": "Canonical Syntax",
+    "code": "jtml 2\n\npage class \"profile\"\n  h1 \"Hello\""
+  },
+  {
+    "id": "state",
+    "title": "State",
+    "code": "let count = 0\nconst limit = 10\nget doubled = count * 2\ncount += 1"
+  },
+  {
+    "id": "actions",
+    "title": "Actions",
+    "code": "when add\n  count += 1\n\nbutton \"Add one\" click add"
+  },
+  {
+    "id": "fetch",
+    "title": "Fetch",
+    "code": "let users = fetch \"/api/users\" stale keep retry 2\n\npage\n  if users.loading\n    text \"Loading...\"\n  for user in users.data\n    text user.name"
+  },
+  {
+    "id": "routes",
+    "title": "Routes",
+    "code": "route \"/\" as Home\nroute \"/user/:id\" as User\nroute \"*\" as NotFound\n\nlink \"Open user\" to \"/user/42\""
+  },
+  {
+    "id": "semantic-ui",
+    "title": "Semantic UI",
+    "code": "theme\n  color primary \"#2563eb\"\n\npanel title \"Usage\" pad lg shadow md\n  grid cols 4 gap md\n    metric \"Users\" total \"Active\" tone good"
+  },
+  {
+    "id": "media-and-graphics",
+    "title": "Media And Graphics",
+    "code": "file \"Choose image\" accept \"image/*\" into selected\nimage src selected.preview alt selected.name\nchart bar data rows by label value total\nscene3d \"Product\" scene model into sceneState"
+  },
+  {
+    "id": "interop",
+    "title": "Interop",
+    "code": "extern notify from \"host.notify\"\nhtml raw \"<host-widget></host-widget>\"\ncss raw\n  host-widget { display: block; }"
+  },
+  {
+    "id": "keyword-index",
+    "title": "Keyword Index",
+    "code": "let const get when make fetch route guard\ntheme panel grid metric image chart scene3d\nextern html raw css raw"
+  }
+]

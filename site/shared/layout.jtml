@@ -1,0 +1,17 @@
+jtml 2
+
+export make SiteNav syntaxHref demoHref
+  header class "masthead"
+    a "JTML" href "./" class "wordmark" aria-label "JTML home"
+    nav aria-label "Primary"
+      a "Language" href syntaxHref
+      a "Try it" href demoHref
+      a "Docs" href "./reference.html"
+      a "GitHub ↗" href "https://github.com/mrjohnnyrocha/jtml"
+
+export make SiteFooter
+  footer class "footer"
+    a "JTML" href "./" class "wordmark"
+    span "Readable source. Observable behavior."
+    a "Build provenance ↗" href "./site-build.json"
+    a "Apache-2.0" href "./LICENSE"

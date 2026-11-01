@@ -51,6 +51,7 @@ class ApplicationPaths(unittest.TestCase):
         self.assertRegex(pin['revision'], r'^[0-9a-f]{40}$')
         self.assertEqual(pin['version'], 'jtml 0.3.0-dev')
         self.check(ROOT / 'site/index.jtml')
+        self.check(ROOT / 'site/reference.jtml')
 
 
 if __name__ == '__main__':

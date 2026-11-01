@@ -1,5 +1,10 @@
 # Shared website runtime packaging
 
+Historical PR #72 record. [Mixed static/browser packaging](static-pages.md) now
+limits the shared runtime to Homepage and Reference; the four other pages emit
+HTML only. The original measurements and six-way equality evidence below retain
+their historical scope.
+
 Base: clean main `3370f63`, after PR #71. Compiler pin remains
 `325bae128aaaa729d4876159099e63fce9fe59c4`; releases, compiler sources,
 runtime implementation, browserBuild metadata and compatibility contracts are

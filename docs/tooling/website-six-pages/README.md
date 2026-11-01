@@ -1,5 +1,9 @@
 # Complete JTML public website
 
+The subsequent [mixed static/browser packaging](static-pages.md) supersedes the
+per-page runtime layout and payload totals below. This remains the PR #71
+source/content migration record.
+
 This is the PR #71 migration record. The subsequent packaging-only
 [runtime sharing change](runtime-sharing.md) supersedes the per-page runtime
 layout and schema versions below; source, screenshots and historical measurements

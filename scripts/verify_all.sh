@@ -795,7 +795,7 @@ assert proc.wait(timeout=5) == 0
 PY
 fi
 
-JTML_BIN="$build_dir/jtml" "$repo_root/scripts/build_site.sh" "$repo_root/dist/site"
+JTML_BIN="${JTML_SITE_BIN:-$build_dir/jtml}" "$repo_root/scripts/build_site.sh" "$repo_root/dist/site"
 node "$repo_root/tests/browser/site.cjs" "$repo_root/dist/site"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/static_html.cjs"
 "$repo_root/scripts/package_cli.sh" "$repo_root/dist/release"
@@ -809,7 +809,11 @@ import json, pathlib, sys
 root = pathlib.Path(sys.argv[1])
 for page in json.loads((root / 'site/pages.json').read_text())['pages']:
     assert (root / 'dist/site' / page['output']).is_file()
-    assert (root / 'dist/site' / page['assetDirectory'] / 'components/index.js').is_file()
+    if page['target'] == 'browser':
+        assert (root / 'dist/site' / page['assetDirectory'] / 'components/index.js').is_file()
+    else:
+        assert page['assetDirectory'] is None
+        assert not (root / 'dist/site' / (page['id'] + '-assets')).exists()
     assert (root / 'dist/release/site' / page['entry']).is_file()
 assert (root / 'dist/release/site/shared/layout.jtml').is_file()
 PYREGISTRY

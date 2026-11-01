@@ -7,11 +7,11 @@ assert(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT && process.env.JTML_BENCH_
 const {chromium} = createRequire(path.resolve(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT,'package.json'))('playwright');
 const sha = p => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const info = JSON.parse(fs.readFileSync(path.join(root,'site-build.json')));
-assert.equal(info.schema,5);
+assert.equal(info.schema,6);
 assert.equal(info.originalCompilerOutputSuffix,'.compiler-output');
 const originals=root+info.originalCompilerOutputSuffix;
 assert.equal(info.sharedRuntime.path,'jtml-runtime.js');
-assert.deepEqual(info.sharedRuntime.verifiedByteEqualPages,[...Object.keys(info.pages)].sort());
+assert.deepEqual(info.sharedRuntime.verifiedByteEqualPages,['index.html','reference.html']);
 assert.equal(sha(path.join(root,info.sharedRuntime.path)),info.sharedRuntime.sha256);
 const registry=JSON.parse(fs.readFileSync(path.join(root,'pages.json')));
 assert.equal(sha(path.join(root,'pages.json')),info.registrySHA256);
@@ -26,26 +26,45 @@ assert.equal(info.compiler.binarySHA256.length,64);
 for(const [page,entry] of Object.entries(info.pages)){
  for(const [file,hash] of Object.entries(entry.sourceInputsSHA256))assert.equal(sha(path.join(root,file.replace(/^site\//,''))),hash);
  for(const [name,hash] of Object.entries(entry.generatedAssetsSHA256))assert.equal(sha(path.join(originals,entry.metadata.id,name)),hash,'original compiler output');
- for(const name of ['jtml-runtime.js','components/index.js','app.js']){
+ assert.equal(entry.target,entry.metadata.target);
+ for(const [name,hash] of Object.entries(entry.deployedAssetsSHA256))assert.equal(sha(path.join(root,name)),hash,'deployed page provenance');
+ if(entry.target==='static'){
+  assert.deepEqual(Object.keys(entry.generatedAssetsSHA256),['index.html']);
+  assert.deepEqual(Object.keys(entry.deployedAssetsSHA256),[page]);
+  assert.equal(entry.assetDirectory,null);
+  assert(!fs.existsSync(path.join(root,entry.metadata.id+'-assets')),'no leftover static-page bundle');
+  const body=file=>fs.readFileSync(file,'utf8').match(/<body[^>]*>(.*?)<\/body>/s)[1];
+  assert.equal(body(path.join(root,page)),body(path.join(originals,entry.metadata.id,'index.html')),'literal body unchanged by packaging');
+ }
+ for(const name of entry.target==='browser'?['jtml-runtime.js','components/index.js','app.js']:[]){
   const deployed=path.join(root,name==='jtml-runtime.js'?'':entry.assetDirectory,name);
   assert.equal(sha(deployed),entry.generatedAssetsSHA256[name]);
   assert(fs.readFileSync(deployed).equals(fs.readFileSync(path.join(originals,entry.metadata.id,name))),'byte-identical deployed JS');
  }
 }
-for(const page of registry.pages.filter(page=>page.assetDirectory!=='.'))assert.deepEqual(fs.readdirSync(path.join(root,page.assetDirectory)).sort(),['app.js','components']);
+for(const page of registry.pages.filter(page=>page.target==='browser'&&page.assetDirectory!=='.'))assert.deepEqual(fs.readdirSync(path.join(root,page.assetDirectory)).sort(),['app.js','components']);
 assert(!/\bCounter\b/.test(fs.readFileSync(path.join(root,'reference-assets/components/index.js'),'utf8')),'Reference must not include homepage Counter');
 assert(!/\bReferenceTopics\b/.test(fs.readFileSync(path.join(root,'components/index.js'),'utf8')),'homepage must not include Reference state');
 const payload=JSON.parse(fs.readFileSync(path.join(root,'site-payloads.json')));
-assert.equal(payload.schema,3);
+assert.equal(payload.schema,4);
 assert.deepEqual(Object.keys(payload.pages).sort(),[...Object.keys(info.pages)].sort());
-assert.equal(payload.crossPage.compiledRuntimeCopies,6);
+assert.equal(payload.crossPage.compiledRuntimeCopies,2);
 assert.equal(payload.crossPage.deployedRuntimeCopies,1);
 for(const entry of Object.values(payload.pages))for(const [file,size] of Object.entries(entry.files)){
  const bytes=fs.readFileSync(path.join(root,file));assert.equal(bytes.length,size.raw);assert(size.gzip>0&&size.gzip<=size.raw,'gzip measurement bounds');
 }
 const snippets=JSON.parse(fs.readFileSync(path.join(__dirname,'../fixtures/site/reference-snippets.json')));
 const baselineInput=process.argv[3]||process.env.JTML_WEBSITE_BASELINE;
-const baseline=baselineInput ? path.resolve(baselineInput) : null;
+const baseline=baselineInput?path.resolve(baselineInput):path.resolve(root,'../published-baseline');
+if(!baselineInput){const result=require('node:child_process').spawnSync('python3',[path.resolve(__dirname,'../../scripts/materialize_site_baseline.py'),baseline],{encoding:'utf8'});assert.equal(result.status,0,result.stdout+result.stderr);}
+const publishedInfo=JSON.parse(fs.readFileSync(path.join(baseline,'site-build.json')));
+assert.equal(publishedInfo.sourceRevision,'5f970b44e2c4f98595ef156050f093328c632686','compare the previous published release');
+for(const file of ['index.html','reference.html'])assert.deepEqual(info.pages[file].generatedAssetsSHA256,publishedInfo.pages[file].generatedAssetsSHA256,'browser compiler output unchanged '+file);
+assert.deepEqual(info.generatedAssetsSHA256,publishedInfo.generatedAssetsSHA256,'original Counter compiler output unchanged');
+assert.equal(JSON.parse(fs.readFileSync(path.join(root,'compiler.json'))).revision,'69a2cb7a60bd12887cc434e47d22cce0e8a0a8c3');
+if(info.compiler.revision)assert.equal(info.compiler.revision,'69a2cb7a60bd12887cc434e47d22cce0e8a0a8c3');
+else assert(info.compiler.origin.includes('source revision unverified'));
+
 
 for(const name of ['jtml-runtime.js','components/index.js','app.js'])assert.equal(sha(path.join(root,name)),info.homepageGeneratedAssetsSHA256[name]);
 assert.equal(info.baseURL,'https://mrjohnnyrocha.github.io/jtml/');
@@ -60,23 +79,32 @@ assert(fs.readFileSync(path.join(root,'sitemap.xml'),'utf8').includes('https://m
 assert(!fs.readFileSync(path.join(root,'robots.txt'),'utf8').includes('jtml.org'));
 const pages=registry.pages.map(page=>page.output);
 assert.deepEqual(fs.readdirSync(root).filter(n=>n.endsWith('.html')).sort(),[...pages].sort());
-const errors=[], violations=[], requests=[], mime=[];
+const errors=[], violations=[], requests=[], mime=[], wireRequests=[];
 const server=http.createServer((req,res)=>{
   const url=new URL(req.url,'http://localhost');let relative=decodeURIComponent(url.pathname);
   if(relative.startsWith('/jtml/'))relative=relative.slice('/jtml'.length);
   if(relative.endsWith('/'))relative+='index.html';
-  if(relative==='/__csp_negative__'){
-    const meta=fs.readFileSync(path.join(root,'index.html'),'utf8').match(/<meta http-equiv="Content-Security-Policy"[^>]*>/)[0];
+  wireRequests.push(relative);
+  if(relative==='/__csp_negative__'||relative==='/__csp_static_negative__'){
+    const meta=fs.readFileSync(path.join(root,relative==='/__csp_static_negative__'?'tools.html':'index.html'),'utf8').match(/<meta http-equiv="Content-Security-Policy"[^>]*>/)[0];
     res.setHeader('Content-Type','text/html');res.end(`${meta}<script>window.inlineRan=true</script><button onclick="this.textContent='FAILED'">Blocked</button>`);return;
   }
   let fileRoot=root;
   if(baseline&&relative.startsWith('/__baseline/')){fileRoot=baseline;relative=relative.slice('/__baseline'.length);}
   const file=path.resolve(fileRoot,'.'+relative);
   if(!file.startsWith(fileRoot+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end('Not found');return;}
-  if(relative==='/jtml-runtime.js')res.setHeader('Cache-Control','public, max-age=3600');
+  if(/\.(js|css|svg)$/.test(relative))res.setHeader('Cache-Control','public, max-age=3600');
   const type={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.jtml':'text/plain','.md':'text/plain','.png':'image/png','.txt':'text/plain','.xml':'application/xml','.svg':'image/svg+xml'}[path.extname(file)]||'application/octet-stream';
   res.setHeader('Content-Type',type);res.end(fs.readFileSync(file));
 });
+async function authoredAttributes(page){return page.locator('body').evaluate(body=>{
+ const semantic=new Set(['a','button','h1','h2','h3','h4','main','nav','header','footer','section','article','pre','code','p']);
+ return [...body.querySelectorAll('*')].flatMap(e=>{
+  if(e.closest('template,script'))return [];
+  const attrs=Object.fromEntries([...e.attributes].filter(a=>!a.name.startsWith('data-jtml-')&&!(a.name==='id'&&/^(elem_|expr_|jtml|__jtml)/.test(a.value))).map(a=>[a.name,a.value]).sort());
+  return semantic.has(e.localName)||Object.keys(attrs).length?[{tag:e.localName,attrs}]:[];
+ });
+});}
 let browser;
 (async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
@@ -94,11 +122,16 @@ let browser;
    const requestStart=requests.length;
    await page.goto(origin+prefix+file);
    const definition=registry.pages.find(page=>page.output===file);
-   if(info.pages[file]){
+   if(definition.target==='browser'){
     assert(await page.evaluate(()=>jtml.browserBuild.cleanProduction));
     const assetRoot=new URL(info.pages[file].assetDirectory+'/',origin+prefix).pathname;
     const js=requests.slice(requestStart).filter(url=>new URL(url).pathname.endsWith('.js')).map(url=>new URL(url).pathname).sort();
     assert.deepEqual(js,[prefix+'jtml-runtime.js',assetRoot+'app.js',assetRoot+'components/index.js'].sort(),'shared runtime and isolated page bundle '+file);
+   }
+   if(definition.target==='static'){
+    assert.deepEqual(requests.slice(requestStart).filter(url=>new URL(url).pathname.endsWith('.js')),[],'static page requests no JS');
+    assert.equal(await page.locator('script').count(),0);
+    assert.equal(await page.evaluate(()=>typeof window.jtml),'undefined');
    }
    assert.equal(await page.locator('meta[http-equiv="Content-Security-Policy"]').count(),1);
    assert.equal(await page.locator('link[rel="icon"]').count(),1);
@@ -126,8 +159,18 @@ let browser;
     await page.keyboard.press('Enter');assert.equal(await page.locator(':focus').getAttribute('id'),'page-start');
     await page.evaluate(()=>{document.activeElement.blur();scrollTo({top:0,left:0,behavior:'instant'});});
    }
+   const reference=await context.newPage();
+   reference.on('pageerror',e=>errors.push(e.message));reference.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+   await reference.goto(origin+'/__baseline/'+file);
+   assert.deepEqual(await authoredAttributes(page),await authoredAttributes(reference),file+' DOM attributes against published baseline');
+   assert.equal(await page.locator('body').ariaSnapshot(),await reference.locator('body').ariaSnapshot(),file+' accessible tree against published baseline');
+   assert((await page.screenshot({fullPage:true})).equals(await reference.screenshot({fullPage:true})),file+' pixels against published baseline '+prefix+' '+viewport.width);
+   await reference.close();
    if(viewport.width!==320)await page.screenshot({path:path.join(root,`../website-six-${file.replace('.html','')}-${prefix==='/'?'root':'project'}-${viewport.width}.png`),fullPage:true});
-   assert((await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content')).includes("script-src 'self'"));
+   const policy=await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
+   assert(policy.includes(definition.target==='static'?"script-src 'none'":"script-src 'self'"));
+   assert(policy.includes("connect-src 'none'"));assert(policy.includes("object-src 'none'"));
+   if(definition.target==='static')assert(policy.includes("base-uri 'none'"));
    assert.equal(await page.locator('script:not([src]):not([type="application/json"])').count(),0);
    assert.equal(await page.evaluate(()=>[...document.querySelectorAll('*')].filter(e=>e.getAttributeNames().some(a=>/^on/i.test(a))).length),0);
    const layout=await page.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth}));
@@ -222,6 +265,29 @@ let browser;
   console.log(`PASS ${prefix} ${viewport.width}px: all six JTML pages/content/metadata, isolated bundles, Reference and both Counters`);
   await context.close();
  }
+ for(const prefix of ['/','/jtml/'])for(const viewport of [{width:1440,height:1000},{width:900,height:1100},{width:390,height:844},{width:320,height:720}]){
+  const disabled=await browser.newContext({viewport,javaScriptEnabled:false}),enabled=await browser.newContext({viewport});
+  const page=await disabled.newPage(),reference=await enabled.newPage();const staticRequests=[];
+  page.on('request',r=>staticRequests.push(r.url()));page.on('websocket',ws=>errors.push('unexpected static WebSocket '+ws.url()));
+  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+  page.on('response',r=>{if(r.status()>=400)errors.push(r.status()+' '+r.url());});
+  for(const definition of registry.pages.filter(p=>p.target==='static')){
+   const file=definition.output;
+   await page.goto(origin+prefix+file);await reference.goto(origin+'/__baseline/'+file);
+   assert.deepEqual(await authoredAttributes(page),await authoredAttributes(reference),'JS-disabled authored attributes '+file);
+   assert.equal(await page.locator('body').ariaSnapshot(),await reference.locator('body').ariaSnapshot(),'JS-disabled accessible tree '+file);
+   const current=await page.screenshot({fullPage:true});
+   assert(current.equals(await reference.screenshot({fullPage:true})),'JS-disabled published pixels '+prefix+file+' '+viewport.width);
+   await page.screenshot({path:path.join(root,`../website-static-${definition.id}-${prefix==='/'?'root':'project'}-${viewport.width}.png`),fullPage:true});
+   for(const target of [page,reference]){await target.keyboard.press('Tab');assert.equal(await target.locator(':focus').textContent(),'Skip to content');await target.keyboard.press('Enter');assert.equal(await target.locator(':focus').getAttribute('id'),'page-start');}
+   for(let i=0;i<5;i++){await page.keyboard.press('Tab');await reference.keyboard.press('Tab');assert.equal(await page.locator(':focus').getAttribute('href'),await reference.locator(':focus').getAttribute('href'),'JS-disabled keyboard navigation '+file);}
+   assert.equal(await page.locator('script,template').count(),0);
+  }
+  assert(!staticRequests.some(url=>/\.js(?:$|\?)|\/api\/|\/ws\b/.test(url)),'zero static JS/API/WS requests');
+  assert(staticRequests.every(url=>new URL(url).origin===origin),'zero external static resources');
+  console.log('PASS JS-disabled published static pages: '+prefix+' '+viewport.width);
+  await disabled.close();await enabled.close();
+ }
  // Real HTTP cache reuse across navigation; CDP reports cache hits as well as requests.
  for(const prefix of ['/','/jtml/']){
   const context=await browser.newContext();const page=await context.newPage();
@@ -229,11 +295,24 @@ let browser;
   const cached=new Set(),runtimeRequests=new Set();
   cdp.on('Network.requestWillBeSent',e=>{if(e.request.url===origin+prefix+'jtml-runtime.js')runtimeRequests.add(e.requestId);});
   cdp.on('Network.requestServedFromCache',e=>cached.add(e.requestId));
-  for(const file of pages)await page.goto(origin+prefix+file);
-  assert.equal(runtimeRequests.size,6,'each page requires the shared runtime');
-  assert([...runtimeRequests].filter(id=>cached.has(id)).length>=5,'later pages reuse cacheable shared runtime');
+  const navigation=[];
+  for(const file of pages){
+   const start=wireRequests.length;await page.goto(origin+prefix+file);
+   const assets=wireRequests.slice(start).filter(p=>/\.(js|css)$/.test(p)).sort();
+   navigation.push({page:file,uncachedScriptAndCSSRequests:assets});
+   const expected={
+    'index.html':['/app.js','/components/index.js','/home.css','/jtml-runtime.js'],
+    'reference.html':['/reference-assets/app.js','/reference-assets/components/index.js','/reference.css'],
+    'examples.html':['/content.css'], 'tools.html':[], 'security.html':[], 'deploy.html':[]
+   };
+   assert.deepEqual(assets,expected[file].sort(),'warm navigation wire resources '+file);
+  }
+  console.log('PASS cache navigation '+prefix+': '+JSON.stringify(navigation));
+  assert.equal(runtimeRequests.size,2,'only two browser pages require the shared runtime');
+  assert([...runtimeRequests].filter(id=>cached.has(id)).length>=1,'Reference reuses the homepage runtime cache entry');
   await context.close();
  }
+ for(const policy of ['browser','static']){
  const negative=await browser.newPage();negative.setDefaultTimeout(7000);
  await negative.addInitScript(()=>{
   window.cspNegativeEvents=[];
@@ -242,7 +321,7 @@ let browser;
    trusted:e.isTrusted,browserMs:performance.now(),readyState:document.readyState
   }));
  });
- await negative.goto(origin+'/__csp_negative__');await negative.getByRole('button',{name:'Blocked'}).click();
+ await negative.goto(origin+(policy==='static'?'/__csp_static_negative__':'/__csp_negative__'));await negative.getByRole('button',{name:'Blocked'}).click();
  // CSP events are queued tasks; document readiness is not an event-delivery barrier.
  // Wait in the browser to avoid racing an exposed-function callback into Node.
  try{
@@ -256,8 +335,9 @@ let browser;
  for(const event of blocked){assert.equal(event.blockedURI,'inline');assert.equal(event.disposition,'enforce');assert.equal(event.trusted,true);}
  assert.equal(await negative.evaluate(()=>window.inlineRan),undefined);
  assert.equal(await negative.getByRole('button').textContent(),'Blocked');
- console.log('CSP negative evidence: '+JSON.stringify(blocked));
+ console.log('CSP '+policy+' negative evidence: '+JSON.stringify(blocked));
  await negative.close();
+ }
  assert.deepEqual(errors,[]);assert.deepEqual(violations,[]);assert(mime.length>0);
  assert(requests.every(u=>new URL(u).origin===origin),'no external runtime requests');
  assert(!requests.some(u=>/\/api\/|\/ws\b/.test(u)),'no backend or live runtime dependency');

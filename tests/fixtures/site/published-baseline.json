@@ -1,0 +1,7 @@
+{
+  "sourceURL": "https://mrjohnnyrocha.github.io/jtml/",
+  "sourceRevision": "5f970b44e2c4f98595ef156050f093328c632686",
+  "compilerRevision": "325bae128aaaa729d4876159099e63fce9fe59c4",
+  "purpose": "SHA-verified published HTML/JS/CSS/favicon and provenance for deterministic local Chromium comparisons; generated compiler output, not website authoring source. The original deployment manifest includes documentation files omitted from this rendering-only fixture.",
+  "archiveSHA256": "387a48cd90bcbd7ea5fc055f7fdca319595b5cc66e2c68317393efc1c53d22ea"
+}

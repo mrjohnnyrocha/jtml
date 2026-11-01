@@ -6,7 +6,9 @@ on:
       - 'site/**'
       - 'scripts/build_site.sh'
       - 'scripts/build_public_site.py'
+      - 'scripts/build_site_compiler.sh'
       - 'tests/browser/site.cjs'
+      - 'tests/test_application_paths.py'
       - 'examples/friendly_counter.jtml'
       - 'docs/tooling/website-launch.md'
       - '.github/workflows/site-pages.yml'
@@ -27,7 +29,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       SITE_BASE_URL: https://mrjohnnyrocha.github.io/jtml/
     steps:
@@ -47,15 +49,6 @@ jobs:
           test "$(git rev-parse HEAD)" = "$(printf '%s' "$SOURCE_REVISION" | tr '[:upper:]' '[:lower:]')"
           git merge-base --is-ancestor HEAD origin/main
           test -z "$(git status --porcelain --untracked-files=normal)"
-      - name: Use the published and hash-pinned RC.2 compiler
-        run: |
-          mkdir -p "$RUNNER_TEMP/site-compiler"
-          curl --fail --location --output "$RUNNER_TEMP/site-compiler/rc2.tar.gz" \
-            https://github.com/mrjohnnyrocha/jtml/releases/download/v0.3.0-rc.2/jtml-0.3.0-rc.2-linux-x86_64.tar.gz
-          echo "6c3e21a53bf7729b824c27e73d1ce35ffe69182f98dd8c95f4969084c53e1d6b  $RUNNER_TEMP/site-compiler/rc2.tar.gz" | sha256sum -c -
-          tar -xzf "$RUNNER_TEMP/site-compiler/rc2.tar.gz" -C "$RUNNER_TEMP/site-compiler"
-          test "$("$RUNNER_TEMP/site-compiler/release/bin/jtml" --version)" = 'jtml 0.3.0-rc.2'
-          echo "JTML_BIN=$RUNNER_TEMP/site-compiler/release/bin/jtml" >> "$GITHUB_ENV"
       - name: Build genuine production demo and website
         run: scripts/build_site.sh dist/site
       - name: Install pinned browser test tools

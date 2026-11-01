@@ -1,0 +1,9 @@
+{
+  "checks": [],
+  "errors": [
+    "SyntaxError: Unescaped string delimiter\n    at unquoteComponentText (http://127.0.0.1:53421/jtml-runtime.js:167:42)\n    at compileComponentExpressionPlan (http://127.0.0.1:53421/jtml-runtime.js:1027:25)\n    at compileComponentElementParts (http://127.0.0.1:53421/jtml-runtime.js:1269:24)\n    at parseComponentElementParts (http://127.0.0.1:53421/jtml-runtime.js:1220:11)\n    at renderComponentPlanNode (http://127.0.0.1:53421/jtml-runtime.js:1614:23)\n    at http://127.0.0.1:53421/jtml-runtime.js:812:42\n    at Array.map (<anonymous>)\n    at renderComponentChildren (http://127.0.0.1:53421/jtml-runtime.js:812:12)\n    at renderComponentPlanNode (http://127.0.0.1:53421/jtml-runtime.js:1565:26)\n    at http://127.0.0.1:53421/jtml-runtime.js:812:42",
+    "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   'SyntaxError: Unescaped string delimiter\\n' +\n+     '    at unquoteComponentText (http://127.0.0.1:53421/jtml-runtime.js:167:42)\\n' +\n+     '    at compileComponentExpressionPlan (http://127.0.0.1:53421/jtml-runtime.js:1027:25)\\n' +\n+     '    at compileComponentElementParts (http://127.0.0.1:53421/jtml-runtime.js:1269:24)\\n' +\n+     '    at parseComponentElementParts (http://127.0.0.1:53421/jtml-runtime.js:1220:11)\\n' +\n+     '    at renderComponentPlanNode (http://127.0.0.1:53421/jtml-runtime.js:1614:23)\\n' +\n+     '    at http://127.0.0.1:53421/jtml-runtime.js:812:42\\n' +\n+     '    at Array.map (<anonymous>)\\n' +\n+     '    at renderComponentChildren (http://127.0.0.1:53421/jtml-runtime.js:812:12)\\n' +\n+     '    at renderComponentPlanNode (http://127.0.0.1:53421/jtml-runtime.js:1565:26)\\n' +\n+     '    at http://127.0.0.1:53421/jtml-runtime.js:812:42'\n+ ]\n- []\n\n    at /Users/joaorocha/.codex/worktrees/media-renderer/jtml-v1/tests/browser/media_renderer.cjs:6:379"
+  ],
+  "exit": 1,
+  "browser": "151.0.7922.34"
+}

@@ -1,0 +1,12 @@
+{
+  "checks": [
+    "component scene is the canonical accessible canvas with exact specification",
+    "existing hostless fallback and controller publication run without an invented 3D host",
+    "strict CSP, clean production assets, unchanged runtime ceiling",
+    "minimal static scenes preserve reactive labels, sibling state, canvas/input identity and focus",
+    "root scene syntax and the existing controller bridge remain correct"
+  ],
+  "errors": [],
+  "exit": 0,
+  "browser": "151.0.7922.34"
+}

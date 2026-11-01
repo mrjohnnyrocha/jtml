@@ -2560,6 +2560,7 @@ std::vector<Line> expandComponentLines(const std::vector<Line>& lines,
 
 struct ElementResult {
     std::string openLine;
+    std::vector<std::string> elementWords;
     std::vector<std::string> bodyLines;
     std::vector<std::string> synthesizedSetters;
     bool closesWithHash = false;
@@ -3097,6 +3098,15 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
     for (const auto& attr : attrs) open << " " << attr;
     open << "\\\\";
     result.openLine = open.str();
+    if (isScene3d) {
+        result.elementWords.push_back(resolvedTag);
+        for (const auto& attr : attrs) {
+            const auto equal = attr.find('=');
+            result.elementWords.push_back(attr.substr(0, equal));
+            if (equal != std::string::npos)
+                result.elementWords.push_back("(" + attr.substr(equal + 1) + ")");
+        }
+    }
     result.isVoid = isVoidTag(resolvedTag);
     result.closesWithHash = !result.isVoid;
     return result;
@@ -3134,6 +3144,11 @@ std::vector<FriendlyElementRole> classifyFriendlyElement(
         return std::vector<FriendlyElementRole>(tokens.size(), FriendlyElementRole::Expression);
     }
     return classifyElementBindings(tokens, bindings, 0);
+}
+
+std::vector<std::string> lowerFriendlySceneElement(const std::vector<std::string>& tokens) {
+    if (tokens.empty() || tokens.front() != "scene3d") return tokens;
+    return translateElement(tokens, 0).elementWords;
 }
 
 bool isFriendlySyntax(const std::string& source) {

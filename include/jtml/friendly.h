@@ -24,6 +24,10 @@ std::vector<FriendlyElementRole> classifyFriendlyElement(
     const std::vector<std::string>& tokens,
     const std::map<std::string, std::string>& bindings = {});
 
+// Canonical canvas words from the same scene3d parser used by Friendly lowering.
+// Other elements pass through unchanged. No runtime grammar is introduced.
+std::vector<std::string> lowerFriendlySceneElement(const std::vector<std::string>& tokens);
+
 bool isFriendlySyntax(const std::string& source);
 bool isJtlCoreSyntax(const std::string& source);
 bool looksLikeFriendlySyntax(const std::string& source);

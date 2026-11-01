@@ -3564,3 +3564,21 @@ TEST(CliBuild, ExplicitInputCapabilitySchemaIsClosedAndRejectsBrokenAuthority) {
         EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(output, jtml::cli::BrowserBuildMode::Production), std::runtime_error);
     }
 }
+
+TEST(CliBuild, Scene3DNormalizationCannotAuthorizeTextBindingCapabilities) {
+    const auto dir = makeTempDir("scene-binding");
+    const auto definition = dir / "scene.jtml";
+    writeTempFile(definition, "jtml 2\nexport make Scene bind value\n  scene3d \"Room\" scene room into value\n");
+    const auto file = dir / "index.jtml";
+    writeTempFile(file, "jtml 2\nuse { Scene } from \"./scene.jtml\"\nlet owner = \"seed\"\npage\n  Scene bind value to owner\n");
+    const auto output = makeTempDir("scene-binding-out");
+    jtml::cli::Options options;
+    options.inputFile = file.string(); options.outputFile = output.string(); options.target = "browser";
+    std::string error;
+    try { (void)captureCommand([&] { return jtml::cli::cmdBuild(options); }); }
+    catch (const std::runtime_error& e) { error = e.what(); }
+    EXPECT_NE(error.find("text input only"), std::string::npos) << error;
+    EXPECT_NE(error.find(file.string() + ":5:3"), std::string::npos) << error;
+    EXPECT_NE(error.find(definition.string() + ":3:3"), std::string::npos) << error;
+    EXPECT_FALSE(std::filesystem::exists(output / "index.html"));
+}

@@ -892,6 +892,16 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
             }
             appendUnique(node.writes, templateBindingWrites(tokens));
         }
+        if (node.kind == "template" && node.head == "scene3d") {
+            // Retain the authored read/write set and provenance, but render the
+            // canonical canvas/attributes from Friendly's existing parser.
+            // Backend element parsers must never reinterpret scene modifiers
+            // as a quoted content expression.
+            const auto element = lowerFriendlySceneElement(tokens);
+            node.head = node.name = element.front();
+            node.text = joinTokens(element, 0);
+            node.expression.clear(); // An attribute-only canvas has no content.
+        }
         node.renderRoot = node.indent == 0 && node.kind == "template";
         const int parentIndex = node.parentIndex;
         plan.push_back(std::move(node));
@@ -1148,6 +1158,9 @@ void planExplicitInputs(RuntimeProjectPlan& project) {
             for (const auto& node : definition->bodyPlan) {
                 if (std::find(node.writes.begin(), node.writes.end(), argument.name) != node.writes.end() && node.kind == "assignment")
                     fail("binding parameter `" + argument.name + "` is input-only; action assignments are unsupported at " + effectLocation(node.sourceSpan));
+                if (node.kind == "template" && node.head != "input" &&
+                    std::find(node.writes.begin(), node.writes.end(), argument.name) != node.writes.end())
+                    fail("binding parameters support text input only at " + effectLocation(node.sourceSpan));
                 const auto words = splitFriendlyWords(node.text);
                 for (size_t n = 0; n + 1 < words.size(); ++n) if (words[n] == "into" && words[n + 1] == argument.name) {
                     if (node.head != "input") fail("binding parameters support text input only at " + effectLocation(node.sourceSpan));

@@ -1,0 +1,68 @@
+jtml 2
+let selectedMedia = ""
+let evidenceFiles = []
+let sceneState = {}
+make Media
+  main class "page-grid"
+    section class "wide-panel"
+      p class "eyebrow" "Media and interaction"
+      h2 "Images, audio, video, files, dropzones, charts, SVG, canvas, and 3D"
+      p "JTML media primitives map to platform elements and expose state through into bindings where the runtime can safely report it."
+
+    section class "media-grid"
+      article class "panel"
+        h3 "Image"
+        image src "/assets/product-suite.jpg" alt "Enterprise product workspace" loading "lazy" decoding "async"
+        text "Images remain normal web assets with accessible alt text."
+
+      article class "panel"
+        h3 "Video"
+        video src "/assets/briefing.mp4" controls poster "/assets/briefing.jpg" preload "metadata" into briefingVideo
+        text "Paused: {briefingVideo.paused} | Time: {briefingVideo.currentTime}"
+        box class "button-row"
+          button "Play" click briefingVideo.play
+          button "Pause" click briefingVideo.pause
+          button "Restart" click briefingVideo.seek(0)
+
+      article class "panel"
+        h3 "Audio"
+        audio src "/assets/release-note.mp3" controls preload "metadata" into releaseAudio
+        text "Audio paused: {releaseAudio.paused}"
+
+      article class "panel"
+        h3 "Files"
+        file "Choose evidence" accept "image/*,video/*,audio/*,.pdf" into selectedMedia
+        if selectedMedia
+          text "Selected: {selectedMedia.name}"
+          image src selectedMedia.preview alt selectedMedia.name
+
+      article class "panel"
+        h3 "Dropzone"
+        dropzone "Drop launch assets here" accept "image/*,video/*,audio/*,.pdf" into evidenceFiles
+        text "Dropped files: {evidenceFiles.length}"
+
+      article class "panel"
+        h3 "Canvas bridge"
+        canvas id "ops-canvas" aria-label "Canvas surface for host rendering" width "640" height "260"
+        text "Canvas is available for host libraries or future JTML drawing APIs."
+
+    section class "two-column"
+      article class "panel"
+        h3 "Vector graphic"
+        graphic aria-label "Launch path graphic" width "360" height "180" viewBox "0 0 360 180"
+          bar x "24" y "92" width "42" height "64" fill "#0f766e"
+          bar x "92" y "64" width "42" height "92" fill "#2563eb"
+          bar x "160" y "38" width "42" height "118" fill "#7c3aed"
+          bar x "228" y "74" width "42" height "82" fill "#f59e0b"
+          line x1 "20" y1 "158" x2 "330" y2 "158" stroke "#475569" stroke-width "2"
+          path d "M24 112 C80 38 145 92 198 44 C240 12 276 58 326 28" fill "none" stroke "#0f766e" stroke-width "4"
+          dot cx "326" cy "28" r "8" fill "#111827"
+          polygon points "304,116 330,132 304,148" fill "#2563eb"
+
+      article class "panel"
+        h3 "3D host"
+        scene3d "Interactive launch room" scene launchRoom camera orbit controls orbit renderer "three" into sceneState width "720" height "420"
+        text "Renderer status: {sceneState.status}"
+        text "Canvas: {sceneState.width} x {sceneState.height}"
+
+route "/" as Media

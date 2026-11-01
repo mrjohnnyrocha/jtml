@@ -27,8 +27,8 @@ Counter and Reference disclosure remain genuine JTML interactions.
 
 Every entry compiles with `build --target browser` to exactly `index.html`,
 `jtml-runtime.js`, `components/index.js` and `app.js`. The generated HTML is
-published at its registered `.html` URL. Homepage scripts stay at the root;
-all other pages load their own `<name>-assets/` scripts. The original unchanged
+published at its registered `.html` URL. All six pages load `./jtml-runtime.js`; homepage components/bootstrap stay at the
+root and other pages retain their own `<name>-assets/` components/bootstrap. The original unchanged
 Counter remains under `demo/counter/`. Generated application markup and JavaScript
 are unchanged; packaging adds head/language metadata and rebases external script
 URLs. There is no redirect shell, compatibility fallback or second frontend.
@@ -40,11 +40,19 @@ a git-archive snapshot with CMake/C++17 and records the actual binary SHA256.
 Dependencies retain their source/hash pins. `JTML_BIN` remains a local override;
 without a checked sidecar its source revision is explicitly unverified.
 
-`site-build.json` schema 4 records the registry hash, source revision/dirty status,
+`site-build.json` schema 5 records the registry hash, source revision/dirty status,
 per-page entry/shared hashes, original generated assets and compiler provenance.
-`manifest.txt` hashes deployed files. `site-payloads.json` schema 2 measures all six
+`manifest.txt` hashes deployed files. `site-payloads.json` schema 3 measures all six
 pages, with raw/gzip HTML/JS/CSS sizes and redundant runtime/manifest observations.
-Compression parameters and zlib version are recorded. No compiler optimization,
+Compression parameters and zlib version are recorded. The registry (schema 2)
+explicitly declares the shared root runtime. All six compiled runtime files must
+compare byte-for-byte equal before any public output is replaced. A mismatch
+fails the build; no fallback or partial sharing is accepted. Original compiler
+HTML and JavaScript are retained beside the site in `<output>.compiler-output/`,
+including the independent Counter, and uploaded as a separate review artifact.
+These originals are outside the deployed site. Original per-page hashes remain
+in provenance; the shared runtime records its hash and all six checked pages.
+See [runtime sharing measurements and limits](website-six-pages/runtime-sharing.md). No compiler optimization,
 transfer-header guarantee or performance improvement is claimed. Repeated builds
 from identical source/compiler/tool inputs and base URL must be byte-identical;
 cross-platform bit-identical compiler binaries are not claimed.

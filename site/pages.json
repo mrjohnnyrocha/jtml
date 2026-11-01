@@ -1,5 +1,6 @@
 {
-  "schema": 1,
+  "schema": 2,
+  "sharedRuntime": "jtml-runtime.js",
   "pages": [
     {
       "id": "homepage",

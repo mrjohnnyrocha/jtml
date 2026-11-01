@@ -38,6 +38,54 @@ class PageRegistry(unittest.TestCase):
         self.assertEqual(builder.load_page_registry(), self.registry)
         self.assertEqual(len({page['entry'] for page in self.registry['pages']}), 6)
 
+    def test_runtime_sharing_requires_actual_byte_equality(self):
+        bundles = {}
+        for page in self.registry['pages']:
+            bundle = self.root / page['id']
+            bundle.mkdir()
+            (bundle / 'jtml-runtime.js').write_bytes(b'compiler runtime\n')
+            bundles[page['output']] = bundle
+        builder.verify_shared_runtime(bundles)
+        changed = bundles['deploy.html'] / 'jtml-runtime.js'
+        changed.write_bytes(b'compiler Runtime\n')  # Same length, different bytes.
+        with self.assertRaisesRegex(ValueError, 'runtimes differ: deploy.html'):
+            builder.verify_shared_runtime(bundles)
+        self.assertEqual(changed.read_bytes(), b'compiler Runtime\n')
+        self.assertEqual(len(list(self.root.rglob('jtml-runtime.js'))), 6)
+
+    def test_build_rejects_mismatch_before_replacing_public_output(self):
+        output = self.root / 'dist/site'
+        output.mkdir(parents=True)
+        (output / 'keep.txt').write_text('previous accepted site')
+        (self.site / 'shared').mkdir()
+        (self.root / 'examples').mkdir()
+        (self.root / 'examples/friendly_counter.jtml').write_text('jtml 2')
+        compiler = self.root / 'compiler'
+        compiler.write_text('fake compiler for packaging failure injection')
+
+        def compile_fixture(args, cwd, check):
+            bundle = Path(cwd) / args[-1]
+            (bundle / 'components').mkdir(parents=True)
+            for name in builder.ASSETS:
+                (bundle / name).write_text('<head></head>' if name == 'index.html' else '// generated')
+            if args[-1] == 'security':
+                (bundle / 'jtml-runtime.js').write_text('// different')
+
+        with patch.object(builder.subprocess, 'check_output', return_value='jtml test'), patch.object(builder.subprocess, 'run', side_effect=compile_fixture):
+            with self.assertRaisesRegex(ValueError, 'runtimes differ: security.html'):
+                builder.build(output, str(compiler), 'https://example.test/jtml/')
+        self.assertEqual((output / 'keep.txt').read_text(), 'previous accepted site')
+        originals = output.with_name('site.compiler-output')
+        self.assertEqual(len(list(originals.rglob('jtml-runtime.js'))), 6)
+        self.assertEqual((originals / 'security/jtml-runtime.js').read_text(), '// different')
+
+    def test_shared_runtime_path_cannot_escape_or_collide(self):
+        for value in ('../jtml-runtime.js', 'app.js', 'reference-assets/jtml-runtime.js'):
+            self.registry['sharedRuntime'] = value
+            self.write()
+            with self.assertRaisesRegex(ValueError, 'Shared runtime'):
+                builder.load_page_registry()
+
     def test_bundle_collision_rejected(self):
         self.registry['pages'][2]['assetDirectory'] = '.'
         self.write()

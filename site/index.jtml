@@ -1,15 +1,8 @@
 jtml 2
 
-// The complete homepage is Friendly JTML. CSS supplies presentation only.
-make SiteNav
-  header class "masthead"
-    a "JTML" href "./" class "wordmark" aria-label "JTML home"
-    nav aria-label "Primary"
-      a "Language" href "#syntax"
-      a "Try it" href "#demo"
-      a "Docs" href "./reference.html"
-      a "GitHub ↗" href "https://github.com/mrjohnnyrocha/jtml"
+use { SiteNav, SiteFooter } from "./shared/layout.jtml"
 
+// The complete homepage is Friendly JTML. CSS supplies presentation only.
 make Counter
   let count = 0
   get doubled = count * 2
@@ -39,7 +32,7 @@ make Principle number title description
 make Homepage
   box class "website"
     a "Skip to content" href "#content" class "skip-link"
-    SiteNav
+    SiteNav "#syntax" "#demo"
     main id "main-content"
       section class "hero"
         box class "hero-copy"
@@ -113,10 +106,6 @@ make Homepage
         box class "actions"
           a "Read the RC.3 contract ↗" href "./docs/releases/v0.3.0-rc.3.md" class "text-link"
           a "Report a finding ↗" href "https://github.com/mrjohnnyrocha/jtml/issues" class "text-link"
-    footer class "footer"
-      a "JTML" href "./" class "wordmark"
-      span "Readable source. Observable behavior."
-      a "Build provenance ↗" href "./site-build.json"
-      a "Apache-2.0" href "./LICENSE"
+    SiteFooter
 
 Homepage

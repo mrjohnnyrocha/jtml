@@ -1,13 +1,15 @@
 # Public website: JTML source, static output, manual publication
 
 The homepage is authored in `site/index.jtml`, canonical Friendly JTML 2.
+Reference is now authored in `site/reference.jtml`; see the
+[Reference migration, payload measurements and acceptance](website-reference/README.md).
 Its `Homepage`, `SiteNav`, `Principle` and `Counter` components own all visible
 structure and composition. Counter owns local `let count`, `get doubled`, and
 `when add`/`when reset` actions. Native links provide navigation; native buttons
 support pointer, Enter and Space. There is no handwritten application JavaScript,
 HTML frontend, framework, raw HTML escape hatch or compatibility fallback.
 
-`site/home.css` and `site/favicon.svg` are handwritten presentation assets. The five other pages and their
+`site/home.css`, `site/reference.css` and `site/favicon.svg` are handwritten presentation assets. The four remaining HTML pages and their
 `site/styles.css` remain inherited HTML/CSS. Their content, documentation links,
 RC.3 download recommendation, and the complete unchanged
 `examples/friendly_counter.jtml` standalone demo are preserved. The hero's compact
@@ -42,15 +44,16 @@ the checked sidecar is labeled **source revision unverified**, with its actual
 version and binary hash; it is never attributed to the pinned source implicitly.
 
 `scripts/build_public_site.py` compiles a byte-for-byte temporary copy of the
-homepage and original Counter with `build --target browser`. Each build must
+homepage, Reference and original Counter with `build --target browser`. Each build must
 produce exactly `index.html`, `jtml-runtime.js`, `components/index.js`, and `app.js`.
 The homepage assets occupy the output root; the independent original Counter
 occupies `demo/counter/`. The old handwritten `site/app.js` has been removed, so it
 cannot collide with the compiler-owned root `app.js`. Generated JavaScript and
-body markup remain unchanged. Packaging adds only document head/language metadata:
+application markup remain unchanged. Reference uses `reference-assets/` with only
+its external script URLs rebased in `reference.html`. Packaging adds document head/language metadata:
 CSP, canonical URL, title, description, viewport, local favicon and the homepage stylesheet.
 
-`site-build.json` schema 2 records source revision/dirty status, homepage and
+`site-build.json` schema 3 records per-page entry/shared inputs and isolated assets, in addition to source revision/dirty status, homepage and
 Counter source hashes, original generated-asset hashes and compiler provenance.
 `manifest.txt` hashes all deployed files. No build time or absolute build path is
 added to public provenance. Repeated builds from identical source/compiler/base
@@ -136,8 +139,8 @@ readiness must not be inferred from a successful local or CI build.
 
 ## Next migration
 
-Migrate `reference.html` to JTML using shared navigation/footer components and
-this same compiler/assets pipeline. Preserve documentation destinations and
+Migrate Tools or Examples using the shared JTML navigation/footer and
+this same compiler/assets pipeline. Reference is already migrated. Preserve documentation destinations and
 keyboard/mobile acceptance; keep examples, tools, security and deployment pages
 for subsequent focused migrations. Avoid a second frontend or deployment system.
 

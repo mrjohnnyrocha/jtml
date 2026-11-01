@@ -50,8 +50,8 @@ Counter/modular/CoffeeOrder reset checks. RC.3 includes the input synchronizatio
 and imported-component corrections below. Ordinary source builds remain
 `0.3.0-dev`. See the [published contract and installation](docs/releases/v0.3.0-rc.3.md).
 Historical RC.2 records remain below. The JTML-authored homepage preview uses the exact development compiler pin in
-`site/compiler.json`, independently of the RC.3 download recommendation. Both
-homepage and original Counter compile to clean static assets; publication remains
+`site/compiler.json`, independently of the RC.3 download recommendation. Homepage, Reference (with shared JTML navigation/footer) and the original
+Counter compile to isolated clean static assets; publication remains
 manual. See `docs/tooling/website-launch.md`. No production readiness is inferred.
 
 ## Application inventory

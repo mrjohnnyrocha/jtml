@@ -1,0 +1,122 @@
+jtml 2
+
+// The complete homepage is Friendly JTML. CSS supplies presentation only.
+make SiteNav
+  header class "masthead"
+    a "JTML" href "./" class "wordmark" aria-label "JTML home"
+    nav aria-label "Primary"
+      a "Language" href "#syntax"
+      a "Try it" href "#demo"
+      a "Docs" href "./reference.html"
+      a "GitHub ↗" href "https://github.com/mrjohnnyrocha/jtml"
+
+make Counter
+  let count = 0
+  get doubled = count * 2
+  when add
+    count += 1
+  when reset
+    count = 0
+  section class "counter" aria-label "Interactive JTML Counter"
+    box class "counter-status"
+      span class "status-dot" aria-hidden "true"
+      span "RUNNING IN YOUR BROWSER"
+    box class "counter-value" aria-live "polite" aria-atomic "true"
+      span "Count" class "counter-label"
+      strong "{count}" class "count"
+      span "Doubled: {doubled}" class "derived"
+    box class "counter-actions"
+      button "Add one +" class "button primary" click add
+      button "Reset" class "button quiet" click reset
+    p "Local state. Derived values. Compiled event handlers."
+
+make Principle number title description
+  article class "principle"
+    span number class "index"
+    h3 title
+    p description
+
+make Homepage
+  box class "website"
+    a "Skip to content" href "#content" class "skip-link"
+    SiteNav
+    main id "main-content"
+      section class "hero"
+        box class "hero-copy"
+          p "THE OBSERVABLE-FIRST UI LANGUAGE" class "eyebrow"
+          h1 "Readable like a document."
+          p "Reactive like an app." class "hero-second"
+          p "Write markup, state, actions and components together in Friendly JTML 2. Compile supported applications to browser-local HTML and JavaScript." class "intro"
+          box class "actions"
+            a "Start building ↗" id "content" href "./docs/getting-started.md" class "button primary"
+            a "Explore the language ↓" href "#syntax" class "button quiet"
+          p "v0.3.0-rc.3 · Experimental prerelease · Not production-ready" class "release-note"
+        box class "hero-code"
+          box class "code-heading"
+            span "01 / counter.jtml"
+            span "FRIENDLY JTML 2"
+          pre
+            code "jtml 2\n\nlet count = 0\nget doubled = count * 2\n\nwhen add\n  count += 1\n\npage\n  h1 count\n  p doubled\n  button \"Add one\" click add"
+          box class "code-footer"
+            span "SOURCE → COMPILER → BROWSER"
+            a "Try the real thing ↓" href "#demo"
+      section class "release-strip" aria-label "Release status"
+        strong "Built with JTML. Including this page."
+        span "An experiment in using our own tools, in public."
+        a "Download RC.3 ↗" href "https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3"
+      section id "syntax" class "language-section"
+        box class "section-intro"
+          p "01 / THE LANGUAGE" class "eyebrow"
+          h2 "Less distance between intent and interface."
+          p "A single readable source connects what your UI shows with how it changes. The compiler owns the path from source to behavior."
+          a "Read the language reference ↗" href "./reference.html" class "text-link"
+        box class "principles"
+          Principle "01" "State you can follow." "Declare writable state with let. Derive values with get. Express changes in named when actions."
+          Principle "02" "Composition in the source." "Build reusable components with make. Keep markup and component-local behavior together."
+          Principle "03" "A compiler, all the way down." "Friendly source flows through semantic analysis and a Runtime Plan to generate browser assets. No runtime eval."
+      section id "demo" class "demo-section"
+        box class "section-intro"
+          p "02 / RUN THE SOURCE" class "eyebrow"
+          h2 "Small counter. Real compilation."
+          p "This component is part of the homepage, authored in JTML with its own count, derived value and actions. Try a click, Enter or Space. Reset and start again."
+          a "Read this homepage’s JTML ↗" href "./index.jtml" class "text-link"
+          a "Open the original Counter ↗" href "./demo/counter/" class "text-link"
+          a "Original Counter source ↗" href "./counter.jtml" class "text-link"
+        Counter
+      section id "try" class "install-section"
+        box class "section-intro"
+          p "03 / YOUR FIRST BUILD" class "eyebrow"
+          h2 "From a text file to a browser."
+          p "Download the RC.3 archive and SHA256SUMS for your platform. Verify the archive before extracting it, then run the included Counter."
+          a "Installation & platform contract ↗" href "./deploy.html" class "text-link"
+        box class "terminal"
+          box class "code-heading"
+            span "TERMINAL / INSIDE THE RELEASE BUNDLE"
+          pre
+            code "./bin/jtml --version\n./bin/jtml check examples/friendly_counter.jtml\n./bin/jtml build examples/friendly_counter.jtml --target browser --out dist/counter\npython3 -m http.server 8000 --bind 127.0.0.1 --directory dist/counter"
+          p "Open localhost:8000. No application server required."
+      section class "resources-section"
+        p "04 / KEEP EXPLORING" class "eyebrow"
+        h2 "A language is more than its landing page."
+        nav class "resource-grid" aria-label "Resources"
+          a "01  Reference ↗" href "./reference.html"
+          a "02  Examples ↗" href "./examples.html"
+          a "03  Tools & Studio ↗" href "./tools.html"
+          a "04  Security ↗" href "./security.html"
+          a "05  Deployment ↗" href "./deploy.html"
+          a "06  Roadmap ↗" href "./ROADMAP.md"
+      section class "status-section"
+        p "AN OPEN EXPERIMENT" class "eyebrow"
+        h2 "Promising by design. Experimental by status."
+        p "RC.3 packages are available for Ubuntu 22.04 x86_64 and Apple Silicon macOS. Binaries are unsigned and unnotarized. Other platforms remain unverified."
+        p "Source spans, type coverage, slots and broader browser/native parity remain incomplete. Known renderer discrepancies and the reference HTML size overage remain documented. This is a toolchain for technical testing, not a production-readiness claim."
+        box class "actions"
+          a "Read the RC.3 contract ↗" href "./docs/releases/v0.3.0-rc.3.md" class "text-link"
+          a "Report a finding ↗" href "https://github.com/mrjohnnyrocha/jtml/issues" class "text-link"
+    footer class "footer"
+      a "JTML" href "./" class "wordmark"
+      span "Readable source. Observable behavior."
+      a "Build provenance ↗" href "./site-build.json"
+      a "Apache-2.0" href "./LICENSE"
+
+Homepage

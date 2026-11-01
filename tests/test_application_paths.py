@@ -1,4 +1,5 @@
 """Regression checks for the real OpsPulse files, not a substitute module tree."""
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -38,14 +39,18 @@ class ApplicationPaths(unittest.TestCase):
                     source.write_text('jtml 2\nuse { ' + ', '.join(names) + ' } from "' + str(target) + '"\npage\n  text "Import contract"\n')
                     self.check(source)
 
-    def test_current_download_and_historical_counter_are_distinct(self):
-        for file in ('README.md', 'site/index.html', 'site/deploy.html'):
+    def test_current_download_and_pinned_site_compiler_are_distinct(self):
+        for file in ('README.md', 'site/index.jtml', 'site/deploy.html'):
             text = (ROOT / file).read_text()
             self.assertIn('releases/tag/v0.3.0-rc.3', text, file)
             self.assertNotIn('releases/tag/v0.3.0-rc.2', text, file)
         workflow = (ROOT / '.github/workflows/site-pages.yml').read_text()
-        self.assertIn('releases/download/v0.3.0-rc.2/', workflow)
-        self.assertIn('current live demo and Pages compiler remain pinned to RC.2', (ROOT / 'site/index.html').read_text())
+        self.assertNotIn('releases/download/v0.3.0-rc.2/', workflow)
+        self.assertIn('scripts/build_site.sh dist/site', workflow)
+        pin = json.loads((ROOT / 'site/compiler.json').read_text())
+        self.assertRegex(pin['revision'], r'^[0-9a-f]{40}$')
+        self.assertEqual(pin['version'], 'jtml 0.3.0-dev')
+        self.check(ROOT / 'site/index.jtml')
 
 
 if __name__ == '__main__':

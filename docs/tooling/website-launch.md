@@ -1,192 +1,145 @@
-# Public website launch: build, verify, then activate manually
+# Public website: JTML source, static output, manual publication
 
-The recommended download is the [v0.3.0-rc.3 experimental prerelease](https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3),
-not an enterprise/production platform. This website slice changes the static site,
-its build/tests and deployment preparation only. No compiler/runtime or release
-artifact is changed, and no backend service is introduced.
+The homepage is authored in `site/index.jtml`, canonical Friendly JTML 2.
+Its `Homepage`, `SiteNav`, `Principle` and `Counter` components own all visible
+structure and composition. Counter owns local `let count`, `get doubled`, and
+`when add`/`when reset` actions. Native links provide navigation; native buttons
+support pointer, Enter and Space. There is no handwritten application JavaScript,
+HTML frontend, framework, raw HTML escape hatch or compatibility fallback.
 
-## Actual demo and reproducibility
+`site/home.css` and `site/favicon.svg` are handwritten presentation assets. The five other pages and their
+`site/styles.css` remain inherited HTML/CSS. Their content, documentation links,
+RC.3 download recommendation, and the complete unchanged
+`examples/friendly_counter.jtml` standalone demo are preserved. The hero's compact
+source is an illustrative working program, not an exact listing of the styled
+homepage component. Its complete source is linked on the page.
 
-`scripts/build_site.sh` invokes `scripts/build_public_site.py`. It copies the
-complete unchanged `examples/friendly_counter.jtml` to a temporary `counter.jtml`
-and calls the selected CLI's actual `build --target browser`. There is no compat
-fallback or handwritten Counter implementation. All three generated JavaScript
-assets are copied unchanged; only CSP/canonical metadata is added to generated
-index.html. The four-file demo lives in `demo/counter/`; the exact source is
-`counter.jtml` at the site root and is also injected as text into the JTML code tab.
-HTML/React tabs are explicitly illustrative snippets, never the demo frontend.
-
-The existing embedded Counter and Pages workflow remain on RC.2, independently
-of the RC.3 download recommendation. The compiler label displayed beside the
-Counter is generated from the actual build version, so local/source previews can
-identify a different compiler honestly. The Pages workflow downloads the
-published Ubuntu RC.2 compiler bundle and checks
-its approved SHA256 `6c3e21a53bf7729b824c27e73d1ce35ffe69182f98dd8c95f4969084c53e1d6b`.
-It checks the actual CLI version before compiling. No fresh JTML build or new
-release is needed. Local source gates may use their own just-built CLI through
-`JTML_BIN`; `site-build.json` records the actual compiler version, source revision,
-dirty status, source hash and original generated-asset hashes honestly.
-
-Relative URLs work at both a domain root and `/jtml/`. `SITE_BASE_URL` supplies
-canonical/robots/sitemap URLs and defaults to `https://mrjohnnyrocha.github.io/jtml/`.
-The Actions workflow deploys the prepared static artifact directly, without a
-Jekyll build. The output uses real `.html`/`.js`/`.css` extensions and no CNAME.
-`manifest.txt` is a sorted SHA256 list of all other site files. No build timestamp,
-absolute build path or output-directory path enters the public provenance file.
+## Reproducible build and provenance
 
 ```sh
-# Use an already verified RC.2 CLI or your existing local source build.
-JTML_BIN=/absolute/path/to/release/bin/jtml scripts/build_site.sh dist/site
-# Serve only for local preview, never as a production backend:
+# Builds the exact compiler snapshot, then compiles both homepage and Counter.
+scripts/build_site.sh dist/site
+# Local preview only:
 python3 -m http.server 8000 --bind 127.0.0.1 --directory dist/site
 ```
 
-Configure actual installed Playwright/Chromium paths, then:
+`site/compiler.json` pins compiler source to
+`325bae128aaaa729d4876159099e63fce9fe59c4` in `mrjohnnyrocha/jtml`, reporting
+`jtml 0.3.0-dev`. This is a development compiler snapshot, separate from the
+published experimental RC.3 download. The old RC.2 Pages binary is no longer
+used to build the website. No release artifact is changed or republished.
+
+`scripts/build_site_compiler.sh` uses `git archive` of that full commit, never
+working-tree compiler sources, then CMake/C++17 with Python/tests off and the
+`dev` suffix. It writes a sidecar containing source repository/revision, actual
+version, binary SHA256 and build method. Dependency archives retain the hash pins
+in that compiler snapshot's CMake configuration. A C++ toolchain, CMake, Python 3,
+and network access or populated dependency caches are required.
+
+`JTML_BIN=/absolute/path/to/jtml scripts/build_site.sh dist/site` remains an
+explicit local override, including for the repository gate. An override without
+the checked sidecar is labeled **source revision unverified**, with its actual
+version and binary hash; it is never attributed to the pinned source implicitly.
+
+`scripts/build_public_site.py` compiles a byte-for-byte temporary copy of the
+homepage and original Counter with `build --target browser`. Each build must
+produce exactly `index.html`, `jtml-runtime.js`, `components/index.js`, and `app.js`.
+The homepage assets occupy the output root; the independent original Counter
+occupies `demo/counter/`. The old handwritten `site/app.js` has been removed, so it
+cannot collide with the compiler-owned root `app.js`. Generated JavaScript and
+body markup remain unchanged. Packaging adds only document head/language metadata:
+CSP, canonical URL, title, description, viewport, local favicon and the homepage stylesheet.
+
+`site-build.json` schema 2 records source revision/dirty status, homepage and
+Counter source hashes, original generated-asset hashes and compiler provenance.
+`manifest.txt` hashes all deployed files. No build time or absolute build path is
+added to public provenance. Repeated builds from identical source/compiler/base
+URL must be byte-identical. Compiler reproducibility here means pinned inputs and
+recorded binary identity, not a cross-platform bit-identical C++ binary claim.
+The CLI package continues to include the website **source**, now `index.jtml`.
+
+## Browser and security acceptance
 
 ```sh
 export JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=/absolute/path/to/playwright-prefix
 export JTML_BENCH_BROWSER=/absolute/path/to/chrome-headless-shell
 node tests/browser/site.cjs dist/site
+scripts/verify_all.sh
 ```
 
-The mandatory real-browser test checks all six HTML pages and their local links,
-fragments/assets, root/project paths, JavaScript MIME, desktop/mobile overflow,
-visible mobile navigation, keyboard snippet tabs, Counter click/Enter/Reset/reload,
-iframe/standalone behavior and the formal clean-production contract. Independent
-inline-script/handler negatives must be blocked. No unexpected console/CSP errors,
-external runtime requests, WebSockets or API/backend calls are allowed.
+Real Chromium is mandatory. The suite visits all six HTML pages at `/` and
+`/jtml/`, at 1440×1000, 390×844 and 320×720. It checks local navigation, fragment
+targets and assets, JavaScript MIME, mobile overflow and visible navigation,
+keyboard skip navigation, both genuine Counters, derived updates, reset/reload,
+and the formal clean-production mode. Unexpected console/CSP errors, external
+runtime requests, API calls and WebSockets fail. Independent inline-script and
+inline-handler attacks must remain blocked. Screenshots are saved beside the
+output as `website-*.png`; CI uploads both the site and screenshots for review.
+External release/GitHub links retain their verified published targets; the suite
+does not depend on external network availability to validate local navigation.
 
-A repeated build from the same source/compiler/base URL is byte-identical. Counter
-production output was also compared from independent temporary source paths.
-Changing the compiler/source/base URL intentionally changes provenance/output.
-Screenshots are emitted beside the site output as `website-*.png` for visual review.
-The existing local gate and both CI jobs require this browser check after site build.
+All HTML documents retain meta CSP before scripts: `script-src 'self'`, no eval,
+no executable inline handlers, `connect-src 'none'`. Inline styles are permitted
+separately, as required by the unchanged original Counter. No remote fonts,
+analytics or framework are loaded. GitHub Pages does not supply configurable
+response headers here; meta CSP does not establish header-only protections such
+as `frame-ancestors`. Actual hosted HTTPS/MIME still needs post-publication review.
 
-## CSP and MIME boundary
+## Compiler boundaries encountered
 
-GitHub Pages does not provide this project with configurable response headers.
-Every HTML document therefore declares its own meta CSP before scripts:
-`script-src 'self'`, no eval or executable inline handlers, no API connections.
-The Friendly example uses inline styles, so style-src permits them separately;
-script-src does not use unsafe-inline. The iframe uses same-origin static assets.
-No remote font, analytics or framework is loaded at runtime.
+- Root explicit IDs are emitted beside generated IDs, breaking fragment targets.
+  The homepage uses the supported static component path, which retains authored
+  IDs. No compiler or runtime code is changed.
+- Static component attributes omit `tabindex`. Skip navigation targets the first
+  native, focusable content link instead. Tests require actual keyboard focus.
+- Friendly event modifiers consume the rest of a button line. Presentation
+  modifiers precede `click`, so button styles remain authored and generated.
+- The linter interpreted quoted prose containing `into generated` as an into
+  binding advisory. The copy was rephrased; no diagnostic was suppressed.
+- Document metadata has no site-level authoring contract in this slice. The
+  existing packager adds head metadata; it does not construct body markup.
 
-[Meta CSP does not support every header CSP feature](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP#csp_overview):
-this is not a claim of frame-ancestors/report-only/header-level protection. The
-browser test serves normal HTML/JavaScript MIME types and validates actual script
-responses; production Pages headers/HTTPS must be checked after manual activation.
-No `_headers` file is presented as an effective GitHub Pages header configuration.
+Clean mode also retains the compiler’s redundant client-manifest payload in
+HTML: this homepage is approximately 282 KB of HTML plus 271 KB of component
+JavaScript and a 273 KB shared runtime, before transfer compression. Asset
+minimization belongs in a separately demonstrated compiler change; this site
+ships compiler output intact. The existing reference HTML microfixture overage
+remains a known warning in the full gate.
 
-## Domain and deployment controls
+These are bounded site authoring constraints, not evidence of general frontend
+or production readiness. A separate compiler issue can address authored root IDs
+and component attribute completeness with independent regressions.
 
-The removed `site/CNAME` contained `jtml.org`; the old builder also hardcoded that
-host in robots/sitemap. Neither file proved ownership. No domain/DNS setting was
-changed. The Pages API returned 404 during inspection on 2026-10-26, so a configured
-or live Pages site is not assumed. The supported launch path is the github.io
-project URL. A custom domain requires a separate ownership/DNS/configuration review.
-[Actions deployment uses repository Pages settings, not a CNAME file](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/troubleshooting-custom-domains-and-github-pages).
+## Manual publication controls — unchanged and not executed
 
-`.github/workflows/site-pages.yml` runs a read-only build/browser preview on PRs
-and uploads website-preview and website-browser review artifacts (including
-desktop/mobile screenshots). There is no push/release/tag deployment trigger.
-Only `workflow_dispatch` from main can enter the deployment job, after a full
-40-character source SHA/clean checkout/main ancestry check and a successful build.
-Only that job has pages/id-token write permissions and uses the github-pages
-environment. It reads existing Pages configuration and rejects any URL other than
-the reviewed github.io fallback. No setting is automatically enabled or changed.
+`.github/workflows/site-pages.yml` creates a read-only PR preview and review
+artifacts. It has no push, tag or release deployment trigger. Only explicit
+`workflow_dispatch` from main can enter deployment, using a full reviewed source
+SHA, clean checkout and main-ancestry checks. Only the deployment job has
+`pages: write` and `id-token: write`. Pages configuration uses `enablement: false`
+and must already match `https://mrjohnnyrocha.github.io/jtml`. No CNAME is shipped.
+No Pages settings, DNS, custom domain, release or publication action is performed
+by this website migration. Merge does not publish it.
 
-## Exact manual activation steps — not executed by this PR
+For a future separately authorized launch:
 
-1. Review/merge this PR manually and record its reviewed merge SHA.
-2. Open repository **Settings → Pages**. Select **GitHub Actions** as the publishing
-   source. Leave **Custom domain empty**; do not add jtml.org. Enable HTTPS when
-   available. These settings require a separate explicit owner action.
-3. In **Settings → Environments → github-pages**, restrict deployment branches to
-   main and configure the owner as required reviewer where available. The workflow
-   does not create a reviewer policy on your behalf.
-4. Run the existing prepared workflow manually from main, pinned to the reviewed
-   website SHA (not the older compiler release SHA):
+1. Review/merge the PR and record the full reviewed main SHA.
+2. The owner configures Pages to use GitHub Actions, leaves Custom domain empty,
+   and sets the `github-pages` environment's main-only/required-reviewer policy.
+3. Dispatch `site-pages.yml` from main with `source_revision` set to that SHA.
+4. Review the site/browser artifacts and approve the deployment environment.
+5. Verify the returned Pages URL on desktop/mobile, release/install links,
+   both Counters, HTTPS, MIME, CSP, console and network behavior.
 
-```sh
-gh workflow run site-pages.yml --ref main \
-  -f source_revision=<FULL_REVIEWED_WEBSITE_MERGE_SHA>
-```
+Ownership of `jtml.org` is not assumed. Public availability and production
+readiness must not be inferred from a successful local or CI build.
 
-5. Review the preview/browser result and approve the github-pages environment
-   deployment when prompted. The deploy job consumes the already tested Pages
-   artifact and verifies the configured fallback URL.
-6. Open `https://mrjohnnyrocha.github.io/jtml/`. On desktop and phone, follow every
-   navigation item; click Add one/Reset in the embedded and standalone Counter;
-   verify release/install links. Inspect response MIME for demo JavaScript and
-   confirm no console/CSP errors or unexpected network/API/WebSocket calls.
-7. Read back Pages status and the deployment's page URL. If path, MIME, policy or
-   interaction differs from local/CI evidence, stop promotion and report it rather
-   than changing compiler behavior or weakening CSP. Do not announce a working
-   public site before these post-deployment checks pass.
+## Next migration
 
-The official [custom-workflow requirements](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
-cover configure/upload/deploy actions and permissions; [publishing-source setup](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
-is an owner setting. The website is not automatically deployed by merge.
+Migrate `reference.html` to JTML using shared navigation/footer components and
+this same compiler/assets pipeline. Preserve documentation destinations and
+keyboard/mobile acceptance; keep examples, tools, security and deployment pages
+for subsequent focused migrations. Avoid a second frontend or deployment system.
 
-## Verification and launch verdict
-
-Focused local browser acceptance passed at 1440×1000, 390×844 and 320×720 for both `/` and
-`/jtml/`, including independent CSP negatives, all navigation/assets and genuine
-Counter interactions. Desktop/mobile screenshots were inspected; hero contrast
-and visible mobile navigation were corrected without introducing a second frontend.
-The compiler's Counter runtime remains **271961/272000 bytes**. Known native
-renderer/HTML-size/tooling/platform/signing limits remain visible on the site.
-
-The complete local gate passed once on the initial candidate `49a79d4` with exit 0:
-476/476 CTests, all nine mandatory
-benchmarks with clean browser exit, unchanged Counter/CSP/ReleaseDesk/Taskboard/
-provenance/lifecycle/security checks, the new site test, package/install/LSP/editor
-checks and live smoke 8/8. No verification check was skipped. Two complete site
-builds (140 files) were byte-identical. YAML/Bash/JavaScript/Python syntax and
-manual-only deployment/permissions/no-enablement guards passed. Compiler/runtime,
-accepted example, vendor code, budgets and release workflows are unchanged.
-The first hosted preview exposed a font-dependent unbreakable reference heading.
-A one-rule CSS wrapping correction fixes the actual text overflow; the browser
-suite additionally requires 320-pixel layout without relaxing any assertion.
-Focused browser acceptance was rerun for that CSS/test-only correction; no compiler
-or runtime changed and the full gate was not repeated. Exact-head hosted CI/preview
-results are recorded separately in the PR; local and
-hosted-preview evidence are distinct from live Pages evidence.
-**GO for review and manual activation once checks pass.** Actual Pages source,
-environment approval, HTTPS/MIME and live browser confirmation remain pending.
-This is not a claim that the website is already deployed or that jtml.org is owned.
-
-## Post-merge CSP negative-test synchronization
-
-Main `6bf8e4e` / [run 40492187155](https://github.com/mrjohnnyrocha/jtml/actions/runs/40492187155)
-failed the final CSP event-list assertion on both Ubuntu and macOS, after the
-non-execution assertions passed. Those logs did not record the observed event
-list, so its exact contents cannot be recovered retroactively.
-
-The old test waited for document readiness, then synchronously inspected a Node
-array populated through Playwright's asynchronous exposed-function bridge.
-[CSP violation dispatch is itself a queued task](https://www.w3.org/TR/CSP3/#report-violation);
-document readiness does not synchronize either delivery stage. An instrumented
-local browser run and 100 isolated attempts passed without artificial delay.
-A controlled 100 ms bridge delay reproduced the old failure in 3/3 probes while
-both attacks remained blocked. In one probe the assertion ran at Node +104.47 ms
-with an empty array; callbacks arrived at +125.82/+190.72 ms. Browser events were
-`script-src-elem` at 10.10 ms and `script-src-attr` at 75.70 ms, both `inline` /
-`enforce`. This establishes the synchronization defect; it does not manufacture
-missing telemetry from the original hosted failure or prove a directive rename.
-
-The test now records events in the browser before navigation and waits at most
-7 seconds for both exact directives. It requires two trusted inline enforcement
-events and independently checks that the script marker is absent and the clicked
-handler did not change its button. Missing events fail with observed directives,
-execution markers and event timing, rather than a boolean-only assertion.
-
-Focused real Chromium acceptance passed across all six viewport/path combinations
-using the existing generated site. Isolated observation delayed by 100 ms also
-passed. Independent temporary policy mutations permitting only the inline script
-or only the handler each failed the oracle, exposing the corresponding executed
-marker and only the other violation. No weakened policy or delay is shipped.
-Reproduce the focused suite with the browser/tool variables documented above:
-`node tests/browser/site.cjs dist/site`. Fresh hosted results belong in the PR.
-This test/documentation correction changes no site assets, CSP, compiler/runtime,
-release artifacts or budgets; the full compiler gate is not repeated.
+[Desktop/mobile screenshots and source identity](website/README.md) are committed
+for review. CI also retains every tested viewport/mount screenshot as an artifact.

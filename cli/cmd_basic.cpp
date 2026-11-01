@@ -1797,6 +1797,7 @@ int cmdTranspile(const Options& o) {
 
 int cmdBuild(const Options& o) {
     if (o.inputFile.empty() || o.outputFile.empty()) usage();
+    if (o.target == "static") return cmdBuildStatic(o);
     if (o.target == "browser") {
         return cmdBuildBrowser(o);
     }

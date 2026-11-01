@@ -37,6 +37,7 @@ set(JTML_TEST_SOURCES
     test_module_resolver.cpp
     test_refactor.cpp
     test_semantic.cpp
+    test_static_html.cpp
     test_studio_samples.cpp
     test_tutorial.cpp
     test_friendly_formatter.cpp

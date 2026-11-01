@@ -94,6 +94,7 @@ std::string versionString() {
         << "  jtml lint     <file.jtml>              lint for common mistakes\n"
         << "  jtml transpile <file.jtml> -o out.html [--target browser]\n"
         << "  jtml build    <file.jtml|dir/> --out <dist> [--target browser] [--prod|--compat|--debug]\n"
+        << "  jtml build    <file.jtml|dir/> --out <dist> --target static  proved literal HTML, no JS\n"
         << "  jtml export   <file.jtml> --target html|react|vue|custom-element -o out\n"
         << "  jtml migrate  <file.jtml> [-o out.jtml] classic → friendly syntax\n"
         << "  jtml refactor rename <file.jtml|dir/> --from <name> --to <newname> [-w] [--json]\n"

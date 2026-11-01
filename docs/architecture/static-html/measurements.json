@@ -1,0 +1,125 @@
+{
+  "baselineCompiler": {
+    "binarySHA256": "fcd93c8a09be7b58d08c0a287d37a5937fe192fec9f76500aa40642588fc6bae",
+    "origin": "git archive of pinned commit; CMake C++17; Python/tests off; version suffix dev",
+    "repository": "https://github.com/mrjohnnyrocha/jtml",
+    "revision": "325bae128aaaa729d4876159099e63fce9fe59c4",
+    "version": "jtml 0.3.0-dev"
+  },
+  "compression": "gzip level 9, mtime 0, each asset independently",
+  "pages": {
+    "deploy.html": {
+      "css": {
+        "gzip": 3416,
+        "raw": 12650
+      },
+      "favicon": {
+        "gzip": 195,
+        "raw": 227
+      },
+      "generatedHTML": {
+        "gzip": 2198,
+        "raw": 5156
+      },
+      "javaScriptRequests": 0,
+      "newCold": {
+        "gzip": 5960,
+        "raw": 18425
+      },
+      "previewHTML": {
+        "gzip": 2349,
+        "raw": 5548
+      },
+      "previousCold": {
+        "gzip": 87628,
+        "raw": 706532
+      },
+      "worksWithoutJavaScript": true
+    },
+    "examples.html": {
+      "css": {
+        "gzip": 3416,
+        "raw": 12650
+      },
+      "favicon": {
+        "gzip": 195,
+        "raw": 227
+      },
+      "generatedHTML": {
+        "gzip": 1323,
+        "raw": 3364
+      },
+      "javaScriptRequests": 0,
+      "newCold": {
+        "gzip": 5080,
+        "raw": 16642
+      },
+      "previewHTML": {
+        "gzip": 1469,
+        "raw": 3765
+      },
+      "previousCold": {
+        "gzip": 80121,
+        "raw": 622986
+      },
+      "worksWithoutJavaScript": true
+    },
+    "security.html": {
+      "css": {
+        "gzip": 3416,
+        "raw": 12650
+      },
+      "favicon": {
+        "gzip": 195,
+        "raw": 227
+      },
+      "generatedHTML": {
+        "gzip": 1708,
+        "raw": 4171
+      },
+      "javaScriptRequests": 0,
+      "newCold": {
+        "gzip": 5504,
+        "raw": 17540
+      },
+      "previewHTML": {
+        "gzip": 1893,
+        "raw": 4663
+      },
+      "previousCold": {
+        "gzip": 84666,
+        "raw": 699194
+      },
+      "worksWithoutJavaScript": true
+    },
+    "tools.html": {
+      "css": {
+        "gzip": 3416,
+        "raw": 12650
+      },
+      "favicon": {
+        "gzip": 195,
+        "raw": 227
+      },
+      "generatedHTML": {
+        "gzip": 1748,
+        "raw": 4619
+      },
+      "javaScriptRequests": 0,
+      "newCold": {
+        "gzip": 5515,
+        "raw": 17931
+      },
+      "previewHTML": {
+        "gzip": 1904,
+        "raw": 5054
+      },
+      "previousCold": {
+        "gzip": 87290,
+        "raw": 741552
+      },
+      "worksWithoutJavaScript": true
+    }
+  },
+  "zlib": "1.2.12"
+}

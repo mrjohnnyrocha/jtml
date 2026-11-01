@@ -81,6 +81,7 @@ set(JTML_BROWSER_PRODUCTION_SOURCES
     src/runtime_plan.cpp
     src/runtime_plan_json.cpp
     src/jtml/runtime/static_update_plan_emitter.cpp
+    src/jtml/runtime/static_html_emitter.cpp
 )
 
 set(JTML_LIVE_RUNTIME_SOURCES
@@ -182,6 +183,7 @@ target_compile_definitions(jtml_cli_common PRIVATE
 
 add_library(jtml_browser_build_lib STATIC
     cli/browser_build.cpp
+    cli/static_build.cpp
     cli/browser_build_assets.cpp
     cli/browser_build_policy.cpp
     cli/browser_build_schema.cpp

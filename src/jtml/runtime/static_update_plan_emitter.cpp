@@ -2602,6 +2602,14 @@ std::string staticUpdateFunctionBody(size_t componentIndex,
 
 } // namespace
 
+nlohmann::json staticLiteralElementParts(const std::vector<std::string>& words,
+                                       const ExpressionTypeEnvironment& environment) {
+    auto parts = compileStaticElementParts(words, 1, environment);
+    parts["implicitClass"] = !words.empty() && isSemanticUiPrimitiveName(words.front())
+        ? "jtml-" + words.front() : "";
+    return parts;
+}
+
 std::string emitStaticComponentAsset(const RuntimeProjectPlan& plan,
                                      bool componentModule) {
     auto fullComponents = assignComponentIdsAndChildIds(collectComponentPlans(plan));

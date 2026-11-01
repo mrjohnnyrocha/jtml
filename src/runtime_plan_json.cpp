@@ -241,6 +241,7 @@ nlohmann::json runtimePlanComponentInstancesToJson(
         });
         if (!arguments.empty()) out.back()["argumentPlans"] = arguments;
         if (!instance.inputActions.empty()) out.back()["inputActions"] = instance.inputActions;
+        if (!instance.slotInstance.empty()) out.back()["slotInstance"] = instance.slotInstance;
         if (!instance.bindingArguments.empty() && instance.sourceSpan.original) {
             const auto& origin = *instance.sourceSpan.original;
             const auto [line, column] = origin.source->coordinates(origin.begin);
@@ -305,6 +306,7 @@ nlohmann::json runtimePlanComponentInstancesToClientJson(
         });
         if (!arguments.empty()) out.back()["argumentPlans"] = arguments;
         if (!instance.inputActions.empty()) out.back()["inputActions"] = instance.inputActions;
+        if (!instance.slotInstance.empty()) out.back()["slotInstance"] = instance.slotInstance;
     }
     return out;
 }

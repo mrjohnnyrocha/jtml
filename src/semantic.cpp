@@ -470,6 +470,7 @@ struct SemanticSets {
     std::map<std::string, std::string> componentArguments;
     std::map<std::string, std::string> bindingParams;
     std::map<std::string, std::string> bindingArguments;
+    std::map<std::string, std::string> slotInstances;
     std::set<std::string> routes;
     // Route matching is first-match: executable records must retain AST order.
     std::vector<std::tuple<std::string, std::string, std::string, std::string>> routeRecords;
@@ -872,6 +873,7 @@ void collectFromElement(const JtmlElementNode& elem, SemanticSets& out, const st
         attributeLiteral(elem, "data-jtml-component-role", role);
         attributeLiteral(elem, "data-jtml-component-params", params);
         attributeLiteral(elem, "data-jtml-binding-args", out.bindingArguments[id]);
+        attributeLiteral(elem, "data-jtml-slot-instance", out.slotInstances[id]);
         std::string arguments;
         if (attributeLiteral(elem, "data-jtml-component-args-hex", arguments)) out.componentArguments[id] = arguments;
         attributeLiteral(elem, "data-jtml-component-locals", locals);
@@ -1416,6 +1418,7 @@ SemanticProgram analyzeSemanticProgram(
     for (auto& definition : semantic.componentDefinitions)
         definition.bindingParams = splitComponentParamList(sets.bindingParams[definition.name]);
     for (auto& instance : semantic.componentInstances) {
+        instance.slotInstance = sets.slotInstances[instance.id];
         const auto bindingArgs = sets.bindingArguments.find(instance.id);
         if (bindingArgs != sets.bindingArguments.end() && !bindingArgs->second.empty()) {
             const auto bindings = nlohmann::json::parse(hexDecode(bindingArgs->second));

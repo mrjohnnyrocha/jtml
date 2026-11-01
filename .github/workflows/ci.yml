@@ -134,6 +134,9 @@ jobs:
       - name: Route layout slot composition (browser required)
         run: node tests/browser/route_layout.cjs
 
+      - name: Routed slot ownership and lifecycle (browser required)
+        run: node tests/browser/route_slot_ownership.cjs
+
       - name: Component scene3d rendering (browser required)
         run: node tests/browser/media_renderer.cjs
 

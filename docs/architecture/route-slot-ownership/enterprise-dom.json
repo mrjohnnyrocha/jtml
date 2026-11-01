@@ -1,0 +1,103 @@
+{
+  "inputs": [
+    "<input data-jtml-direct-component-bind=\"loginEmail\" value=\"\" required=\"\" type=\"email\" data-jtml-direct-node=\"input\" data-jtml-direct-component-id=\"Login_20\" data-jtml-direct-body-node=\"5\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,value,required,type,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\">"
+  ],
+  "instances": [
+    {
+      "id": "AppLayout_13",
+      "component": "AppLayout"
+    },
+    {
+      "id": "AppLayout_15",
+      "component": "AppLayout"
+    },
+    {
+      "id": "AppLayout_17",
+      "component": "AppLayout"
+    },
+    {
+      "id": "AppLayout_19",
+      "component": "AppLayout"
+    },
+    {
+      "id": "AppLayout_21",
+      "component": "AppLayout"
+    },
+    {
+      "id": "AppLayout_23",
+      "component": "AppLayout"
+    },
+    {
+      "id": "AppLayout_25",
+      "component": "AppLayout"
+    },
+    {
+      "id": "AppLayout_5",
+      "component": "AppLayout"
+    },
+    {
+      "id": "Command_12",
+      "component": "Command"
+    },
+    {
+      "id": "Command_12__MetricCard_12",
+      "component": "MetricCard"
+    },
+    {
+      "id": "Command_12__MetricCard_13",
+      "component": "MetricCard"
+    },
+    {
+      "id": "Command_12__MetricCard_14",
+      "component": "MetricCard"
+    },
+    {
+      "id": "Command_12__LocalCounter_55",
+      "component": "LocalCounter"
+    },
+    {
+      "id": "Command_12__LocalCounter_56",
+      "component": "LocalCounter"
+    },
+    {
+      "id": "Data_14",
+      "component": "Data"
+    },
+    {
+      "id": "Media_16",
+      "component": "Media"
+    },
+    {
+      "id": "Runtime_18",
+      "component": "Runtime"
+    },
+    {
+      "id": "Login_20",
+      "component": "Login"
+    },
+    {
+      "id": "Profile_22",
+      "component": "Profile"
+    },
+    {
+      "id": "NotFound_24",
+      "component": "NotFound"
+    },
+    {
+      "id": "Home_4",
+      "component": "Home"
+    },
+    {
+      "id": "Home_4__MetricCard_9",
+      "component": "MetricCard"
+    },
+    {
+      "id": "Home_4__MetricCard_10",
+      "component": "MetricCard"
+    },
+    {
+      "id": "Home_4__MetricCard_11",
+      "component": "MetricCard"
+    }
+  ]
+}

@@ -3582,3 +3582,44 @@ TEST(CliBuild, Scene3DNormalizationCannotAuthorizeTextBindingCapabilities) {
     EXPECT_NE(error.find(definition.string() + ":3:3"), std::string::npos) << error;
     EXPECT_FALSE(std::filesystem::exists(output / "index.html"));
 }
+
+TEST(CliBuild, RouteSlotInstanceOwnershipIsClosedAndPreservesIssuedIdentity) {
+    const auto input = (std::filesystem::path(JTML_SOURCE_DIR) / "tests/fixtures/production/route-slot-ownership/index.jtml").string();
+    const auto output = makeTempDir("route-slot-ownership");
+    jtml::cli::Options options;
+    options.inputFile = input; options.outputFile = output.string(); options.target = "browser";
+    ASSERT_EQ(captureCommand([&] { return jtml::cli::cmdBuild(options); }).code, 0);
+    const auto html = readTextFile(output / "index.html");
+    const std::string marker = "id=\"__jtml_client_manifest\">";
+    const auto begin = html.find(marker) + marker.size(), end = html.find("</script>", begin);
+    const auto original = nlohmann::json::parse(html.substr(begin, end - begin));
+    const auto owner = std::find_if(original["componentInstances"].begin(), original["componentInstances"].end(),
+        [](const auto& i) { return i.contains("slotInstance"); });
+    ASSERT_NE(owner, original["componentInstances"].end());
+    EXPECT_EQ((*owner)["role"], "layout");
+    EXPECT_EQ(html.find("data-jtml-slot-instance"), std::string::npos);
+    const auto module = readTextFile(output / "components/index.js");
+    EXPECT_NE(module.find("h.registerDynamicComponentInstance"), std::string::npos);
+    EXPECT_NE(module.find("instance.slotInstance"), std::string::npos);
+    for (const auto* kind : {"unknown", "wrong-role", "wrong-module", "wrong-call", "duplicate-owner", "duplicate-child", "unknown-key"}) {
+        SCOPED_TRACE(kind);
+        auto manifest = original;
+        auto& instances = manifest["componentInstances"];
+        const auto index = static_cast<size_t>(owner - original["componentInstances"].begin());
+        auto& layout = instances[index];
+        const auto id = layout["slotInstance"];
+        const auto child = std::find_if(instances.begin(), instances.end(), [&](const auto& i) { return i["id"] == id; });
+        ASSERT_NE(child, instances.end());
+        const std::string mutation = kind;
+        if (mutation == "unknown") layout["slotInstance"] = "missing";
+        if (mutation == "wrong-role") (*child)["role"] = "component";
+        if (mutation == "wrong-module") (*child)["moduleId"] = 99999;
+        if (mutation == "wrong-call") layout["slotPlan"][0]["head"] = "Wrong";
+        if (mutation == "duplicate-owner") instances.push_back(layout);
+        if (mutation == "duplicate-child") instances.push_back(*child);
+        if (mutation == "unknown-key") layout["slotAuthority"] = true;
+        auto changed = html; changed.replace(begin, end - begin, manifest.dump());
+        writeTempFile(output / "index.html", changed);
+        EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(output, jtml::cli::BrowserBuildMode::Production), std::runtime_error);
+    }
+}

@@ -466,7 +466,7 @@ void validateClientComponentInstances(const nlohmann::json& instances,
         const auto& instance = instances[i];
         if (!requireObjectAt(instance, itemPath, issues)) continue;
         rejectUnknownKeys(instance, {"moduleId", "definitionModule", "id", "component",
-                                     "instanceId", "role", "params", "argumentPlans", "inputActions", "locals", "slotPlan"},
+                                     "instanceId", "role", "params", "argumentPlans", "inputActions", "locals", "slotPlan", "slotInstance"},
                           itemPath, issues);
         requireOptionalModuleId(instance, "moduleId", itemPath, issues);
         requireOptionalModuleId(instance, "definitionModule", itemPath, issues);
@@ -476,6 +476,7 @@ void validateClientComponentInstances(const nlohmann::json& instances,
         }
         requireOptionalNumber(instance, "instanceId", itemPath, issues);
         requireOptionalString(instance, "role", itemPath, issues);
+        requireOptionalString(instance, "slotInstance", itemPath, issues);
         requireOptionalObject(instance, "params", itemPath, issues);
         requireOptionalObject(instance, "argumentPlans", itemPath, issues);
         if (instance.contains("argumentPlans") && instance["argumentPlans"].is_object()) {
@@ -618,6 +619,29 @@ void validateClientRuntimePlanSchema(const nlohmann::json& manifest,
         validateClientComponentInstances(manifest.at("componentInstances"),
                                          path + ".componentInstances",
                                          issues);
+    }
+    // A supplied route is a single compiler-issued caller instance, not an
+    // invitation to activate arbitrary nested manifest declarations.
+    if (manifest.contains("componentInstances") && manifest["componentInstances"].is_array()) {
+        const auto& instances = manifest["componentInstances"];
+        std::set<std::string> supplied;
+        for (const auto& owner : instances) {
+            if (!owner.is_object() || !owner.contains("slotInstance") || !owner["slotInstance"].is_string()) continue;
+            const auto id = owner["slotInstance"].get<std::string>();
+            const auto child = std::find_if(instances.begin(), instances.end(), [&](const auto& i) {
+                return i.is_object() && i.contains("id") && i["id"] == id;
+            });
+            if (id.empty() || !supplied.insert(id).second || owner.value("role", "") != "layout" ||
+                child == instances.end() || child->value("role", "") != "route" ||
+                !owner.contains("moduleId") || !owner["moduleId"].is_number_unsigned() ||
+                !child->contains("moduleId") || (*child)["moduleId"] != owner["moduleId"] ||
+                std::count_if(instances.begin(), instances.end(), [&](const auto& i) {
+                    return i.is_object() && i.contains("id") && i["id"] == id;
+                }) != 1 ||
+                !owner.contains("slotPlan") || !owner["slotPlan"].is_array() || owner["slotPlan"].size() != 1 ||
+                owner["slotPlan"][0].value("head", "") != child->value("component", ""))
+                issues.push_back(path + ".slotInstance has inconsistent caller ownership");
+        }
     }
     // A capability is a compiler-issued action for this instance, with an
     // existing one-argument assignment and the matching compiled read path.

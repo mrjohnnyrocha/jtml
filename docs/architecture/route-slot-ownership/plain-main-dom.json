@@ -1,0 +1,71 @@
+{
+  "inputs": [
+    "<input data-jtml-direct-component-bind=\"loginEmail\" value=\"\" required=\"\" type=\"email\" data-jtml-direct-node=\"input\" data-jtml-direct-component-id=\"Login_15\" data-jtml-direct-body-node=\"5\" data-jtml-direct-managed-attrs=\"data-jtml-direct-component-bind,value,required,type,data-jtml-direct-node,data-jtml-direct-component-id,data-jtml-direct-body-node\">"
+  ],
+  "instances": [
+    {
+      "id": "Command_11",
+      "component": "Command"
+    },
+    {
+      "id": "Data_12",
+      "component": "Data"
+    },
+    {
+      "id": "Home_4",
+      "component": "Home"
+    },
+    {
+      "id": "Login_15",
+      "component": "Login"
+    },
+    {
+      "id": "Media_13",
+      "component": "Media"
+    },
+    {
+      "id": "NotFound_17",
+      "component": "NotFound"
+    },
+    {
+      "id": "Profile_16",
+      "component": "Profile"
+    },
+    {
+      "id": "Runtime_14",
+      "component": "Runtime"
+    },
+    {
+      "id": "Command_11__MetricCard_12",
+      "component": "MetricCard"
+    },
+    {
+      "id": "Command_11__MetricCard_13",
+      "component": "MetricCard"
+    },
+    {
+      "id": "Command_11__MetricCard_14",
+      "component": "MetricCard"
+    },
+    {
+      "id": "Command_11__LocalCounter_55",
+      "component": "LocalCounter"
+    },
+    {
+      "id": "Command_11__LocalCounter_56",
+      "component": "LocalCounter"
+    },
+    {
+      "id": "Home_4__MetricCard_9",
+      "component": "MetricCard"
+    },
+    {
+      "id": "Home_4__MetricCard_10",
+      "component": "MetricCard"
+    },
+    {
+      "id": "Home_4__MetricCard_11",
+      "component": "MetricCard"
+    }
+  ]
+}

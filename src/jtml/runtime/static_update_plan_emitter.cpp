@@ -368,7 +368,7 @@ nlohmann::json compileStaticElementParts(
             ++i;
             continue;
         }
-        if (isSemanticUiModifierName(token)) {
+        if (isSemanticUiPrimitiveName(words.front()) && isSemanticUiModifierName(token)) {
             const auto raw = i + 1 < words.size() ? words[i + 1] : std::string();
             if (!raw.empty() && !stopWords.count(raw) &&
                 !isComponentAttributeName(raw) &&

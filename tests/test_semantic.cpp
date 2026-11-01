@@ -2847,3 +2847,25 @@ TEST(RuntimePlan, RouteLayoutsRetainCallerOwnedSlotInstances) {
     const auto client = jtml::runtimePlanToClientJson(plan).dump();
     EXPECT_EQ(client.find("\"sourceSpan\""), std::string::npos);
 }
+
+TEST(RuntimePlan, Scene3DUsesCanonicalCanvasWithoutLosingAuthoredWrites) {
+    const std::string source =
+        "jtml 2\nlet sceneState = {}\nmake Scene\n  main\n"
+        "    scene3d \"Product room\" scene productRoom camera orbit controls orbit renderer \"three\" into sceneState width \"640\" height \"360\"\n"
+        "page\n  Scene\n";
+    auto program = parseFriendly(source);
+    const auto plan = jtml::buildRuntimePlan(program, jtml::analyzeSemanticProgram(program, source));
+    const auto definition = std::find_if(plan.componentDefinitions.begin(), plan.componentDefinitions.end(),
+        [](const auto& d) { return d.name == "Scene"; });
+    ASSERT_NE(definition, plan.componentDefinitions.end());
+    const auto node = std::find_if(definition->bodyPlan.begin(), definition->bodyPlan.end(),
+        [](const auto& n) { return n.head == "canvas"; });
+    ASSERT_NE(node, definition->bodyPlan.end());
+    EXPECT_EQ(node->sourceLine, 5);
+    EXPECT_EQ(node->sourceColumn, 5);
+    EXPECT_TRUE(node->expression.empty());
+    EXPECT_NE(node->text.find("data-jtml-scene (\"productRoom\")"), std::string::npos);
+    EXPECT_NE(node->text.find("data-jtml-controls (\"orbit\")"), std::string::npos);
+    EXPECT_NE(node->text.find("data-jtml-scene3d-controller (\"sceneState\")"), std::string::npos);
+    EXPECT_EQ(std::count(node->writes.begin(), node->writes.end(), "sceneState"), 1);
+}

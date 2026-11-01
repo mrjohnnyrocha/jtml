@@ -1,0 +1,15 @@
+jtml 2
+let title = "First"
+when rename
+  title = "Updated"
+make Scene title
+  let draft = ""
+  main
+    scene3d "Room {title}" scene productRoom camera fixed controls none renderer "custom" width "640" height "360"
+    input into draft aria-label title
+    text "Draft: {draft}"
+page
+  button "Rename" click rename
+  Scene title
+  Scene "Sibling"
+  scene3d "Root control" scene "rootScene" camera "fixed" controls "none" renderer "auto" into rootSceneState width "320" height "240"

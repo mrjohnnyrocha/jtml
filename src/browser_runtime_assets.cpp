@@ -1230,10 +1230,7 @@ const char* browserRuntimePreludeChunk() {
       }
 
       function compileComponentElementParts(words, start, stopWords) {
-        const attrs = [];
-        const modifiers = [];
-        const content = [];
-        const stops = stopWords || {};
+        const attrs = [], modifiers = [], content = [], stops = stopWords || {};
         for (let i = start; i < words.length; i += 1) {
           const token = words[i];
           if (stops[token]) break;
@@ -1242,7 +1239,7 @@ const char* browserRuntimePreludeChunk() {
             i += 1;
             continue;
           }
-          if (isSemanticUiModifierName(token)) {
+          if (isSemanticUiPrimitiveName(words[0]) && isSemanticUiModifierName(token)) {
             const raw = i + 1 < words.length ? words[i + 1] : '';
             if (raw && !stops[raw] && !isComponentAttributeName(raw) &&
                 !isComponentBooleanAttribute(raw) && !isSemanticUiModifierName(raw)) {

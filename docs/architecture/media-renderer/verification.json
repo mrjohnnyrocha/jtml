@@ -1,0 +1,42 @@
+{
+  "status": "FOCUSED PASS; exact-final-commit full gate and hosted CI pending and recorded on PR",
+  "base": "47b547806e742b2b0ae2ca38b459b7efd1ec0e07",
+  "branch": "codex/media-renderer",
+  "baselineChromiumExit": 1,
+  "baselineException": "Unescaped string delimiter",
+  "candidateChromiumExit": 0,
+  "candidateChecks": 5,
+  "focusedCtests": "7/7 pass",
+  "otherFocusedChecks": [
+    "strict CSP",
+    "clean/compat literal fidelity and XSS negatives",
+    "input synchronization clean/compat/debug",
+    "global argument ownership and retained identity",
+    "explicit input Chromium 9/9",
+    "explicit input rejection matrix 22/22"
+  ],
+  "runtime": {
+    "baselineRaw": 272992,
+    "baselineGzip": 50893,
+    "raw": 272989,
+    "gzip": 50903,
+    "rawChange": -3,
+    "gzipChange": 10,
+    "sha256": "95212fe6a0cf32d5cf3c706a66715981162cd249d9ff1d6cda27cf756e8bbb34",
+    "ceiling": 273000,
+    "headroom": 11,
+    "budgetChanged": false
+  },
+  "ownershipCandidate": {
+    "worktree": "/Users/joaorocha/.codex/worktrees/component-module-input/jtml-v1",
+    "head": "304b85f738af19e26a15d5beed26878b56cbdf79",
+    "trackedDiffSha256": "156ada83696a0ed59fb1b1d0523cb5ceb12e876100f35e2df958fda97c61981f",
+    "preserved": true,
+    "auditCommitIncludedInRendererBranch": false
+  },
+  "originalEnterpriseSourceChanged": false,
+  "newRuntimeInterpreter": false,
+  "productionSchemaExtended": false,
+  "dynamicEventDependenciesChanged": false,
+  "mergeReleaseDeploy": false
+}

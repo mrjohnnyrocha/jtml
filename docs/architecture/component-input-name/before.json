@@ -1,0 +1,41 @@
+{
+  "checks": [
+    {
+      "mode": "plain",
+      "name": "inline input text becomes placeholder and accessible name",
+      "pass": false,
+      "error": "locator.waitFor: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.editor:visible').first().getByRole('textbox', { name: 'Email', exact: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "mode": "plain",
+      "name": "parameterized hints, textarea and explicit attributes retain semantics",
+      "pass": false,
+      "error": "locator.waitFor: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.editor:visible').first().getByRole('textbox', { name: 'Notes', exact: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "mode": "plain",
+      "name": "editing and unrelated local updates retain ownership, DOM, focus and cursor",
+      "pass": true
+    },
+    {
+      "mode": "layout",
+      "name": "inline input text becomes placeholder and accessible name",
+      "pass": false,
+      "error": "locator.waitFor: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.editor:visible').first().getByRole('textbox', { name: 'Email', exact: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "mode": "layout",
+      "name": "parameterized hints, textarea and explicit attributes retain semantics",
+      "pass": false,
+      "error": "locator.waitFor: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.editor:visible').first().getByRole('textbox', { name: 'Notes', exact: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "mode": "layout",
+      "name": "editing and unrelated local updates retain ownership, DOM, focus and cursor",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "browser": "151.0.7922.34",
+  "exit": 1
+}

@@ -154,6 +154,9 @@ jobs:
       - name: Input state synchronization (browser required)
         run: node tests/browser/input_state_sync.cjs
 
+      - name: Component input accessible names (browser required)
+        run: JTML_BIN=./build/jtml node tests/browser/component_input_name.cjs
+
       - name: Explicit caller-authorized text input (browser required)
         run: |
           node tests/browser/explicit_input.cjs

@@ -243,7 +243,7 @@ std::string JtmlTranspiler::transpileElement(const JtmlElementNode& elem) {
     // bindings.
     for (auto& attr : elem.attributes) {
         // Compiler transport only; executable argument plans live in the manifest.
-        if (browserLocalRuntime && (attr.key == "data-jtml-component-args-hex" || attr.key == "data-jtml-binding-args" || attr.key == "data-jtml-binding-params")) continue;
+        if (browserLocalRuntime && (attr.key == "data-jtml-component-args-hex" || attr.key == "data-jtml-binding-args" || attr.key == "data-jtml-binding-params" || attr.key == "data-jtml-slot-instance")) continue;
         const auto classification = classifyJtmlAttribute(attr);
 
        if (classification.kind == JtmlAttributeKind::Event) {

@@ -2831,6 +2831,7 @@ TEST(RuntimePlan, RouteLayoutsRetainCallerOwnedSlotInstances) {
         [](const auto& instance) { return instance.role == "route"; });
     ASSERT_NE(layout, plan.componentInstances.end());
     ASSERT_NE(route, plan.componentInstances.end());
+    EXPECT_EQ(layout->slotInstance, route->id);
     ASSERT_FALSE(layout->slotPlan.empty());
     ASSERT_EQ(layout->slotPlan.size(), 1u);
     EXPECT_NE(layout->slotSource.find("Detail id\n"), std::string::npos);

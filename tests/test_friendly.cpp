@@ -4673,6 +4673,7 @@ TEST(FriendlySyntax, RouteAndLayoutComponentsEmitInstanceMetadata) {
     EXPECT_NE(classic.find("data-jtml-component=\"Shell\""), std::string::npos);
     EXPECT_NE(classic.find("data-jtml-component-role=\"layout\""), std::string::npos);
     EXPECT_NE(classic.find("data-jtml-layout=\"Shell\""), std::string::npos);
+    EXPECT_NE(classic.find("data-jtml-slot-instance=\"Home_1\""), std::string::npos);
     EXPECT_NE(classic.find("data-jtml-component=\"Home\""), std::string::npos);
     EXPECT_NE(classic.find("data-jtml-component-role=\"route\""), std::string::npos);
 }

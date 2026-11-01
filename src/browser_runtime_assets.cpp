@@ -558,7 +558,7 @@ const char* browserRuntimePreludeChunk() {
         if (!id) return 0;
         const prefix = String(id) + '__';
         const childIds = Object.keys(dynamicComponentInstances)
-          .filter(function (childId) { return childId.indexOf(prefix) === 0; })
+          .filter(function (childId) { return childId.indexOf(prefix) === 0 || dynamicComponentInstances[childId].parentId === id; })
           .sort(function (a, b) { return b.length - a.length; });
         let destroyed = 0;
         childIds.forEach(function (childId) {
@@ -657,7 +657,7 @@ const char* browserRuntimePreludeChunk() {
         if (!parentId) return;
         const prefix = String(parentId) + '__';
         Object.keys(dynamicComponentInstances).forEach(function (id) {
-          if (id.indexOf(prefix) !== 0) return;
+          if (id.indexOf(prefix) !== 0 && dynamicComponentInstances[id].parentId !== parentId) return;
           if (activeIds && activeIds.has(id)) return;
           destroyRuntimeComponentInstance(id, 'subtree-prune');
         });
@@ -2225,38 +2225,41 @@ const char* browserRuntimeComponentChunk() {
 
       function generatedUpdateHelpers() {
         return {
-          componentPlanAffectedEntries: componentPlanAffectedEntries,
-          firstUnsafeAffectedRenderNodeFromPlan: firstUnsafeAffectedRenderNodeFromPlan,
-          executeComponentPatchOperation: executeComponentPatchOperation,
-          replaceDirectComponentNode: replaceDirectComponentNode,
-          recordCompiledPatchFallback: recordCompiledPatchFallback,
-          recordStaticCreateFallback: recordStaticCreateFallback,
-          recordComponentUpdatePlanSuccess: recordComponentUpdatePlanSuccess,
-          destroyDirectComponentChildren: destroyDirectComponentChildren,
-          destroyDirectComponentInstancesUnderElement: destroyDirectComponentInstancesUnderElement,
-          unregisterComponentInstance: unregisterComponentInstance,
+          registerDynamicComponentInstance,
+          componentDefinitionForInstance,
+          renderDirectComponentHtml,
+          componentPlanAffectedEntries,
+          firstUnsafeAffectedRenderNodeFromPlan,
+          executeComponentPatchOperation,
+          replaceDirectComponentNode,
+          recordCompiledPatchFallback,
+          recordStaticCreateFallback,
+          recordComponentUpdatePlanSuccess,
+          destroyDirectComponentChildren,
+          destroyDirectComponentInstancesUnderElement,
+          unregisterComponentInstance,
           createNestedComponentInstance: nestedComponentInstanceForNode,
           componentPathSegment,
           withComponentRenderPath: function (path, render) { componentRenderPath.push(path); try { return render(); } finally { componentRenderPath.pop(); } },
           componentScopeFor,
           applyComponentDerived,
-          patchStaticComponentButtonNode: patchStaticComponentButtonNode,
-          patchStaticComponentElementNode: patchStaticComponentElementNode,
-          renderStaticComponentButtonNode: renderStaticComponentButtonNode,
-          renderStaticComponentElementNode: renderStaticComponentElementNode,
-          patchStaticComponentNodeHtml: patchStaticComponentNodeHtml,
-          directComponentElementForNode: directComponentElementForNode,
-          patchComponentForRegion: patchComponentForRegion,
-          patchStaticComponentRegionNode: patchStaticComponentRegionNode,
-          patchStaticComponentSlotNode: patchStaticComponentSlotNode,
-          patchStaticComponentNestedParams: patchStaticComponentNestedParams,
-          patchStaticComponentNestedNode: patchStaticComponentNestedNode,
-          patchStaticComponentTextNode: patchStaticComponentTextNode,
-          renderComponentSlot: renderComponentSlot,
-          renderStaticComponentSlotNode: renderStaticComponentSlotNode,
-          renderStaticComponentNestedNode: renderStaticComponentNestedNode,
-          renderStaticComponentRegionNode: renderStaticComponentRegionNode,
-          renderStaticComponentTextNode: renderStaticComponentTextNode
+          patchStaticComponentButtonNode,
+          patchStaticComponentElementNode,
+          renderStaticComponentButtonNode,
+          renderStaticComponentElementNode,
+          patchStaticComponentNodeHtml,
+          directComponentElementForNode,
+          patchComponentForRegion,
+          patchStaticComponentRegionNode,
+          patchStaticComponentSlotNode,
+          patchStaticComponentNestedParams,
+          patchStaticComponentNestedNode,
+          patchStaticComponentTextNode,
+          renderComponentSlot,
+          renderStaticComponentSlotNode,
+          renderStaticComponentNestedNode,
+          renderStaticComponentRegionNode,
+          renderStaticComponentTextNode
         };
       }
 

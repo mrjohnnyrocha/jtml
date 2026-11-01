@@ -2439,7 +2439,8 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
                 componentInstanceLine(*layoutDef, layoutInstanceId, layoutBindings, {},
                                       lines[i].number, "layout",
                                       routeSlotHex,
-                                      "data-jtml-layout=" + quote(layoutDef->name)),
+                                      "data-jtml-layout=" + quote(layoutDef->name) +
+                                      " data-jtml-slot-instance=" + quote(def.name + "_" + std::to_string(routeInstanceId))),
                 lines[i].number
             });
             for (const auto& layoutLine : layoutBody) {

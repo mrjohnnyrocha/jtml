@@ -1,0 +1,51 @@
+jtml 2
+let allowed = true
+when leave
+  allowed = false
+  redirect "/other"
+guard "/work" require allowed else "/other"
+make Layout
+  let supplied = true
+  when toggleSlot
+    supplied = !supplied
+  page
+    h1 "Owned route shell"
+    button "Toggle slot" click toggleSlot
+    box
+      if supplied
+        slot
+    link "Work" to "/work"
+    link "Other" to "/other"
+make Counter label
+  let count = 0
+  when add
+    count += 1
+  article class "counter"
+    h3 label
+    text "Count: {count}"
+    button "+1" click add
+make Screen
+  let draft = "seed"
+  let clicks = 0
+  let visible = true
+  when increment
+    clicks += 1
+  when toggle
+    visible = !visible
+  main
+    input into draft aria-label "Draft"
+    text "Draft: {draft}"
+    text "Clicks: {clicks}"
+    button "Increment" click increment
+    button "Toggle counters" click toggle
+    button "Leave" click leave
+    if visible
+      Counter "First"
+      Counter "Second"
+    if false
+      Counter "Dormant"
+make Other
+  main
+    h2 "Other route"
+route "/work" as Screen layout Layout
+route "/other" as Other layout Layout

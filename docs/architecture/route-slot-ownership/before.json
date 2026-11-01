@@ -1,0 +1,79 @@
+{
+  "checks": [
+    {
+      "variant": "plain",
+      "name": "compiler-issued route identity is active exactly once",
+      "pass": true
+    },
+    {
+      "variant": "plain",
+      "name": "local input commits mirror and preserves focus",
+      "pass": true
+    },
+    {
+      "variant": "plain",
+      "name": "local action executes exactly once and retains input/cursor",
+      "pass": true
+    },
+    {
+      "variant": "plain",
+      "name": "nested counters are isolated",
+      "pass": true
+    },
+    {
+      "variant": "plain",
+      "name": "removed instances lose authority; remount is fresh",
+      "pass": true
+    },
+    {
+      "variant": "plain",
+      "name": "route transitions retain state and guards/redirects work",
+      "pass": true
+    },
+    {
+      "variant": "layout",
+      "name": "compiler-issued route identity is active exactly once",
+      "pass": false,
+      "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ []\n- [\n-   'Screen_4'\n- ]\n"
+    },
+    {
+      "variant": "layout",
+      "name": "local input commits mirror and preserves focus",
+      "pass": false,
+      "error": "locator.fill: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('textbox', { name: 'Draft' }).filter({ visible: true })\u001b[22m\n"
+    },
+    {
+      "variant": "layout",
+      "name": "local action executes exactly once and retains input/cursor",
+      "pass": false,
+      "error": "locator.focus: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('textbox', { name: 'Draft' }).filter({ visible: true })\u001b[22m\n"
+    },
+    {
+      "variant": "layout",
+      "name": "nested counters are isolated",
+      "pass": false,
+      "error": "Expected values to be strictly equal:\n\n0 !== 2\n"
+    },
+    {
+      "variant": "layout",
+      "name": "removed instances lose authority; remount is fresh",
+      "pass": false,
+      "error": "locator.evaluate: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.counter:visible').first().getByRole('button', { name: '+1' })\u001b[22m\n"
+    },
+    {
+      "variant": "layout",
+      "name": "removed supplied route loses its environment and remounts with issued identity",
+      "pass": false,
+      "error": "locator.evaluate: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Increment', exact: true })\u001b[22m\n"
+    },
+    {
+      "variant": "layout",
+      "name": "route transitions retain state and guards/redirects work",
+      "pass": false,
+      "error": "locator.waitFor: Timeout 1500ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: 'Other route' }).filter({ visible: true }) to be visible\u001b[22m\n"
+    }
+  ],
+  "errors": [],
+  "browser": "151.0.7922.34",
+  "exit": 1
+}

@@ -980,6 +980,7 @@ RuntimePlanComponentInstance planComponentInstance(
     planned.moduleId = moduleId;
     planned.definitionModule = definitionModule;
     planned.id = semantic.id;
+    planned.slotInstance = semantic.slotInstance;
     planned.component = semantic.component;
     planned.instanceId = semantic.instanceId;
     planned.role = semantic.role.empty() ? "component" : semantic.role;

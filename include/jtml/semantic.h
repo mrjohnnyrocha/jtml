@@ -127,6 +127,7 @@ struct SemanticComponentInstance {
     std::shared_ptr<const SourceProvenance> provenance;
     std::vector<SemanticProperty> argumentExpressions;
     std::vector<SemanticProperty> bindingArguments;
+    std::string slotInstance; // Compiler-issued caller-owned route supplied to a layout.
 };
 
 // Executable subscription identity comes from SubscribeStatement, not function names.

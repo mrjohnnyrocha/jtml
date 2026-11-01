@@ -1,0 +1,72 @@
+{
+  "checks": [
+    {
+      "variant": "plain",
+      "name": "compiler-issued route identity is active exactly once",
+      "pass": true
+    },
+    {
+      "variant": "plain",
+      "name": "local input commits mirror and preserves focus",
+      "pass": true
+    },
+    {
+      "variant": "plain",
+      "name": "local action executes exactly once and retains input/cursor",
+      "pass": true
+    },
+    {
+      "variant": "plain",
+      "name": "nested counters are isolated",
+      "pass": true
+    },
+    {
+      "variant": "plain",
+      "name": "removed instances lose authority; remount is fresh",
+      "pass": true
+    },
+    {
+      "variant": "plain",
+      "name": "route transitions retain state and guards/redirects work",
+      "pass": true
+    },
+    {
+      "variant": "layout",
+      "name": "compiler-issued route identity is active exactly once",
+      "pass": true
+    },
+    {
+      "variant": "layout",
+      "name": "local input commits mirror and preserves focus",
+      "pass": true
+    },
+    {
+      "variant": "layout",
+      "name": "local action executes exactly once and retains input/cursor",
+      "pass": true
+    },
+    {
+      "variant": "layout",
+      "name": "nested counters are isolated",
+      "pass": true
+    },
+    {
+      "variant": "layout",
+      "name": "removed instances lose authority; remount is fresh",
+      "pass": true
+    },
+    {
+      "variant": "layout",
+      "name": "removed supplied route loses its environment and remounts with issued identity",
+      "pass": true
+    },
+    {
+      "variant": "layout",
+      "name": "route transitions retain state and guards/redirects work",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "browser": "151.0.7922.34",
+  "exit": 0
+}

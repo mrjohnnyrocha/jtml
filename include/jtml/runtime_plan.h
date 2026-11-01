@@ -93,6 +93,7 @@ struct RuntimePlanComponentInstance {
     SourceSpan sourceSpan;
     std::vector<SemanticProperty> bindingArguments;
     std::map<std::string, std::string> inputActions;
+    std::string slotInstance; // Compiler-issued caller-owned route supplied to a layout.
 };
 
 struct RuntimePlanSubscription {

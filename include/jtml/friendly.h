@@ -63,6 +63,10 @@ struct FriendlyClassicResult {
 std::string friendlyToClassic(const std::string& source);
 FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source);
 FriendlyClassicResult friendlyToClassicWithSourceMap(const MappedSource& source);
+// Compiler-only static lowering: retain lexical component calls for resolution
+// against real per-module ASTs; never synthesize executable imported definitions.
+FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source, bool retainComponentCalls);
+FriendlyClassicResult friendlyToClassicWithSourceMap(const MappedSource& source, bool retainComponentCalls);
 std::string formatFriendlySource(const std::string& source);
 std::string normalizeSourceSyntax(const std::string& source);
 std::string normalizeSourceSyntax(const std::string& source, SyntaxMode mode);

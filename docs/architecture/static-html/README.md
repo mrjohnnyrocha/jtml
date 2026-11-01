@@ -1,0 +1,149 @@
+# Literal static HTML compilation
+
+Base: main after PR #72, `5f970b44e2c4f98595ef156050f093328c632686`.
+This is a separate, opt-in compiler target. The website registry, compiler pin,
+public packaging, existing browser target and legacy HTML export are unchanged.
+
+```sh
+jtml build source.jtml --target static --out dist/literal
+```
+
+`build` owns directory artifacts, so the new target belongs there. Existing
+`export --target html` remains the legacy transpiled/embedded-runtime artifact;
+it is not silently upgraded or reinterpreted. `--prod`, `--compat` and `--debug`
+remain browser-only flags and reject on the static target.
+
+## Proof and compiler ownership
+
+Static compilation uses the existing module discovery/resolution service and
+parses canonical Friendly modules independently, retaining their ASTs. An explicit
+frontend lowering option preserves component calls rather than expanding imported
+bodies into a linked file. It retains real definition bodies, lexical argument
+expressions and source provenance; it does not render imported stubs. This matters
+because named-import flattening currently drops private component declarations
+and cannot establish identity for duplicate private names. Existing one-argument
+lowering functions retain their signatures and expand calls exactly as before.
+
+`SemanticProject` resolves imports/reexports and module-qualified definitions.
+`RuntimeProjectPlan` provides component body nodes, parent/child structure and
+resolved nested definition ownership. The static emitter traverses retained entry
+AST markup and the reachable component graph, using `(module ID, component name)`
+identities. Each call evaluates only literal argument IR or a single parameter
+reference in its caller's immutable scope, then creates a fresh callee scope.
+Arguments are never textually substituted or rescanned in the callee's namespace.
+Private names in different modules remain distinct. Ambiguous public imports,
+duplicate local definitions/parameters and composition cycles reject.
+
+Expression IR accepts strings, booleans and exactly representable signed integers
+within JavaScript's safe-integer range. Unary minus is accepted only on a numeric
+literal. Floating-point values, arithmetic, interpolation, member/index reads,
+calls and all other expressions reject. No interpreter, JavaScript engine,
+`eval`, `new Function`, host access or speculative execution is used.
+
+The emitter consumes the same compiler-owned element classifier as generated
+browser modules, including implicit presentation classes. It supports an explicit
+native-tag/attribute allowlist, the `box`, `text`, `image` and `link` aliases,
+literal accessibility attributes and authored IDs/URLs. It escapes text and
+attribute values without changing UTF-8 bytes. Native inert component boundary
+divs are retained for layout equivalence; runtime attributes and generated IDs
+are omitted. Compiler-reserved attributes cannot be authored to forge a retained
+call. URL schemes are restricted, and controls/whitespace in URLs reject.
+
+Dynamic statements in reachable components reject at their body source location.
+Imported top-level executable statements also reject, so initializers cannot be
+silently lost. An unused component declaration alone does not activate its body.
+Coarse event-summary metadata is not proof of an event: quoted documentation can
+contain event words. Actual body statements and element/expression IR must all
+pass the closed proof. Diagnostics include file/line/column and component context
+where available, plus browser-target remediation. Expansion is bounded to 128
+active components and 10,000 component calls.
+
+## Output and transaction boundary
+
+The target emits a complete `index.html` with literal final content. There are no
+client manifests, expression placeholders, definition templates, encoded body
+fallbacks, generated JavaScript files, bootstrap or hydration. It emits a strict
+meta CSP with `script-src 'none'`, `connect-src 'none'`, `object-src 'none'` and
+`base-uri 'none'`. No language or title is invented: the document has no `lang`
+attribute and has an empty title slot. A caller can supply document metadata in
+packaging, just as the public website currently does; no new authoring metadata
+language is introduced here.
+
+All proof and rendering finish before creating staging output. Directory builds
+reuse the existing public-asset copying policy and skip symlinks. A sibling staging
+directory receives assets and HTML. Only a successful staged result replaces the
+output directory; an existing destination is backed up and restored if publication
+fails. Source files/ancestors, non-directory output and symlink destinations are
+protected. Rejected sources leave previously accepted output unchanged. This is
+exception-safe publication, not a power-loss/fsync durability guarantee.
+
+## Real-source acceptance and measurements
+
+`tests/browser/static_html.cjs` builds the four unchanged website sources twice,
+compares generated bytes, then creates test-only previews using existing registry
+metadata, CSS and favicon. It compares them to actual production-browser rendering
+in Chromium at 1440×1000, 900×1100, 390×844 and 320×720 under both `/` and `/jtml/`.
+Assertions cover independent preserved-content fixtures, exact code listings,
+links, authored/presentation/accessibility attributes, accessible trees, skip-link
+and subsequent keyboard focus, overflow, and pixel-identical full-page screenshots.
+Static documents are tested with JavaScript disabled and also checked for zero
+script requests with JavaScript enabled. API/WebSocket/external requests fail.
+
+Homepage rejects at `Counter`'s `let` on line 7; Reference rejects at
+`ReferenceTopics`' `let` on line 6. Previous accepted directories survive both.
+The compiler tests also cover imports/reexports, private-name collisions, caller/
+callee shadowing, sibling isolation, hostile text, reserved metadata, safe integer
+formatting, unsupported constructs, source coordinates and output rollback.
+
+The committed [per-file measurements](measurements.json) compare against the
+unchanged pinned website compiler `325bae128aaaa729d4876159099e63fce9fe59c4`.
+Numbers are actual generated artifacts, not browser DOM snapshots. Compression is
+Python gzip level 9, mtime 0, each asset independently, zlib 1.2.12; these are not
+hosted transfer headers. The raw generated HTML is recorded separately from the
+metadata-enriched preview. Cold totals include the latter, existing CSS and favicon.
+
+| Page | Previous cold raw / gzip | Generated HTML raw / gzip | Preview HTML raw / gzip | New cold raw / gzip | Gzip reduction |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| deploy.html | 706,532 / 87,628 | 5,156 / 2,198 | 5,548 / 2,349 | 18,425 / 5,960 | 93.20% |
+| examples.html | 622,986 / 80,121 | 3,364 / 1,323 | 3,765 / 1,469 | 16,642 / 5,080 | 93.66% |
+| security.html | 699,194 / 84,666 | 4,171 / 1,708 | 4,663 / 1,893 | 17,540 / 5,504 | 93.50% |
+| tools.html | 741,552 / 87,290 | 4,619 / 1,748 | 5,054 / 1,904 | 17,931 / 5,515 | 93.68% |
+
+Each page keeps the same 12,650 raw / 3,416 gzip CSS bytes and 227 raw / 195 gzip
+favicon bytes. All static pages have zero JavaScript requests and work with
+JavaScript disabled. Both acceptance targets are enforced: at least 80% lower
+cold gzip and no more than 15,000 cold gzip bytes per page.
+
+```sh
+cmake --build build --parallel
+ctest --test-dir build -R '^(StaticHtml\.|CliBuild\.|RuntimePlan\.|BrowserBuild)' --output-on-failure
+# Use actual installed Chromium/Playwright paths, as for the existing browser suite.
+JTML_BIN="$PWD/build/jtml" JTML_STATIC_BASELINE_BIN=/absolute/pinned/jtml \
+  node tests/browser/static_html.cjs
+# Commit the final candidate before the complete local gate:
+JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1 scripts/verify_all.sh
+```
+
+The new suite is included in the complete local gate and Ubuntu/macOS CI. CI uses
+the repository compiler as its production-browser comparison cohort; the separate
+pinned-compiler run establishes the website baseline measurements. Exact final-head
+local gate results and hosted CI belong to the PR. Local evidence and hosted CI
+are distinct.
+
+## Unsupported constructs and migration follow-up
+
+State/const declarations, derived values, actions, effects, events, input bindings,
+conditions, loops, slots, routing, fetches, stores, externs, lifecycle and raw HTML
+are outside this target. Semantic presentation modifiers, arbitrary tags/host
+widgets, forms/controllers, inline style attributes and non-integer numeric
+expressions also reject. This is a complete narrow literal-composition path,
+not general constant evaluation, SSR or reactive islands. Browser runtime,
+compatibility and native renderer semantics are unchanged; known native-renderer
+observations, source-span limitations and reference HTML-size warnings remain.
+
+A website migration is a separate PR: review/update its compiler pin and provenance,
+extend registry/output schemas for static pages, preserve document metadata/CSP,
+update request/provenance/payload expectations, and rerun the same content, focus,
+mount and screenshot acceptance against the reviewed source. No public URL,
+release, deployment configuration or website source is migrated here. Payload
+improvement does not establish production readiness.

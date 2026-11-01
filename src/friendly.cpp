@@ -1811,7 +1811,7 @@ std::vector<Line> expandStoreLines(const std::vector<Line>& lines,
 }
 
 std::map<std::string, ComponentDef>
-collectComponentDefs(const std::vector<Line>& lines) {
+collectComponentDefs(const std::vector<Line>& lines, bool rejectDuplicates = false) {
     std::map<std::string, ComponentDef> components;
     for (size_t i = 0; i < lines.size(); ++i) {
         auto tokens = splitTokens(lines[i].text);
@@ -1868,6 +1868,8 @@ collectComponentDefs(const std::vector<Line>& lines) {
                 throw FriendlySourceError("Binding parameter cannot be redeclared in component '" + def.name + "'", bodyLine.number, bodyLine.sourceColumn);
         }
         def.actionArity = collectActionArities(def.body);
+        if (rejectDuplicates && components.count(def.name))
+            throw FriendlySourceError("Duplicate component definition '" + def.name + "'", lines[i].number, lines[i].sourceColumn);
         components[def.name] = std::move(def);
         i = end - 1;
     }
@@ -3259,7 +3261,7 @@ std::string formatFriendlySource(const std::string& source) {
     return out.str();
 }
 
-FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) {
+FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source, bool retainComponentCalls) {
     FriendlyClassicResult result;
     result.classicLineToFriendlyLine.push_back(0);
     struct SourceMapGuard {
@@ -3281,8 +3283,30 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
     std::map<std::string, std::string> storeActions;
     lines = expandStoreLines(lines, storeActions);
     lines = rewriteStoreActionRefs(lines, storeActions);
-    const auto componentDefs = collectComponentDefs(lines);
-    lines = expandComponentLines(lines, componentDefs);
+    const auto componentDefs = collectComponentDefs(lines, retainComponentCalls);
+    if (!retainComponentCalls) lines = expandComponentLines(lines, componentDefs);
+    else {
+        // Static compilation retains lexical calls instead of flattening imported
+        // component bodies. The SemanticProject will resolve real definitions.
+        // This is parser-owned structure, not executable imported stubs.
+        std::vector<Line> retained;
+        for (size_t i = 0; i < lines.size(); ++i) {
+            const auto tokens = splitTokens(lines[i].text);
+            if (tokens.empty()) continue;
+            if (tokens[0] == "make") { i = findBlockEnd(lines, i) - 1; continue; }
+            auto line = lines[i];
+            for (const auto& token : tokens) if (token.rfind("data-jtml-", 0) == 0)
+                throw FriendlySourceError("Compiler-reserved attributes are not static markup", line.number, line.sourceColumn);
+            if (isComponentName(tokens[0])) {
+                nlohmann::json args = nlohmann::json::array();
+                for (size_t j = 1; j < tokens.size(); ++j) args.push_back(tokens[j]);
+                line.text = "div data-jtml-static-call=" + quote(tokens[0]) +
+                    " data-jtml-static-args=" + quote(args.dump());
+            }
+            retained.push_back(std::move(line));
+        }
+        lines = std::move(retained);
+    }
     const bool usesSemanticUi = sourceUsesSemanticUi(lines);
     const std::string themeCss = collectThemeCss(lines);
     std::ostringstream out;
@@ -3872,10 +3896,10 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) 
     return result;
 }
 
-FriendlyClassicResult friendlyToClassicWithSourceMap(const MappedSource& source) {
+FriendlyClassicResult friendlyToClassicWithSourceMap(const MappedSource& source, bool retainComponentCalls) {
     FriendlyClassicResult result;
     try {
-        result = friendlyToClassicWithSourceMap(source.text());
+        result = friendlyToClassicWithSourceMap(source.text(), retainComponentCalls);
     } catch (const FriendlySourceError& error) {
         SourceProvenance input({}, source);
         throw FriendlySourceError(error.description, error.line, error.column,
@@ -3887,6 +3911,14 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const MappedSource& source)
         std::move(generated), source, result.classicLineToFriendlyLine, SourceProvenance::Kind::FriendlyLowering,
         result.localDeclarations);
     return result;
+}
+
+FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source) {
+    return friendlyToClassicWithSourceMap(source, false);
+}
+
+FriendlyClassicResult friendlyToClassicWithSourceMap(const MappedSource& source) {
+    return friendlyToClassicWithSourceMap(source, false);
 }
 
 std::string friendlyToClassic(const std::string& source) {

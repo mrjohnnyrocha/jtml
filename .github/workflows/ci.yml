@@ -124,6 +124,20 @@ jobs:
       - name: Production reference application (browser required)
         run: scripts/test_production_reference.sh
 
+      - name: Static HTML composition and website equivalence (browser required)
+        run: node tests/browser/static_html.cjs
+
+      - name: Preserve static HTML verification artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-html-${{ matrix.os }}
+          path: |
+            dist/static-html/measurements.json
+            dist/static-html/preview
+            dist/static-html/generated
+            dist/static-html/*.png
+          if-no-files-found: error
+
       - name: Strict CSP root and dynamic events (browser required)
         run: node tests/browser/strict_csp.cjs
 

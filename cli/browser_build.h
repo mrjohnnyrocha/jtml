@@ -25,6 +25,7 @@ jtml::RuntimeProjectPlan buildRuntimeProjectPlanForInput(
     const jtml::SemanticProgram& linkedSemantic,
     bool allowImportStubs);
 
+int cmdBuildStatic(const Options& o);
 int cmdBuildBrowser(const Options& o);
 int cmdTranspileBrowser(const Options& o);
 

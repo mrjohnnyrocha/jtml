@@ -797,6 +797,7 @@ fi
 
 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/build_site.sh" "$repo_root/dist/site"
 node "$repo_root/tests/browser/site.cjs" "$repo_root/dist/site"
+JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/static_html.cjs"
 "$repo_root/scripts/package_cli.sh" "$repo_root/dist/release"
 cpack --config "$build_dir/CPackConfig.cmake" -B "$repo_root/dist/cpack"
 python3 "$repo_root/scripts/test_studio_distribution.py" --build-dir "$build_dir" \

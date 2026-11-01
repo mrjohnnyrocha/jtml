@@ -25,8 +25,10 @@ def digest(file):
 
 def load_page_registry():
     registry = json.loads((ROOT / 'site/pages.json').read_text())
-    if set(registry) != {'schema', 'pages'} or registry['schema'] != 1:
+    if set(registry) != {'schema', 'sharedRuntime', 'pages'} or registry['schema'] != 2:
         raise ValueError('Unsupported page registry')
+    if registry['sharedRuntime'] != 'jtml-runtime.js':
+        raise ValueError('Shared runtime must stay at the website root')
     required = {'id', 'entry', 'output', 'assetDirectory', 'css', 'title', 'description'}
     ids, entries, outputs, directories = set(), set(), set(), set()
     for page in registry['pages']:
@@ -62,6 +64,14 @@ def load_page_registry():
     return registry
 
 
+def verify_shared_runtime(bundles):
+    # Compare actual bytes, not just hashes, before removing any deployed copy.
+    original = (next(iter(bundles.values())) / 'jtml-runtime.js').read_bytes()
+    for page, bundle in bundles.items():
+        if (bundle / 'jtml-runtime.js').read_bytes() != original:
+            raise ValueError('Compiled page runtimes differ: ' + page + '; refusing runtime sharing')
+
+
 def payload_report(output, registry):
     def sizes(data):
         return dict(raw=len(data), gzip=len(gzip.compress(data, compresslevel=9, mtime=0)))
@@ -69,7 +79,7 @@ def payload_report(output, registry):
     pages = {}
     for page in registry['pages']:
         name, directory, styles = page['output'], page['assetDirectory'], page['css']
-        paths = [name] + [(Path(directory) / asset).as_posix() for asset in ASSETS[1:]] + styles
+        paths = [name] + [registry['sharedRuntime']] + [(Path(directory) / asset).as_posix() for asset in ASSETS[2:]] + styles
         files = {path: sizes((output / path).read_bytes()) for path in paths}
         markup = (output / name).read_text()
         manifests = re.findall(r'<script[^>]*type="application/json"[^>]*>(.*?)</script>', markup, re.S)
@@ -94,15 +104,18 @@ def payload_report(output, registry):
             generatedData=dict(clientManifest=sizes(manifests[0].encode()),
                 bodyPlanOccurrences=sum(occurrences.values()),
                 exactRepeatedBodyPlanBytes=repeated))
-    runtimes = [output / page['assetDirectory'] / 'jtml-runtime.js' for page in registry['pages']]
-    runtime_equal = len({digest(file) for file in runtimes}) == 1
-    runtime_size = sizes(runtimes[0].read_bytes())
-    return dict(schema=2, compression='gzip level 9, mtime 0, each asset independently; estimates, not hosted transfer headers',
-                zlibVersion=zlib.ZLIB_RUNTIME_VERSION,
-                pages=pages, crossPage=dict(identicalRuntimeCopies=runtime_equal, runtimeCopies=len(runtimes),
-                runtimeBytesPerCopy=runtime_size if runtime_equal else None,
-                additionalRuntimeBytes={kind: value * (len(runtimes) - 1) for kind, value in runtime_size.items()} if runtime_equal else None),
-                accounting='Repeated bodyPlan arrays use canonical compact JSON bytes beyond the first identical occurrence; not a proposed removable-byte budget.')
+    runtime_size = sizes((output / registry['sharedRuntime']).read_bytes())
+    deployed = {file.relative_to(output).as_posix(): sizes(file.read_bytes())
+                for file in sorted(output.rglob('*')) if file.is_file()
+                and file.name not in ('site-build.json', 'site-payloads.json', 'manifest.txt')}
+    return dict(schema=3, compression='gzip level 9, mtime 0, each asset independently; estimates, not hosted transfer headers',
+                zlibVersion=zlib.ZLIB_RUNTIME_VERSION, pages=pages,
+                deployedAssets=dict(fileCount=len(deployed), total={kind: sum(size[kind] for size in deployed.values()) for kind in ('raw', 'gzip')},
+                    exclusions=['site-build.json', 'site-payloads.json', 'manifest.txt']),
+                crossPage=dict(identicalCompiledRuntimes=True, compiledRuntimeCopies=len(registry['pages']),
+                    deployedRuntimeCopies=1, runtimeBytesPerCopy=runtime_size,
+                    removedRuntimeBytes={kind: value * (len(registry['pages']) - 1) for kind, value in runtime_size.items()}),
+                accounting='Cold page totals still include one complete runtime. Deployed assets count each path once, including docs, source and standalone Counter. Metadata reports excluded to avoid self-reference. Repeated bodyPlan arrays are observations, not removable-byte budgets.')
 
 
 def build(output, compiler, base_url):
@@ -140,13 +153,14 @@ def build(output, compiler, base_url):
                 assert not re.search(r'<script\b(?![^>]*\bsrc=)(?![^>]*\btype="application/json")', text, re.I)
         assert (generated / 'jtml-runtime.js').stat().st_size <= 273000
         original_hashes = {name: digest(generated / name) for name in ASSETS}
-        if output.exists():
-            shutil.rmtree(output)
-        shutil.copytree(ROOT / 'site', output, ignore=shutil.ignore_patterns('CNAME'))
+        originals = output.with_name(output.name + '.compiler-output')
+        if originals.exists():
+            shutil.rmtree(originals)
+        originals.mkdir(parents=True)
         compiled = {}
+        bundles = {}
         for page in registry['pages']:
             entry, temporary_name = page['entry'], page['id']
-            destination = output / page['assetDirectory']
             source_dir = work / (temporary_name + '-source')
             source_dir.mkdir()
             shutil.copyfile(ROOT / 'site' / entry, source_dir / entry)
@@ -155,25 +169,39 @@ def build(output, compiler, base_url):
                             '--target', 'browser', '--out', temporary_name], cwd=work, check=True)
             bundle = work / temporary_name
             assert {p.relative_to(bundle).as_posix() for p in bundle.rglob('*') if p.is_file()} == set(ASSETS)
+            preserved = originals / page['id']
+            shutil.copytree(bundle, preserved)
+            bundles[page['output']] = preserved
             hashes = {name: digest(bundle / name) for name in ASSETS}
             for name in ASSETS:
                 content = (bundle / name).read_text()
                 assert not re.search(r'\bnew\s+Function\b|\beval\s*\(', content), name
                 assert 'jtml-update-plans.js' not in content, name
-            destination.mkdir(exist_ok=True)
-            for name in ASSETS[1:]:
-                target = destination / name
-                target.parent.mkdir(exist_ok=True)
-                shutil.copyfile(bundle / name, target)
             page_name = page['output']
-            shutil.copyfile(bundle / 'index.html', output / page_name)
             compiled[page_name] = dict(source='site/' + entry,
                 sourceInputsSHA256={name: digest(ROOT / name) for name in
                                    ['site/' + entry] + sorted(file.relative_to(ROOT).as_posix() for file in (ROOT / 'site/shared').rglob('*.jtml'))},
                 generatedAssetsSHA256=hashes,
                 assetDirectory=page['assetDirectory'], metadata=page)
+        verify_shared_runtime(bundles)
+        # Only publish assets once all six originals have passed the equality gate.
+        if output.exists():
+            shutil.rmtree(output)
+        shutil.copytree(ROOT / 'site', output, ignore=shutil.ignore_patterns('CNAME'))
+        for page in registry['pages']:
+            bundle = bundles[page['output']]
+            destination = output / page['assetDirectory']
+            destination.mkdir(exist_ok=True)
+            for name in ASSETS[1:]:
+                if name == registry['sharedRuntime'] and page['assetDirectory'] != '.':
+                    continue
+                target = destination / name
+                target.parent.mkdir(exist_ok=True)
+                shutil.copyfile(bundle / name, target)
+            shutil.copyfile(bundle / 'index.html', output / page['output'])
         homepage_hashes = compiled['index.html']['generatedAssetsSHA256']
         demo = output / 'demo/counter'
+        shutil.copytree(generated, originals / 'counter')
         shutil.copytree(generated, demo)
     shutil.copyfile(source, output / 'counter.jtml')
     shutil.copytree(ROOT / 'docs', output / 'docs')
@@ -202,7 +230,7 @@ def build(output, compiler, base_url):
             for name in ASSETS[1:]:
                 original = 'src="./' + name + '"'
                 assert text.count(original) == 1
-                text = text.replace(original, 'src="./' + ('' if prefix == '.' else prefix + '/') + name + '"', 1)
+                text = text.replace(original, 'src="./' + ('' if name == registry['sharedRuntime'] or prefix == '.' else prefix + '/') + name + '"', 1)
             head = '<meta name="description" content="' + html.escape(metadata['description'], quote=True) + '">\n'
             head += '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
             head += ''.join('<link rel="stylesheet" href="./' + css + '">\n' for css in metadata['css'])
@@ -214,14 +242,14 @@ def build(output, compiler, base_url):
         assert digest(demo / name) == original_hashes[name], 'Generated JavaScript must remain untouched'
     for page_info in compiled.values():
         for name in ASSETS[1:]:
-            assert digest(output / page_info['assetDirectory'] / name) == page_info['generatedAssetsSHA256'][name], 'Generated page JavaScript must remain untouched'
+            assert digest(output / ('' if name == registry['sharedRuntime'] else page_info['assetDirectory']) / name) == page_info['generatedAssetsSHA256'][name], 'Generated page JavaScript must remain untouched'
     locations = [base_url + ('' if p.name == 'index.html' else p.name) for p in sorted(output.glob('*.html'))]
     locations.append(base_url + 'demo/counter/')
     (output / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + ''.join('  <url><loc>' + escape(u) + '</loc></url>\n' for u in locations) + '</urlset>\n')
     (output / 'robots.txt').write_text('User-agent: *\nAllow: /\n\nSitemap: ' + base_url + 'sitemap.xml\n')
     revision = subprocess.check_output(['git', '-C', ROOT, 'rev-parse', 'HEAD'], text=True).strip()
     dirty = bool(subprocess.check_output(['git', '-C', ROOT, 'status', '--porcelain', '--untracked-files=normal'], text=True))
-    info = dict(schema=4, registrySHA256=digest(ROOT / "site/pages.json"), pages=compiled, packagingPolicy="Registry document metadata and bundle script URLs only; application markup and generated JS are unchanged", compiler=compiler_info, homepageSource='site/index.jtml', homepageSourceSHA256=digest(ROOT / 'site/index.jtml'), homepageGeneratedAssetsSHA256=homepage_hashes, sourceRevision=revision, sourceDirty=dirty, compilerVersion=version,
+    info = dict(schema=5, sharedRuntime=dict(path=registry['sharedRuntime'], verifiedByteEqualPages=sorted(compiled), sha256=digest(output / registry['sharedRuntime'])), originalCompilerOutputSuffix='.compiler-output', registrySHA256=digest(ROOT / "site/pages.json"), pages=compiled, packagingPolicy="Registry document metadata, bundle script URLs and byte-equal runtime sharing only; application markup and generated JS are unchanged", compiler=compiler_info, homepageSource='site/index.jtml', homepageSourceSHA256=digest(ROOT / 'site/index.jtml'), homepageGeneratedAssetsSHA256=homepage_hashes, sourceRevision=revision, sourceDirty=dirty, compilerVersion=version,
                 baseURL=base_url, counterSource='examples/friendly_counter.jtml', counterSourceSHA256=digest(source),
                 generatedAssetsSHA256=original_hashes, demoPolicy='Only document head/language metadata is added to compiled HTML; body and generated JavaScript are unchanged')
     (output / 'site-build.json').write_text(json.dumps(info, sort_keys=True, indent=2) + '\n')

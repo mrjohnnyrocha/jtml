@@ -73,6 +73,12 @@ jobs:
           path: dist/site
           include-hidden-files: true
           if-no-files-found: error
+      - name: Preserve original compiler output for provenance review
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-compiler-output-${{ github.sha }}
+          path: dist/site.compiler-output
+          if-no-files-found: error
       - name: Preserve browser screenshots for review
         uses: actions/upload-artifact@v4
         with:

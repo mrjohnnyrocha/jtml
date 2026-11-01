@@ -7,7 +7,12 @@ assert(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT && process.env.JTML_BENCH_
 const {chromium} = createRequire(path.resolve(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT,'package.json'))('playwright');
 const sha = p => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const info = JSON.parse(fs.readFileSync(path.join(root,'site-build.json')));
-assert.equal(info.schema,4);
+assert.equal(info.schema,5);
+assert.equal(info.originalCompilerOutputSuffix,'.compiler-output');
+const originals=root+info.originalCompilerOutputSuffix;
+assert.equal(info.sharedRuntime.path,'jtml-runtime.js');
+assert.deepEqual(info.sharedRuntime.verifiedByteEqualPages,[...Object.keys(info.pages)].sort());
+assert.equal(sha(path.join(root,info.sharedRuntime.path)),info.sharedRuntime.sha256);
 const registry=JSON.parse(fs.readFileSync(path.join(root,'pages.json')));
 assert.equal(sha(path.join(root,'pages.json')),info.registrySHA256);
 assert.equal(registry.pages.length,6);
@@ -20,15 +25,21 @@ assert.equal(sha(path.join(root,'index.jtml')),info.homepageSourceSHA256);
 assert.equal(info.compiler.binarySHA256.length,64);
 for(const [page,entry] of Object.entries(info.pages)){
  for(const [file,hash] of Object.entries(entry.sourceInputsSHA256))assert.equal(sha(path.join(root,file.replace(/^site\//,''))),hash);
- for(const name of ['jtml-runtime.js','components/index.js','app.js'])assert.equal(sha(path.join(root,entry.assetDirectory,name)),entry.generatedAssetsSHA256[name]);
+ for(const [name,hash] of Object.entries(entry.generatedAssetsSHA256))assert.equal(sha(path.join(originals,entry.metadata.id,name)),hash,'original compiler output');
+ for(const name of ['jtml-runtime.js','components/index.js','app.js']){
+  const deployed=path.join(root,name==='jtml-runtime.js'?'':entry.assetDirectory,name);
+  assert.equal(sha(deployed),entry.generatedAssetsSHA256[name]);
+  assert(fs.readFileSync(deployed).equals(fs.readFileSync(path.join(originals,entry.metadata.id,name))),'byte-identical deployed JS');
+ }
 }
-for(const page of registry.pages.filter(page=>page.assetDirectory!=='.'))assert.deepEqual(fs.readdirSync(path.join(root,page.assetDirectory)).sort(),['app.js','components','jtml-runtime.js']);
+for(const page of registry.pages.filter(page=>page.assetDirectory!=='.'))assert.deepEqual(fs.readdirSync(path.join(root,page.assetDirectory)).sort(),['app.js','components']);
 assert(!/\bCounter\b/.test(fs.readFileSync(path.join(root,'reference-assets/components/index.js'),'utf8')),'Reference must not include homepage Counter');
 assert(!/\bReferenceTopics\b/.test(fs.readFileSync(path.join(root,'components/index.js'),'utf8')),'homepage must not include Reference state');
 const payload=JSON.parse(fs.readFileSync(path.join(root,'site-payloads.json')));
-assert.equal(payload.schema,2);
+assert.equal(payload.schema,3);
 assert.deepEqual(Object.keys(payload.pages).sort(),[...Object.keys(info.pages)].sort());
-assert.equal(payload.crossPage.runtimeCopies,6);
+assert.equal(payload.crossPage.compiledRuntimeCopies,6);
+assert.equal(payload.crossPage.deployedRuntimeCopies,1);
 for(const entry of Object.values(payload.pages))for(const [file,size] of Object.entries(entry.files)){
  const bytes=fs.readFileSync(path.join(root,file));assert.equal(bytes.length,size.raw);assert(size.gzip>0&&size.gzip<=size.raw,'gzip measurement bounds');
 }
@@ -62,6 +73,7 @@ const server=http.createServer((req,res)=>{
   if(baseline&&relative.startsWith('/__baseline/')){fileRoot=baseline;relative=relative.slice('/__baseline'.length);}
   const file=path.resolve(fileRoot,'.'+relative);
   if(!file.startsWith(fileRoot+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end('Not found');return;}
+  if(relative==='/jtml-runtime.js')res.setHeader('Cache-Control','public, max-age=3600');
   const type={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.jtml':'text/plain','.md':'text/plain','.png':'image/png','.txt':'text/plain','.xml':'application/xml','.svg':'image/svg+xml'}[path.extname(file)]||'application/octet-stream';
   res.setHeader('Content-Type',type);res.end(fs.readFileSync(file));
 });
@@ -86,7 +98,7 @@ let browser;
     assert(await page.evaluate(()=>jtml.browserBuild.cleanProduction));
     const assetRoot=new URL(info.pages[file].assetDirectory+'/',origin+prefix).pathname;
     const js=requests.slice(requestStart).filter(url=>new URL(url).pathname.endsWith('.js')).map(url=>new URL(url).pathname).sort();
-    assert.deepEqual(js,['app.js','components/index.js','jtml-runtime.js'].map(name=>assetRoot+name).sort(),'isolated page bundle '+file);
+    assert.deepEqual(js,[prefix+'jtml-runtime.js',assetRoot+'app.js',assetRoot+'components/index.js'].sort(),'shared runtime and isolated page bundle '+file);
    }
    assert.equal(await page.locator('meta[http-equiv="Content-Security-Policy"]').count(),1);
    assert.equal(await page.locator('link[rel="icon"]').count(),1);
@@ -208,6 +220,18 @@ let browser;
   await page.getByRole('button',{name:'Reset',exact:true}).click();await page.getByText('Count: 0',{exact:true}).waitFor();
   await page.reload();await page.getByText('Count: 0',{exact:true}).waitFor();
   console.log(`PASS ${prefix} ${viewport.width}px: all six JTML pages/content/metadata, isolated bundles, Reference and both Counters`);
+  await context.close();
+ }
+ // Real HTTP cache reuse across navigation; CDP reports cache hits as well as requests.
+ for(const prefix of ['/','/jtml/']){
+  const context=await browser.newContext();const page=await context.newPage();
+  const cdp=await context.newCDPSession(page);await cdp.send('Network.enable');
+  const cached=new Set(),runtimeRequests=new Set();
+  cdp.on('Network.requestWillBeSent',e=>{if(e.request.url===origin+prefix+'jtml-runtime.js')runtimeRequests.add(e.requestId);});
+  cdp.on('Network.requestServedFromCache',e=>cached.add(e.requestId));
+  for(const file of pages)await page.goto(origin+prefix+file);
+  assert.equal(runtimeRequests.size,6,'each page requires the shared runtime');
+  assert([...runtimeRequests].filter(id=>cached.has(id)).length>=5,'later pages reuse cacheable shared runtime');
   await context.close();
  }
  const negative=await browser.newPage();negative.setDefaultTimeout(7000);

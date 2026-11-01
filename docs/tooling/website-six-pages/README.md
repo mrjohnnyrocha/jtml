@@ -1,5 +1,10 @@
 # Complete JTML public website
 
+This is the PR #71 migration record. The subsequent packaging-only
+[runtime sharing change](runtime-sharing.md) supersedes the per-page runtime
+layout and schema versions below; source, screenshots and historical measurements
+remain unchanged.
+
 Baseline: clean main `70bb3a2c639cd3b9daeab582514037f8e352b5ee` after PR #70.
 All six public pages are now canonical Friendly JTML 2. No `.html` or application
 JavaScript source remains under `site/`; there is no raw HTML escape hatch,

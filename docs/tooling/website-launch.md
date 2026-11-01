@@ -7,7 +7,7 @@ structure and composition. Counter owns local `let count`, `get doubled`, and
 support pointer, Enter and Space. There is no handwritten application JavaScript,
 HTML frontend, framework, raw HTML escape hatch or compatibility fallback.
 
-`site/home.css` is handwritten presentation. The five other pages and their
+`site/home.css` and `site/favicon.svg` are handwritten presentation assets. The five other pages and their
 `site/styles.css` remain inherited HTML/CSS. Their content, documentation links,
 RC.3 download recommendation, and the complete unchanged
 `examples/friendly_counter.jtml` standalone demo are preserved. The hero's compact
@@ -48,7 +48,7 @@ The homepage assets occupy the output root; the independent original Counter
 occupies `demo/counter/`. The old handwritten `site/app.js` has been removed, so it
 cannot collide with the compiler-owned root `app.js`. Generated JavaScript and
 body markup remain unchanged. Packaging adds only document head/language metadata:
-CSP, canonical URL, title, description, viewport and the homepage stylesheet.
+CSP, canonical URL, title, description, viewport, local favicon and the homepage stylesheet.
 
 `site-build.json` schema 2 records source revision/dirty status, homepage and
 Counter source hashes, original generated-asset hashes and compiler provenance.

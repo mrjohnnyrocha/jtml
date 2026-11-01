@@ -33,7 +33,7 @@ const server=http.createServer((req,res)=>{
   }
   const file=path.resolve(root,'.'+relative);
   if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end('Not found');return;}
-  const type={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.jtml':'text/plain','.md':'text/plain','.png':'image/png','.txt':'text/plain','.xml':'application/xml'}[path.extname(file)]||'application/octet-stream';
+  const type={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.jtml':'text/plain','.md':'text/plain','.png':'image/png','.txt':'text/plain','.xml':'application/xml','.svg':'image/svg+xml'}[path.extname(file)]||'application/octet-stream';
   res.setHeader('Content-Type',type);res.end(fs.readFileSync(file));
 });
 let browser;
@@ -51,13 +51,14 @@ let browser;
   for(const file of pages){
    await page.goto(origin+prefix+file);
    assert.equal(await page.locator('meta[http-equiv="Content-Security-Policy"]').count(),1);
+   assert.equal(await page.locator('link[rel="icon"]').count(),1);
    assert((await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content')).includes("script-src 'self'"));
    assert.equal(await page.locator('script:not([src]):not([type="application/json"])').count(),0);
    assert.equal(await page.evaluate(()=>[...document.querySelectorAll('*')].filter(e=>e.getAttributeNames().some(a=>/^on/i.test(a))).length),0);
    const layout=await page.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth}));
    assert(layout.document<=layout.viewport,`no page-wide horizontal overflow: ${prefix}${file} ${JSON.stringify(layout)}`);
    // Resolve actual navigation/assets and authored fragment targets under the mount prefix.
-   const links=await page.locator('a[href],link[rel="stylesheet"],script[src],iframe[src]').evaluateAll(es=>es.map(e=>e.href||e.src));
+   const links=await page.locator('a[href],link[rel="stylesheet"],link[rel="icon"],script[src],iframe[src]').evaluateAll(es=>es.map(e=>e.href||e.src));
    for(const link of links){
     const u=new URL(link);if(u.origin!==origin)continue;
     assert(u.pathname.startsWith(prefix),'link escapes project path: '+u.pathname);

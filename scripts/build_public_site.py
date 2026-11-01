@@ -82,6 +82,8 @@ def build(output, compiler, base_url):
         text = page.read_text()
         assert '<head>' in text
         additions = '<meta http-equiv="Content-Security-Policy" content="' + html.escape(CSP, quote=True) + '">\n'
+        icon = '../../favicon.svg' if page == demo / 'index.html' else './favicon.svg'
+        additions += '<link rel="icon" type="image/svg+xml" href="' + icon + '">\n'
         location = page.relative_to(output).as_posix()
         canonical = base_url + ('' if location == 'index.html' else location.replace('demo/counter/index.html', 'demo/counter/'))
         additions += '<link rel="canonical" href="' + html.escape(canonical, quote=True) + '">\n'

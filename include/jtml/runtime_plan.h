@@ -23,12 +23,14 @@ struct RuntimePlanStatement {
 struct RuntimePlanBinding {
     std::string name;
     std::string expr;
+    SourceSpan sourceSpan;
 };
 
 struct RuntimePlanAction {
     std::string name;
     std::vector<std::string> params;
     std::vector<RuntimePlanStatement> body;
+    SourceSpan sourceSpan;
 };
 
 struct RuntimePlanComponentBodyNode {

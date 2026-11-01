@@ -1,0 +1,1945 @@
+{
+  "results": [
+    {
+      "name": "A-page-literal",
+      "case": "A",
+      "tag": "page",
+      "form": "literal",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"literal\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p></main>",
+          "class": "literal",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:2:d368736154bfa0b3",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"literal\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p></main>",
+          "class": "literal",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:2:d368736154bfa0b3",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"literal\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p></main>",
+          "class": "literal",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:2:d368736154bfa0b3",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        }
+      ]
+    },
+    {
+      "name": "B-box-literal",
+      "case": "B",
+      "tag": "box",
+      "form": "literal",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box literal\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p></div>",
+          "class": "jtml-box literal",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:2:1d030a918a4b063b",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box literal\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p></div>",
+          "class": "jtml-box literal",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:2:1d030a918a4b063b",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box literal\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p></div>",
+          "class": "jtml-box literal",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:2:1d030a918a4b063b",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        }
+      ]
+    },
+    {
+      "name": "C-page-expr",
+      "case": "C",
+      "tag": "page",
+      "form": "expr",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:7c3a30e0650990a1",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:7c3a30e0650990a1",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": true,
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:7c3a30e0650990a1",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "C-page-interpolated",
+      "case": "C",
+      "tag": "page",
+      "form": "interpolated",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:99d67a16650eb121",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:99d67a16650eb121",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": true,
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:99d67a16650eb121",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "C-box-expr",
+      "case": "C",
+      "tag": "box",
+      "form": "expr",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:1053122eb818afa9",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:1053122eb818afa9",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": true,
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:1053122eb818afa9",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "C-box-interpolated",
+      "case": "C",
+      "tag": "box",
+      "form": "interpolated",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:3847cc8b14f24fe9",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:3847cc8b14f24fe9",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": true,
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:3847cc8b14f24fe9",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "D-page-expr",
+      "case": "D",
+      "tag": "page",
+      "form": "expr",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"light\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "light",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:766359ae0da8e2f7",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"dark\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "dark",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:766359ae0da8e2f7",
+            "writes": [
+              "dark"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:766359ae0da8e2f7",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"light\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "light",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:766359ae0da8e2f7",
+            "writes": [
+              "dark"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:766359ae0da8e2f7",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        }
+      ]
+    },
+    {
+      "name": "D-page-interpolated",
+      "case": "D",
+      "tag": "page",
+      "form": "interpolated",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"light\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "light",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:7abba2d3d2977e0f",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"dark\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "dark",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:7abba2d3d2977e0f",
+            "writes": [
+              "dark"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:7abba2d3d2977e0f",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"light\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "light",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:7abba2d3d2977e0f",
+            "writes": [
+              "dark"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:7abba2d3d2977e0f",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        }
+      ]
+    },
+    {
+      "name": "D-box-expr",
+      "case": "D",
+      "tag": "box",
+      "form": "expr",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box light\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box light",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:d57a00e639fb60af",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box dark\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box dark",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:d57a00e639fb60af",
+            "writes": [
+              "dark"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:d57a00e639fb60af",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box light\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box light",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:d57a00e639fb60af",
+            "writes": [
+              "dark"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:d57a00e639fb60af",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        }
+      ]
+    },
+    {
+      "name": "D-box-interpolated",
+      "case": "D",
+      "tag": "box",
+      "form": "interpolated",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box light\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box light",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:e8d8a0aa586ed427",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box dark\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box dark",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:e8d8a0aa586ed427",
+            "writes": [
+              "dark"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:e8d8a0aa586ed427",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box light\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box light",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:e8d8a0aa586ed427",
+            "writes": [
+              "dark"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:e8d8a0aa586ed427",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        }
+      ]
+    },
+    {
+      "name": "E-page-expr",
+      "case": "E",
+      "tag": "page",
+      "form": "expr",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:00f4a8f577207eef",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:00f4a8f577207eef",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": true
+            },
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:00f4a8f577207eef",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "E-page-interpolated",
+      "case": "E",
+      "tag": "page",
+      "form": "interpolated",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:276e719de3215077",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:276e719de3215077",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": true
+            },
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:276e719de3215077",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "E-box-expr",
+      "case": "E",
+      "tag": "box",
+      "form": "expr",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:466c9eaf0c2185d7",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:466c9eaf0c2185d7",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": true
+            },
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:466c9eaf0c2185d7",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "E-box-interpolated",
+      "case": "E",
+      "tag": "box",
+      "form": "interpolated",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ae1ff1cf45ca4c3f",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ae1ff1cf45ca4c3f",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": true
+            },
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ae1ff1cf45ca4c3f",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "F-page-expr",
+      "case": "F",
+      "tag": "page",
+      "form": "expr",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:d44144d71f87e664",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:d44144d71f87e664",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": true
+            },
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:d44144d71f87e664",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "F-page-interpolated",
+      "case": "F",
+      "tag": "page",
+      "form": "interpolated",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:57d8e2db8ac22d04",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:57d8e2db8ac22d04",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": true
+            },
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:57d8e2db8ac22d04",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "F-box-expr",
+      "case": "F",
+      "tag": "box",
+      "form": "expr",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ef96c3fa4b36959c",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ef96c3fa4b36959c",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": true
+            },
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ef96c3fa4b36959c",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "F-box-interpolated",
+      "case": "F",
+      "tag": "box",
+      "form": "interpolated",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:80750c2a9a2372fc",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:80750c2a9a2372fc",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": true
+            },
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<div data-jtml-ui=\"box\" data-jtml-direct-node=\"box\" class=\"jtml-box\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-ui,data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></div>",
+          "class": "jtml-box",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:80750c2a9a2372fc",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "C-page-expr-argument",
+      "case": "C",
+      "tag": "page",
+      "form": "argument-control",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"light\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "light",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:3e454c61115577bf",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"dark\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "dark",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:3e454c61115577bf",
+            "writes": [
+              "supplied"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:3e454c61115577bf",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": true,
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"light\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "light",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:3e454c61115577bf",
+            "writes": [
+              "supplied"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:3e454c61115577bf",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "C-page-interpolated-argument",
+      "case": "C",
+      "tag": "page",
+      "form": "argument-control",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"light\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "light",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:6c248b939ff5bbc3",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"dark\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "dark",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:6c248b939ff5bbc3",
+            "writes": [
+              "supplied"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:6c248b939ff5bbc3",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": true,
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"light\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "light",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:6c248b939ff5bbc3",
+            "writes": [
+              "supplied"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:6c248b939ff5bbc3",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "E-page-expr-argument",
+      "case": "E",
+      "tag": "page",
+      "form": "argument-control",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"false\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "false",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:1a83532ae558c58e",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"true\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "true",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:1a83532ae558c58e",
+            "writes": [
+              "supplied"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:1a83532ae558c58e",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": true
+            },
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"false\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "false",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:1a83532ae558c58e",
+            "writes": [
+              "supplied"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:1a83532ae558c58e",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "E-page-interpolated-argument",
+      "case": "E",
+      "tag": "page",
+      "form": "argument-control",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"false\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "false",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ae9502e9cc0a3fca",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"true\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "true",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ae9502e9cc0a3fca",
+            "writes": [
+              "supplied"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ae9502e9cc0a3fca",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": true
+            },
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"false\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "false",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ae9502e9cc0a3fca",
+            "writes": [
+              "supplied"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ae9502e9cc0a3fca",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "F-page-expr-argument",
+      "case": "F",
+      "tag": "page",
+      "form": "argument-control",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:1a83532ae558c58e",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:1a83532ae558c58e",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": true
+            },
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:1a83532ae558c58e",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "F-page-interpolated-argument",
+      "case": "F",
+      "tag": "page",
+      "form": "argument-control",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ae9502e9cc0a3fca",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ae9502e9cc0a3fca",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": true
+            },
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"appState_toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:ae9502e9cc0a3fca",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "appState": {
+              "darkMode": false
+            },
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "C-page-expr-let",
+      "case": "C",
+      "tag": "page",
+      "form": "let-expr",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:f7ce056d2160c48d",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:f7ce056d2160c48d",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": true,
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:f7ce056d2160c48d",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "C-page-interpolated-let",
+      "case": "C",
+      "tag": "page",
+      "form": "let-interpolated",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:a022534c120aab15",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:a022534c120aab15",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": true,
+            "tone": "dark"
+          }
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" data-jtml-direct-body-node=\"0\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"1\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"2\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": null,
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:3:a022534c120aab15",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {
+            "dark": false,
+            "tone": "light"
+          }
+        }
+      ]
+    },
+    {
+      "name": "D-page-expr-let",
+      "case": "D",
+      "tag": "page",
+      "form": "let-expr",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"false\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "false",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:86c8c91e3171af0b",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"true\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "true",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:86c8c91e3171af0b",
+            "writes": [
+              "dark"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:86c8c91e3171af0b",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"false\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "false",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:86c8c91e3171af0b",
+            "writes": [
+              "dark"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:86c8c91e3171af0b",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        }
+      ]
+    },
+    {
+      "name": "D-page-interpolated-let",
+      "case": "D",
+      "tag": "page",
+      "form": "let-interpolated",
+      "errors": [],
+      "snapshots": [
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"false\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class,data-jtml-direct-body-node\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "false",
+          "sameElement": true,
+          "sameParent": true,
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:8c17889405b04b93",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"true\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "true",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:8c17889405b04b93",
+            "writes": [
+              "dark"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:8c17889405b04b93",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        },
+        {
+          "html": "<main data-jtml-direct-node=\"page\" class=\"false\" data-jtml-direct-body-node=\"4\" data-jtml-direct-managed-attrs=\"data-jtml-direct-node,class\"><p data-jtml-direct-body-node=\"5\" data-jtml-direct-text-node=\"true\">Probe</p><button type=\"button\" data-jtml-direct-node=\"button\" data-jtml-direct-body-node=\"6\" data-jtml-direct-managed-attrs=\"type,data-jtml-direct-node,data-jtml-direct-body-node\" data-jtml-direct-component-id=\"Probe_1\" data-jtml-direct-component-action=\"toggle\" data-jtml-direct-component-args=\"[]\">Toggle</button></main>",
+          "class": "false",
+          "sameElement": true,
+          "sameParent": true,
+          "update": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:8c17889405b04b93",
+            "writes": [
+              "dark"
+            ],
+            "patchedNodes": 1,
+            "operationCount": 0,
+            "indexedReadCount": 0,
+            "unsafeEntryCount": 0,
+            "mode": "static-production-update-function"
+          },
+          "create": {
+            "componentId": "Probe_1",
+            "component": "Probe",
+            "planKey": "0:Probe:7:8c17889405b04b93",
+            "mode": "static-production-create-function",
+            "directCreateCount": 0
+          },
+          "state": {}
+        }
+      ]
+    }
+  ],
+  "cleanExit": true
+}

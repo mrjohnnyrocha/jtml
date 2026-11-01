@@ -335,6 +335,8 @@ int cmdBuildBrowser(const Options& o) {
                                         program,
                                         semantic,
                                         browserBuildModeAllowsImportStubs(buildMode));
+    if (buildMode == BrowserBuildMode::Production)
+        validateBrowserRuntimeBindingOwnership(runtimeProjectPlan);
     transpiler.setRuntimeProjectPlan(runtimeProjectPlan);
 
     if (buildMode == BrowserBuildMode::Production) {

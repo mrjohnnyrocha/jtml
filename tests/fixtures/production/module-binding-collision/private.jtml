@@ -1,0 +1,7 @@
+jtml 2
+let tone = "private"
+when setPrivate
+  tone = "private-updated"
+export make PrivateCard
+  page class tone
+    button "Private" click setPrivate

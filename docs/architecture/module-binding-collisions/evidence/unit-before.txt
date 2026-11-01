@@ -1,0 +1,131 @@
+Internal ctest changing into directory: /tmp/opspulse-theme-clean-build
+Test project /tmp/opspulse-theme-clean-build
+    Start 138: CliBuild.RejectsCrossModuleRuntimeBindingCollisionsBeforeAssets
+1/1 Test #138: CliBuild.RejectsCrossModuleRuntimeBindingCollisionsBeforeAssets ...***Failed    0.12 sec
+Running main() from /Users/joaorocha/Documents/jtml-v1/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = CliBuild.RejectsCrossModuleRuntimeBindingCollisionsBeforeAssets
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from CliBuild
+[ RUN      ] CliBuild.RejectsCrossModuleRuntimeBindingCollisionsBeforeAssets
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3641: Failure
+Expected: (result.code) != (0), actual: 0 vs 0
+Built /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609801494416/index.jtml -> /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609801494416/out/index.html
+Built browser runtime asset -> /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609801494416/out/jtml-runtime.js
+Built browser component modules -> /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609801494416/out/components/index.js
+Built browser app bootstrap -> /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609801494416/out/app.js
+Skipped legacy browser update plans for production browser output
+
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3642: Failure
+Expected: (result.err.find("tone")) != (std::string::npos), actual: 18446744073709551615 vs 18446744073709551615
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3643: Failure
+Expected: (result.err.find("private.jtml")) != (std::string::npos), actual: 18446744073709551615 vs 18446744073709551615
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3644: Failure
+Expected: (result.err.find("index.jtml")) != (std::string::npos), actual: 18446744073709551615 vs 18446744073709551615
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3645: Failure
+Value of: std::filesystem::exists(root / "out/index.html")
+  Actual: true
+Expected: false
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3646: Failure
+Value of: std::filesystem::exists(root / "out/jtml-runtime.js")
+  Actual: true
+Expected: false
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3647: Failure
+Value of: std::filesystem::exists(root / "out/app.js")
+  Actual: true
+Expected: false
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3641: Failure
+Expected: (result.code) != (0), actual: 0 vs 0
+Built /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609835219708/index.jtml -> /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609835219708/out/index.html
+Built browser runtime asset -> /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609835219708/out/jtml-runtime.js
+Built browser component modules -> /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609835219708/out/components/index.js
+Built browser app bootstrap -> /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609835219708/out/app.js
+Skipped legacy browser update plans for production browser output
+
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3642: Failure
+Expected: (result.err.find("tone")) != (std::string::npos), actual: 18446744073709551615 vs 18446744073709551615
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3643: Failure
+Expected: (result.err.find("private.jtml")) != (std::string::npos), actual: 18446744073709551615 vs 18446744073709551615
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3644: Failure
+Expected: (result.err.find("index.jtml")) != (std::string::npos), actual: 18446744073709551615 vs 18446744073709551615
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3645: Failure
+Value of: std::filesystem::exists(root / "out/index.html")
+  Actual: true
+Expected: false
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3646: Failure
+Value of: std::filesystem::exists(root / "out/jtml-runtime.js")
+  Actual: true
+Expected: false
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3647: Failure
+Value of: std::filesystem::exists(root / "out/app.js")
+  Actual: true
+Expected: false
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3641: Failure
+Expected: (result.code) != (0), actual: 0 vs 0
+Built /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609862209583/index.jtml -> /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609862209583/out/index.html
+Built browser runtime asset -> /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609862209583/out/jtml-runtime.js
+Built browser component modules -> /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609862209583/out/components/index.js
+Built browser app bootstrap -> /var/folders/_s/nm22pfk94w538hkjb868lbpw0000gn/T/jtml-cli-runtime-binding-collision-117609862209583/out/app.js
+Skipped legacy browser update plans for production browser output
+
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3642: Failure
+Expected: (result.err.find("tone")) != (std::string::npos), actual: 18446744073709551615 vs 18446744073709551615
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3643: Failure
+Expected: (result.err.find("private.jtml")) != (std::string::npos), actual: 18446744073709551615 vs 18446744073709551615
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3644: Failure
+Expected: (result.err.find("index.jtml")) != (std::string::npos), actual: 18446744073709551615 vs 18446744073709551615
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3645: Failure
+Value of: std::filesystem::exists(root / "out/index.html")
+  Actual: true
+Expected: false
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3646: Failure
+Value of: std::filesystem::exists(root / "out/jtml-runtime.js")
+  Actual: true
+Expected: false
+
+/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/test_cli_commands.cpp:3647: Failure
+Value of: std::filesystem::exists(root / "out/app.js")
+  Actual: true
+Expected: false
+
+[  FAILED  ] CliBuild.RejectsCrossModuleRuntimeBindingCollisionsBeforeAssets (86 ms)
+[----------] 1 test from CliBuild (86 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (86 ms total)
+[  PASSED  ] 0 tests.
+[  FAILED  ] 1 test, listed below:
+[  FAILED  ] CliBuild.RejectsCrossModuleRuntimeBindingCollisionsBeforeAssets
+
+ 1 FAILED TEST
+
+
+0% tests passed, 1 tests failed out of 1
+
+Label Time Summary:
+unit    =   0.12 sec*proc (1 test)
+
+Total Test time (real) =   0.14 sec
+
+The following tests FAILED:
+	138 - CliBuild.RejectsCrossModuleRuntimeBindingCollisionsBeforeAssets (Failed) unit
+Errors while running CTest

@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <iterator>
+#include <map>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -86,6 +87,58 @@ std::string emitBrowserBuildAppBootstrap(BrowserBuildMode mode) {
         << "  window.jtml.productionMode = window.jtml.browserBuild.mode;\n"
         << "}());\n";
     return out.str() + jtml::emitBrowserRootEventBindings();
+}
+
+// Validate retained executable module records, never the duplicate linked projection.
+// Values share clientState; actions and fetch refresh aliases share event dispatch.
+void validateBrowserRuntimeBindingOwnership(const jtml::RuntimeProjectPlan& project) {
+    struct Owner {
+        jtml::SemanticModuleId module;
+        std::string category;
+        std::string location;
+    };
+    std::map<std::pair<std::string, std::string>, Owner> owners;
+    std::vector<std::string> issues;
+    for (const auto& module : project.modules) {
+        if (!module.clientExecutable) continue;
+        auto add = [&](const std::string& space, const std::string& name,
+                       const std::string& category, const SourceSpan& span) {
+            if (name.empty()) return;
+            std::string location = module.path;
+            if (span.original) {
+                const auto& origin = *span.original;
+                const auto position = origin.source->coordinates(origin.begin);
+                location = origin.source->file + ":" + std::to_string(position.first) +
+                    ":" + std::to_string(position.second);
+            }
+            const Owner current{module.id, category, location};
+            const auto inserted = owners.emplace(std::make_pair(space, name), current);
+            const auto& previous = inserted.first->second;
+            if (!inserted.second && previous.module != module.id) {
+                issues.push_back("browser runtime binding collision `" + name + "` (" +
+                    previous.category + " at " + previous.location + "; " + category +
+                    " at " + location + "). Distinct executable modules share the " +
+                    space + " namespace. Give these declarations distinct names and update "
+                    "their references; module-scoped browser storage is not implemented.");
+            }
+        };
+        for (const auto& binding : module.plan.state)
+            add("value", binding.name, "state", binding.sourceSpan);
+        for (const auto& binding : module.plan.derived)
+            add("value", binding.name, "derived", binding.sourceSpan);
+        for (const auto& action : module.plan.actions)
+            add("action", action.name, "action", action.sourceSpan);
+        for (const auto& fetch : module.plan.fetches) {
+            add("value", fetch.name, "fetch", {});
+            add("action", fetch.refreshAction, "fetch refresh action", {});
+        }
+    }
+    if (!issues.empty()) {
+        std::ostringstream message;
+        message << "Cannot emit clean browser production assets:\n";
+        for (const auto& issue : issues) message << "- " << issue << "\n";
+        throw std::runtime_error(message.str());
+    }
 }
 
 bool shouldCopyBrowserBuildAsset(const std::filesystem::path& rel) {

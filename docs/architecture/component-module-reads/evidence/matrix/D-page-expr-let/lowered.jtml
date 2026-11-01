@@ -1,0 +1,20 @@
+@template data-jtml-component-def="Probe" data-jtml-component-def-params="" data-jtml-component-def-emits="" data-jtml-component-def-emit-arity="" data-jtml-component-def-emit-payloads="" data-jtml-component-def-emit-payload-types="" data-jtml-source-line="2" data-jtml-component-body-hex="333a333a303a6c6574206461726b203d2066616c73650a343a333a303a67657420746f6e65203d206461726b203f20226461726b22203a20226c69676874220a353a333a303a7768656e20746f67676c650a363a353a323a6461726b203d20216461726b0a373a333a303a7061676520636c617373206461726b0a383a353a323a74657874202250726f6265220a393a353a323a627574746f6e2022546f67676c652220636c69636b20746f67676c650a"\\
+#
+
+@main\\
+    @div data-jtml-instance="Probe_1" data-jtml-component="Probe" data-jtml-instance-id="1" data-jtml-component-locals="dark=__Probe_1_dark;toggle=__Probe_1_toggle;tone=__Probe_1_tone" data-jtml-component-params="" data-jtml-source-line="11" data-jtml-component-args-hex="7b7d"\\
+        define __Probe_1_dark = false\\
+        derive __Probe_1_tone = __Probe_1_dark ? "dark" : "light"\\
+        function __Probe_1_toggle()\\
+            __Probe_1_dark = !__Probe_1_dark\\
+        \\
+        @main class=__Probe_1_dark\\
+            @p\\
+                show "Probe"\\
+            #
+            @button onClick=__Probe_1_toggle() type="button"\\
+                show "Toggle"\\
+            #
+        #
+    #
+#

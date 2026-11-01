@@ -1064,14 +1064,15 @@ RuntimePlan buildRuntimePlan(const std::vector<std::unique_ptr<ASTNode>>& progra
         if (!node) continue;
         if (node->getType() == ASTNodeType::DefineStatement) {
             const auto& stmt = static_cast<const DefineStatementNode&>(*node);
-            plan.state.push_back({stmt.identifier, expressionSource(stmt.expression.get())});
+            plan.state.push_back({stmt.identifier, expressionSource(stmt.expression.get()), node->sourceSpan});
         } else if (node->getType() == ASTNodeType::DeriveStatement) {
             const auto& stmt = static_cast<const DeriveStatementNode&>(*node);
-            plan.derived.push_back({stmt.identifier, expressionSource(stmt.expression.get())});
+            plan.derived.push_back({stmt.identifier, expressionSource(stmt.expression.get()), node->sourceSpan});
         } else if (node->getType() == ASTNodeType::FunctionDeclaration) {
             const auto& stmt = static_cast<const FunctionDeclarationNode&>(*node);
             RuntimePlanAction action;
             action.name = stmt.name;
+            action.sourceSpan = node->sourceSpan;
             for (const auto& param : stmt.parameters) {
                 action.params.push_back(param.name);
             }

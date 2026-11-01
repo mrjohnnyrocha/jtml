@@ -1,0 +1,11 @@
+jtml 2
+let dark = false
+get tone = dark ? "dark" : "light"
+when toggle
+  dark = !dark
+make Probe supplied
+  page class supplied
+    text "Probe"
+    button "Toggle" click toggle
+page
+  Probe tone

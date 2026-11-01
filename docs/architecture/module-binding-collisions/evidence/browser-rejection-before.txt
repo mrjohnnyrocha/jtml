@@ -1,0 +1,17 @@
+AssertionError [ERR_ASSERTION]: Unsafe cross-module collision must reject before publishing assets
+    at /Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/browser/module_binding_collisions.cjs:17:9
+    at Object.<anonymous> (/Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/tests/browser/module_binding_collisions.cjs:41:3)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 0,
+  expected: 0,
+  operator: 'notStrictEqual',
+  diff: 'simple'
+}

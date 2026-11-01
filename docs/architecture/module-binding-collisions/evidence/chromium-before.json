@@ -1,0 +1,114 @@
+{
+  "errors": [],
+  "states": [
+    {
+      "state": {
+        "tone": "entry"
+      },
+      "definitions": [
+        {
+          "name": "EntryCard",
+          "moduleId": null
+        },
+        {
+          "name": "PrivateCard",
+          "moduleId": null
+        },
+        {
+          "name": "EntryCard",
+          "moduleId": 0
+        },
+        {
+          "name": "PrivateCard",
+          "moduleId": 1
+        }
+      ],
+      "classes": [
+        null,
+        null
+      ]
+    },
+    {
+      "state": {
+        "tone": "private-updated"
+      },
+      "definitions": [
+        {
+          "name": "EntryCard",
+          "moduleId": null
+        },
+        {
+          "name": "PrivateCard",
+          "moduleId": null
+        },
+        {
+          "name": "EntryCard",
+          "moduleId": 0
+        },
+        {
+          "name": "PrivateCard",
+          "moduleId": 1
+        }
+      ],
+      "classes": [
+        null,
+        null
+      ]
+    },
+    {
+      "state": {
+        "tone": "entry-updated"
+      },
+      "definitions": [
+        {
+          "name": "EntryCard",
+          "moduleId": null
+        },
+        {
+          "name": "PrivateCard",
+          "moduleId": null
+        },
+        {
+          "name": "EntryCard",
+          "moduleId": 0
+        },
+        {
+          "name": "PrivateCard",
+          "moduleId": 1
+        }
+      ],
+      "classes": [
+        null,
+        null
+      ]
+    },
+    {
+      "state": {
+        "tone": "private-updated"
+      },
+      "definitions": [
+        {
+          "name": "EntryCard",
+          "moduleId": null
+        },
+        {
+          "name": "PrivateCard",
+          "moduleId": null
+        },
+        {
+          "name": "EntryCard",
+          "moduleId": 0
+        },
+        {
+          "name": "PrivateCard",
+          "moduleId": 1
+        }
+      ],
+      "classes": [
+        null,
+        null
+      ]
+    }
+  ],
+  "cleanExit": true
+}

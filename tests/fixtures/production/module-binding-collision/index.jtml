@@ -1,0 +1,11 @@
+jtml 2
+use PrivateCard from "./private.jtml"
+let tone = "entry"
+when setEntry
+  tone = "entry-updated"
+make EntryCard
+  page class tone
+    button "Entry" click setEntry
+page
+  EntryCard
+  PrivateCard

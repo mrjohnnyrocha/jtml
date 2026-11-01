@@ -146,6 +146,7 @@ jobs:
 
       - name: Route declaration precedence (browser required)
         run: node tests/browser/route_precedence.cjs
+          node tests/browser/module_binding_collisions.cjs
 
       - name: Route layout slot composition (browser required)
         run: node tests/browser/route_layout.cjs

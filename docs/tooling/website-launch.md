@@ -25,37 +25,42 @@ Original documentation/install/release links, warnings, prose and source listing
 remain available. Four migrated static pages use native navigation only; the
 Counter and Reference disclosure remain genuine JTML interactions.
 
-Every entry compiles with `build --target browser` to exactly `index.html`,
-`jtml-runtime.js`, `components/index.js` and `app.js`. The generated HTML is
-published at its registered `.html` URL. All six pages load `./jtml-runtime.js`; homepage components/bootstrap stay at the
-root and other pages retain their own `<name>-assets/` components/bootstrap. The original unchanged
-Counter remains under `demo/counter/`. Generated application markup and JavaScript
-are unchanged; packaging adds head/language metadata and rebases external script
-URLs. There is no redirect shell, compatibility fallback or second frontend.
+The registry (schema 3) declares a target for every page. Homepage and Reference
+compile with `build --target browser`; they retain independent component/bootstrap
+bundles and reference one byte-equal root `jtml-runtime.js`. Examples, Tools,
+Security and Deploy compile with `build --target static`, emit only `index.html`,
+and publish it at their unchanged `.html` URLs. Their asset directories are null:
+no runtime, manifest, component module or bootstrap is deployed for these pages.
+The original Counter remains independently browser-compiled under `demo/counter/`.
+Packaging changes only document metadata and external script URLs. Source content,
+CSS and generated application bodies/JavaScript remain compiler-owned.
 
-`site/compiler.json` retains compiler source pin
-`325bae128aaaa729d4876159099e63fce9fe59c4` (`jtml 0.3.0-dev`), independently of
-the recommended published RC.3 experimental download. The existing helper builds
-a git-archive snapshot with CMake/C++17 and records the actual binary SHA256.
-Dependencies retain their source/hash pins. `JTML_BIN` remains a local override;
-without a checked sidecar its source revision is explicitly unverified.
+`site/compiler.json` pins the reviewed static compiler merge
+`69a2cb7a60bd12887cc434e47d22cce0e8a0a8c3` (`jtml 0.3.0-dev`), independently of
+the recommended published RC.3 download. The existing helper builds an exact
+git-archive snapshot and records actual version, source revision and binary hash.
+`JTML_BIN` remains an explicit local override; a binary without a checked sidecar
+is labeled source-revision-unverified and is never attributed to the pin.
 
-`site-build.json` schema 5 records the registry hash, source revision/dirty status,
-per-page entry/shared hashes, original generated assets and compiler provenance.
-`manifest.txt` hashes deployed files. `site-payloads.json` schema 3 measures all six
-pages, with raw/gzip HTML/JS/CSS sizes and redundant runtime/manifest observations.
-Compression parameters and zlib version are recorded. The registry (schema 2)
-explicitly declares the shared root runtime. All six compiled runtime files must
-compare byte-for-byte equal before any public output is replaced. A mismatch
-fails the build; no fallback or partial sharing is accepted. Original compiler
-HTML and JavaScript are retained beside the site in `<output>.compiler-output/`,
-including the independent Counter, and uploaded as a separate review artifact.
-These originals are outside the deployed site. Original per-page hashes remain
-in provenance; the shared runtime records its hash and all six checked pages.
-See [runtime sharing measurements and limits](website-six-pages/runtime-sharing.md). No compiler optimization,
-transfer-header guarantee or performance improvement is claimed. Repeated builds
-from identical source/compiler/tool inputs and base URL must be byte-identical;
-cross-platform bit-identical compiler binaries are not claimed.
+`site-build.json` schema 6 records targets, registry/source hashes, original
+compiler inventories, deployed page asset hashes and compiler identity. The
+runtime equality gate compares actual bytes from exactly the two browser pages.
+A mismatch or static rejection fails with no fallback. Original output is retained
+under `<output>.compiler-output/<page-id>/` (one HTML file per static page; four
+files per browser page/Counter) and uploaded separately. The public site and
+originals are staged together, backed up during publication and restored on
+publication failure. Failed compiler outputs are retained separately for diagnosis;
+previously accepted originals remain intact.
+
+`site-payloads.json` schema 4 distinguishes cold pages including favicon, unique
+page resources, modeled navigation after a cached homepage, and unique deployed
+assets. Its deployed subtotal excludes the three self-referential reports and
+labels that exclusion. `scripts/measure_site_migration.py` measures complete
+before/after deployments including every file and report. Both record deterministic
+gzip parameters and zlib version. Estimates are not hosted transfer headers or
+cache guarantees. See [static migration measurements and proof](website-six-pages/static-pages.md).
+Repeated builds from identical source/compiler/tool inputs and base URL must be
+byte-identical; cross-platform identical C++ binaries are not claimed.
 
 ## Browser and security acceptance
 
@@ -63,26 +68,36 @@ cross-platform bit-identical compiler binaries are not claimed.
 python3 tests/test_site_registry.py
 export JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT=/absolute/playwright-prefix
 export JTML_BENCH_BROWSER=/absolute/chrome-headless-shell
-node tests/browser/site.cjs dist/site /absolute/clean-main-site
-# Commit the final candidate before the one complete final gate:
-JTML_WEBSITE_BASELINE=/absolute/clean-main-site \
-  JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1 scripts/verify_all.sh
+node tests/browser/site.cjs dist/site
+# Commit the candidate before the complete final local gate:
+JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1 scripts/verify_all.sh
 ```
 
-Real Chromium is required at 1440×1000, 900×1100, 390×844 and 320×720 under `/`
-and `/jtml/`. All six pages are checked for preserved content/listings/links,
-headings and metadata, exact bundle requests and provenance, keyboard navigation,
-existing Counter/Reference behavior, fragments/assets/MIME, CSP enforcement and
-no page-wide overflow. Unexpected console/CSP/network/API/WebSocket errors fail.
-With the clean-main baseline supplied, homepage and Reference screenshots must
-remain pixel-identical. CI uploads site and all desktop/tablet/mobile captures.
+The actual published baseline was retrieved from
+`https://mrjohnnyrocha.github.io/jtml/`, source `5f970b44e2c4f98595ef156050f093328c632686`,
+compiler `325bae128aaaa729d4876159099e63fce9fe59c4`. All 303 deployed files were
+checked against its SHA256 manifest. A compact rendering-only fixture stores the
+six HTML pages, required scripts/styles/favicon and provenance. Archive and file
+hashes are verified before materialization, making all-page visual/DOM acceptance
+mandatory and offline in CI. An explicit `JTML_WEBSITE_BASELINE` override must
+identify that same published source revision.
 
-All documents retain meta CSP before scripts: `script-src 'self'`, no eval,
-no executable inline handlers, `connect-src 'none'`. Inline styles are permitted
-separately for the unchanged Counter. No remote fonts, analytics or framework
-loads at runtime. GitHub Pages does not provide configurable response headers
-here; meta CSP is not a claim of header-only protections such as frame-ancestors.
-Actual hosted HTTPS/MIME still needs separately authorized post-publication review.
+Real Chromium visits all six pages at 1440×1000, 900×1100, 390×844 and 320×720
+under `/` and `/jtml/`. Every page must retain content, code listings, authored
+DOM/accessibility attributes, accessible tree, links and pixel-identical screenshots
+against the published baseline. Existing metadata, fragment, MIME, keyboard,
+Counter and Reference assertions remain. The four static pages repeat this proof
+with JavaScript disabled, including skip-link/subsequent focus and zero JS/API/WS
+requests. Cache tests prove only two runtime consumers, one reusable runtime cache
+entry and exact script/CSS wire requests during six-page navigation.
+
+Each document has one meta CSP. Static pages retain the compiler's stricter
+`script-src 'none'`, `connect-src 'none'`, `object-src 'none'` and `base-uri 'none'`;
+reactive pages retain `script-src 'self'` and the existing policy. Independent
+inline-script and inline-handler attack controls must be blocked under both.
+Unexpected console/CSP/network errors fail. No remote fonts, analytics or framework
+is introduced. GitHub Pages meta CSP does not establish header-only protections;
+actual hosted HTTPS/MIME/cache behavior still needs separately authorized review.
 
 ## Manual publication controls — unchanged and not executed
 

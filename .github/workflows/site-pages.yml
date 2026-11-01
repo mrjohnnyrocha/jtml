@@ -6,6 +6,8 @@ on:
       - 'site/**'
       - 'scripts/build_site.sh'
       - 'scripts/build_public_site.py'
+      - 'scripts/materialize_site_baseline.py'
+      - 'scripts/measure_site_migration.py'
       - 'scripts/build_site_compiler.sh'
       - 'tests/browser/site.cjs'
       - 'tests/fixtures/site/**'

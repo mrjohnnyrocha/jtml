@@ -118,15 +118,14 @@ cold gzip and no more than 15,000 cold gzip bytes per page.
 cmake --build build --parallel
 ctest --test-dir build -R '^(StaticHtml\.|CliBuild\.|RuntimePlan\.|BrowserBuild)' --output-on-failure
 # Use actual installed Chromium/Playwright paths, as for the existing browser suite.
-JTML_BIN="$PWD/build/jtml" JTML_STATIC_BASELINE_BIN=/absolute/pinned/jtml \
-  node tests/browser/static_html.cjs
+JTML_BIN="$PWD/build/jtml" node tests/browser/static_html.cjs
 # Commit the final candidate before the complete local gate:
 JTML_BROWSER_BENCH_REQUIRE_CLEAN_EXIT=1 scripts/verify_all.sh
 ```
 
-The new suite is included in the complete local gate and Ubuntu/macOS CI. CI uses
-the repository compiler as its production-browser comparison cohort; the separate
-pinned-compiler run establishes the website baseline measurements. Exact final-head
+The new suite is included in the complete local gate and Ubuntu/macOS CI. The subsequent website migration reuses a manifest-verified published rendering
+fixture for this suite, independently of the mixed-target packager. The original
+pinned-compiler measurements above remain the PR #73 compiler evidence. Exact final-head
 local gate results and hosted CI belong to the PR. Local evidence and hosted CI
 are distinct.
 

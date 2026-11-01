@@ -51,8 +51,10 @@ and imported-component corrections below. Ordinary source builds remain
 `0.3.0-dev`. See the [published contract and installation](docs/releases/v0.3.0-rc.3.md).
 Historical RC.2 records remain below. The JTML-authored homepage preview uses the exact development compiler pin in
 `site/compiler.json`, independently of the RC.3 download recommendation. All six public pages now have canonical Friendly JTML sources and shared layout,
-with `site/pages.json` driving isolated clean production bundles and payload
-measurements. The original Counter remains separately compiled; publication remains
+with `site/pages.json` driving two reactive browser bundles sharing one runtime
+and four compiler-proved static HTML pages without JavaScript. The website pin is
+the reviewed static compiler merge `69a2cb7a60bd12887cc434e47d22cce0e8a0a8c3`;
+see `docs/tooling/website-six-pages/static-pages.md` for the migration evidence. The original Counter remains separately compiled; publication remains
 manual. See `docs/tooling/website-launch.md`. No production readiness is inferred.
 
 ## Application inventory

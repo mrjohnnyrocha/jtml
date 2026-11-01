@@ -1,0 +1,215 @@
+{
+  "afterHomepage": {
+    "deploy.html": {
+      "after": {
+        "gzip": 3323,
+        "raw": 8991
+      },
+      "before": {
+        "gzip": 34152,
+        "raw": 424721
+      }
+    },
+    "examples.html": {
+      "after": {
+        "gzip": 2443,
+        "raw": 7208
+      },
+      "before": {
+        "gzip": 26645,
+        "raw": 341175
+      }
+    },
+    "index.html": {
+      "after": {
+        "gzip": 27034,
+        "raw": 293672
+      },
+      "before": {
+        "gzip": 27034,
+        "raw": 293672
+      }
+    },
+    "reference.html": {
+      "after": {
+        "gzip": 49053,
+        "raw": 650235
+      },
+      "before": {
+        "gzip": 49053,
+        "raw": 650235
+      }
+    },
+    "security.html": {
+      "after": {
+        "gzip": 2871,
+        "raw": 8107
+      },
+      "before": {
+        "gzip": 31190,
+        "raw": 417383
+      }
+    },
+    "tools.html": {
+      "after": {
+        "gzip": 2879,
+        "raw": 8497
+      },
+      "before": {
+        "gzip": 33814,
+        "raw": 459741
+      }
+    }
+  },
+  "baselineCompiler": {
+    "binarySHA256": "37707c36cb01f2b172a4e3c64b67ce606886a1f53176d41b250eeb80dbe47283",
+    "origin": "git archive of pinned commit; CMake C++17; Python/tests off; version suffix dev",
+    "repository": "https://github.com/mrjohnnyrocha/jtml",
+    "revision": "325bae128aaaa729d4876159099e63fce9fe59c4",
+    "version": "jtml 0.3.0-dev"
+  },
+  "baselineSourceRevision": "5f970b44e2c4f98595ef156050f093328c632686",
+  "coldPages": {
+    "deploy.html": {
+      "after": {
+        "gzip": 5964,
+        "raw": 18432
+      },
+      "before": {
+        "gzip": 87628,
+        "raw": 706532
+      }
+    },
+    "examples.html": {
+      "after": {
+        "gzip": 5084,
+        "raw": 16649
+      },
+      "before": {
+        "gzip": 80121,
+        "raw": 622986
+      }
+    },
+    "index.html": {
+      "after": {
+        "gzip": 99228,
+        "raw": 881944
+      },
+      "before": {
+        "gzip": 99228,
+        "raw": 881944
+      }
+    },
+    "reference.html": {
+      "after": {
+        "gzip": 102529,
+        "raw": 932046
+      },
+      "before": {
+        "gzip": 102529,
+        "raw": 932046
+      }
+    },
+    "security.html": {
+      "after": {
+        "gzip": 5512,
+        "raw": 17548
+      },
+      "before": {
+        "gzip": 84666,
+        "raw": 699194
+      }
+    },
+    "tools.html": {
+      "after": {
+        "gzip": 5520,
+        "raw": 17938
+      },
+      "before": {
+        "gzip": 87290,
+        "raw": 741552
+      }
+    }
+  },
+  "compiler": {
+    "binarySHA256": "22c647d40f286550609931e8644ed86d239268e73382d9acd854255f589712e2",
+    "origin": "git archive of pinned commit; CMake C++17; Python/tests off; version suffix dev",
+    "repository": "https://github.com/mrjohnnyrocha/jtml",
+    "revision": "69a2cb7a60bd12887cc434e47d22cce0e8a0a8c3",
+    "version": "jtml 0.3.0-dev"
+  },
+  "compression": "gzip level 9, mtime 0, every file independently; estimates, not hosted transfer headers",
+  "sequentialNavigation": {
+    "deploy.html": {
+      "after": {
+        "gzip": 2353,
+        "raw": 5555
+      },
+      "before": {
+        "gzip": 33182,
+        "raw": 421285
+      }
+    },
+    "examples.html": {
+      "after": {
+        "gzip": 2443,
+        "raw": 7208
+      },
+      "before": {
+        "gzip": 26645,
+        "raw": 341175
+      }
+    },
+    "index.html": {
+      "after": {
+        "gzip": 99228,
+        "raw": 881944
+      },
+      "before": {
+        "gzip": 99228,
+        "raw": 881944
+      }
+    },
+    "reference.html": {
+      "after": {
+        "gzip": 49053,
+        "raw": 650235
+      },
+      "before": {
+        "gzip": 49053,
+        "raw": 650235
+      }
+    },
+    "security.html": {
+      "after": {
+        "gzip": 1901,
+        "raw": 4671
+      },
+      "before": {
+        "gzip": 30220,
+        "raw": 413947
+      }
+    },
+    "tools.html": {
+      "after": {
+        "gzip": 1909,
+        "raw": 5061
+      },
+      "before": {
+        "gzip": 32844,
+        "raw": 456305
+      }
+    }
+  },
+  "uniquePageResources": {
+    "after": {
+      "gzip": 156887,
+      "raw": 1554674
+    },
+    "before": {
+      "gzip": 271172,
+      "raw": 3164891
+    }
+  },
+  "zlib": "1.2.12"
+}

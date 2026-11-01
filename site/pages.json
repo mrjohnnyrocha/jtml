@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "sharedRuntime": "jtml-runtime.js",
   "pages": [
     {
@@ -10,8 +10,9 @@
       "css": [
         "home.css"
       ],
-      "title": "JTML — readable source, observable behavior",
-      "description": "Friendly JTML 2: markup, state, actions and components in a readable UI language. Explore the experimental RC.3 release and a genuine compiled Counter."
+      "title": "JTML \u2014 readable source, observable behavior",
+      "description": "Friendly JTML 2: markup, state, actions and components in a readable UI language. Explore the experimental RC.3 release and a genuine compiled Counter.",
+      "target": "browser"
     },
     {
       "id": "reference",
@@ -22,57 +23,62 @@
         "home.css",
         "reference.css"
       ],
-      "title": "JTML Reference — Friendly JTML 2",
-      "description": "JTML language reference: canonical Friendly JTML 2 syntax, state, actions, routing, semantic UI, media and explicit interop. Experimental RC.3."
+      "title": "JTML Reference \u2014 Friendly JTML 2",
+      "description": "JTML language reference: canonical Friendly JTML 2 syntax, state, actions, routing, semantic UI, media and explicit interop. Experimental RC.3.",
+      "target": "browser"
     },
     {
       "id": "examples",
       "entry": "examples.jtml",
       "output": "examples.html",
-      "assetDirectory": "examples-assets",
+      "assetDirectory": null,
       "css": [
         "home.css",
         "content.css"
       ],
       "title": "JTML Examples",
-      "description": "JTML example gallery for tiny reactive HTML pages."
+      "description": "JTML example gallery for tiny reactive HTML pages.",
+      "target": "static"
     },
     {
       "id": "tools",
       "entry": "tools.jtml",
       "output": "tools.html",
-      "assetDirectory": "tools-assets",
+      "assetDirectory": null,
       "css": [
         "home.css",
         "content.css"
       ],
       "title": "JTML Tools",
-      "description": "JTML local tools: editor support, runner, tutorial, studio, tester, and release packaging."
+      "description": "JTML local tools: editor support, runner, tutorial, studio, tester, and release packaging.",
+      "target": "static"
     },
     {
       "id": "security",
       "entry": "security.jtml",
       "output": "security.html",
-      "assetDirectory": "security-assets",
+      "assetDirectory": null,
       "css": [
         "home.css",
         "content.css"
       ],
       "title": "JTML Security And Operations",
       "description": "JTML experimental security boundaries, local tools and public release verification.",
-      "themeColor": "#172026"
+      "themeColor": "#172026",
+      "target": "static"
     },
     {
       "id": "deploy",
       "entry": "deploy.jtml",
       "output": "deploy.html",
-      "assetDirectory": "deploy-assets",
+      "assetDirectory": null,
       "css": [
         "home.css",
         "content.css"
       ],
       "title": "Deploy JTML",
-      "description": "Deploy JTML as static HTML or a live runtime."
+      "description": "Deploy JTML as static HTML or a live runtime.",
+      "target": "static"
     }
   ]
 }

@@ -3,14 +3,13 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {spawnSync}=require('node:child_process'),{createRequire}=require('node:module');
 const repo=path.resolve(__dirname,'../..'),out=path.join(repo,'dist/static-html');
 const compiler=process.env.JTML_BIN||path.join(repo,'build/jtml');
-const baselineCompiler=process.env.JTML_STATIC_BASELINE_BIN||compiler;
 assert(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT&&process.env.JTML_BENCH_BROWSER,'real Chromium required; no skip');
 const {chromium}=createRequire(path.resolve(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT,'package.json'))('playwright');
 fs.mkdirSync(out,{recursive:true});
 function run(bin,args){const r=spawnSync(bin,args,{cwd:repo,encoding:'utf8',timeout:180000,maxBuffer:8*1024*1024});assert.equal(r.status,0,r.stdout+r.stderr);return r.stdout;}
 const baseline=path.join(out,'baseline'),preview=path.join(out,'preview');
 const escape=s=>s.replaceAll('&','&amp;').replaceAll('\"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-run('python3',['scripts/build_public_site.py','--output',baseline,'--compiler',baselineCompiler,'--base-url','https://mrjohnnyrocha.github.io/jtml/']);
+run('python3',['scripts/materialize_site_baseline.py',baseline]);
 fs.mkdirSync(preview,{recursive:true});
 const registry=JSON.parse(fs.readFileSync(path.join(repo,'site/pages.json')));
 const pages=registry.pages.filter(p=>['examples','tools','security','deploy'].includes(p.id));
@@ -109,11 +108,12 @@ root=pathlib.Path(sys.argv[1]); registry=json.loads(pathlib.Path(sys.argv[2]).re
 def size(p):
  b=p.read_bytes();return dict(raw=len(b),gzip=len(gzip.compress(b,compresslevel=9,mtime=0)))
 def total(items):return {k:sum(s[k] for s in items) for k in ('raw','gzip')}
+baselineInfo=json.loads((root/'baseline/site-build.json').read_text())
 report=dict(compression='gzip level 9, mtime 0, each asset independently',zlib=zlib.ZLIB_RUNTIME_VERSION,baselineCompiler=json.loads((root/'baseline/site-build.json').read_text())['compiler'],pages={})
 for p in registry['pages']:
  if p['id'] not in ('examples','tools','security','deploy'):continue
  styles=[size(root/'preview'/f) for f in p['css']];icon=size(root/'preview/favicon.svg');html=size(root/'preview'/p['output'])
- before=[size(root/'baseline'/p['output']),size(root/'baseline/jtml-runtime.js'),size(root/'baseline'/p['assetDirectory']/'components/index.js'),size(root/'baseline'/p['assetDirectory']/'app.js')]+styles+[icon]
+ before=[size(root/'baseline'/p['output']),size(root/'baseline/jtml-runtime.js'),size(root/'baseline'/baselineInfo['pages'][p['output']]['assetDirectory']/'components/index.js'),size(root/'baseline'/baselineInfo['pages'][p['output']]['assetDirectory']/'app.js')]+styles+[icon]
  current=total([html]+styles+[icon]);previous=total(before)
  assert current['gzip']<=15000 and current['gzip']<=previous['gzip']*0.2
  report['pages'][p['output']]=dict(previousCold=previous,generatedHTML=size(root/'generated'/p['id']/'index.html'),previewHTML=html,css=total(styles),favicon=icon,newCold=current,javaScriptRequests=0,worksWithoutJavaScript=True)

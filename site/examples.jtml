@@ -1,0 +1,56 @@
+jtml 2
+
+use { SiteNav, SiteFooter, SitePages } from "./shared/layout.jtml"
+
+make ExamplesPage
+  box class "website content-page"
+    a "Skip to content" href "#page-start" class "skip-link"
+    SiteNav "./index.html#syntax" "./index.html#demo"
+    main
+      SitePages
+      section class "page-hero" aria-labelledby "examples-title"
+        p "Examples" class "eyebrow"
+        h1 "Small pages, readable source." id "examples-title"
+        p "Use these as starting points for prototypes, lessons, and server-backed UI."
+      section class "examples-section" aria-label "Example gallery"
+        box class "example-grid gallery-grid"
+          article class "example-card"
+            h3 "JTML Studio"
+            p "The native authoring surface with samples, snippets, linting, formatting, HTML export, diagnostics, and live preview."
+            code "jtml demo --port 8000"
+          article class "example-card"
+            h3 "Friendly Counter"
+            p
+              span "State, actions and reactive DOM updates. "
+              a "Open the real compiled Counter" href "./demo/counter/"
+              span "."
+            code "jtml serve examples/friendly_counter.jtml --port 8000"
+          article class "example-card"
+            h3 "Friendly Elements"
+            p "Friendly element aliases, boolean attributes, custom names, media, and events."
+            code "jtml serve examples/friendly_elements.jtml --port 8000"
+          article class "example-card"
+            h3 "Live Input"
+            p "Input events flowing into JTML functions without hand-written JavaScript."
+            code "jtml serve examples/live_input.jtml --port 8000"
+          article class "example-card"
+            h3 "Fetch Dashboard"
+            p "Async data, loading/error states, refresh, stale data, and invalidation patterns."
+            code "jtml serve examples/friendly_fetch_refresh.jtml --port 8000"
+          article class "example-card"
+            h3 "Routes"
+            p "Hash routes, parameters, layouts, active links, route loads, and guards."
+            code "jtml serve examples/friendly_route_layout.jtml --port 8000"
+          article class "example-card"
+            h3 "Tutorial"
+            p "A split-view learning environment with prose, editor, and live preview."
+            code "jtml tutorial --port 8000"
+      box class "legacy-links"
+        a "Get started" href "./index.html#try"
+    box class "footer-note"
+      a "Apache-2.0 (JTML-owned material)" href "https://www.apache.org/licenses/LICENSE-2.0"
+      span "JTML"
+      span "Example gallery for tiny reactive pages."
+    SiteFooter
+
+ExamplesPage

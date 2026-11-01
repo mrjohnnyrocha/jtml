@@ -15,3 +15,13 @@ export make SiteFooter
     span "Readable source. Observable behavior."
     a "Build provenance ↗" href "./site-build.json"
     a "Apache-2.0" href "./LICENSE"
+
+// Preserve the original secondary-page destinations without changing the homepage header.
+export make SitePages
+  nav class "site-pages" aria-label "Website pages"
+    a "Syntax" id "page-start" href "./index.html#syntax"
+    a "Tools" href "./tools.html"
+    a "Examples" href "./examples.html"
+    a "Reference" href "./reference.html"
+    a "Security" href "./security.html"
+    a "Deploy" href "./deploy.html"

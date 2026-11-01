@@ -7,24 +7,35 @@ assert(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT && process.env.JTML_BENCH_
 const {chromium} = createRequire(path.resolve(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT,'package.json'))('playwright');
 const sha = p => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const info = JSON.parse(fs.readFileSync(path.join(root,'site-build.json')));
-assert.equal(info.schema,3);
+assert.equal(info.schema,4);
+const registry=JSON.parse(fs.readFileSync(path.join(root,'pages.json')));
+assert.equal(sha(path.join(root,'pages.json')),info.registrySHA256);
+assert.equal(registry.pages.length,6);
+assert.deepEqual(Object.keys(info.pages).sort(),registry.pages.map(page=>page.output).sort());
+const authored=fs.readdirSync(path.resolve(__dirname,'../../site'),{recursive:true});
+assert(!authored.some(file=>file.endsWith('.html')||file.endsWith('.js')),'site sources must be JTML, not page HTML/application JS');
+const migrated=JSON.parse(fs.readFileSync(path.join(__dirname,'../fixtures/site/migrated-pages.json')));
+const normalize=text=>text.replace(/\s+/g,' ').trim();
 assert.equal(sha(path.join(root,'index.jtml')),info.homepageSourceSHA256);
 assert.equal(info.compiler.binarySHA256.length,64);
 for(const [page,entry] of Object.entries(info.pages)){
  for(const [file,hash] of Object.entries(entry.sourceInputsSHA256))assert.equal(sha(path.join(root,file.replace(/^site\//,''))),hash);
  for(const name of ['jtml-runtime.js','components/index.js','app.js'])assert.equal(sha(path.join(root,entry.assetDirectory,name)),entry.generatedAssetsSHA256[name]);
 }
-assert.deepEqual(fs.readdirSync(path.join(root,'reference-assets')).sort(),['app.js','components','jtml-runtime.js']);
+for(const page of registry.pages.filter(page=>page.assetDirectory!=='.'))assert.deepEqual(fs.readdirSync(path.join(root,page.assetDirectory)).sort(),['app.js','components','jtml-runtime.js']);
 assert(!/\bCounter\b/.test(fs.readFileSync(path.join(root,'reference-assets/components/index.js'),'utf8')),'Reference must not include homepage Counter');
 assert(!/\bReferenceTopics\b/.test(fs.readFileSync(path.join(root,'components/index.js'),'utf8')),'homepage must not include Reference state');
 const payload=JSON.parse(fs.readFileSync(path.join(root,'site-payloads.json')));
+assert.equal(payload.schema,2);
+assert.deepEqual(Object.keys(payload.pages).sort(),[...Object.keys(info.pages)].sort());
+assert.equal(payload.crossPage.runtimeCopies,6);
 for(const entry of Object.values(payload.pages))for(const [file,size] of Object.entries(entry.files)){
  const bytes=fs.readFileSync(path.join(root,file));assert.equal(bytes.length,size.raw);assert(size.gzip>0&&size.gzip<=size.raw,'gzip measurement bounds');
 }
 const snippets=JSON.parse(fs.readFileSync(path.join(__dirname,'../fixtures/site/reference-snippets.json')));
 const baselineInput=process.argv[3]||process.env.JTML_WEBSITE_BASELINE;
 const baseline=baselineInput ? path.resolve(baselineInput) : null;
-if(baseline)for(const file of ['examples.html','tools.html','security.html','deploy.html','styles.css'])assert(fs.readFileSync(path.join(root,file)).equals(fs.readFileSync(path.join(baseline,file))),'unchanged inherited page '+file);
+
 for(const name of ['jtml-runtime.js','components/index.js','app.js'])assert.equal(sha(path.join(root,name)),info.homepageGeneratedAssetsSHA256[name]);
 assert.equal(info.baseURL,'https://mrjohnnyrocha.github.io/jtml/');
 assert(!fs.existsSync(path.join(root,'CNAME')));
@@ -36,7 +47,8 @@ for(const line of fs.readFileSync(path.join(root,'manifest.txt'),'utf8').trim().
 }
 assert(fs.readFileSync(path.join(root,'sitemap.xml'),'utf8').includes('https://mrjohnnyrocha.github.io/jtml/demo/counter/'));
 assert(!fs.readFileSync(path.join(root,'robots.txt'),'utf8').includes('jtml.org'));
-const pages=fs.readdirSync(root).filter(n=>n.endsWith('.html'));
+const pages=registry.pages.map(page=>page.output);
+assert.deepEqual(fs.readdirSync(root).filter(n=>n.endsWith('.html')).sort(),[...pages].sort());
 const errors=[], violations=[], requests=[], mime=[];
 const server=http.createServer((req,res)=>{
   const url=new URL(req.url,'http://localhost');let relative=decodeURIComponent(url.pathname);
@@ -58,16 +70,18 @@ let browser;
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const origin=`http://127.0.0.1:${server.address().port}`;
  browser=await chromium.launch({headless:true,executablePath:process.env.JTML_BENCH_BROWSER});
- for(const prefix of ['/','/jtml/'])for(const viewport of [{width:1440,height:1000},{width:390,height:844},{width:320,height:720}]){
+ for(const prefix of ['/','/jtml/'])for(const viewport of [{width:1440,height:1000},{width:900,height:1100},{width:390,height:844},{width:320,height:720}]){
   const context=await browser.newContext({viewport});const page=await context.newPage();page.setDefaultTimeout(7000);
   page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
   page.on('response',r=>{if(r.status()>=400)errors.push(`${r.status()} ${r.url()}`);if(r.url().endsWith('.js')){assert(r.headers()['content-type'].startsWith('text/javascript'));mime.push(r.url());}});
   page.on('request',r=>requests.push(r.url()));page.on('websocket',ws=>errors.push('unexpected WebSocket '+ws.url()));
   await page.exposeFunction('observeWebsiteCSP',e=>violations.push(e));
   await page.addInitScript(()=>document.addEventListener('securitypolicyviolation',e=>window.observeWebsiteCSP(e.effectiveDirective)));
+  const documents=new Map(),fragmentLinks=[];
   for(const file of pages){
    const requestStart=requests.length;
    await page.goto(origin+prefix+file);
+   const definition=registry.pages.find(page=>page.output===file);
    if(info.pages[file]){
     assert(await page.evaluate(()=>jtml.browserBuild.cleanProduction));
     const assetRoot=new URL(info.pages[file].assetDirectory+'/',origin+prefix).pathname;
@@ -76,6 +90,31 @@ let browser;
    }
    assert.equal(await page.locator('meta[http-equiv="Content-Security-Policy"]').count(),1);
    assert.equal(await page.locator('link[rel="icon"]').count(),1);
+   assert.equal(await page.title(),definition.title);
+   assert.equal(await page.locator('meta[name="description"]').getAttribute('content'),definition.description);
+   assert.equal(await page.locator('meta[name="viewport"]').count(),1);
+   assert.equal(await page.locator('html').getAttribute('lang'),'en');
+   assert(/<h1\b/.test(fs.readFileSync(path.join(root,file),'utf8')),'generated HTML contains native heading structure');
+   if(definition.themeColor)assert.equal(await page.locator('meta[name="theme-color"]').getAttribute('content'),definition.themeColor);
+   assert.equal(await page.locator('h1').count(),1);assert.equal(await page.locator('main').count(),1);
+   assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'),info.baseURL+(file==='index.html'?'':file));
+   assert.deepEqual(await page.locator('link[rel="stylesheet"]').evaluateAll(es=>es.map(e=>e.getAttribute('href'))),definition.css.map(css=>'./'+css));
+   documents.set(file,new Set(await page.locator('[id]').evaluateAll(es=>es.map(e=>e.id))));
+   if(migrated[file]){
+    const expected=migrated[file];
+    assert.equal(await page.getByRole('button').count(),0,'no invented interactive controls on static pages');
+    for(const tag of ['h1','h2','h3'])assert.deepEqual((await page.locator('main '+tag).allTextContents()).map(normalize),expected.headings.filter(h=>h.tag===tag).map(h=>h.text),file+' headings');
+    assert.deepEqual((await page.locator('main p').allTextContents()).map(normalize),expected.paragraphs,file+' prose');
+    assert.deepEqual(await page.locator('main code').allTextContents(),expected.code,file+' literal listings');
+    assert.equal(normalize(await page.locator('.footer-note').innerText()),expected.footer,file+' footer material');
+    const links=await page.getByRole('link').evaluateAll(es=>es.map(e=>({href:e.href,name:e.getAttribute('aria-label')||e.textContent.replace(/\s+/g,' ').trim()})));
+    const target=href=>{const u=new URL(href,page.url());if(u.pathname.endsWith('/'))u.pathname+='index.html';return u.href;};
+    for(const link of expected.links)assert(links.some(actual=>target(actual.href)===target(link.href)&&actual.name===link.text),file+' preserved link '+JSON.stringify(link));
+    await page.keyboard.press('Tab');assert.equal(await page.locator(':focus').textContent(),'Skip to content');
+    await page.keyboard.press('Enter');assert.equal(await page.locator(':focus').getAttribute('id'),'page-start');
+    await page.evaluate(()=>{document.activeElement.blur();scrollTo({top:0,left:0,behavior:'instant'});});
+   }
+   if(viewport.width!==320)await page.screenshot({path:path.join(root,`../website-six-${file.replace('.html','')}-${prefix==='/'?'root':'project'}-${viewport.width}.png`),fullPage:true});
    assert((await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content')).includes("script-src 'self'"));
    assert.equal(await page.locator('script:not([src]):not([type="application/json"])').count(),0);
    assert.equal(await page.evaluate(()=>[...document.querySelectorAll('*')].filter(e=>e.getAttributeNames().some(a=>/^on/i.test(a))).length),0);
@@ -87,9 +126,10 @@ let browser;
     const u=new URL(link);if(u.origin!==origin)continue;
     assert(u.pathname.startsWith(prefix),'link escapes project path: '+u.pathname);
     const response=await context.request.get(u.href);assert.equal(response.status(),200,u.href);
-    if(u.hash&&u.pathname===new URL(page.url()).pathname)assert(await page.locator(u.hash).count(),'missing anchor '+u.hash);
+    if(u.hash){let target=u.pathname.slice(prefix.length)||'index.html';fragmentLinks.push({target,hash:decodeURIComponent(u.hash.slice(1))});}
    }
   }
+  for(const link of fragmentLinks)if(documents.has(link.target))assert(documents.get(link.target).has(link.hash),'missing target fragment '+JSON.stringify(link));
   await page.goto(origin+prefix);
   assert.equal(await page.getByRole('link',{name:'Download RC.3 ↗',exact:true}).getAttribute('href'),'https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3');
   assert(await page.evaluate(()=>jtml.browserBuild.cleanProduction));
@@ -123,11 +163,12 @@ let browser;
   await page.evaluate(()=>scrollTo({top:0,left:0,behavior:'instant'}));
   await page.screenshot({path:path.join(root,`../website-viewport-${prefix==='/'?'root':'project'}-${viewport.width}.png`)});
   if(baseline){
-   // Same engine/viewport; compare rendered homepage pixels, not generated IDs.
-   await page.goto(origin+prefix);
-   const current=await page.screenshot({fullPage:true});
-   await page.goto(origin+'/__baseline/');
-   assert(current.equals(await page.screenshot({fullPage:true})),'homepage visual regression against clean-main baseline');
+   for(const file of ['index.html','reference.html']){
+    await page.goto(origin+prefix+file);
+    const current=await page.screenshot({fullPage:true});
+    await page.goto(origin+'/__baseline/'+file);
+    assert(current.equals(await page.screenshot({fullPage:true})),file+' visual regression against clean-main baseline');
+   }
   }
   await page.goto(origin+prefix+'reference.html');
   assert.equal(await page.title(),'JTML Reference — Friendly JTML 2');
@@ -166,7 +207,7 @@ let browser;
   await page.getByRole('button',{name:'Add one',exact:true}).press('Enter');await page.getByText('Count: 2',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Reset',exact:true}).click();await page.getByText('Count: 0',{exact:true}).waitFor();
   await page.reload();await page.getByText('Count: 0',{exact:true}).waitFor();
-  console.log(`PASS ${prefix} ${viewport.width}px: all six pages, isolated JTML Reference/disclosure, homepage Counter and original Counter`);
+  console.log(`PASS ${prefix} ${viewport.width}px: all six JTML pages/content/metadata, isolated bundles, Reference and both Counters`);
   await context.close();
  }
  const negative=await browser.newPage();negative.setDefaultTimeout(7000);

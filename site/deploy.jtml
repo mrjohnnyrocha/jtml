@@ -1,0 +1,76 @@
+jtml 2
+
+use { SiteNav, SiteFooter, SitePages } from "./shared/layout.jtml"
+
+make DeployPage
+  box class "website content-page"
+    a "Skip to content" href "#page-start" class "skip-link"
+    SiteNav "./index.html#syntax" "./index.html#demo"
+    main
+      SitePages
+      section class "page-hero" aria-labelledby "deploy-title"
+        p "Deploy" class "eyebrow"
+        h1 "Install RC.3, then publish static browser assets." id "deploy-title"
+        p "JTML compiles supported reactive apps to static browser assets. Its separate live development server is loopback-only trusted-code tooling; the public RC.3 packages are experimental, unsigned and unnotarized."
+      section class "reference-layout"
+        article
+          h2 "Download and verify"
+          p
+            a "Published v0.3.0-rc.3 packages and SHA256SUMS" href "https://github.com/mrjohnnyrocha/jtml/releases/tag/v0.3.0-rc.3"
+            span ". Download the bundle matching your platform. The "
+            code "-install"
+            span " tarball is an alternative CPack layout."
+          pre
+            code "# Linux x86_64: beside the downloaded files\ngrep '  jtml-0.3.0-rc.3-linux-x86_64.tar.gz$' SHA256SUMS | sha256sum -c -\ntar -xzf jtml-0.3.0-rc.3-linux-x86_64.tar.gz\n# macOS arm64 instead:\ngrep '  jtml-0.3.0-rc.3-darwin-arm64.tar.gz$' SHA256SUMS | shasum -a 256 -c -\ntar -xzf jtml-0.3.0-rc.3-darwin-arm64.tar.gz"
+        article
+          h2 "Compile the Counter"
+          pre
+            code "cd release\n./bin/jtml --version\n# jtml 0.3.0-rc.3\n./bin/jtml check examples/friendly_counter.jtml\n./bin/jtml build examples/friendly_counter.jtml --target browser --out counter-dist\npython3 -m http.server 8000 --bind 127.0.0.1 --directory counter-dist"
+          p
+            span "Open localhost:8000; Add one changes 0 to 1 and Reset returns to 0. Keep all four generated assets together. "
+            a "Try the homepage Counter and inspect build provenance" href "./index.html#demo"
+            span "."
+        article
+          h2 "Platform contract"
+          p "Ubuntu 22.04 x86_64; Apple Silicon macOS with minimum deployment target 14.0, tested physically on 14.4.1 and hosted on 15. Other distributions/versions are not independently certified. No Windows, Linux arm64, Intel/universal Mac, Python wheel or VSIX package is included."
+          p "Unsigned/unnotarized downloads may be subject to local OS policy. Matching header/library C API smoke tests do not establish a stable cross-version ABI."
+        article
+          h2 "Local Studio"
+          pre
+            code "./bin/jtml studio --port 8001"
+          p "Studio, tutorial and live serve bind to loopback and execute trusted local code. They are not public production servers. Packaged resources are discovered relative to the executable."
+        article
+          h2 "Source builds"
+          p
+            span "RC.3 includes both the component-input reset fix and clean browser production imports. For a complete form, use "
+            a "the first-app guide" href "https://github.com/mrjohnnyrocha/jtml/blob/main/docs/getting-started.md"
+            span ". Known general slot limitations still apply."
+          p
+            a "Build from source" href "https://github.com/mrjohnnyrocha/jtml#readme"
+            span " with a C++17 compiler and CMake. Source builds default to 0.3.0-dev; the published binaries report 0.3.0-rc.3. Optional Python bindings and VSIX publication have separate requirements."
+        article
+          h2 "Static hosting"
+          p
+            span "The generated Counter needs no backend. Serve "
+            code "index.html"
+            span ", "
+            code "jtml-runtime.js"
+            span ", "
+            code "components/index.js"
+            span " and "
+            code "app.js"
+            span " together with HTML/JavaScript MIME types. Scripts use "
+            code "script-src 'self'"
+            span "; the example's inline styles require a separate style policy."
+          p
+            a "Full RC.3 installation, checksums, provenance and limitations" href "https://github.com/mrjohnnyrocha/jtml/blob/main/docs/releases/v0.3.0-rc.3.md"
+            span "."
+      box class "legacy-links"
+        a "Get started" href "./index.html#try"
+    box class "footer-note"
+      a "Apache-2.0 (JTML-owned material)" href "https://www.apache.org/licenses/LICENSE-2.0"
+      span "JTML"
+      span "See docs/tooling/deployment.md for the full deployment guide."
+    SiteFooter
+
+DeployPage

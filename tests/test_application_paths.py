@@ -40,7 +40,7 @@ class ApplicationPaths(unittest.TestCase):
                     self.check(source)
 
     def test_current_download_and_pinned_site_compiler_are_distinct(self):
-        for file in ('README.md', 'site/index.jtml', 'site/deploy.html'):
+        for file in ('README.md', 'site/index.jtml', 'site/deploy.jtml'):
             text = (ROOT / file).read_text()
             self.assertIn('releases/tag/v0.3.0-rc.3', text, file)
             self.assertNotIn('releases/tag/v0.3.0-rc.2', text, file)
@@ -50,8 +50,8 @@ class ApplicationPaths(unittest.TestCase):
         pin = json.loads((ROOT / 'site/compiler.json').read_text())
         self.assertRegex(pin['revision'], r'^[0-9a-f]{40}$')
         self.assertEqual(pin['version'], 'jtml 0.3.0-dev')
-        self.check(ROOT / 'site/index.jtml')
-        self.check(ROOT / 'site/reference.jtml')
+        for page in json.loads((ROOT / 'site/pages.json').read_text())['pages']:
+            self.check(ROOT / 'site' / page['entry'])
 
 
 if __name__ == '__main__':

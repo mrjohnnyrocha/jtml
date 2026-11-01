@@ -23,14 +23,52 @@ def digest(file):
     return hashlib.sha256(file.read_bytes()).hexdigest()
 
 
-def payload_report(output):
+def load_page_registry():
+    registry = json.loads((ROOT / 'site/pages.json').read_text())
+    if set(registry) != {'schema', 'pages'} or registry['schema'] != 1:
+        raise ValueError('Unsupported page registry')
+    required = {'id', 'entry', 'output', 'assetDirectory', 'css', 'title', 'description'}
+    ids, entries, outputs, directories = set(), set(), set(), set()
+    for page in registry['pages']:
+        if not required <= set(page) or set(page) - required - {'themeColor'}:
+            raise ValueError('Invalid page registry fields')
+        if not re.fullmatch(r'[a-z]+', page['id']) or not re.fullmatch(r'[a-z]+\.jtml', page['entry']) or not re.fullmatch(r'[a-z]+\.html', page['output']):
+            raise ValueError('Page identifiers must be local filenames')
+        directory = page['assetDirectory']
+        if directory != '.' and not re.fullmatch(r'[a-z]+-assets', directory):
+            raise ValueError('Invalid bundle directory')
+        if page['id'] in ids or page['entry'] in entries or page['output'] in outputs or directory in directories:
+            raise ValueError('Page registry output collision')
+        ids.add(page['id'])
+        entries.add(page['entry'])
+        outputs.add(page['output'])
+        directories.add(directory)
+        if not isinstance(page['css'], list) or not page['css']:
+            raise ValueError('Each page needs CSS assets')
+        for css in page['css']:
+            if not re.fullmatch(r'[a-z]+\.css', css) or not (ROOT / 'site' / css).is_file():
+                raise ValueError('Invalid or missing CSS asset: ' + css)
+        for field in ('title', 'description'):
+            if not isinstance(page[field], str) or not page[field].strip():
+                raise ValueError('Missing page metadata: ' + field)
+        if 'themeColor' in page and not re.fullmatch(r'#[0-9a-fA-F]{6}', page['themeColor']):
+            raise ValueError('Invalid theme color')
+        if not (ROOT / 'site' / page['entry']).is_file():
+            raise ValueError('Missing JTML entry: ' + page['entry'])
+    if len(registry['pages']) != 6 or outputs != {'index.html', 'reference.html', 'examples.html', 'tools.html', 'security.html', 'deploy.html'}:
+        raise ValueError('The registry must describe the six existing public URLs')
+    if next(page for page in registry['pages'] if page['output'] == 'index.html')['assetDirectory'] != '.':
+        raise ValueError('Preserve homepage root assets')
+    return registry
+
+
+def payload_report(output, registry):
     def sizes(data):
         return dict(raw=len(data), gzip=len(gzip.compress(data, compresslevel=9, mtime=0)))
 
     pages = {}
-    for name, directory, styles in (
-            ('index.html', '.', ['home.css']),
-            ('reference.html', 'reference-assets', ['home.css', 'reference.css'])):
+    for page in registry['pages']:
+        name, directory, styles = page['output'], page['assetDirectory'], page['css']
         paths = [name] + [(Path(directory) / asset).as_posix() for asset in ASSETS[1:]] + styles
         files = {path: sizes((output / path).read_bytes()) for path in paths}
         markup = (output / name).read_text()
@@ -56,15 +94,21 @@ def payload_report(output):
             generatedData=dict(clientManifest=sizes(manifests[0].encode()),
                 bodyPlanOccurrences=sum(occurrences.values()),
                 exactRepeatedBodyPlanBytes=repeated))
-    runtime_equal = (output / 'jtml-runtime.js').read_bytes() == (output / 'reference-assets/jtml-runtime.js').read_bytes()
-    return dict(schema=1, compression='gzip level 9, mtime 0, each asset independently; estimates, not hosted transfer headers',
+    runtimes = [output / page['assetDirectory'] / 'jtml-runtime.js' for page in registry['pages']]
+    runtime_equal = len({digest(file) for file in runtimes}) == 1
+    runtime_size = sizes(runtimes[0].read_bytes())
+    return dict(schema=2, compression='gzip level 9, mtime 0, each asset independently; estimates, not hosted transfer headers',
                 zlibVersion=zlib.ZLIB_RUNTIME_VERSION,
-                pages=pages, crossPage=dict(identicalRuntimeCopies=runtime_equal,
-                additionalRuntimeBytes=sizes((output / 'jtml-runtime.js').read_bytes()) if runtime_equal else None),
+                pages=pages, crossPage=dict(identicalRuntimeCopies=runtime_equal, runtimeCopies=len(runtimes),
+                runtimeBytesPerCopy=runtime_size if runtime_equal else None,
+                additionalRuntimeBytes={kind: value * (len(runtimes) - 1) for kind, value in runtime_size.items()} if runtime_equal else None),
                 accounting='Repeated bodyPlan arrays use canonical compact JSON bytes beyond the first identical occurrence; not a proposed removable-byte budget.')
 
 
 def build(output, compiler, base_url):
+    registry = load_page_registry()
+    if any((ROOT / 'site').rglob('*.html')):
+        raise ValueError('Handwritten page HTML is not a website source input')
     url = urlsplit(base_url)
     if url.scheme not in ('https', 'http') or not url.hostname or url.username or url.password or url.query or url.fragment:
         raise ValueError('SITE_BASE_URL must be an absolute HTTP(S) URL without credentials/query/fragment')
@@ -100,9 +144,9 @@ def build(output, compiler, base_url):
             shutil.rmtree(output)
         shutil.copytree(ROOT / 'site', output, ignore=shutil.ignore_patterns('CNAME'))
         compiled = {}
-        for entry, temporary_name, destination in (
-                ('index.jtml', 'homepage', output),
-                ('reference.jtml', 'reference', output / 'reference-assets')):
+        for page in registry['pages']:
+            entry, temporary_name = page['entry'], page['id']
+            destination = output / page['assetDirectory']
             source_dir = work / (temporary_name + '-source')
             source_dir.mkdir()
             shutil.copyfile(ROOT / 'site' / entry, source_dir / entry)
@@ -121,13 +165,13 @@ def build(output, compiler, base_url):
                 target = destination / name
                 target.parent.mkdir(exist_ok=True)
                 shutil.copyfile(bundle / name, target)
-            page_name = 'index.html' if entry == 'index.jtml' else 'reference.html'
+            page_name = page['output']
             shutil.copyfile(bundle / 'index.html', output / page_name)
             compiled[page_name] = dict(source='site/' + entry,
                 sourceInputsSHA256={name: digest(ROOT / name) for name in
-                                   ('site/' + entry, 'site/shared/layout.jtml')},
+                                   ['site/' + entry] + sorted(file.relative_to(ROOT).as_posix() for file in (ROOT / 'site/shared').rglob('*.jtml'))},
                 generatedAssetsSHA256=hashes,
-                assetDirectory='.' if entry == 'index.jtml' else 'reference-assets')
+                assetDirectory=page['assetDirectory'], metadata=page)
         homepage_hashes = compiled['index.html']['generatedAssetsSHA256']
         demo = output / 'demo/counter'
         shutil.copytree(generated, demo)
@@ -152,17 +196,19 @@ def build(output, compiler, base_url):
         if page.parent == output and page.name in compiled:
             # Packaging metadata and external script URLs only; application markup and JavaScript stay intact.
             text = text.replace('<html>', '<html lang="en">', 1)
-            title = 'JTML — readable source, observable behavior' if page.name == 'index.html' else 'JTML Reference — Friendly JTML 2'
-            text = re.sub(r'<title>.*?</title>', '<title>' + title + '</title>', text, count=1)
-            if page.name == 'reference.html':
-                for name in ASSETS[1:]:
-                    original = 'src="./' + name + '"'
-                    assert text.count(original) == 1
-                    text = text.replace(original, 'src="./reference-assets/' + name + '"', 1)
-            text = text.replace('</head>', '<meta name="description" content="Friendly JTML 2: markup, state, actions and components in a readable UI language. Explore the experimental RC.3 release and a genuine compiled Counter.">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<link rel="stylesheet" href="./home.css">\n</head>', 1)
-            if page.name == 'reference.html':
-                text = text.replace('Friendly JTML 2: markup, state, actions and components in a readable UI language. Explore the experimental RC.3 release and a genuine compiled Counter.', 'JTML language reference: canonical Friendly JTML 2 syntax, state, actions, routing, semantic UI, media and explicit interop. Experimental RC.3.')
-                text = text.replace('</head>', '<link rel="stylesheet" href="./reference.css">\n</head>', 1)
+            metadata = compiled[page.name]['metadata']
+            text = re.sub(r'<title>.*?</title>', lambda _: '<title>' + html.escape(metadata['title']) + '</title>', text, count=1)
+            prefix = metadata['assetDirectory']
+            for name in ASSETS[1:]:
+                original = 'src="./' + name + '"'
+                assert text.count(original) == 1
+                text = text.replace(original, 'src="./' + ('' if prefix == '.' else prefix + '/') + name + '"', 1)
+            head = '<meta name="description" content="' + html.escape(metadata['description'], quote=True) + '">\n'
+            head += '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+            head += ''.join('<link rel="stylesheet" href="./' + css + '">\n' for css in metadata['css'])
+            if 'themeColor' in metadata:
+                head += '<meta name="theme-color" content="' + html.escape(metadata['themeColor'], quote=True) + '">\n'
+            text = text.replace('</head>', head + '</head>', 1)
         page.write_text(text)
     for name in ASSETS[1:]:
         assert digest(demo / name) == original_hashes[name], 'Generated JavaScript must remain untouched'
@@ -175,11 +221,11 @@ def build(output, compiler, base_url):
     (output / 'robots.txt').write_text('User-agent: *\nAllow: /\n\nSitemap: ' + base_url + 'sitemap.xml\n')
     revision = subprocess.check_output(['git', '-C', ROOT, 'rev-parse', 'HEAD'], text=True).strip()
     dirty = bool(subprocess.check_output(['git', '-C', ROOT, 'status', '--porcelain', '--untracked-files=normal'], text=True))
-    info = dict(schema=3, pages=compiled, packagingPolicy="Document metadata and Reference script URLs only; application markup and generated JS are unchanged", compiler=compiler_info, homepageSource='site/index.jtml', homepageSourceSHA256=digest(ROOT / 'site/index.jtml'), homepageGeneratedAssetsSHA256=homepage_hashes, sourceRevision=revision, sourceDirty=dirty, compilerVersion=version,
+    info = dict(schema=4, registrySHA256=digest(ROOT / "site/pages.json"), pages=compiled, packagingPolicy="Registry document metadata and bundle script URLs only; application markup and generated JS are unchanged", compiler=compiler_info, homepageSource='site/index.jtml', homepageSourceSHA256=digest(ROOT / 'site/index.jtml'), homepageGeneratedAssetsSHA256=homepage_hashes, sourceRevision=revision, sourceDirty=dirty, compilerVersion=version,
                 baseURL=base_url, counterSource='examples/friendly_counter.jtml', counterSourceSHA256=digest(source),
                 generatedAssetsSHA256=original_hashes, demoPolicy='Only document head/language metadata is added to compiled HTML; body and generated JavaScript are unchanged')
     (output / 'site-build.json').write_text(json.dumps(info, sort_keys=True, indent=2) + '\n')
-    (output / 'site-payloads.json').write_text(json.dumps(payload_report(output), sort_keys=True, indent=2) + '\n')
+    (output / 'site-payloads.json').write_text(json.dumps(payload_report(output, registry), sort_keys=True, indent=2) + '\n')
     files = sorted(p for p in output.rglob('*') if p.is_file() and p != output / 'manifest.txt')
     (output / 'manifest.txt').write_text(''.join(digest(p) + '  ' + p.relative_to(output).as_posix() + '\n' for p in files))
     print('Built static site (no deployment):', output)

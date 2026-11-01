@@ -29,6 +29,7 @@ done
 test -f "$repo_root/dist/opspulse/index.html"
 test -f "$repo_root/dist/opspulse/assets/ops-workspace.svg"
 JTML_BIN="$build_dir/jtml" python3 "$repo_root/tests/test_application_paths.py"
+python3 "$repo_root/tests/test_site_registry.py"
 
 tmp_browser_loop="$(mktemp "${TMPDIR:-/tmp}/jtml-browser-loop.XXXXXX")"
 printf 'jtml 2\n\nlet users = [{ name: "Ada", avatar: "/ada.png", active: true }]\n\npage\n  for user in users\n    box class "person"\n      image src user.avatar alt user.name\n      if user.active\n        text user.name\n' > "$tmp_browser_loop"
@@ -802,16 +803,18 @@ python3 "$repo_root/scripts/test_studio_distribution.py" --build-dir "$build_dir
   --cpack-archive "$repo_root/dist/cpack/$(cat "$build_dir/jtml-cpack-filename.txt")" \
   --archive "$repo_root/dist/jtml-$(cat "$build_dir/jtml-version.txt")-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz"
 
-test -f "$repo_root/dist/site/index.html"
-test -f "$repo_root/dist/site/reference.html"
-test -f "$repo_root/dist/site/reference-assets/components/index.js"
-test -f "$repo_root/dist/site/tools.html"
-test -f "$repo_root/dist/site/security.html"
+python3 - "$repo_root" <<'PYREGISTRY'
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+for page in json.loads((root / 'site/pages.json').read_text())['pages']:
+    assert (root / 'dist/site' / page['output']).is_file()
+    assert (root / 'dist/site' / page['assetDirectory'] / 'components/index.js').is_file()
+    assert (root / 'dist/release/site' / page['entry']).is_file()
+assert (root / 'dist/release/site/shared/layout.jtml').is_file()
+PYREGISTRY
 test -f "$repo_root/dist/site/sitemap.xml"
 test -f "$repo_root/dist/site/robots.txt"
 test -f "$repo_root/dist/release/bin/jtml"
-test -f "$repo_root/dist/release/site/index.jtml"
-test -f "$repo_root/dist/release/site/reference.jtml"
 test -f "$repo_root/dist/release/examples/friendly_components.jtml"
 test -f "$repo_root/dist/release/MANIFEST.txt"
 test -f "$repo_root/dist/release/SHA256SUMS"

@@ -1,0 +1,37 @@
+{
+  "checks": [
+    {
+      "mode": "plain",
+      "name": "inline input text becomes placeholder and accessible name",
+      "pass": true
+    },
+    {
+      "mode": "plain",
+      "name": "parameterized hints, textarea and explicit attributes retain semantics",
+      "pass": true
+    },
+    {
+      "mode": "plain",
+      "name": "editing and unrelated local updates retain ownership, DOM, focus and cursor",
+      "pass": true
+    },
+    {
+      "mode": "layout",
+      "name": "inline input text becomes placeholder and accessible name",
+      "pass": true
+    },
+    {
+      "mode": "layout",
+      "name": "parameterized hints, textarea and explicit attributes retain semantics",
+      "pass": true
+    },
+    {
+      "mode": "layout",
+      "name": "editing and unrelated local updates retain ownership, DOM, focus and cursor",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "browser": "151.0.7922.34",
+  "exit": 0
+}

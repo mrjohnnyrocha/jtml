@@ -1,0 +1,27 @@
+jtml 2
+let rootValue = "root"
+make Editor caption
+  let email = "seed"
+  let ticks = 0
+  when tick
+    ticks += 1
+  section class "editor"
+    input "Email" into email required type "email"
+    text "Mirror: {email}"
+    input "Hint" aria-label "Explicit name" placeholder "Explicit hint"
+    input placeholder caption
+    textarea "Notes"
+    file "Choose file"
+    dropzone "Drop files"
+    input into email aria-label "Owned"
+    button "Tick" click tick
+    text "Ticks: {ticks}"
+make Layout
+  main
+    slot
+make Screen
+  Editor "Parameterized hint"
+  Editor "Sibling hint"
+page
+  input "Root email" into rootValue
+route "/edit" as Screen layout Layout

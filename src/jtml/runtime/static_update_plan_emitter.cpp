@@ -331,7 +331,17 @@ nlohmann::json compileStaticElementParts(
         const auto& token = words[i];
         if (stopWords.count(token)) break;
         if (roles[i] == FriendlyElementRole::InlineContent) {
-            content.push_back(token);
+            // Friendly input-like inline text is an attribute, not child content.
+            // Preserve the same classifier and attribute order as Friendly lowering.
+            const auto tag = componentTagName(words.front());
+            if (i == start && (tag == "input" || tag == "textarea")) {
+                const auto name = words.front() == "file" || words.front() == "dropzone"
+                    ? "aria-label" : "placeholder";
+                attrs.push_back({{"name", name}, {"raw", token},
+                    {"exprPlan", compileRuntimeExpressionPlan(token, environment)}});
+            } else {
+                content.push_back(token);
+            }
             continue;
         }
         if (roles[i] == FriendlyElementRole::CompleteAttribute) {

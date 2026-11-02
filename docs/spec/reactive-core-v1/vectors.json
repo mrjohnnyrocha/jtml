@@ -1,0 +1,1466 @@
+{
+  "schema_version": 1,
+  "baseline": "ae8f984dc3c35163cc702f7e494a5f2b015124fb",
+  "status": "draft-pending-human-approval",
+  "notes": [
+    "Expected values are independently authored; baseline observations never replace expectations.",
+    "main denotes index.jtml; declaration owner and component generation are semantic identities, not runtime storage names.",
+    "Every successful initial/step snapshot is one commit. Empty notifications means no root effect notification, not no DOM dependency edge.",
+    "E1/E2 are effect declarations in source order in their module; notification strings record value at delivery, before callback execution.",
+    "show lists values emitted only during that step; initialization effects are non-eager.",
+    "Vector sources are ordinary Friendly JTML 2; unsupported target cases remain pending and are not installed in any required gate."
+  ],
+  "vectors": [
+    {
+      "id": "V01",
+      "title": "Scalar replacement and repeated dispatch",
+      "files": {
+        "index.jtml": "jtml 2\nlet x = 1\nwhen step\n  x = x + 1\npage\n  box class \"out\"\n    text \"Value {x}\"\n  button \"Step\" click step\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::x": 1
+        },
+        "derived": {},
+        "dom": {
+          ".out": [
+            "Value 1"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "main::step",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 2
+            },
+            "derived": {},
+            "dom": {
+              ".out": [
+                "Value 2"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        },
+        {
+          "action": "main::step",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 3
+            },
+            "derived": {},
+            "dom": {
+              ".out": [
+                "Value 3"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "already-implemented-and-tested",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Existing scalar browser and native conformance controls; full commit traces are not instrumented.",
+        "evidence_record": "V01"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V02",
+      "title": "Two writes coalesce at one action boundary",
+      "files": {
+        "index.jtml": "jtml 2\nlet x = 0\nlet hits = 0\neffect x\n  hits = hits + 1\n  show x\nwhen step\n  x = 1\n  x = 2\npage\n  box class \"out\"\n    text \"{x}|{hits}\"\n  button \"Step\" click step\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::x": 0,
+          "main::hits": 0
+        },
+        "derived": {},
+        "dom": {
+          ".out": [
+            "0|0"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "main::step",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 2,
+              "main::hits": 1
+            },
+            "derived": {},
+            "dom": {
+              ".out": [
+                "2|1"
+              ]
+            },
+            "notifications": [
+              "E1:main::x=2"
+            ],
+            "effects": [
+              "E1"
+            ],
+            "show": [
+              2
+            ]
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "implemented-insufficiently-verified",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Root effect regression verifies final visibility and one callback; arbitrary DOM observer atomicity is unverified.",
+        "evidence_record": "V02"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V03",
+      "title": "A derived read inside an action is fresh",
+      "files": {
+        "index.jtml": "jtml 2\nlet x = 0\nlet saved = 0\nget twice = x * 2\nwhen step\n  x = 1\n  saved = twice\npage\n  box class \"out\"\n    text \"{saved}|{twice}\"\n  button \"Step\" click step\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::x": 0,
+          "main::saved": 0
+        },
+        "derived": {
+          "main::twice": 0
+        },
+        "dom": {
+          ".out": [
+            "0|0"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "main::step",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 1,
+              "main::saved": 2
+            },
+            "derived": {
+              "main::twice": 2
+            },
+            "dom": {
+              ".out": [
+                "2|2"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "currently-incorrect",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Probe action-local get read after a write; root flush occurs after the body.",
+        "evidence_record": "V03"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V04",
+      "title": "Derived chain independent of JSON key order",
+      "files": {
+        "index.jtml": "jtml 2\nlet x = 1\nget z = x + 1\nget a = z * 2\nwhen step\n  x = x + 1\npage\n  box class \"out\"\n    text \"{a}|{z}\"\n  button \"Step\" click step\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::x": 1
+        },
+        "derived": {
+          "main::z": 2,
+          "main::a": 4
+        },
+        "dom": {
+          ".out": [
+            "4|2"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "main::step",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 2
+            },
+            "derived": {
+              "main::z": 3,
+              "main::a": 6
+            },
+            "dom": {
+              ".out": [
+                "6|3"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        },
+        {
+          "action": "main::step",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 3
+            },
+            "derived": {
+              "main::z": 4,
+              "main::a": 8
+            },
+            "dom": {
+              ".out": [
+                "8|4"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "currently-incorrect",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Root applyClientDerived iterates name-keyed objects once; component chain evidence is not root evidence.",
+        "evidence_record": "V04"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V05",
+      "title": "Diamond has one coherent result",
+      "files": {
+        "index.jtml": "jtml 2\nlet x = 1\nget zleft = x + 1\nget zright = x * 2\nget atotal = zleft + zright\nwhen step\n  x = x + 1\npage\n  box class \"out\"\n    text \"{zleft}|{zright}|{atotal}\"\n  button \"Step\" click step\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::x": 1
+        },
+        "derived": {
+          "main::zleft": 2,
+          "main::zright": 2,
+          "main::atotal": 4
+        },
+        "dom": {
+          ".out": [
+            "2|2|4"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "main::step",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 2
+            },
+            "derived": {
+              "main::zleft": 3,
+              "main::zright": 4,
+              "main::atotal": 7
+            },
+            "dom": {
+              ".out": [
+                "3|4|7"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        },
+        {
+          "action": "main::step",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 3
+            },
+            "derived": {
+              "main::zleft": 4,
+              "main::zright": 6,
+              "main::atotal": 10
+            },
+            "dom": {
+              ".out": [
+                "4|6|10"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "currently-incorrect",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Requires coherent diamond snapshots, not only eventual values after another unrelated action.",
+        "evidence_record": "V05"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V06",
+      "title": "Parameter shadowing is invocation-local",
+      "files": {
+        "index.jtml": "jtml 2\nlet x = 10\nlet hits = 0\neffect x\n  hits = hits + 1\nwhen shadow x\n  x = x + 1\n  show x\npage\n  box class \"out\"\n    text \"{x}|{hits}\"\n  button \"Step\" click shadow(3)\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::x": 10,
+          "main::hits": 0
+        },
+        "derived": {},
+        "dom": {
+          ".out": [
+            "10|0"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "main::shadow",
+          "args": [
+            3
+          ],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 10,
+              "main::hits": 0
+            },
+            "derived": {},
+            "dom": {
+              ".out": [
+                "10|0"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": [
+              4
+            ]
+          }
+        },
+        {
+          "action": "main::shadow",
+          "args": [
+            3
+          ],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 10,
+              "main::hits": 0
+            },
+            "derived": {},
+            "dom": {
+              ".out": [
+                "10|0"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": [
+              4
+            ]
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "already-implemented-and-tested",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Root effect and module scalar tests cover restoration and suppression of parameter writes.",
+        "evidence_record": "V06"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V07",
+      "title": "Same-value writes notify once per dispatch",
+      "files": {
+        "index.jtml": "jtml 2\nlet x = 1\nlet hits = 0\neffect x\n  hits = hits + 1\nwhen step\n  x = x\npage\n  box class \"out\"\n    text \"{x}|{hits}\"\n  button \"Step\" click step\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::x": 1,
+          "main::hits": 0
+        },
+        "derived": {},
+        "dom": {
+          ".out": [
+            "1|0"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "main::step",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 1,
+              "main::hits": 1
+            },
+            "derived": {},
+            "dom": {
+              ".out": [
+                "1|1"
+              ]
+            },
+            "notifications": [
+              "E1:main::x=1"
+            ],
+            "effects": [
+              "E1"
+            ],
+            "show": []
+          }
+        },
+        {
+          "action": "main::step",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 1,
+              "main::hits": 2
+            },
+            "derived": {},
+            "dom": {
+              ".out": [
+                "1|2"
+              ]
+            },
+            "notifications": [
+              "E1:main::x=1"
+            ],
+            "effects": [
+              "E1"
+            ],
+            "show": []
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "already-implemented-and-tested",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Explicitly tested by tests/browser/root_effects.cjs; this is write notification, not value-change notification.",
+        "evidence_record": "V07"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V08",
+      "title": "Conditional dependencies include both arms",
+      "files": {
+        "index.jtml": "jtml 2\nlet enabled = true\nlet left = 2\nlet right = 9\nget chosen = enabled ? left : right\nwhen rightWrite\n  right = 11\nwhen leftWrite\n  left = 5\nwhen toggle\n  enabled = !enabled\npage\n  box class \"out\"\n    text chosen\n  button \"Right\" click rightWrite\n  button \"Left\" click leftWrite\n  button \"Toggle\" click toggle\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::enabled": true,
+          "main::left": 2,
+          "main::right": 9
+        },
+        "derived": {
+          "main::chosen": 2
+        },
+        "dom": {
+          ".out": [
+            "2"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "main::rightWrite",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::enabled": true,
+              "main::left": 2,
+              "main::right": 11
+            },
+            "derived": {
+              "main::chosen": 2
+            },
+            "dom": {
+              ".out": [
+                "2"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        },
+        {
+          "action": "main::toggle",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::enabled": false,
+              "main::left": 2,
+              "main::right": 11
+            },
+            "derived": {
+              "main::chosen": 11
+            },
+            "dom": {
+              ".out": [
+                "11"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        },
+        {
+          "action": "main::leftWrite",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::enabled": false,
+              "main::left": 5,
+              "main::right": 11
+            },
+            "derived": {
+              "main::chosen": 11
+            },
+            "dom": {
+              ".out": [
+                "11"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        },
+        {
+          "action": "main::toggle",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::enabled": true,
+              "main::left": 5,
+              "main::right": 11
+            },
+            "derived": {
+              "main::chosen": 5
+            },
+            "dom": {
+              ".out": [
+                "5"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "already-implemented-and-tested",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "NativeTernaryDependencies.BothBranchesAndConditionRemainSubscribed and conditional browser suite; inactive branch must not evaluate.",
+        "evidence_record": "V08"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V09",
+      "title": "Identical module spellings have distinct identities",
+      "files": {
+        "index.jtml": "jtml 2\nuse Card from \"./private.jtml\"\nlet tone = \"entry\"\nwhen entryWrite\n  tone = tone + \"!\"\nwhen readEntry\n  show tone\npage\n  box class \"out\"\n    text \"controls\"\n  button \"Entry\" click entryWrite\n  button \"Read entry\" click readEntry\n  Card\n",
+        "private.jtml": "jtml 2\nlet tone = \"private\"\nwhen privateWrite\n  tone = tone + \"!\"\nwhen readPrivate\n  show tone\nexport make Card\n  button \"Private\" click privateWrite\n  button \"Read private\" click readPrivate\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::tone": "entry",
+          "private::tone": "private"
+        },
+        "derived": {},
+        "dom": {
+          ".out": [
+            "controls"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "private::privateWrite",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::tone": "entry",
+              "private::tone": "private!"
+            },
+            "derived": {},
+            "dom": {
+              ".out": [
+                "controls"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        },
+        {
+          "action": "main::entryWrite",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::tone": "entry!",
+              "private::tone": "private!"
+            },
+            "derived": {},
+            "dom": {
+              ".out": [
+                "controls"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        },
+        {
+          "action": "private::readPrivate",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::tone": "entry!",
+              "private::tone": "private!"
+            },
+            "derived": {},
+            "dom": {
+              ".out": [
+                "controls"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": [
+              "private!"
+            ]
+          }
+        },
+        {
+          "action": "main::readEntry",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::tone": "entry!",
+              "private::tone": "private!"
+            },
+            "derived": {},
+            "dom": {
+              ".out": [
+                "controls"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": [
+              "entry!"
+            ]
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "already-implemented-and-tested",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "PR #76 supports static controls and distinct root actions, not dynamic defining-module component capture.",
+        "evidence_record": "V09"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V10",
+      "title": "Imported component captures defining module read-only",
+      "files": {
+        "index.jtml": "jtml 2\nuse Card from \"./private.jtml\"\nlet entryTone = \"entry\"\npage\n  Card\n",
+        "private.jtml": "jtml 2\nlet tone = \"private\"\nget label = tone + \"!\"\nwhen change\n  tone = tone + \"!\"\nexport make Card\n  box class \"out\"\n    text label\n  button \"Step\" click change\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::entryTone": "entry",
+          "private::tone": "private"
+        },
+        "derived": {
+          "private::label": "private!"
+        },
+        "dom": {
+          ".out": [
+            "private!"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "private::change",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::entryTone": "entry",
+              "private::tone": "private!"
+            },
+            "derived": {
+              "private::label": "private!!"
+            },
+            "dom": {
+              ".out": [
+                "private!!"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "not-yet-supported",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Implicit component-to-module reads remain unsupported after PR #76; expected acceptance is pending, not a current supported-contract failure.",
+        "evidence_record": "V10"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V11",
+      "title": "Mutable initializers follow source order",
+      "files": {
+        "index.jtml": "jtml 2\nlet z = 2\nlet a = z + 1\nget result = a + z\npage\n  box class \"out\"\n    text \"{a}|{result}\"\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::z": 2,
+          "main::a": 3
+        },
+        "derived": {
+          "main::result": 5
+        },
+        "dom": {
+          ".out": [
+            "3|5"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [],
+      "baseline": {
+        "classification": "currently-incorrect",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Collision-free root JSON ordering can differ from authored declaration order.",
+        "evidence_record": "V11"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V12",
+      "title": "A forward mutable initializer is rejected",
+      "files": {
+        "index.jtml": "jtml 2\nlet first = later + 1\nlet later = 2\npage\n  box class \"out\"\n    text \"never\"\n"
+      },
+      "entry": "index.jtml",
+      "observers": [],
+      "expected_initial": {
+        "outcome": "reject",
+        "diagnostic": "E_INIT_FORWARD",
+        "state": null,
+        "derived": null,
+        "dom": null,
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [],
+      "baseline": {
+        "classification": "currently-incorrect",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "PR #76 checks only its certified colliding subset; general clean-root rejection needs verification.",
+        "evidence_record": "V12"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V13",
+      "title": "A derived cycle is rejected before execution",
+      "files": {
+        "index.jtml": "jtml 2\nget a = b + 1\nget b = a + 1\npage\n  box class \"out\"\n    text \"never\"\n"
+      },
+      "entry": "index.jtml",
+      "observers": [],
+      "expected_initial": {
+        "outcome": "reject",
+        "diagnostic": "E_DERIVED_CYCLE",
+        "state": null,
+        "derived": null,
+        "dom": null,
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [],
+      "baseline": {
+        "classification": "currently-incorrect",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Native environment has cycle code; general browser root graph has no equivalent preflight proof.",
+        "evidence_record": "V13"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V14",
+      "title": "An unresolved action read is rejected",
+      "files": {
+        "index.jtml": "jtml 2\nlet x = 0\nwhen step\n  x = missing\npage\n  box class \"out\"\n    text \"Value {x}\"\n  button \"Step\" click step\n"
+      },
+      "entry": "index.jtml",
+      "observers": [],
+      "expected_initial": {
+        "outcome": "reject",
+        "diagnostic": "E_UNRESOLVED",
+        "state": null,
+        "derived": null,
+        "dom": null,
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [],
+      "baseline": {
+        "classification": "currently-incorrect",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "No source-string fallback may manufacture a value for missing.",
+        "evidence_record": "V14"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V15",
+      "title": "Unknown calls are not pure scalar formulas",
+      "files": {
+        "index.jtml": "jtml 2\nget result = mystery()\npage\n  box class \"out\"\n    text result\n"
+      },
+      "entry": "index.jtml",
+      "observers": [],
+      "expected_initial": {
+        "outcome": "reject",
+        "diagnostic": "E_UNSUPPORTED_EXPR",
+        "state": null,
+        "derived": null,
+        "dom": null,
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [],
+      "baseline": {
+        "classification": "currently-incorrect",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Calls are outside this draft scalar expression profile, including unexecuted branches.",
+        "evidence_record": "V15"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V16",
+      "title": "Destruction removes render subscriptions; remount is fresh",
+      "files": {
+        "index.jtml": "jtml 2\nlet count = 0\nlet visible = true\nwhen bump\n  count = count + 1\nwhen toggle\n  visible = !visible\nmake Card value\n  let local = 0\n  get twice = value * 2\n  when localStep\n    local = local + 1\n  box class \"out\"\n    text \"{twice}|{local}\"\n  button \"Local\" click localStep\npage\n  button \"Bump\" click bump\n  button \"Toggle\" click toggle\n  if visible\n    Card count\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::count": 0,
+          "main::visible": true,
+          "main::Card@1::local": 0
+        },
+        "derived": {
+          "main::Card@1::twice": 0
+        },
+        "dom": {
+          ".out": [
+            "0|0"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "main::Card@1::localStep",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::count": 0,
+              "main::visible": true,
+              "main::Card@1::local": 1
+            },
+            "derived": {
+              "main::Card@1::twice": 0
+            },
+            "dom": {
+              ".out": [
+                "0|1"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": []
+          }
+        },
+        {
+          "action": "main::toggle",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::count": 0,
+              "main::visible": false
+            },
+            "derived": {},
+            "dom": {
+              ".out": []
+            },
+            "notifications": [],
+            "effects": [],
+            "show": [],
+            "destroyed": [
+              "main::Card@1"
+            ]
+          }
+        },
+        {
+          "action": "main::bump",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::count": 1,
+              "main::visible": false
+            },
+            "derived": {},
+            "dom": {
+              ".out": []
+            },
+            "notifications": [],
+            "effects": [],
+            "show": [],
+            "forbidden_notifications": [
+              "main::Card@1"
+            ]
+          }
+        },
+        {
+          "action": "main::toggle",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::count": 1,
+              "main::visible": true,
+              "main::Card@2::local": 0
+            },
+            "derived": {
+              "main::Card@2::twice": 2
+            },
+            "dom": {
+              ".out": [
+                "2|0"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": [],
+            "created": [
+              "main::Card@2"
+            ]
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "implemented-insufficiently-verified",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Existing root-conditional and keyed lifecycle suites prove registry/scope cleanup; exact subscription trace remains pending.",
+        "evidence_record": "V16"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V17",
+      "title": "Acyclic synchronous effect cascade precedes DOM publication",
+      "files": {
+        "index.jtml": "jtml 2\nlet x = 0\nlet y = 0\nlet z = 0\neffect x\n  y = x + 1\neffect y\n  z = y + 1\nwhen step\n  x = 1\npage\n  box class \"out\"\n    text \"{x}|{y}|{z}\"\n  button \"Step\" click step\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::x": 0,
+          "main::y": 0,
+          "main::z": 0
+        },
+        "derived": {},
+        "dom": {
+          ".out": [
+            "0|0|0"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "main::step",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 1,
+              "main::y": 2,
+              "main::z": 3
+            },
+            "derived": {},
+            "dom": {
+              ".out": [
+                "1|2|3"
+              ]
+            },
+            "notifications": [
+              "E1:main::x=1",
+              "E2:main::y=2"
+            ],
+            "effects": [
+              "E1",
+              "E2"
+            ],
+            "show": []
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "implemented-insufficiently-verified",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Root effect DAG and final visibility are tested; complete phase trace needs a future adapter.",
+        "evidence_record": "V17"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V18",
+      "title": "Potential effect feedback is rejected",
+      "files": {
+        "index.jtml": "jtml 2\nlet x = 0\nlet y = 0\neffect x\n  y = y + 1\neffect y\n  x = x + 1\npage\n  box class \"out\"\n    text \"never\"\n"
+      },
+      "entry": "index.jtml",
+      "observers": [],
+      "expected_initial": {
+        "outcome": "reject",
+        "diagnostic": "E_EFFECT_CYCLE",
+        "state": null,
+        "derived": null,
+        "dom": null,
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [],
+      "baseline": {
+        "classification": "already-implemented-and-tested",
+        "execution": "compile-rejection",
+        "reason": "Existing orderRootSubscriptions rejects potential feedback even if a branch cannot execute.",
+        "evidence_record": "V18"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V19",
+      "title": "A non-finite scalar result faults without a successful commit",
+      "files": {
+        "index.jtml": "jtml 2\nlet x = 1\nwhen step\n  x = 1 / 0\npage\n  box class \"out\"\n    text \"Value {x}\"\n  button \"Step\" click step\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::x": 1
+        },
+        "derived": {},
+        "dom": {
+          ".out": [
+            "Value 1"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "main::step",
+          "args": [],
+          "expected": {
+            "outcome": "fault",
+            "diagnostic": "E_SCALAR_DOMAIN",
+            "state": {
+              "main::x": 1
+            },
+            "derived": {},
+            "dom": {
+              ".out": [
+                "Value 1"
+              ]
+            },
+            "notifications": [],
+            "effects": [],
+            "show": [],
+            "instance": "faulted"
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "not-yet-supported",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Proposed finite-number and failed-episode policy requires approval; not an existing rollback guarantee.",
+        "evidence_record": "V19"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V20",
+      "title": "Imperative observations may see intermediate fresh values",
+      "files": {
+        "index.jtml": "jtml 2\nlet x = 0\nlet seen = 0\nget twice = x * 2\neffect x\n  seen = twice\nwhen step\n  x = 1\n  show twice\n  x = 2\n  show twice\npage\n  box class \"out\"\n    text \"{x}|{twice}|{seen}\"\n  button \"Step\" click step\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::x": 0,
+          "main::seen": 0
+        },
+        "derived": {
+          "main::twice": 0
+        },
+        "dom": {
+          ".out": [
+            "0|0|0"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [
+        {
+          "action": "main::step",
+          "args": [],
+          "expected": {
+            "outcome": "commit",
+            "state": {
+              "main::x": 2,
+              "main::seen": 4
+            },
+            "derived": {
+              "main::twice": 4
+            },
+            "dom": {
+              ".out": [
+                "2|4|4"
+              ]
+            },
+            "notifications": [
+              "E1:main::x=2"
+            ],
+            "effects": [
+              "E1"
+            ],
+            "show": [
+              2,
+              4
+            ]
+          }
+        }
+      ],
+      "baseline": {
+        "classification": "currently-incorrect",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Action show is intentionally immediate; DOM and commit observers must not see x=1. This does not suppress imperative logs.",
+        "evidence_record": "V20"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V21",
+      "title": "Imported source initialization precedes importer",
+      "files": {
+        "index.jtml": "jtml 2\nuse seed from \"./private.jtml\"\nlet copy = seed + 1\npage\n  box class \"out\"\n    text copy\n",
+        "private.jtml": "jtml 2\nexport let seed = 7\n"
+      },
+      "entry": "index.jtml",
+      "observers": [
+        ".out"
+      ],
+      "expected_initial": {
+        "outcome": "commit",
+        "state": {
+          "main::copy": 8,
+          "private::seed": 7
+        },
+        "derived": {},
+        "dom": {
+          ".out": [
+            "8"
+          ]
+        },
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [],
+      "baseline": {
+        "classification": "currently-incorrect",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Module initialization semantics must not depend on object key ordering.",
+        "evidence_record": "V21"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V22",
+      "title": "An imported binding grants read authority, not write authority",
+      "files": {
+        "index.jtml": "jtml 2\nuse seed from \"./private.jtml\"\nwhen step\n  seed = 9\npage\n  box class \"out\"\n    text \"never\"\n  button \"Step\" click step\n",
+        "private.jtml": "jtml 2\nexport let seed = 7\n"
+      },
+      "entry": "index.jtml",
+      "observers": [],
+      "expected_initial": {
+        "outcome": "reject",
+        "diagnostic": "E_IMPORT_WRITE",
+        "state": null,
+        "derived": null,
+        "dom": null,
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [],
+      "baseline": {
+        "classification": "not-yet-supported",
+        "execution": "compile-and-browser-snapshots",
+        "reason": "Read-only import authority is a proposed Core rule; current root write behavior must be recorded separately.",
+        "evidence_record": "V22"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V23",
+      "title": "Decoded interpolation cannot capture generated storage",
+      "files": {
+        "index.jtml": "jtml 2\nuse Card from \"./private.jtml\"\nlet tone = \"entry\"\nwhen step\n  show \"value=\\u007b__jtml_scalar_00000000000000000001\\u007d\"\npage\n  Card\n",
+        "private.jtml": "jtml 2\nlet tone = \"private\"\nexport make Card\n  p \"controls\"\n"
+      },
+      "entry": "index.jtml",
+      "observers": [],
+      "expected_initial": {
+        "outcome": "reject",
+        "diagnostic": "E_UNCERTIFIED_EXPR",
+        "state": null,
+        "derived": null,
+        "dom": null,
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [],
+      "baseline": {
+        "classification": "already-implemented-and-tested",
+        "execution": "compile-rejection",
+        "reason": "PR #76 adversarial correction adds DecodedStringExpressionsCannotBypassBindingProof.",
+        "evidence_record": "V23"
+      },
+      "target_conformance": "pending"
+    },
+    {
+      "id": "V24",
+      "title": "Component-local effects are outside the v1 effect adapter",
+      "files": {
+        "index.jtml": "jtml 2\nmake Card\n  let count = 0\n  effect count\n    show count\n  box class \"out\"\n    text count\npage\n  Card\n"
+      },
+      "entry": "index.jtml",
+      "observers": [],
+      "expected_initial": {
+        "outcome": "reject",
+        "diagnostic": "E_UNSUPPORTED_EFFECT",
+        "state": null,
+        "derived": null,
+        "dom": null,
+        "notifications": [],
+        "effects": [],
+        "show": []
+      },
+      "steps": [],
+      "baseline": {
+        "classification": "already-implemented-and-tested",
+        "execution": "compile-rejection",
+        "reason": "Existing clean-production rejection; render-observer lifetime in V16 does not introduce component-local effect syntax.",
+        "evidence_record": "V24"
+      },
+      "target_conformance": "pending"
+    }
+  ]
+}

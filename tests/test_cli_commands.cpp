@@ -3623,3 +3623,86 @@ TEST(CliBuild, RouteSlotInstanceOwnershipIsClosedAndPreservesIssuedIdentity) {
         EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(output, jtml::cli::BrowserBuildMode::Production), std::runtime_error);
     }
 }
+
+TEST(CliBuild, RejectsCrossModuleRuntimeBindingCollisionsBeforeAssets) {
+    for (const auto& declaration : {std::string("let tone = \"private\"\n"),
+             std::string("get tone = \"private\"\n"),
+             std::string("when tone\n  show \"private\"\n")}) {
+        const auto root = makeTempDir("runtime-binding-collision");
+        writeTempFile(root / "private.jtml", "jtml 2\n" + declaration +
+            "export make Card\n  text \"Card\"\n");
+        writeTempFile(root / "index.jtml", "jtml 2\nuse Card from \"./private.jtml\"\n" +
+            declaration + "page\n  Card\n");
+        jtml::cli::Options options;
+        options.inputFile = (root / "index.jtml").string();
+        options.outputFile = (root / "out").string();
+        options.target = "browser";
+        const auto result = captureCommand([&] { try { return jtml::cli::cmdBuild(options); }
+            catch (const std::exception& error) { std::cerr << error.what(); return 1; } });
+        EXPECT_NE(result.code, 0) << result.out << result.err;
+        EXPECT_NE(result.err.find("tone"), std::string::npos) << result.err;
+        EXPECT_NE(result.err.find("private.jtml"), std::string::npos) << result.err;
+        EXPECT_NE(result.err.find("index.jtml"), std::string::npos) << result.err;
+        EXPECT_FALSE(std::filesystem::exists(root / "out/index.html"));
+        EXPECT_FALSE(std::filesystem::exists(root / "out/jtml-runtime.js"));
+        EXPECT_FALSE(std::filesystem::exists(root / "out/app.js"));
+    }
+}
+
+TEST(BrowserBuildPolicy, RuntimeBindingOwnershipUsesExecutableModuleIdentity) {
+    jtml::RuntimeProjectPlan project;
+    jtml::RuntimeModulePlan first, second;
+    first.id = 0; first.path = "entry.jtml"; first.clientExecutable = true;
+    second.id = 1; second.path = "private.jtml"; second.clientExecutable = true;
+    first.plan.state.push_back({"tone", "false"});
+    second.plan.state.push_back({"different", "true"});
+    project.modules = {first, second};
+    project.linkedPlan.state = first.plan.state; // duplicate projection is not a declaration
+    EXPECT_NO_THROW(jtml::cli::validateBrowserRuntimeBindingOwnership(project));
+    project.modules[1].plan.derived.push_back({"tone", "true"});
+    EXPECT_THROW(jtml::cli::validateBrowserRuntimeBindingOwnership(project), std::runtime_error);
+    project.modules[1].clientExecutable = false;
+    EXPECT_NO_THROW(jtml::cli::validateBrowserRuntimeBindingOwnership(project));
+    project.modules[1].clientExecutable = true;
+    project.modules[1].plan.derived.clear();
+    jtml::SemanticFetch fetch;
+    fetch.name = "tone";
+    project.modules[1].plan.fetches.push_back(fetch);
+    EXPECT_THROW(jtml::cli::validateBrowserRuntimeBindingOwnership(project), std::runtime_error);
+    project.modules[1].plan.fetches[0].name = "remote";
+    project.modules[1].plan.fetches[0].refreshAction = "refresh";
+    jtml::RuntimePlanAction action; action.name = "refresh";
+    project.modules[0].plan.actions.push_back(action);
+    EXPECT_THROW(jtml::cli::validateBrowserRuntimeBindingOwnership(project), std::runtime_error);
+    project.modules[0].plan.actions[0].name = "localAction";
+    EXPECT_NO_THROW(jtml::cli::validateBrowserRuntimeBindingOwnership(project));
+    // Values and action dispatch are distinct namespaces.
+    project.modules[0].plan.actions[0].name = "remote";
+    EXPECT_NO_THROW(jtml::cli::validateBrowserRuntimeBindingOwnership(project));
+}
+
+TEST(CliBuild, RuntimeBindingCollisionReexportsAndRollback) {
+    const auto root = makeTempDir("binding-collision-reexport");
+    writeTempFile(root / "private.jtml",
+        "jtml 2\nlet privateTone = \"private\"\nexport make Card\n  text \"Card\"\n");
+    writeTempFile(root / "barrel.jtml", "jtml 2\nexport use Card from \"./private.jtml\"\n");
+    writeTempFile(root / "unused.jtml", "jtml 2\nlet tone = \"unused\"\n");
+    writeTempFile(root / "index.jtml",
+        "jtml 2\nuse Card from \"./barrel.jtml\"\nlet tone = \"entry\"\npage\n  Card\n");
+    jtml::cli::Options options;
+    options.inputFile = (root / "index.jtml").string();
+    options.outputFile = (root / "out").string(); options.target = "browser";
+    auto result = captureCommand([&] { try { return jtml::cli::cmdBuild(options); }
+            catch (const std::exception& error) { std::cerr << error.what(); return 1; } });
+    ASSERT_EQ(result.code, 0) << result.out << result.err;
+    std::ifstream old(root / "out/index.html"); std::stringstream saved; saved << old.rdbuf();
+    writeTempFile(root / "private.jtml",
+        "jtml 2\nlet tone = \"private\"\nexport make Card\n  text \"Card\"\n");
+    result = captureCommand([&] { try { return jtml::cli::cmdBuild(options); }
+            catch (const std::exception& error) { std::cerr << error.what(); return 1; } });
+    EXPECT_NE(result.code, 0);
+    EXPECT_NE(result.err.find("private.jtml:2:"), std::string::npos) << result.err;
+    EXPECT_NE(result.err.find("index.jtml:3:"), std::string::npos) << result.err;
+    std::ifstream current(root / "out/index.html"); std::stringstream unchanged; unchanged << current.rdbuf();
+    EXPECT_EQ(saved.str(), unchanged.str());
+}

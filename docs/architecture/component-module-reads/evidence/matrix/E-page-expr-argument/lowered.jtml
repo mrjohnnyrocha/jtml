@@ -1,0 +1,20 @@
+@template data-jtml-component-def="Probe" data-jtml-component-def-params="supplied" data-jtml-component-def-emits="" data-jtml-component-def-emit-arity="" data-jtml-component-def-emit-payloads="" data-jtml-component-def-emit-payload-types="" data-jtml-source-line="7" data-jtml-component-body-hex="383a333a303a7061676520636c61737320737570706c6965640a393a353a323a74657874202250726f6265220a31303a353a323a627574746f6e2022546f67676c652220636c69636b2061707053746174655f746f67676c650a"\\
+#
+
+define appState = {darkMode: false}\\
+derive tone = appState.darkMode ? "dark" : "light"\\
+function appState_toggle()\\
+    appState.darkMode = !appState.darkMode\\
+\\
+@main\\
+    @div data-jtml-instance="Probe_1" data-jtml-component="Probe" data-jtml-instance-id="1" data-jtml-component-locals="" data-jtml-component-params="supplied=appState.darkMode" data-jtml-source-line="12" data-jtml-component-args-hex="7b22737570706c696564223a2261707053746174652e6461726b4d6f6465227d"\\
+        @main class=appState.darkMode\\
+            @p\\
+                show "Probe"\\
+            #
+            @button onClick=appState_toggle() type="button"\\
+                show "Toggle"\\
+            #
+        #
+    #
+#

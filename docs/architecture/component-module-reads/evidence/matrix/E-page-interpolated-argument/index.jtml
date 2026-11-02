@@ -1,0 +1,12 @@
+jtml 2
+store appState
+  let darkMode = false
+  get tone = darkMode ? "dark" : "light"
+  when toggle
+    darkMode = !darkMode
+make Probe supplied
+  page class "{supplied}"
+    text "Probe"
+    button "Toggle" click appState.toggle
+page
+  Probe appState.darkMode

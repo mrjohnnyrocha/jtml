@@ -146,3 +146,30 @@ TEST(BrowserScalarStorage, FreshIdentifiersAndCompatibilityContracts) {
     EXPECT_TRUE(disjoint["state"].contains("entryTone"));
     EXPECT_TRUE(disjoint["state"].contains("privateTone"));
 }
+
+TEST(BrowserScalarStorage, DecodedStringExpressionsCannotBypassBindingProof) {
+    // Friendly lowers ordinary interpolation to AST expressions. Unicode escapes
+    // can instead leave a string node that Expression IR later interpolates.
+    const std::vector<std::string> cases = {
+        "when probe\n  show \"value=\\u007b__jtml_scalar_00000000000000000001\\u007d\"\n",
+        "let copy = \"value=\\u007btone\\u007d\"\n",
+        "let copy = \"value=\\u007blater\\u007d\"\nlet later = \"late\"\n",
+        "when probe\n  tone = \"value=\\u007bhidden\\u007d\"\n",
+        "when probe tone\n  show \"value=\\u007btone\\u007d\"\n",
+    };
+    for (const auto& body : cases) {
+        SCOPED_TRACE(body);
+        const auto root = temporary();
+        program(root, "let tone = \"entry\"\n" + body,
+            "let tone = \"private\"\nlet hidden = \"private-only\"\n");
+        const auto out = root / "out";
+        fs::create_directories(out);
+        write(out / "index.html", "previous successful output");
+        const auto error = compile(root / "index.jtml", out);
+        EXPECT_NE(error, "");
+        EXPECT_NE(error.find("index.jtml:"), std::string::npos);
+        EXPECT_EQ(read(out / "index.html"), "previous successful output");
+        EXPECT_FALSE(fs::exists(out / "app.js"));
+        EXPECT_FALSE(fs::exists(out / "jtml-runtime.js"));
+    }
+}

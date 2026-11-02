@@ -40,7 +40,15 @@ struct Proof {
     void expression(ExpressionStatementNode* node, const Names& bindings) const {
         if (!node) fail({}, "missing scalar expression");
         switch (node->getExprType()) {
-            case ExpressionStatementNodeType::StringLiteral:
+            case ExpressionStatementNodeType::StringLiteral: {
+                // Decoded escapes can hide interpolation from Friendly's AST
+                // lowering. Runtime Plan serialization rebuilds Expression IR;
+                // such a string would introduce reads never resolved above.
+                const auto ir = buildExpressionIr(node);
+                if (!ir || ir->kind != ExpressionIrKind::Literal)
+                    fail(node->sourceSpan, "string interpolation requires resolved expression nodes; use explicit scalar concatenation");
+                return;
+            }
             case ExpressionStatementNodeType::BooleanLiteral: return;
             case ExpressionStatementNodeType::NumberLiteral:
                 if (!std::isfinite(static_cast<NumberLiteralExpressionStatementNode&>(*node).value))

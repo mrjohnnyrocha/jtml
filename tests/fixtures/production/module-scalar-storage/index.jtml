@@ -1,0 +1,19 @@
+jtml 2
+use PrivateCard from "./private.jtml"
+let tone = "entry"
+let seed = tone
+when setEntry
+  tone = tone + "!"
+when readEntry
+  show tone
+when readEntrySeed
+  show seed
+when shadowEntry tone
+  tone = tone + "?"
+  show tone
+page
+  button "Set entry" click setEntry
+  button "Read entry" click readEntry
+  button "Entry seed" click readEntrySeed
+  button "Shadow entry" click shadowEntry("argument")
+  PrivateCard

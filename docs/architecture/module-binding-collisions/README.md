@@ -91,3 +91,11 @@ derived member naming is independent. Neither is implemented by this guard.
 Browser runtime and component JavaScript payload delta is zero: runtime storage
 and emission are unchanged. Verification results and final candidate SHA are
 recorded in the focused PR; local gate and hosted CI are distinct evidence.
+
+## Subsequent bounded storage slice
+
+The [scalar module storage slice](../module-scalar-storage/README.md) now certifies
+a narrow AST subset before this guard, assigning hygienic storage identities and
+rebuilding both projections. All unsupported collision shapes retain this guard;
+the original UI-read counterexample remains a negative acceptance test. The
+claims above describe the PR #75 baseline, not general module storage support.

@@ -1207,6 +1207,9 @@ RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project,
     for (const auto& module : project.modules) {
         RuntimeModulePlan modulePlan;
         modulePlan.id = module.id;
+        modulePlan.ast = module.ast;
+        for (const auto& import : module.imports)
+            modulePlan.importedSymbols.insert(modulePlan.importedSymbols.end(), import.resolvedSymbols.begin(), import.resolvedSymbols.end());
         modulePlan.path = module.path;
         modulePlan.astAvailable = module.ast && module.ast->available;
         modulePlan.syntax = module.ast ? module.ast->syntax : "";

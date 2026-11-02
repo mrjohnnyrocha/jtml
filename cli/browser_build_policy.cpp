@@ -119,7 +119,7 @@ void validateBrowserRuntimeBindingOwnership(const jtml::RuntimeProjectPlan& proj
                     previous.category + " at " + previous.location + "; " + category +
                     " at " + location + "). Distinct executable modules share the " +
                     space + " namespace. Give these declarations distinct names and update "
-                    "their references; module-scoped browser storage is not implemented.");
+                    "their references; module-scoped browser storage is unsupported for this shape.");
             }
         };
         for (const auto& binding : module.plan.state)
@@ -137,6 +137,7 @@ void validateBrowserRuntimeBindingOwnership(const jtml::RuntimeProjectPlan& proj
         std::ostringstream message;
         message << "Cannot emit clean browser production assets:\n";
         for (const auto& issue : issues) message << "- " << issue << "\n";
+        if (!project.scalarStorageIssue.empty()) message << "Scalar isolation was not proved: " << project.scalarStorageIssue << "\n";
         throw std::runtime_error(message.str());
     }
 }

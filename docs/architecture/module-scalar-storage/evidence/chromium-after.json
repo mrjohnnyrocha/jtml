@@ -1,0 +1,197 @@
+{
+  "cases": [
+    {
+      "variant": "two",
+      "shows": [
+        "entry",
+        "entry",
+        "private",
+        "private",
+        "entry",
+        "private!",
+        "entry!",
+        "private!",
+        "entry!!",
+        "private!",
+        "entry!!",
+        "private!!",
+        "entry!!",
+        "private!!!",
+        "entry!!!",
+        "private!!!",
+        "entry!!!!",
+        "private!!!",
+        "entry!!!!",
+        "private!!!!",
+        "argument?",
+        "entry!!!!",
+        "entry",
+        "argument?",
+        "private!!!!",
+        "private",
+        "entry",
+        "private"
+      ],
+      "payload": {
+        "index.html": {
+          "raw": 27137,
+          "gzip": 2496
+        },
+        "jtml-runtime.js": {
+          "raw": 272370,
+          "gzip": 50893
+        },
+        "components/index.js": {
+          "raw": 23080,
+          "gzip": 2710
+        },
+        "app.js": {
+          "raw": 2043,
+          "gzip": 902
+        },
+        "total": {
+          "raw": 324630,
+          "gzip": 57001
+        }
+      }
+    },
+    {
+      "variant": "reexport",
+      "shows": [
+        "entry",
+        "entry",
+        "private",
+        "private",
+        "entry",
+        "private!",
+        "entry!",
+        "private!",
+        "entry!!",
+        "private!",
+        "entry!!",
+        "private!!",
+        "entry!!",
+        "private!!!",
+        "entry!!!",
+        "private!!!",
+        "entry!!!!",
+        "private!!!",
+        "entry!!!!",
+        "private!!!!",
+        "argument?",
+        "entry!!!!",
+        "entry",
+        "argument?",
+        "private!!!!",
+        "private",
+        "entry",
+        "private"
+      ],
+      "payload": {
+        "index.html": {
+          "raw": 27338,
+          "gzip": 2506
+        },
+        "jtml-runtime.js": {
+          "raw": 272370,
+          "gzip": 50893
+        },
+        "components/index.js": {
+          "raw": 23080,
+          "gzip": 2710
+        },
+        "app.js": {
+          "raw": 2043,
+          "gzip": 902
+        },
+        "total": {
+          "raw": 324831,
+          "gzip": 57011
+        }
+      }
+    },
+    {
+      "variant": "three",
+      "shows": [
+        "entry",
+        "entry",
+        "private",
+        "private",
+        "third",
+        "third",
+        "entry",
+        "private",
+        "third!",
+        "entry",
+        "private!",
+        "third!",
+        "entry!",
+        "private!",
+        "third!",
+        "entry!!",
+        "private!",
+        "third!",
+        "entry!!",
+        "private!!",
+        "third!",
+        "entry!!",
+        "private!!",
+        "third!!",
+        "entry!!",
+        "private!!",
+        "third!!!",
+        "entry!!",
+        "private!!!",
+        "third!!!",
+        "entry!!!",
+        "private!!!",
+        "third!!!",
+        "entry!!!!",
+        "private!!!",
+        "third!!!",
+        "entry!!!!",
+        "private!!!!",
+        "third!!!",
+        "entry!!!!",
+        "private!!!!",
+        "third!!!!",
+        "argument?",
+        "entry!!!!",
+        "entry",
+        "argument?",
+        "private!!!!",
+        "private",
+        "argument?",
+        "third!!!!",
+        "third",
+        "entry",
+        "private",
+        "third"
+      ],
+      "payload": {
+        "index.html": {
+          "raw": 45728,
+          "gzip": 3221
+        },
+        "jtml-runtime.js": {
+          "raw": 272370,
+          "gzip": 50893
+        },
+        "components/index.js": {
+          "raw": 44658,
+          "gzip": 3177
+        },
+        "app.js": {
+          "raw": 2043,
+          "gzip": 902
+        },
+        "total": {
+          "raw": 364799,
+          "gzip": 58193
+        }
+      }
+    }
+  ],
+  "errors": [],
+  "cleanExit": true
+}

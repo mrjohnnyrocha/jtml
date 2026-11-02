@@ -1,0 +1,18 @@
+jtml 2
+let tone = "private"
+let seed = tone
+when setPrivate
+  tone = tone + "!"
+when readPrivate
+  show tone
+when readPrivateSeed
+  show seed
+when shadowPrivate tone
+  tone = tone + "?"
+  show tone
+export make PrivateCard
+  box
+    button "Set private" click setPrivate
+    button "Read private" click readPrivate
+    button "Private seed" click readPrivateSeed
+    button "Shadow private" click shadowPrivate("argument")

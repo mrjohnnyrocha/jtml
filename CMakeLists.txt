@@ -78,6 +78,7 @@ set(JTML_BROWSER_PRODUCTION_SOURCES
     src/browser_runtime_emitter.cpp
     src/browser_runtime_assets.cpp
     src/client_manifest_emitter.cpp
+    src/browser_scalar_storage.cpp
     src/runtime_plan.cpp
     src/runtime_plan_json.cpp
     src/jtml/runtime/static_update_plan_emitter.cpp

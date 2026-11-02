@@ -3625,7 +3625,7 @@ TEST(CliBuild, RouteSlotInstanceOwnershipIsClosedAndPreservesIssuedIdentity) {
 }
 
 TEST(CliBuild, RejectsCrossModuleRuntimeBindingCollisionsBeforeAssets) {
-    for (const auto& declaration : {std::string("let tone = \"private\"\n"),
+    for (const auto& declaration : {std::string("let tone = {value: \"private\"}\n"),
              std::string("get tone = \"private\"\n"),
              std::string("when tone\n  show \"private\"\n")}) {
         const auto root = makeTempDir("runtime-binding-collision");
@@ -3697,7 +3697,7 @@ TEST(CliBuild, RuntimeBindingCollisionReexportsAndRollback) {
     ASSERT_EQ(result.code, 0) << result.out << result.err;
     std::ifstream old(root / "out/index.html"); std::stringstream saved; saved << old.rdbuf();
     writeTempFile(root / "private.jtml",
-        "jtml 2\nlet tone = \"private\"\nexport make Card\n  text \"Card\"\n");
+        "jtml 2\nlet tone = {value: \"private\"}\nexport make Card\n  text \"Card\"\n");
     result = captureCommand([&] { try { return jtml::cli::cmdBuild(options); }
             catch (const std::exception& error) { std::cerr << error.what(); return 1; } });
     EXPECT_NE(result.code, 0);

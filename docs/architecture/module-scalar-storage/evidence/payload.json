@@ -1,0 +1,76 @@
+{
+  "baseline": {
+    "index.html": {
+      "raw": 23789,
+      "gzip": 2444,
+      "sha256": "62b174be9876d11e33666e87eca0c5e7eeae9df50a76de6a2b345ad638e4f59c"
+    },
+    "jtml-runtime.js": {
+      "raw": 272370,
+      "gzip": 50835,
+      "sha256": "8a7d54918027ab04e58781ed1a980605504fdbf26c26209b37a70de9d5ad81a1"
+    },
+    "components/index.js": {
+      "raw": 23080,
+      "gzip": 2706,
+      "sha256": "a6173d1768860957fceba832f92d907f00cd5410ec7ba28f76035184a79609ae"
+    },
+    "app.js": {
+      "raw": 2043,
+      "gzip": 905,
+      "sha256": "688ec3c1b98c6ac616a4dac1d641628c49ed147b46f5c9b24b8351cc29976046"
+    },
+    "total": {
+      "raw": 321282,
+      "gzip": 56890
+    }
+  },
+  "candidate": {
+    "index.html": {
+      "raw": 23789,
+      "gzip": 2444,
+      "sha256": "62b174be9876d11e33666e87eca0c5e7eeae9df50a76de6a2b345ad638e4f59c"
+    },
+    "jtml-runtime.js": {
+      "raw": 272370,
+      "gzip": 50835,
+      "sha256": "8a7d54918027ab04e58781ed1a980605504fdbf26c26209b37a70de9d5ad81a1"
+    },
+    "components/index.js": {
+      "raw": 23080,
+      "gzip": 2706,
+      "sha256": "a6173d1768860957fceba832f92d907f00cd5410ec7ba28f76035184a79609ae"
+    },
+    "app.js": {
+      "raw": 2043,
+      "gzip": 905,
+      "sha256": "688ec3c1b98c6ac616a4dac1d641628c49ed147b46f5c9b24b8351cc29976046"
+    },
+    "total": {
+      "raw": 321282,
+      "gzip": 56890
+    }
+  },
+  "collidingCandidate": {
+    "index.html": {
+      "raw": 27137,
+      "gzip": 2472
+    },
+    "jtml-runtime.js": {
+      "raw": 272370,
+      "gzip": 50835
+    },
+    "components/index.js": {
+      "raw": 23080,
+      "gzip": 2706
+    },
+    "app.js": {
+      "raw": 2043,
+      "gzip": 905
+    },
+    "total": {
+      "raw": 324630,
+      "gzip": 56918
+    }
+  }
+}

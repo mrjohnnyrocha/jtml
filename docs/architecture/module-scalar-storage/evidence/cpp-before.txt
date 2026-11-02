@@ -1,0 +1,29 @@
+Running main() from /Users/joaorocha/.codex/worktrees/opspulse-theme/jtml-v1/build/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = BrowserScalarStorage.OwnedInitializersReadsWritesAndParameterShadowing
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from BrowserScalarStorage
+[ RUN      ] BrowserScalarStorage.OwnedInitializersReadsWritesAndParameterShadowing
+tests/test_browser_scalar_storage.cpp:43: Failure
+Expected equality of these values:
+  compile(input, output)
+    Which is: "Cannot emit clean browser production assets:\n- browser runtime binding collision `tone` (state at /Users/joaorocha/.codex/worktrees/module-scalar-storage/jtml-v1/tests/fixtures/production/module-scalar-storage/index.jtml:3:1; state at /Users/joaorocha/.codex/worktrees/module-scalar-storage/jtml-v1/tests/fixtures/production/module-scalar-storage/private.jtml:2:1). Distinct executable modules share the value namespace. Give these declarations distinct names and update their references; module-scoped browser storage is not implemented.\n- browser runtime binding collision `seed` (state at /Users/joaorocha/.codex/worktrees/module-scalar-storage/jtml-v1/tests/fixtures/production/module-scalar-storage/index.jtml:4:1; state at /Users/joaorocha/.codex/worktrees/module-scalar-storage/jtml-v1/tests/fixtures/production/module-scalar-storage/private.jtml:3:1). Distinct executable modules share the value namespace. Give these declarations distinct names and update their references; module-scoped browser storage is not implemented.\n"
+  ""
+With diff:
+@@ -1,3 +1,1 @@
+-Cannot emit clean browser production assets:
+-- browser runtime binding collision `tone` (state at /Users/joaorocha/.codex/worktrees/module-scalar-storage/jtml-v1/tests/fixtures/production/module-scalar-storage/index.jtml:3:1; state at /Users/joaorocha/.codex/worktrees/module-scalar-storage/jtml-v1/tests/fixtures/production/module-scalar-storage/private.jtml:2:1). Distinct executable modules share the value namespace. Give these declarations distinct names and update their references; module-scoped browser storage is not implemented.
+-- browser runtime binding collision `seed` (state at /Users/joaorocha/.codex/worktrees/module-scalar-storage/jtml-v1/tests/fixtures/production/module-scalar-storage/index.jtml:4:1; state at /Users/joaorocha/.codex/worktrees/module-scalar-storage/jtml-v1/tests/fixtures/production/module-scalar-storage/private.jtml:3:1). Distinct executable modules share the value namespace. Give these declarations distinct names and update their references; module-scoped browser storage is not implemented.\n
++""
+
+
+[  FAILED  ] BrowserScalarStorage.OwnedInitializersReadsWritesAndParameterShadowing (13 ms)
+[----------] 1 test from BrowserScalarStorage (13 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (13 ms total)
+[  PASSED  ] 0 tests.
+[  FAILED  ] 1 test, listed below:
+[  FAILED  ] BrowserScalarStorage.OwnedInitializersReadsWritesAndParameterShadowing
+
+ 1 FAILED TEST

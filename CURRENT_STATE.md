@@ -6,6 +6,15 @@ The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.
 
+## Bounded scalar module isolation
+
+Clean browser builds can isolate colliding mutable scalar module declarations
+through compiler-owned hygienic identifiers, with distinct straight-line root
+actions and static control components. The runtime is unchanged (272,370 bytes).
+Unsupported collision shapes still fail closed; compatibility/debug paths and
+collision-free builds are unchanged. This does not implement component-to-module
+reads or fix OpsPulse Theme. See the [contract and executable evidence](docs/architecture/module-scalar-storage/README.md).
+
 ## Explicit caller-authorized text input
 
 The browser-local compiler supports a bounded opt-in `make Editor bind value` /

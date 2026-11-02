@@ -120,6 +120,10 @@ struct RuntimePlan {
 };
 
 struct RuntimeModulePlan {
+    // Retained defining-module AST for certified production lowering; never serialized.
+    std::shared_ptr<const SemanticModuleAst> ast;
+    std::map<std::string, std::string> scalarStorageKeys;
+    std::vector<SemanticImportedSymbol> importedSymbols;
     SemanticModuleId id = InvalidSemanticModuleId;
     std::string path;
     bool astAvailable = false;
@@ -129,10 +133,14 @@ struct RuntimeModulePlan {
 };
 
 struct RuntimeProjectPlan {
+    std::string scalarStorageIssue; // Internal proof failure; preserves collision rejection.
     SemanticModuleId entry = InvalidSemanticModuleId;
     RuntimePlan linkedPlan;
     std::vector<RuntimeModulePlan> modules;
 };
+
+// Clean-production-only, transactional alpha-lowering of a certified scalar subset.
+void lowerBrowserScalarStorage(RuntimeProjectPlan& project);
 
 RuntimePlan buildRuntimePlan(const std::vector<std::unique_ptr<ASTNode>>& program);
 

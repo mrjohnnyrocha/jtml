@@ -156,14 +156,20 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
         for (const auto& binding : module.plan.state) storageOwners.emplace(binding.name, Resolved{&module, &binding, false});
         for (const auto& binding : module.plan.derived) storageOwners.insert_or_assign(binding.name, Resolved{&module, &binding, true});
     }
-    auto fail = [](const Module& module, const SourceSpan& span, const std::string& reason) {
+    auto location = [](const Module& module, const SourceSpan& span) {
         std::string at = module.path;
         if (span.original) {
             const auto& origin = *span.original;
             const auto pos = origin.source->coordinates(origin.begin);
             at = origin.source->file + ":" + std::to_string(pos.first) + ":" + std::to_string(pos.second);
         }
-        throw std::runtime_error(at + ": browser get is unsupported: " + reason +
+        else if (span.valid()) {
+            at += ":" + std::to_string(span.startLine) + ":" + std::to_string(span.startColumn);
+        }
+        return at;
+    };
+    auto fail = [&](const Module& module, const SourceSpan& span, const std::string& reason) {
+        throw std::runtime_error(location(module, span) + ": browser get is unsupported: " + reason +
             "; use an owned, acyclic structured formula");
     };
     auto local = [](const Module& module, const std::string& name) -> Resolved {
@@ -210,13 +216,13 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
             fail(module, binding.sourceSpan, "ambiguous get `" + binding.name + "`");
         const auto key = std::make_pair(module.id, binding.name);
         if (complete.count(key)) return;
-        if (!active.insert(key).second) fail(module, binding.sourceSpan, "cycle involving `" + binding.name + "`");
+        if (!active.insert(key).second) fail(module, binding.sourceSpan, "E_DERIVED_CYCLE: cycle involving `" + binding.name + "`");
         const auto ir = jtml::parseExpressionIr(binding.expr);
         if (!ir || !ir->supported || !jtml::expressionIrSupportsDirectJs(*ir) ||
             (scalarRead && (ir->valueType == jtml::ExpressionValueType::Array ||
                             ir->valueType == jtml::ExpressionValueType::Object ||
                             ir->valueType == jtml::ExpressionValueType::Null)))
-            fail(module, binding.sourceSpan, "get `" + binding.name + "` requires a supported " + std::string(scalarRead ? "scalar " : "") + "expression plan");
+            fail(module, binding.sourceSpan, "E_UNSUPPORTED_EXPR: get `" + binding.name + "` requires a supported " + std::string(scalarRead ? "scalar " : "") + "expression plan");
         for (const auto& dependency : jtml::expressionIrDependencies(*ir)) {
             const auto root = dependency.substr(0, dependency.find_first_of(".["));
             const auto target = resolve(module, root, !scalarRead);
@@ -228,39 +234,99 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
         complete.insert(key);
         order.push_back(binding.name);
     };
+    auto hasFetch = [](const Module& owner, const std::string& name) {
+        return std::any_of(owner.plan.fetches.begin(), owner.plan.fetches.end(),
+            [&](const auto& fetch) { return fetch.name == name; });
+    };
     for (const auto& entry : modules) {
         const auto& module = *entry.second;
+        std::vector<const Module*> wholeFileScopes;
+        std::set<jtml::SemanticModuleId> seen{module.id};
+        std::function<void(const Module&)> collectWholeFileScopes = [&](const Module& scope) {
+            const auto& imports = scope.syntax == "classic"
+                ? scope.initializationImports : scope.initializationSideEffects;
+            for (const auto id : imports) {
+                const auto owner = modules.find(id);
+                if (owner == modules.end() || !seen.insert(id).second) continue;
+                wholeFileScopes.push_back(owner->second);
+                collectWholeFileScopes(*owner->second);
+            }
+        };
+        collectWholeFileScopes(module);
         for (const auto& action : module.plan.actions) {
             bool consumesGet = false;
-            auto inspect = [&](const std::string& expression) {
+            auto rejectRead = [&](const SourceSpan& span, const std::string& code, const std::string& reason) {
+                throw std::runtime_error(location(module, span.valid() ? span : action.sourceSpan) +
+                    ": " + code + ": root action `" + action.name + "` " + reason);
+            };
+            using Scope = std::set<std::string>;
+            const Scope parameters(action.params.begin(), action.params.end());
+            auto inspect = [&](const std::string& expression, const SourceSpan& span, const Scope& scope) {
+                if (expression.empty()) return;
                 const auto ir = jtml::parseExpressionIr(expression);
-                if (!ir) return;
-                for (const auto& dependency : jtml::expressionIrDependencies(*ir)) {
-                    const auto root = dependency.substr(0, dependency.find_first_of(".["));
-                    if (std::find(action.params.begin(), action.params.end(), root) != action.params.end()) continue;
-                    const auto target = resolve(module, root);
-                    if (!target.binding) {
-                        const auto occupied = storageOwners.find(root);
-                        if (occupied != storageOwners.end() && occupied->second.derived)
-                            fail(module, action.sourceSpan, "unimported get `" + root + "`");
-                        continue;
+                if (!ir || !ir->supported || !jtml::expressionIrSupportsDirectJs(*ir))
+                    rejectRead(span, "E_UNSUPPORTED_EXPR", "requires a supported expression plan for `" + expression + "`");
+                std::function<void(const jtml::ExpressionIr&)> visit = [&](const auto& node) {
+                    if (node.kind == jtml::ExpressionIrKind::Path) {
+                        const auto& name = node.root;
+                        if (name == "__proto__")
+                            rejectRead(span, "E_UNRESOLVED", "reads reserved binding `" + name + "`");
+                        if (scope.count(name)) return;
+                        auto target = resolve(module, name, true);
+                        if (!target.binding) {
+                            if (hasFetch(module, name)) return;
+                            for (const auto& symbol : module.importedSymbols) {
+                                const auto owner = modules.find(symbol.module);
+                                if (symbol.name == name && (symbol.kind == "fetch" || symbol.kind == "let") &&
+                                    owner != modules.end() && hasFetch(*owner->second, name)) return;
+                            }
+                            for (const auto* owner : wholeFileScopes) {
+                                if (hasFetch(*owner, name)) return;
+                                const auto imported = resolve(*owner, name, true);
+                                if (imported.binding && !imported.derived) {
+                                    target = imported;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!target.binding) {
+                            const auto occupied = storageOwners.find(name);
+                            if (occupied != storageOwners.end() && occupied->second.derived)
+                                rejectRead(span, "E_UNRESOLVED", "reads unimported get `" + name + "`");
+                            rejectRead(span, "E_UNRESOLVED", "reads unresolved or unimported binding `" + name + "`");
+                        }
+                        if (ambiguous(target)) fail(module, span, "ambiguous value/get `" + name + "`");
+                        if (target.derived) {
+                            consumesGet = true;
+                            prove(target, true);
+                        }
                     }
-                    if (ambiguous(target)) fail(module, action.sourceSpan, "ambiguous value/get `" + root + "`");
-                    if (!target.derived) continue;
-                    consumesGet = true;
-                    prove(target, true);
-                }
+                    for (const auto& child : node.children) visit(*child);
+                    for (const auto& member : node.entries) visit(*member.value);
+                };
+                visit(*ir);
             };
-            std::function<void(const std::vector<jtml::RuntimePlanStatement>&)> walk = [&](const auto& statements) {
-                for (const auto& statement : statements) {
-                    inspect(statement.expr);
-                    inspect(statement.condition);
-                    if (statement.lhs.find('[') != std::string::npos) inspect(statement.lhs);
-                    walk(statement.thenStatements);
-                    walk(statement.elseStatements);
-                }
-            };
-            walk(action.body);
+            std::function<void(const std::vector<jtml::RuntimePlanStatement>&, Scope)> walk =
+                [&](const auto& statements, Scope scope) {
+                    for (const auto& statement : statements) {
+                        inspect(statement.expr, statement.sourceSpan, scope);
+                        inspect(statement.condition, statement.sourceSpan, scope);
+                        if (statement.lhs.find_first_of(".[") != std::string::npos)
+                            inspect(statement.lhs, statement.sourceSpan, scope);
+                        if (!statement.localBinding.empty()) {
+                            const auto occupied = storageOwners.find(statement.localBinding);
+                            if (occupied != storageOwners.end() && occupied->second.derived &&
+                                !parameters.count(statement.localBinding))
+                                fail(module, statement.sourceSpan, "local declaration shadows root storage `" + statement.localBinding + "`");
+                            scope.insert(statement.localBinding);
+                        }
+                        if (statement.kind == "if") {
+                            walk(statement.thenStatements, scope);
+                            walk(statement.elseStatements, scope);
+                        }
+                    }
+                };
+            walk(action.body, parameters);
             if (!consumesGet) continue;
             if (!module.ast) fail(module, action.sourceSpan, "missing retained action binding provenance");
             std::function<void(const std::vector<std::unique_ptr<ASTNode>>&)> locals = [&](const auto& nodes) {

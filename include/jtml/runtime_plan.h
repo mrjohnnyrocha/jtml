@@ -19,6 +19,9 @@ struct RuntimePlanStatement {
     std::string condition;
     std::vector<RuntimePlanStatement> thenStatements;
     std::vector<RuntimePlanStatement> elseStatements;
+    // Compiler-only lexical provenance for clean root-action admission.
+    std::string localBinding;
+    SourceSpan sourceSpan;
 };
 
 struct RuntimePlanBinding {

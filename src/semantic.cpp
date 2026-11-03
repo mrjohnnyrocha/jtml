@@ -985,7 +985,14 @@ void collectFromNode(const ASTNode& node, SemanticSets& out, const std::string& 
         }
         case ASTNodeType::ImportStatement: {
             const auto& stmt = static_cast<const ImportStatementNode&>(node);
-            addImport(out, stmt.path, "compatibility");
+            const auto& span = stmt.sourceSpan;
+            if (span.original) {
+                const auto& original = *span.original;
+                const auto [line, column] = original.source->coordinates(original.begin);
+                addImport(out, stmt.path, "compatibility", {}, false, line, column);
+            } else {
+                addImport(out, stmt.path, "compatibility", {}, false, span.startLine, span.startColumn);
+            }
             break;
         }
         case ASTNodeType::StoreStatement: {

@@ -125,6 +125,7 @@ struct RuntimeModulePlan {
     std::shared_ptr<const SemanticModuleAst> ast;
     std::map<std::string, std::string> scalarStorageKeys;
     std::vector<SemanticImportedSymbol> importedSymbols;
+    std::vector<SemanticModuleId> initializationImports; // Direct edges in textual import order.
     std::vector<SemanticModuleId> initializationSideEffects; // Retained legacy whole-file import scopes.
     SemanticModuleId id = InvalidSemanticModuleId;
     std::string path;

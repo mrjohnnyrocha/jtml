@@ -664,20 +664,6 @@ const char* browserRuntimePreludeChunk() {
         });
       }
 
-      function pruneDynamicComponentListItem(parentId, nodeIndex, key) {
-        if (!parentId) return 0;
-        const prefix = String(parentId) + '__';
-        const marker = '_for' + String(nodeIndex < 0 ? 'x' : nodeIndex) + '_' + componentPathSegment(key);
-        let removed = 0;
-        Object.keys(dynamicComponentInstances).forEach(function (id) {
-          if (id.indexOf(prefix) !== 0 || id.indexOf(marker) === -1) return;
-          if (destroyRuntimeComponentInstance(id, 'keyed-list-remove')) {
-            removed += 1;
-          }
-        });
-        return removed;
-      }
-
       function componentScopeFor(i,d) {
         if(!i||!i.id)return {};
         if(i.argumentPlans)i.params=Object.fromEntries(Object.entries(i.argumentPlans).map(([k,p])=>[k,evaluateCompiledComponentExpression(p,'',clientState)]));
@@ -761,15 +747,6 @@ const char* browserRuntimePreludeChunk() {
           });
         }
         return reads;
-      }
-
-      function componentChangeAffectsNode(definition, node, writes) {
-        const changed = {};
-        addComponentNameSet(changed, writes || []);
-        const names = Object.keys(changed);
-        if (!names.length) return true;
-        const reads = componentNodeReadSet(definition, node);
-        return names.some(function (name) { return !!reads[name]; });
       }
 
       function noteComponentActionResult(instance, definition, actionName, writes, renderSkipped) {
@@ -878,13 +855,6 @@ const char* browserRuntimePreludeChunk() {
           cloneSubtree(plan[childIndex], -1);
         });
         return output;
-      }
-
-      function renderComponentExpression(expr, scope) {
-        const literal = unquoteComponentText(expr);
-        if (literal !== String(expr || '').trim()) return literal;
-        const result = evaluateClientExpression(expr, scope);
-        return result.found ? renderTemplateValue(result.value) : literal;
       }
 
       function evaluateComponentValue(expr, scope) {
@@ -1769,12 +1739,6 @@ const char* browserRuntimeComponentChunk() {
           seen[key] = true;
         }
         return false;
-      }
-
-      function keyedListTemplateChildren(html) {
-        const template = document.createElement('template');
-        template.innerHTML = String(html || '');
-        return Array.prototype.slice.call(template.content.childNodes || []);
       }
 
       function elementBodyNodeMarker(el) {

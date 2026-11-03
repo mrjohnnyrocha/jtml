@@ -27,22 +27,40 @@ bool isHiddenOrNonPublicSegment(const std::filesystem::path& segment) {
     return false;
 }
 
-// Local source order is certified from retained owner vectors, never linked JSON.
-// Imported initializer sequencing (V21) and repeated lowered slots retain the
-// pre-existing bootstrap contract rather than acquiring a new module scheduler.
+// Traverse retained import edges, then preserve each owner's declaration vector.
 std::vector<std::string> planBrowserStateOrder(const jtml::RuntimeProjectPlan& project) {
     using Module = jtml::RuntimeModulePlan;
     std::map<jtml::SemanticModuleId, const Module*> modules;
     std::map<jtml::SemanticModuleId, std::map<std::string, std::vector<size_t>>> positions;
     std::set<std::string> owned;
-    for (const auto& module : project.modules) if (module.clientExecutable) {
+    for (const auto& module : project.modules) {
         modules[module.id] = &module;
+        if (!module.clientExecutable) continue;
         auto& local = positions[module.id];
         for (size_t i = 0; i < module.plan.state.size(); ++i) {
             local[module.plan.state[i].name].push_back(i);
             owned.insert(module.plan.state[i].name);
         }
     }
+    std::map<jtml::SemanticModuleId, size_t> ranks;
+    std::set<jtml::SemanticModuleId> visiting;
+    std::vector<const Module*> orderedModules;
+    std::function<void(const Module&)> visit = [&](const Module& module) {
+        if (ranks.count(module.id)) return;
+        if (!visiting.insert(module.id).second)
+            throw std::runtime_error(module.path + ": E_MODULE_CYCLE: cyclic browser initialization import");
+        for (const auto id : module.initializationImports) {
+            const auto dependency = modules.find(id);
+            if (dependency == modules.end())
+                throw std::runtime_error(module.path + ": E_INIT_UNRESOLVED: missing browser initialization import");
+            visit(*dependency->second);
+        }
+        visiting.erase(module.id);
+        ranks.emplace(module.id, orderedModules.size());
+        orderedModules.push_back(&module);
+    };
+    if (const auto entry = modules.find(project.entry); entry != modules.end()) visit(*entry->second);
+    for (const auto& module : project.modules) visit(module);
     auto fail = [](const Module& module, const jtml::RuntimePlanBinding& binding,
                    const std::string& code, const std::string& reason) {
         std::string at = module.path;
@@ -56,8 +74,9 @@ std::vector<std::string> planBrowserStateOrder(const jtml::RuntimeProjectPlan& p
     };
     bool legacy = false;
     std::vector<std::string> order;
-    for (const auto& entry : modules) {
-        const auto& module = *entry.second;
+    for (const auto* entry : orderedModules) {
+        const auto& module = *entry;
+        if (!module.clientExecutable) continue;
         const auto& local = positions.at(module.id);
         for (size_t i = 0; i < module.plan.state.size(); ++i) {
             const auto& binding = module.plan.state[i];
@@ -81,35 +100,39 @@ std::vector<std::string> planBrowserStateOrder(const jtml::RuntimeProjectPlan& p
                     fail(module, binding, "E_INIT_DERIVED", "initializer reads get `" + root + "` before derived initialization");
                 // Named import authority and legacy whole-file scopes are both
                 // retained identities. Never search unrelated project globals.
-                auto named = [&](const Module& scope) {
+                struct ImportRead { const Module* owner = nullptr; bool derived = false; };
+                auto named = [&](const Module& scope) -> ImportRead {
                     for (const auto& symbol : scope.importedSymbols) if (symbol.name == root) {
                         const auto owner = modules.find(symbol.module);
-                        if (owner == modules.end()) continue;
-                        if (symbol.kind == "get") return 2;
+                        if (owner == modules.end() || !owner->second->clientExecutable) continue;
+                        if (symbol.kind == "get") return {owner->second, true};
                         if ((symbol.kind == "let" || symbol.kind == "const" || symbol.kind == "store") &&
-                            positions.at(symbol.module).count(root)) return 1;
+                            positions.at(symbol.module).count(root)) return {owner->second};
                     }
-                    return 0;
+                    return {};
                 };
                 std::set<jtml::SemanticModuleId> seen;
-                std::function<int(const Module&)> sideEffects = [&](const Module& scope) {
+                std::function<ImportRead(const Module&)> sideEffects = [&](const Module& scope) -> ImportRead {
                     for (const auto id : scope.initializationSideEffects) {
                         const auto owner = modules.find(id);
                         if (owner == modules.end() || !seen.insert(id).second) continue;
                         const auto& imported = *owner->second;
-                        if (positions.at(id).count(root)) return 1;
-                        if (std::any_of(imported.plan.derived.begin(), imported.plan.derived.end(), [&](const auto& b) { return b.name == root; })) return 2;
-                        if (const auto value = named(imported)) return value;
-                        if (const auto value = sideEffects(imported)) return value;
+                        if (!imported.clientExecutable) continue;
+                        if (positions.at(id).count(root)) return {&imported};
+                        if (std::any_of(imported.plan.derived.begin(), imported.plan.derived.end(), [&](const auto& b) { return b.name == root; })) return {&imported, true};
+                        if (const auto value = named(imported); value.owner) return value;
+                        if (const auto value = sideEffects(imported); value.owner) return value;
                     }
-                    return 0;
+                    return {};
                 };
                 const auto direct = named(module);
-                const auto imported = direct ? direct : sideEffects(module);
-                if (imported == 2) fail(module, binding, "E_INIT_DERIVED", "initializer reads imported get `" + root + "`");
-                if (!imported || root == "__proto__")
+                const auto imported = direct.owner ? direct : sideEffects(module);
+                if (imported.derived) fail(module, binding, "E_INIT_DERIVED", "initializer reads imported get `" + root + "`");
+                if (!imported.owner || root == "__proto__")
                     fail(module, binding, "E_INIT_UNRESOLVED", "unresolved or unimported initializer binding `" + root + "`");
-                legacy = true; // Do not compare declaration indices across owners.
+                if (ranks.at(imported.owner->id) >= ranks.at(module.id))
+                    fail(module, binding, "E_INIT_FORWARD", "imported initializer owner does not precede `" + root + "`");
+                if (positions.at(imported.owner->id).at(root).size() != 1) legacy = true;
             }
             order.push_back(binding.name);
         }

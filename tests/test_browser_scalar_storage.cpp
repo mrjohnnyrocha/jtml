@@ -295,6 +295,43 @@ TEST(BrowserMutableInitialization, SourceOrderIsExplicitAndIndependentOfJsonKeys
     EXPECT_FALSE(manifest(root / "compat").contains("stateOrder"));
 }
 
+TEST(BrowserMutableInitialization, ClassicImportsUseFirstAuthoredOccurrence) {
+    const auto root = temporary();
+    write(root / "z.jtml", R"(define z = 1\\
+)");
+    write(root / "a.jtml", R"(define a = 2\\
+)");
+    write(root / "index.jtml", R"(import "./z.jtml"\\
+import "./a.jtml"\\
+import "./z.jtml"\\
+define entry = 0\\
+)");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    EXPECT_EQ(manifest(root / "out")["stateOrder"], nlohmann::json({"z", "a", "entry"}));
+}
+
+TEST(BrowserMutableInitialization, CertifiedPathsRequireStringOrNumericPropertyKeys) {
+    const auto root = temporary();
+    write(root / "index.jtml", "jtml 2\nlet z = {a: 7}\nlet copy = z.a\npage\n  text copy\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    const auto html = read(root / "out/index.html");
+    const std::string marker = "id=\"__jtml_client_manifest\">";
+    const auto begin = html.find(marker) + marker.size(), end = html.find("</script>", begin);
+    auto client = nlohmann::json::parse(html.substr(begin, end - begin));
+    auto check = [&](const nlohmann::json& segment) {
+        client["statePlans"]["copy"] = {{"kind", "path"}, {"segments", {"z", segment}}};
+        write(root / "out/index.html", html.substr(0, begin) + client.dump() + html.substr(end));
+        jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production);
+    };
+    EXPECT_NO_THROW(check("a"));
+    EXPECT_NO_THROW(check(0));
+    EXPECT_NO_THROW(check(-1.5));
+    EXPECT_THROW(check(nlohmann::json({{"toString", nullptr}, {"valueOf", nullptr}})), std::runtime_error);
+    EXPECT_THROW(check(nlohmann::json::array({"a"})), std::runtime_error);
+    EXPECT_THROW(check(nullptr), std::runtime_error);
+    EXPECT_THROW(check(true), std::runtime_error);
+}
+
 TEST(BrowserMutableInitialization, RejectionIsSourceLocatedAndPreservesEveryAsset) {
     const auto root = temporary();
     write(root / "index.jtml", "jtml 2\nlet z = 2\nlet a = z + 1\npage\n  text a\n");
@@ -315,16 +352,16 @@ TEST(BrowserMutableInitialization, RejectionIsSourceLocatedAndPreservesEveryAsse
     }
 }
 
-TEST(BrowserMutableInitialization, ForeignOwnersAndRepeatedLoweredSlotsKeepTheirExistingBoundary) {
+TEST(BrowserMutableInitialization, ForeignOwnersAreOrderedAndRepeatedSlotsKeepTheirBoundary) {
     const auto root = temporary();
     write(root / "private.jtml", "jtml 2\nlet dummy = 1\nexport let aaSeed = 7\n");
     write(root / "index.jtml", "jtml 2\nuse aaSeed from \"./private.jtml\"\nlet zzCopy = aaSeed + 1\npage\n  text zzCopy\n");
     ASSERT_EQ(compile(root / "index.jtml", root / "foreign"), "");
-    EXPECT_TRUE(manifest(root / "foreign")["stateOrder"].is_null());
+    EXPECT_EQ(manifest(root / "foreign")["stateOrder"], nlohmann::json({"dummy", "aaSeed", "zzCopy"}));
     write(root / "private.jtml", "jtml 2\nlet aaSeed = 7\nexport make Card\n  text \"Card\"\n");
     write(root / "index.jtml", "jtml 2\nuse \"./private.jtml\"\nlet zzCopy = aaSeed + 1\npage\n  text zzCopy\n");
     ASSERT_EQ(compile(root / "index.jtml", root / "side-effect"), "");
-    EXPECT_TRUE(manifest(root / "side-effect")["stateOrder"].is_null());
+    EXPECT_EQ(manifest(root / "side-effect")["stateOrder"], nlohmann::json({"aaSeed", "zzCopy"}));
     write(root / "index.jtml", "jtml 2\nuse Card from \"./private.jtml\"\nlet zzCopy = aaSeed + 1\npage\n  Card\n");
     EXPECT_NE(compile(root / "index.jtml", root / "unimported").find("E_INIT_UNRESOLVED"), std::string::npos);
     write(root / "index.jtml", "jtml 2\nlet slot = {}\nlet slot = {ready: true}\npage\n  text \"Ready\"\n");
@@ -385,6 +422,11 @@ TEST(BrowserMutableInitialization, EffectiveAndProjectedInitializerPlansCannotHi
     client = original;
     client["project"]["linkedPlan"]["statePlans"]["orphan"] = {{"kind", "literal"}, {"value", 3}};
     reject(client);
+    client = original;
+    auto duplicate = client["project"]["modules"][0];
+    duplicate["id"] = 999;
+    client["project"]["modules"].push_back(duplicate);
+    reject(client);
 }
 
 TEST(BrowserMutableInitialization, LegitimateDuplicateAndInactiveProjectionsRemainValid) {
@@ -409,12 +451,40 @@ TEST(BrowserMutableInitialization, LegitimateDuplicateAndInactiveProjectionsRema
     EXPECT_NO_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production));
 }
 
-TEST(BrowserMutableInitialization, BarrelStoreInitializersRetainNullCompatibilityBoundary) {
+TEST(BrowserMutableInitialization, BarrelStoreInitializersUseDefiningOwner) {
     const auto root = temporary();
     write(root / "private.jtml", "jtml 2\nexport store shop\n  let items = [{x: 7}]\n");
     write(root / "barrel.jtml", "jtml 2\nexport use shop from \"./private.jtml\"\n");
     write(root / "index.jtml", "jtml 2\nuse shop from \"./barrel.jtml\"\nlet zzCopy = shop.items[0].x + 1\npage\n  text zzCopy\n");
     ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
-    EXPECT_TRUE(manifest(root / "out")["stateOrder"].is_null());
+    EXPECT_EQ(manifest(root / "out")["stateOrder"], nlohmann::json({"shop", "zzCopy"}));
     EXPECT_NO_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production));
+}
+
+TEST(BrowserMutableInitialization, ImportGraphRejectsCyclesAndMissingEdges) {
+    jtml::RuntimeProjectPlan project;
+    project.entry = 0;
+    project.modules.resize(3);
+    for (size_t i = 0; i < project.modules.size(); ++i) {
+        auto& module = project.modules[i];
+        module.id = i;
+        module.path = "module-" + std::to_string(i);
+        module.clientExecutable = true;
+        module.plan.state.push_back({"slot" + std::to_string(i), "1", {}});
+    }
+    project.modules[0].initializationImports = {1};
+    // The disconnected module is still executable, so it must be initialized.
+    ASSERT_NO_THROW(jtml::cli::validateBrowserRuntimeBindingOwnership(project));
+    ASSERT_TRUE(project.stateOrder);
+    EXPECT_EQ(*project.stateOrder, (std::vector<std::string>{"slot1", "slot0", "slot2"}));
+
+    auto diagnostic = [](jtml::RuntimeProjectPlan& plan) {
+        try { jtml::cli::validateBrowserRuntimeBindingOwnership(plan); }
+        catch (const std::runtime_error& error) { return std::string(error.what()); }
+        return std::string{};
+    };
+    project.modules[1].initializationImports = {0};
+    EXPECT_NE(diagnostic(project).find("E_MODULE_CYCLE"), std::string::npos);
+    project.modules[1].initializationImports = {42};
+    EXPECT_NE(diagnostic(project).find("E_INIT_UNRESOLVED"), std::string::npos);
 }

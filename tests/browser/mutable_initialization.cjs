@@ -27,7 +27,7 @@ async function check(p,dom,values) {
   r.setHeader('Content-Security-Policy',"script-src 'self'");r.setHeader('Content-Type',f.endsWith('.js')?'text/javascript':'text/html');r.end(fs.readFileSync(f));
  });await new Promise(r=>server.listen(0,'127.0.0.1',r));
  browser=await chromium.launch({executablePath:process.env.JTML_BENCH_BROWSER,headless:true});report.browser=browser.version();
- for(const id of ['V11','V01','V03','V04','V05']) {
+ for(const id of ['V11','V21','V01','V03','V04','V05']) {
   const v=vectors.find(v=>v.id===id);compile(v.files,id);const p=await open();
   await check(p,v.expected_initial.dom['.out'],{...v.expected_initial.state,...v.expected_initial.derived});
   for(const step of v.steps){await p.getByRole('button',{name:'Step',exact:true}).click();await check(p,step.expected.dom['.out'],{...step.expected.state,...step.expected.derived});}
@@ -64,7 +64,7 @@ async function check(p,dom,values) {
   await check(p,['25|27'],{...values,total:27});await p.getByRole('button',{name:'Step',exact:true}).click();await check(p,['25|28'],{...values,[names[0]]:3,total:28});await p.close();
  }
  report.cases.push('permutations/long chains/one-time mutable initialization PASS');
- // Foreign initializer dependencies retain the existing contract, not V21 scheduling.
+ // Previously working imported initializers remain valid.
  for(const [id,initial,decl,dom]of [
   ['import-let','export let aaSeed = 7','let zzCopy = aaSeed + 1','8'],
   ['import-store','export store shop\n  let x = 7','let zzCopy = shop.x + 1','8']]) {
@@ -75,7 +75,46 @@ async function check(p,dom,values) {
  compile({'index.jtml':'jtml 2\nuse "./private.jtml"\nlet zzCopy = aaSeed + 1\npage\n  box class "out"\n    text zzCopy\n','private.jtml':'jtml 2\nlet aaSeed = 7\n'},'side-effect-import');
  const sideEffect=await open();await check(sideEffect,['8'],{zzCopy:8});await sideEffect.close();report.cases.push('legacy whole-file import initializer preserved PASS');
  compile({'index.jtml':'jtml 2\nuse shop from "./barrel.jtml"\nlet zzCopy = shop.items[0].x + 1\npage\n  box class "out"\n    text zzCopy\n','barrel.jtml':'jtml 2\nexport use shop from "./private.jtml"\n','private.jtml':'jtml 2\nexport store shop\n  let items = [{x: 7}]\n'},'barrel-store');
- const barrel=await open();await check(barrel,['8'],{zzCopy:8});assert.equal(await barrel.evaluate(()=>JSON.parse(document.getElementById('__jtml_client_manifest').textContent).stateOrder),null);await barrel.close();report.cases.push('barrel store structured initializer/null boundary preserved PASS');
+ const barrel=await open();await check(barrel,['8'],{zzCopy:8});assert.deepEqual(await barrel.evaluate(()=>JSON.parse(document.getElementById('__jtml_client_manifest').textContent).stateOrder),['shop','zzCopy']);await barrel.close();report.cases.push('barrel store structured initializer PASS');
+
+ compile({
+  'index.jtml': 'jtml 2\nuse west from "./west.jtml"\nuse east from "./east.jtml"\nlet z = west + east\nlet a = z + 1\nget result = a + z\npage\n  box class "out"\n    text "{a}|{result}"\n',
+  'west.jtml': 'jtml 2\nuse seed from "./seed.jtml"\nexport let west = seed + 1\n',
+  'east.jtml': 'jtml 2\nuse seed from "./seed.jtml"\nexport let east = seed + 2\n',
+  'seed.jtml': 'jtml 2\nexport let seed = 7\n'
+ },'import-diamond');
+ const diamond=await open();
+ await check(diamond,['18|35'],{seed:7,west:8,east:9,z:17,a:18,result:35});
+ assert.deepEqual(await diamond.evaluate(()=>JSON.parse(document.getElementById('__jtml_client_manifest').textContent).stateOrder),
+  ['seed','west','east','z','a']);
+ await diamond.close();
+ report.cases.push('shared transitive dependency, textual imports and local chain PASS');
+
+ // Repeated imports use the first authored edge and initialize each owner once.
+ compile({
+  'index.jtml': String.raw`import "./z.jtml"\\
+import "./a.jtml"\\
+import "./z.jtml"\\
+define entry = 0\\
+`,
+  'z.jtml': String.raw`define z = 1\\`+'\n',
+  'a.jtml': String.raw`define a = 2\\`+'\n'
+ },'classic-repeated-import');
+ const classic=await open();
+ assert.deepEqual(await classic.evaluate(()=>Object.keys(jtml.state)),['z','a','entry']);
+ assert.deepEqual(await classic.evaluate(()=>jtml.state),{z:1,a:2,entry:0});
+ await classic.close();
+ compile({
+  'index.jtml': 'jtml 2\nuse x from "./z.jtml"\nuse "./a.jtml"\nuse y from "./z.jtml"\nlet total = x + y + a\npage\n  box class "out"\n    text total\n',
+  'z.jtml': 'jtml 2\nexport use x from "./x.jtml"\nexport let y = 2\n',
+  'x.jtml': 'jtml 2\nexport let x = 1\n',
+  'a.jtml': 'jtml 2\nlet a = 3\n'
+ },'friendly-repeated-import');
+ const friendly=await open();
+ await check(friendly,['6'],{x:1,y:2,a:3,total:6});
+ assert.deepEqual(await friendly.evaluate(()=>Object.keys(jtml.state)),['x','y','a','total']);
+ await friendly.close();
+ report.cases.push('Classic and Friendly repeated imports under strict CSP PASS');
 
  for(const flag of ['--compat','--debug']) {
   const source={'index.jtml':'jtml 2\nlet z = 2\nlet a = z + 1\nget result = a + z\npage\n  box class "out"\n    text "{a}|{result}"\n'};

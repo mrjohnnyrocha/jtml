@@ -157,6 +157,9 @@ jobs:
           node tests/browser/module_binding_collisions.cjs
           node tests/browser/module_scalar_storage.cjs
 
+      - name: Action-local scalar get reads (browser required)
+        run: node tests/browser/action_get_reads.cjs
+
       - name: Route layout slot composition (browser required)
         run: node tests/browser/route_layout.cjs
 

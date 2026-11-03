@@ -1,5 +1,9 @@
 #include "browser_build_policy.h"
 #include "jtml/browser_runtime_emitter.h"
+#include "jtml/expression_ir.h"
+
+#include <algorithm>
+#include <functional>
 
 #include <filesystem>
 #include <iterator>
@@ -21,6 +25,130 @@ bool isHiddenOrNonPublicSegment(const std::filesystem::path& segment) {
         return true;
     }
     return false;
+}
+
+// Certify only getters actually consumed by root action expressions. Ownership
+// comes from retained module plans/import identities, never the linked name map.
+void validateActionGetReads(const jtml::RuntimeProjectPlan& project) {
+    using Module = jtml::RuntimeModulePlan;
+    using Binding = jtml::RuntimePlanBinding;
+    struct Resolved { const Module* owner; const Binding* binding; bool derived; };
+    std::map<jtml::SemanticModuleId, const Module*> modules;
+    std::set<std::string> derivedNames, valueNames;
+    for (const auto& module : project.modules) if (module.clientExecutable) {
+        modules[module.id] = &module;
+        for (const auto& binding : module.plan.state) valueNames.insert(binding.name);
+        for (const auto& binding : module.plan.derived) { derivedNames.insert(binding.name); valueNames.insert(binding.name); }
+    }
+    auto fail = [](const Module& module, const SourceSpan& span, const std::string& reason) {
+        std::string at = module.path;
+        if (span.original) {
+            const auto& origin = *span.original;
+            const auto pos = origin.source->coordinates(origin.begin);
+            at = origin.source->file + ":" + std::to_string(pos.first) + ":" + std::to_string(pos.second);
+        }
+        throw std::runtime_error(at + ": action-local get read is unsupported: " + reason +
+            "; use an owned, acyclic structured scalar formula");
+    };
+    auto local = [](const Module& module, const std::string& name) -> Resolved {
+        for (const auto& binding : module.plan.state)
+            if (binding.name == name) return {&module, &binding, false};
+        for (const auto& binding : module.plan.derived)
+            if (binding.name == name) return {&module, &binding, true};
+        return {nullptr, nullptr, false};
+    };
+    auto resolve = [&](const Module& module, const std::string& name) -> Resolved {
+        const auto own = local(module, name);
+        if (own.binding) return own;
+        for (const auto& symbol : module.importedSymbols) if (symbol.name == name &&
+            (symbol.kind == "let" || symbol.kind == "const" || symbol.kind == "get")) {
+            const auto found = modules.find(symbol.module);
+            if (found != modules.end()) {
+                const auto target = local(*found->second, name);
+                if (target.binding && target.derived == (symbol.kind == "get")) return target;
+            }
+        }
+        return {nullptr, nullptr, false};
+    };
+    std::set<std::pair<jtml::SemanticModuleId, std::string>> active, complete;
+    std::function<void(Resolved)> prove = [&](Resolved resolved) {
+        const auto& module = *resolved.owner;
+        const auto& binding = *resolved.binding;
+        if (binding.name == "__proto__") fail(module, binding.sourceSpan, "reserved storage binding `__proto__`");
+        if (std::count_if(module.plan.derived.begin(), module.plan.derived.end(), [&](const auto& b) { return b.name == binding.name; }) != 1)
+            fail(module, binding.sourceSpan, "ambiguous get `" + binding.name + "`");
+        const auto key = std::make_pair(module.id, binding.name);
+        if (complete.count(key)) return;
+        if (!active.insert(key).second) fail(module, binding.sourceSpan, "cycle involving `" + binding.name + "`");
+        const auto ir = jtml::parseExpressionIr(binding.expr);
+        if (!ir || !ir->supported || !jtml::expressionIrSupportsDirectJs(*ir) ||
+            ir->valueType == jtml::ExpressionValueType::Array ||
+            ir->valueType == jtml::ExpressionValueType::Object ||
+            ir->valueType == jtml::ExpressionValueType::Null)
+            fail(module, binding.sourceSpan, "get `" + binding.name + "` requires a supported scalar expression plan");
+        for (const auto& dependency : jtml::expressionIrDependencies(*ir)) {
+            const auto root = dependency.substr(0, dependency.find_first_of(".["));
+            const auto target = resolve(module, root);
+            if (!target.binding || root == "__proto__") fail(module, binding.sourceSpan, "unresolved, reserved or unimported binding `" + root + "`");
+            if (!target.derived && derivedNames.count(root)) fail(module, binding.sourceSpan, "ambiguous value/get `" + root + "`");
+            if (target.derived) prove(target);
+        }
+        active.erase(key);
+        complete.insert(key);
+    };
+    for (const auto& entry : modules) {
+        const auto& module = *entry.second;
+        for (const auto& action : module.plan.actions) {
+            bool consumesGet = false;
+            auto inspect = [&](const std::string& expression) {
+                const auto ir = jtml::parseExpressionIr(expression);
+                if (!ir) return;
+                for (const auto& dependency : jtml::expressionIrDependencies(*ir)) {
+                    const auto root = dependency.substr(0, dependency.find_first_of(".["));
+                    if (std::find(action.params.begin(), action.params.end(), root) != action.params.end() ||
+                        !derivedNames.count(root)) continue;
+                    const auto target = resolve(module, root);
+                    if (!target.binding) fail(module, action.sourceSpan, "unimported get `" + root + "`");
+                    if (!target.derived) fail(module, action.sourceSpan, "ambiguous value/get `" + root + "`");
+                    consumesGet = true;
+                    prove(target);
+                }
+            };
+            std::function<void(const std::vector<jtml::RuntimePlanStatement>&)> walk = [&](const auto& statements) {
+                for (const auto& statement : statements) {
+                    inspect(statement.expr);
+                    inspect(statement.condition);
+                    if (statement.lhs.find('[') != std::string::npos) inspect(statement.lhs);
+                    walk(statement.thenStatements);
+                    walk(statement.elseStatements);
+                }
+            };
+            walk(action.body);
+            if (!consumesGet) continue;
+            if (!module.ast) fail(module, action.sourceSpan, "missing retained action binding provenance");
+            std::function<void(const std::vector<std::unique_ptr<ASTNode>>&)> locals = [&](const auto& nodes) {
+                for (const auto& node : nodes) {
+                    std::string name;
+                    if (node->getType() == ASTNodeType::DefineStatement)
+                        name = static_cast<const DefineStatementNode&>(*node).identifier;
+                    if (node->getType() == ASTNodeType::AssignmentStatement) {
+                        const auto& write = static_cast<const AssignmentStatementNode&>(*node);
+                        if (write.localDeclaration && write.lhs->getExprType() == ExpressionStatementNodeType::Variable)
+                            name = static_cast<const VariableExpressionStatementNode&>(*write.lhs).name;
+                    }
+                    if (valueNames.count(name)) fail(module, node->sourceSpan, "local declaration shadows root storage `" + name + "`");
+                    if (node->getType() == ASTNodeType::IfStatement) {
+                        const auto& branch = static_cast<const IfStatementNode&>(*node);
+                        locals(branch.thenStatements); locals(branch.elseStatements);
+                    }
+                }
+            };
+            for (const auto& node : module.ast->nodes)
+                if (node->getType() == ASTNodeType::FunctionDeclaration &&
+                    static_cast<const FunctionDeclarationNode&>(*node).name == action.name)
+                    locals(static_cast<const FunctionDeclarationNode&>(*node).body);
+        }
+    }
 }
 
 } // namespace
@@ -140,6 +268,7 @@ void validateBrowserRuntimeBindingOwnership(const jtml::RuntimeProjectPlan& proj
         if (!project.scalarStorageIssue.empty()) message << "Scalar isolation was not proved: " << project.scalarStorageIssue << "\n";
         throw std::runtime_error(message.str());
     }
+    validateActionGetReads(project);
 }
 
 bool shouldCopyBrowserBuildAsset(const std::filesystem::path& rel) {

@@ -4859,9 +4859,9 @@ TEST(FriendlySyntax, BrowserLocalRuntimeEmitsStateDerivedAndActionManifest) {
     EXPECT_NE(html.find("\"producer\":\"typed-ir\""), std::string::npos) << html;
     EXPECT_NE(html.find("const browserLocalRuntime = true;"), std::string::npos) << html;
     EXPECT_NE(html.find("executeClientAction(fnName"), std::string::npos) << html;
-    EXPECT_NE(html.find("stmt.exprPlan || compileComponentExpressionPlan(stmt.expr || '')"),
+    EXPECT_NE(html.find("evaluateClientPlan(stmt.exprPlan, stmt.expr || '', scope)"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("clientDerivedPlans[name] || compileComponentExpressionPlan(clientDerived[name])"),
+    EXPECT_NE(html.find("evaluateClientPlan(clientDerivedPlans[name], clientDerived[name], clientState)"),
               std::string::npos) << html;
     EXPECT_NE(html.find("data-jtml-expr=\"&quot;Add&quot;\""), std::string::npos) << html;
 }

@@ -3860,15 +3860,34 @@ const char* browserRuntimeComponentChunk() {
         return evaluateClientExpression(expr, scope);
       }
 
+      function evaluateClientPlan(plan, expr, scope, fallback = evaluateClientBodyExpression) {
+        const result = evaluateCompiledComponentExpressionResult(plan || compileComponentExpressionPlan(expr), expr, scope);
+        return result && result.found ? result : fallback(expr, scope);
+      }
+
+      function actionReadScope(params, saved) {
+        const root = new Proxy(clientState, {
+          get(s, k) {
+            if (!ownProperty(clientDerivedPlans, k)) return ownProperty(saved, k) ? saved[k] : s[k];
+            const r = evaluateClientPlan(clientDerivedPlans[k], '', root);
+            if (!r.found || !['number','string','boolean'].includes(typeof r.value)) throw Error('Unsupported action get: ' + k);
+            return r.value;
+          },
+          getOwnPropertyDescriptor(s, k) {
+            const d = Object.getOwnPropertyDescriptor((params || []).includes(k) ? saved : s, k) || Object.getOwnPropertyDescriptor(clientDerivedPlans, k);
+            if (!d) throw Error('Unresolved action get: ' + String(k));
+            return d;
+          }
+        });
+        return new Proxy(clientState, {
+          get: (s,k) => (params || []).includes(k) ? s[k] : root[k],
+          getOwnPropertyDescriptor: (s,k) => Object.getOwnPropertyDescriptor(s,k) || Object.getOwnPropertyDescriptor(clientDerivedPlans,k)
+        });
+      }
+
       function applyClientDerived() {
         for (const name in clientDerived) {
-          const compiled = evaluateCompiledComponentExpressionResult(
-            clientDerivedPlans[name] || compileComponentExpressionPlan(clientDerived[name]),
-            clientDerived[name],
-            clientState);
-          const result = compiled && compiled.found
-            ? compiled
-            : evaluateClientBodyExpression(clientDerived[name]);
+          const result = evaluateClientPlan(clientDerivedPlans[name], clientDerived[name], clientState);
           if (result.found) clientState[name] = result.value;
         }
       }
@@ -3959,8 +3978,8 @@ const char* browserRuntimeComponentChunk() {
         });
       }
 
-      function assignClientPath(path, value, locals) {
-        const parts = parseClientPathSegments(path, clientState);
+      function assignClientPath(path, value, locals, scope) {
+        const parts = parseClientPathSegments(path, scope || clientState);
         if (!parts.length) return;
         if (parts.length === 1) {
           clientState[parts[0]] = value;
@@ -3973,32 +3992,21 @@ const char* browserRuntimeComponentChunk() {
         assignObjectPath(clientState[parts[0]], parts.slice(1), value);
       }
 
-      function runClientStatements(statements, locals) {
+      function runClientStatements(statements, locals, scope) {
+        scope = scope || clientState;
         statements = statements || [];
         for (let i = 0; i < statements.length; i += 1) {
           const stmt = statements[i];
           if (!stmt || !stmt.kind) continue;
           if (stmt.kind === 'assign' || stmt.kind === 'show') {
-            const compiled = evaluateCompiledComponentExpressionResult(
-              stmt.exprPlan || compileComponentExpressionPlan(stmt.expr || ''),
-              stmt.expr || '',
-              clientState);
-            const result = compiled && compiled.found
-              ? compiled
-              : evaluateClientBodyExpression(stmt.expr || '');
+            const result = evaluateClientPlan(stmt.exprPlan, stmt.expr || '', scope);
             if (result.found) {
               if (stmt.kind === 'show') console.log('[SHOW] ' + renderTemplateValue(result.value));
-              else assignClientPath(stmt.lhs || '', result.value, locals);
+              else assignClientPath(stmt.lhs || '', result.value, locals, scope);
             }
           } else if (stmt.kind === 'if') {
-            const compiledCondition = evaluateCompiledComponentExpressionResult(
-              stmt.conditionPlan || compileComponentExpressionPlan(stmt.condition || ''),
-              stmt.condition || '',
-              clientState);
-            const condition = compiledCondition && compiledCondition.found
-              ? compiledCondition
-              : evaluateClientExpression(stmt.condition || '');
-            runClientStatements(condition.found && condition.value ? stmt.then : stmt.else, locals);
+            const condition = evaluateClientPlan(stmt.conditionPlan, stmt.condition || '', scope, evaluateClientExpression);
+            runClientStatements(condition.found && condition.value ? stmt.then : stmt.else, locals, scope);
           }
         }
       }
@@ -4015,7 +4023,8 @@ const char* browserRuntimeComponentChunk() {
           clientState[param] = args[index];
         });
         try {
-          runClientStatements(action.body || [], action.params);
+          runClientStatements(action.body || [], action.params,
+            window.jtml.browserBuild && window.jtml.browserBuild.cleanProduction ? actionReadScope(action.params, restore) : clientState);
         } finally {
           (action.params || []).forEach(function (param) {
             if (Object.prototype.hasOwnProperty.call(restore, param)) clientState[param] = restore[param];
@@ -4162,13 +4171,7 @@ const char* browserRuntimeComponentChunk() {
         const state = manifest.state || {};
         const statePlans = manifest.statePlans || {};
         for (const name in state) {
-          const compiled = evaluateCompiledComponentExpressionResult(
-            statePlans[name] || compileComponentExpressionPlan(state[name]),
-            state[name],
-            clientState);
-          const result = compiled && compiled.found
-            ? compiled
-            : evaluateClientBodyExpression(state[name]);
+          const result = evaluateClientPlan(statePlans[name], state[name], clientState);
           if (result.found) clientState[name] = result.value;
         }
         const routeManifest = Array.isArray(manifest.routes) ? manifest.routes : [];

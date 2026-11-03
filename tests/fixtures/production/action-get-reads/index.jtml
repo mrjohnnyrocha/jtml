@@ -1,0 +1,31 @@
+jtml 2
+let count = 0
+let first = 0
+let second = 0
+let selected = false
+get twice = count * 2
+get aChain = twice + 3
+get label = count > 0 ? "active" : "idle"
+when batch
+  count = count + 1
+  first = twice
+  show aChain
+  count = count + 1
+  second = twice
+  if twice == count * 2
+    selected = true
+  show label
+when shadow count
+  count = count + 1
+  first = twice
+  show count
+  show aChain
+when shadowGet twice
+  second = twice
+  first = aChain
+page
+  box class "out"
+    text "{count}|{first}|{second}|{twice}|{selected}"
+  button "Batch" click batch
+  button "Shadow" click shadow(100)
+  button "Shadow get" click shadowGet(300)

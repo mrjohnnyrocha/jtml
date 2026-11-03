@@ -1,4 +1,6 @@
 #include "cli/commands.h"
+#include "cli/browser_build_schema.h"
+#include "cli/browser_build_policy.h"
 #include "json.hpp"
 #include <gtest/gtest.h>
 #include <chrono>
@@ -171,5 +173,113 @@ TEST(BrowserScalarStorage, DecodedStringExpressionsCannotBypassBindingProof) {
         EXPECT_EQ(read(out / "index.html"), "previous successful output");
         EXPECT_FALSE(fs::exists(out / "app.js"));
         EXPECT_FALSE(fs::exists(out / "jtml-runtime.js"));
+    }
+}
+
+
+TEST(BrowserDerivedPublication, DependencyOrderIgnoresSourceAndJsonKeyOrder) {
+    for (const bool reverse : {false, true}) {
+        const auto root = temporary();
+        const std::string declarations = reverse ? "get a = z * 2\nget z = x + 1\n" : "get z = x + 1\nget a = z * 2\n";
+        write(root / "index.jtml", "jtml 2\nlet x = 1\n" + declarations + "page\n  text a\n");
+        ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+        EXPECT_EQ(manifest(root / "out")["derivedOrder"], nlohmann::json({"z", "a"}));
+        ASSERT_EQ(compile(root / "index.jtml", root / "compat", true), "");
+        EXPECT_FALSE(manifest(root / "compat").contains("derivedOrder"));
+    }
+}
+
+TEST(BrowserDerivedPublication, UnconsumedInvalidClosuresRejectBeforeWritingAssets) {
+    for (const std::string formula : {"get a = b + 1\nget b = a + 1\n", "get a = missing + 1\n", "get a = mystery()\n"}) {
+        const auto root = temporary();
+        write(root / "index.jtml", "jtml 2\n" + formula + "page\n  text a\n");
+        fs::create_directories(root / "out"); write(root / "out/index.html", "previous output");
+        const auto error = compile(root / "index.jtml", root / "out");
+        EXPECT_NE(error.find("index.jtml:"), std::string::npos) << error;
+        EXPECT_EQ(read(root / "out/index.html"), "previous output");
+        EXPECT_FALSE(fs::exists(root / "out/app.js"));
+        EXPECT_FALSE(fs::exists(root / "out/jtml-runtime.js"));
+    }
+}
+
+TEST(BrowserDerivedPublication, ClosedManifestRejectsIncompleteDuplicateAndUnknownOrders) {
+    const auto root = temporary();
+    write(root / "index.jtml", "jtml 2\nlet x = 1\nget z = x + 1\nget a = z * 2\npage\n  text a\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    const auto html = read(root / "out/index.html");
+    const std::string marker = "id=\"__jtml_client_manifest\">";
+    const auto begin = html.find(marker) + marker.size();
+    const auto end = html.find("</script>", begin);
+    for (const auto& order : {nlohmann::json::array(), nlohmann::json({"z"}), nlohmann::json({"a", "z"}), nlohmann::json({"z", "z", "a"}),
+                              nlohmann::json({"z", "unknown"}), nlohmann::json({"z", 1})}) {
+        auto client = manifest(root / "out"); client["derivedOrder"] = order;
+        write(root / "out/index.html", html.substr(0, begin) + client.dump() + html.substr(end));
+        EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production), std::runtime_error);
+        write(root / "out/index.html", html);
+    }
+    auto missing = manifest(root / "out"); missing.erase("derivedOrder");
+    write(root / "out/index.html", html.substr(0, begin) + missing.dump() + html.substr(end));
+    EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production), std::runtime_error);
+}
+
+TEST(BrowserDerivedPublication, ImportedStoreIdentityPreservesPublicationNotScalarActionAuthority) {
+    const auto root = temporary();
+    const auto source = fs::path(JTML_SOURCE_DIR) / "tests/fixtures/production/imported-store-getter/index.jtml";
+    ASSERT_EQ(compile(source, root / "positive"), "");
+    EXPECT_EQ(manifest(root / "positive")["derivedOrder"], nlohmann::json({"label"}));
+    write(root / "private.jtml", "jtml 2\nexport store shop\n  let x = 1\n  when step\n    x = x + 1\nexport make Card\n  text \"Card\"\n");
+    write(root / "index.jtml", "jtml 2\nuse shop from \"./private.jtml\"\nget x = label + 1\nget label = shop.x + 1\npage\n  text x\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "member-leaf"), "");
+    EXPECT_EQ(manifest(root / "member-leaf")["derivedOrder"], nlohmann::json({"label", "x"}));
+    for (const auto& body : {std::string("use Card from \"./private.jtml\"\nget label = shop.x + 1\n"),
+         std::string("use shop from \"./private.jtml\"\nlet saved = 0\nget label = shop.x + 1\nwhen read\n  saved = label\n")}) {
+        write(root / "index.jtml", "jtml 2\n" + body + "page\n  text \"Control\"\n");
+        fs::create_directories(root / "negative"); write(root / "negative/index.html", "previous output");
+        const auto error = compile(root / "index.jtml", root / "negative");
+        EXPECT_NE(error.find("binding `shop`"), std::string::npos) << error;
+        EXPECT_EQ(read(root / "negative/index.html"), "previous output");
+        EXPECT_FALSE(fs::exists(root / "negative/app.js"));
+    }
+}
+
+TEST(BrowserDerivedPublication, OrderValidationUsesStructuredEdgesIncludingInactiveBranches) {
+    const auto root = temporary();
+    write(root / "index.jtml", "jtml 2\nlet x = 1\nlet flag = false\nget a = flag ? z : w\nget z = x + 1\nget w = x + 2\nget other = {kind: \"path\", segments: [\"a\"]}\npage\n  text a\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    const auto html = read(root / "out/index.html");
+    const std::string marker = "id=\"__jtml_client_manifest\">";
+    const auto begin = html.find(marker) + marker.size(), end = html.find("</script>", begin);
+    auto client = manifest(root / "out");
+    client["derivedOrder"] = {"other", "w", "z", "a"}; // A different valid permutation.
+    // Literal application data is not an expression node or dependency.
+    client["derivedPlans"]["other"] = {{"kind", "literal"}, {"value", {{"kind", "path"}, {"segments", {"a"}}}}};
+    auto check = [&]() { write(root / "out/index.html", html.substr(0, begin) + client.dump() + html.substr(end));
+        jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production); };
+    EXPECT_NO_THROW(check());
+    client["derivedOrder"] = {"other", "w", "a", "z"};
+    EXPECT_THROW(check(), std::runtime_error); // z is required even with flag=false.
+    client["derivedOrder"] = {"other", "w", "z", "a"};
+    client["derivedPlans"]["a"]["whenFalse"]["segments"] = {"a"};
+    EXPECT_THROW(check(), std::runtime_error); // Inspect executed segments, not source/root hints.
+    client["derivedPlans"]["a"]["whenFalse"]["segments"] = {"notOwned"};
+    EXPECT_THROW(check(), std::runtime_error);
+    client["derivedPlans"]["a"].erase("whenFalse");
+    EXPECT_THROW(check(), std::runtime_error); // No hidden fallback from a missing child.
+    for (const bool linked : {true, false}) {
+        client = nlohmann::json::parse(html.substr(begin, end - begin));
+        auto& projection = linked ? client["project"]["linkedPlan"] : client["project"]["modules"][0]["plan"];
+        if (!linked) client["project"]["modules"][0].erase("executable"); // Runtime default is executable.
+        projection["derived"]["extra"] = client["derived"]["a"];
+        projection["derivedPlans"]["extra"] = client["derivedPlans"]["a"];
+        EXPECT_THROW(check(), std::runtime_error); // Missing executable getter.
+        client["derivedOrder"] = {"other", "w", "z", "extra", "a"};
+        EXPECT_NO_THROW(check());
+        client["derivedOrder"] = {"extra", "other", "w", "z", "a"};
+        EXPECT_THROW(check(), std::runtime_error); // Reversed edge in that projection.
+        if (!linked) {
+            client["project"]["modules"][0]["executable"] = false;
+            client["derivedOrder"] = {"other", "w", "z", "a"};
+            EXPECT_NO_THROW(check()); // Explicitly disabled modules contribute no getters.
+        }
     }
 }

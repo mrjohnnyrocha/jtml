@@ -1,0 +1,5 @@
+jtml 2
+export store shop
+  let x = 1
+  when step
+    x = x + 1

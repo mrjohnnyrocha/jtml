@@ -25,7 +25,7 @@ bool browserBuildModeEmitsCompatibilityAsset(BrowserBuildMode mode);
 bool browserBuildModeAllowsImportStubs(BrowserBuildMode mode);
 std::string emitBrowserBuildAppBootstrap(BrowserBuildMode mode);
 
-void validateBrowserRuntimeBindingOwnership(const jtml::RuntimeProjectPlan& project);
+void validateBrowserRuntimeBindingOwnership(jtml::RuntimeProjectPlan& project);
 
 bool shouldCopyBrowserBuildAsset(const std::filesystem::path& rel);
 

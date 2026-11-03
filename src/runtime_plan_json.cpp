@@ -1030,6 +1030,7 @@ nlohmann::json runtimePlanToClientJson(const RuntimePlan& plan) {
 
 nlohmann::json runtimeProjectPlanToClientJson(const RuntimeProjectPlan& plan) {
     nlohmann::json client = runtimePlanToClientJson(plan.linkedPlan);
+    if (!plan.derivedOrder.empty()) client["derivedOrder"] = plan.derivedOrder;
     nlohmann::json modules = nlohmann::json::array();
     for (const auto& module : plan.modules) {
         nlohmann::json item = {

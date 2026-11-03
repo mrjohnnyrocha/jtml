@@ -29,6 +29,7 @@ const char* browserRuntimePreludeChunk() {
       const clientState = {};
       const clientStatePlans = {};
       const clientDerived = {};
+      let derivedOrder;
       const clientDerivedPlans = {};
       const clientActions = {};
       const clientWrites = new Set();
@@ -3886,7 +3887,7 @@ const char* browserRuntimeComponentChunk() {
       }
 
       function applyClientDerived() {
-        for (const name in clientDerived) {
+        for (const name of derivedOrder || Object.keys(clientDerived)) {
           const result = evaluateClientPlan(clientDerivedPlans[name], clientDerived[name], clientState);
           if (result.found) clientState[name] = result.value;
         }
@@ -4180,6 +4181,7 @@ const char* browserRuntimeComponentChunk() {
         const componentInstanceManifest = Array.isArray(manifest.componentInstances) ? manifest.componentInstances : [];
         Object.assign(clientStatePlans, manifest.statePlans || {});
         Object.assign(clientDerived, manifest.derived || {});
+        derivedOrder = manifest.derivedOrder;
         Object.assign(clientDerivedPlans, manifest.derivedPlans || {});
         Object.assign(clientActions, manifest.actions || {});
         clientSubscriptions = manifest.subscriptions || [];

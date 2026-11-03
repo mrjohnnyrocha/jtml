@@ -1,0 +1,7 @@
+jtml 2
+use shop from "./private.jtml"
+get label = shop.x + 1
+page
+  box class "out"
+    text "{label}|{shop.x}"
+  button "Step" click shop.step

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iterator>
+#include <map>
 #include <sstream>
 #include <set>
 #include <stdexcept>
@@ -200,21 +201,60 @@ void validateClientRuntimePlanSchema(const nlohmann::json& manifest,
 
 void validateClientExpressionPlan(const nlohmann::json& value,
                                   const std::string& path,
-                                  std::vector<std::string>& issues);
+                                  std::vector<std::string>& issues,
+                                  std::set<std::string>* reads = nullptr);
 
 void validateClientExpressionPlanArray(const nlohmann::json& value,
                                        const std::string& path,
-                                       std::vector<std::string>& issues) {
+                                       std::vector<std::string>& issues,
+                                       std::set<std::string>* reads = nullptr) {
     if (!requireArrayAt(value, path, issues)) return;
     for (size_t i = 0; i < value.size(); ++i) {
-        validateClientExpressionPlan(value[i], path + "[" + std::to_string(i) + "]", issues);
+        validateClientExpressionPlan(value[i], path + "[" + std::to_string(i) + "]", issues, reads);
     }
 }
 
 void validateClientExpressionPlan(const nlohmann::json& value,
                                   const std::string& path,
-                                  std::vector<std::string>& issues) {
+                                  std::vector<std::string>& issues,
+                                  std::set<std::string>* reads) {
     if (!requireObjectAt(value, path, issues)) return;
+    if (reads) {
+        static const std::vector<std::string> kinds = {
+            "empty", "literal", "path", "member", "subscript", "array", "object",
+            "range", "unary", "binary", "conditional"
+        };
+        const auto kind = value.contains("kind") && value.at("kind").is_string()
+            ? value.at("kind").get<std::string>() : "";
+        if (!isAllowedKey(kinds, kind)) issues.push_back(path + " requires a structured getter plan");
+        static const std::map<std::string, std::vector<std::string>> children = {
+            {"member", {"base"}}, {"subscript", {"base", "index"}}, {"unary", {"argument"}},
+            {"binary", {"left", "right"}}, {"conditional", {"test", "whenTrue", "whenFalse"}},
+            {"range", {"start", "end"}}
+        };
+        const auto fields = children.find(kind);
+        if (fields != children.end()) for (const auto& field : fields->second)
+            if (!value.contains(field) || !value.at(field).is_object())
+                issues.push_back(path + " requires structured getter child " + field);
+        const auto array = kind == "array" ? "elements" : kind == "object" ? "entries" : "";
+        if (*array && (!value.contains(array) || !value.at(array).is_array()))
+            issues.push_back(path + " requires structured getter array " + array);
+        if (kind == "literal" && !value.contains("value")) issues.push_back(path + " requires literal value");
+        if (kind == "binary" || kind == "unary") {
+            const auto op = value.contains("operator") && value.at("operator").is_string()
+                ? value.at("operator").get<std::string>() : "";
+            const std::vector<std::string> operators = kind == "unary" ? std::vector<std::string>{"!", "-"} :
+                std::vector<std::string>{"||", "&&", "==", "!=", "<=", ">=", "<", ">", "+", "-", "*", "/", "%"};
+            if (!isAllowedKey(operators, op)) issues.push_back(path + " has unsupported getter operator");
+        }
+        if (kind == "path") {
+            // The browser reads segments, not the diagnostic root/source hints.
+            if (!value.contains("segments") || !value.at("segments").is_array() ||
+                value.at("segments").empty() || !value.at("segments")[0].is_string())
+                issues.push_back(path + " requires resolved getter path segments");
+            else reads->insert(value.at("segments")[0].get<std::string>());
+        }
+    }
     static const std::vector<std::string> allowedExpressionKeys = {
         "kind", "source", "producer", "valueType", "astKind", "value",
         "root", "segments", "property", "base", "index", "operator",
@@ -236,40 +276,40 @@ void validateClientExpressionPlan(const nlohmann::json& value,
     requireOptionalString(value, "method", path, issues);
     requireOptionalArray(value, "segments", path, issues);
     if (value.contains("base")) {
-        validateClientExpressionPlan(value.at("base"), path + ".base", issues);
+        validateClientExpressionPlan(value.at("base"), path + ".base", issues, reads);
     }
     if (value.contains("index")) {
-        validateClientExpressionPlan(value.at("index"), path + ".index", issues);
+        validateClientExpressionPlan(value.at("index"), path + ".index", issues, reads);
     }
     if (value.contains("argument")) {
-        validateClientExpressionPlan(value.at("argument"), path + ".argument", issues);
+        validateClientExpressionPlan(value.at("argument"), path + ".argument", issues, reads);
     }
     if (value.contains("left")) {
-        validateClientExpressionPlan(value.at("left"), path + ".left", issues);
+        validateClientExpressionPlan(value.at("left"), path + ".left", issues, reads);
     }
     if (value.contains("right")) {
-        validateClientExpressionPlan(value.at("right"), path + ".right", issues);
+        validateClientExpressionPlan(value.at("right"), path + ".right", issues, reads);
     }
     if (value.contains("test")) {
-        validateClientExpressionPlan(value.at("test"), path + ".test", issues);
+        validateClientExpressionPlan(value.at("test"), path + ".test", issues, reads);
     }
     if (value.contains("whenTrue")) {
-        validateClientExpressionPlan(value.at("whenTrue"), path + ".whenTrue", issues);
+        validateClientExpressionPlan(value.at("whenTrue"), path + ".whenTrue", issues, reads);
     }
     if (value.contains("whenFalse")) {
-        validateClientExpressionPlan(value.at("whenFalse"), path + ".whenFalse", issues);
+        validateClientExpressionPlan(value.at("whenFalse"), path + ".whenFalse", issues, reads);
     }
     if (value.contains("start")) {
-        validateClientExpressionPlan(value.at("start"), path + ".start", issues);
+        validateClientExpressionPlan(value.at("start"), path + ".start", issues, reads);
     }
     if (value.contains("end")) {
-        validateClientExpressionPlan(value.at("end"), path + ".end", issues);
+        validateClientExpressionPlan(value.at("end"), path + ".end", issues, reads);
     }
     if (value.contains("elements")) {
-        validateClientExpressionPlanArray(value.at("elements"), path + ".elements", issues);
+        validateClientExpressionPlanArray(value.at("elements"), path + ".elements", issues, reads);
     }
     if (value.contains("arguments")) {
-        validateClientExpressionPlanArray(value.at("arguments"), path + ".arguments", issues);
+        validateClientExpressionPlanArray(value.at("arguments"), path + ".arguments", issues, reads);
     }
     if (value.contains("entries")) {
         if (requireArrayAt(value.at("entries"), path + ".entries", issues)) {
@@ -282,7 +322,7 @@ void validateClientExpressionPlan(const nlohmann::json& value,
                 if (entries[i].contains("value")) {
                     validateClientExpressionPlan(entries[i].at("value"),
                                                  entryPath + ".value",
-                                                 issues);
+                                                 issues, reads);
                 } else {
                     issues.push_back(entryPath + " missing `value`");
                 }
@@ -545,7 +585,7 @@ void validateClientRuntimePlanSchema(const nlohmann::json& manifest,
         "state", "statePlans", "derived", "derivedPlans", "actions", "subscriptions", "routes", "fetches",
         "componentDefinitions", "componentInstances"
     };
-    if (allowProject) allowedTopLevel.push_back("project");
+    if (allowProject) { allowedTopLevel.push_back("project"); allowedTopLevel.push_back("derivedOrder"); }
     rejectUnknownKeys(manifest, allowedTopLevel, path, issues);
     for (const auto& required : {"state", "derived", "actions", "routes", "fetches",
                                 "componentDefinitions", "componentInstances"}) {
@@ -568,6 +608,7 @@ void validateClientRuntimePlanSchema(const nlohmann::json& manifest,
     requireObject("derived");
     requireObject("derivedPlans");
     requireObject("actions");
+
 
     if (manifest.contains("subscriptions")) {
         const auto& subscriptions = manifest.at("subscriptions");
@@ -695,6 +736,61 @@ void validateClientRuntimePlanSchema(const nlohmann::json& manifest,
     }
 }
 
+// Validate ordering constraints, not a second scheduler. Getter names are
+// physical slots already resolved/owned by clean compiler certification.
+void validateDerivedPublicationOrder(const nlohmann::json& manifest, bool required,
+                                      std::vector<std::string>& issues) {
+    std::map<std::string, std::vector<const nlohmann::json*>> getters;
+    std::set<std::string> state;
+    auto collect = [&](const nlohmann::json& plan) {
+        if (plan.contains("state") && plan.at("state").is_object())
+            for (const auto& item : plan.at("state").items()) state.insert(item.key());
+        if (plan.contains("derived") && plan.at("derived").is_object())
+            for (const auto& item : plan.at("derived").items()) getters[item.key()].push_back(&plan);
+    };
+    collect(manifest);
+    if (manifest.contains("project") && manifest.at("project").is_object()) {
+        const auto& project = manifest.at("project");
+        if (project.contains("linkedPlan") && project.at("linkedPlan").is_object()) collect(project.at("linkedPlan"));
+        if (project.contains("modules") && project.at("modules").is_array())
+            for (const auto& module : project.at("modules"))
+                if (module.is_object() && (!module.contains("executable") || module.at("executable") != false) &&
+                    module.contains("plan") && module.at("plan").is_object()) collect(module.at("plan"));
+    }
+    if (!manifest.contains("derivedOrder")) {
+        if (required && !getters.empty()) issues.push_back("$.derivedOrder is required for clean getter publication");
+        return;
+    }
+    const auto& order = manifest.at("derivedOrder");
+    if (!requireArrayAt(order, "$.derivedOrder", issues)) return;
+    std::map<std::string, size_t> positions;
+    for (size_t i = 0; i < order.size(); ++i) {
+        if (!order[i].is_string() || !getters.count(order[i].get<std::string>()) ||
+            !positions.emplace(order[i].get<std::string>(), i).second)
+            issues.push_back("$.derivedOrder requires distinct existing getter names");
+    }
+    if (positions.size() != getters.size()) {
+        issues.push_back("$.derivedOrder must cover all executable getters");
+        return;
+    }
+    for (const auto& getter : getters) for (const auto* plan : getter.second) {
+        if (!plan->contains("derivedPlans") || !plan->at("derivedPlans").is_object() ||
+            !plan->at("derivedPlans").contains(getter.first)) {
+            issues.push_back("$.derivedOrder requires compiled getter plans");
+            continue;
+        }
+        std::set<std::string> reads;
+        validateClientExpressionPlan(plan->at("derivedPlans").at(getter.first),
+            "$.derivedPlans." + getter.first, issues, &reads);
+        for (const auto& dependency : reads) {
+            if (positions.count(dependency)) {
+                if (positions.at(dependency) >= positions.at(getter.first))
+                    issues.push_back("$.derivedOrder violates getter dependency " + dependency + " -> " + getter.first);
+            } else if (!state.count(dependency)) issues.push_back("$.derivedOrder has unresolved getter root " + dependency);
+        }
+    }
+}
+
 void validateClientManifestSchema(const nlohmann::json& manifest,
                                   std::vector<std::string>& issues) {
     validateClientRuntimePlanSchema(manifest, "$", true, issues);
@@ -738,7 +834,9 @@ void validateBrowserBuildOutputSchema(const std::filesystem::path& outDir,
                     "index.html", issues);
     requireContains(index, "<script src=\"./app.js\" defer></script>",
                     "index.html", issues);
-    validateClientManifestSchema(extractClientManifestJson(index, issues), issues);
+    const auto manifest = extractClientManifestJson(index, issues);
+    validateClientManifestSchema(manifest, issues);
+    if (manifest.is_object()) validateDerivedPublicationOrder(manifest, mode == BrowserBuildMode::Production, issues);
 
     requireContains(app, "window.jtml.browserBuild = {", "app.js", issues);
     requireContains(app, std::string("mode: '") + browserBuildModeName(mode) + "'",

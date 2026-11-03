@@ -39,7 +39,7 @@ Use these four classifications literally:
 | Rule/aspect | Class | Current evidence and limit |
 | --- | --- | --- |
 | R1 scalar literal/arithmetic/conditional direct expressions | T | `tests/test_interpreter_unary.cpp`, `tests/conformance/cases.cjs`, `tests/browser/ternary_dependencies.cjs`, `tests/browser/logical_expressions.cjs`; narrow tested types |
-| R1 full string-interpolation typing, finite-results/strict operand and scalar fault policy | P | V19 stores Infinity after `1 / 0`; finite literals in scalar certification are not finite-result enforcement. A6 is a proposed tightening |
+| R1 full string-interpolation typing, finite-results/strict operand and scalar fault policy | P | V19 stores Infinity after `1 / 0`; finite literals in scalar certification are not finite-result enforcement. A6a/A6b/A6c remain unapproved; see the separate compatibility/failure review |
 | R1/R11 unknown pure calls rejected everywhere | I | V15 clean build succeeds and renders `mystery()` as text. Component direct-expression rejection does not certify root expressions |
 | R2 distinct module scalar identities in the PR #76 subset | T | `BrowserScalarStorage.OwnedInitializersReadsWritesAndParameterShadowing`, `tests/browser/module_scalar_storage.cjs`; V09 shows owner isolation |
 | R2 parameter identity/restoration in the bounded subset | T | V06 emits 4 twice while module x=10/hits=0; root effect and scalar browser regressions cover restoration |
@@ -66,7 +66,7 @@ Use these four classifications literally:
 | R10 defining-module capture / component-local effect lifetime | P | V10 capture is unsupported and renders empty; V24 local effect correctly rejects. V16 tests render dependency cleanup without introducing local effects |
 | R11 unresolved references uniformly rejected before execution | I | V14 clean build accepts `missing` in an action. It is not in PR #76's colliding certification path |
 | R11 transactional scalar certification and decoded interpolation | T | V23 correctly rejects; `DecodedStringExpressionsCannotBypassBindingProof` covers generated-key capture, initializer/forward/imported reads and parameter shadows; previous assets preserved |
-| R11 terminal fault / committed snapshot retention | P | A6 is proposed; V19 currently publishes Infinity. No external-effect rollback is claimed |
+| R11 failure publication / recovery | P | A6c is unresolved P1/P2/P3; V19 currently stores Infinity and exercises none of their error/recovery paths |
 | R12 backend-specific evidence and explicit unsupported claims | V | Existing gates separate native/browser and catalog known discrepancies. No existing suite certifies this whole proposed profile |
 
 ## Smallest discrepancies by correctness impact
@@ -113,7 +113,7 @@ Use these four classifications literally:
    and generated static component update paths. This is an evidence gap, not a
    demonstrated new cleanup failure.
 6. **Numeric/type/fault policy (P, V19) and imported-write policy (P, V22).** These
-   require A5/A6 approval before corrective work: accepted legacy behavior is not
+   require an explicit A6a/A6c choice and A5 implementation boundaries before corrective work: accepted legacy behavior is not
    by itself proof that the proposed stricter contract is already established.
 
 Items 2–4 have directly executed scalar counterexamples. Items 1, 5 and 6 must not
@@ -156,6 +156,17 @@ interpreter specified by this PR.
 After approval, prioritize permanently executable negative root admission vectors,
 permuted long chains/diamonds, complete action/effect/DOM trace observation, and
 capture/remount identities across reexports. Add interpolation-result typing, signed-zero, operand-domain and
-fault-after-imperative-output vectors before implementing A6. Until then,
+fault-after-imperative-output vectors before implementing A6a/A6b/A6c. Until then,
 recomputation counts, full external effect safety, general stores, distributed
 transactions and production readiness remain outside this claim.
+
+## Pre-ratification A6 refinement
+
+A1–A5 and A7 are directionally accepted only for a bounded Core. The separate
+[A6 decision review](a6-decisions.md) inventories intentionally supported native
+truthiness, existing scalar versus store/fetch/media predicates, lazy arithmetic
+guards and native/browser finite-number differences. These are compatibility
+boundaries, not automatically defects in supported programs. The original A6
+fault/termination policy is withdrawn as a default; V19 and the reference model
+now branch explicitly on P1/P2/P3 approval. Recommendations do not change any
+implementation classification or the original 21-execution evidence.

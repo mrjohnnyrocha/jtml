@@ -1,14 +1,15 @@
 {
   "schema_version": 1,
   "baseline": "ae8f984dc3c35163cc702f7e494a5f2b015124fb",
-  "status": "draft-pending-human-approval",
+  "status": "draft-directions-accepted-a6-unapproved",
   "notes": [
     "Expected values are independently authored; baseline observations never replace expectations.",
     "main denotes index.jtml; declaration owner and component generation are semantic identities, not runtime storage names.",
     "Every successful initial/step snapshot is one commit. Empty notifications means no root effect notification, not no DOM dependency edge.",
     "E1/E2 are effect declarations in source order in their module; notification strings record value at delivery, before callback execution.",
     "show lists values emitted only during that step; initialization effects are non-eager.",
-    "Vector sources are ordinary Friendly JTML 2; unsupported target cases remain pending and are not installed in any required gate."
+    "Vector sources are ordinary Friendly JTML 2; unsupported target cases remain pending and are not installed in any required gate.",
+    "A1–A5/A7 are directionally accepted for a bounded Core. A6a/A6b/A6c are unapproved. V19 has no selected error oracle; V23 records the current bounded compiler guard, not a universal brace-escaping rule."
   ],
   "vectors": [
     {
@@ -1222,7 +1223,7 @@
     },
     {
       "id": "V19",
-      "title": "A non-finite scalar result faults without a successful commit",
+      "title": "Non-finite scalar result: domain and failure policy pending",
       "files": {
         "index.jtml": "jtml 2\nlet x = 1\nwhen step\n  x = 1 / 0\npage\n  box class \"out\"\n    text \"Value {x}\"\n  button \"Step\" click step\n"
       },
@@ -1250,28 +1251,81 @@
           "action": "main::step",
           "args": [],
           "expected": {
-            "outcome": "fault",
-            "diagnostic": "E_SCALAR_DOMAIN",
-            "state": {
-              "main::x": 1
+            "outcome": "pending-policy",
+            "requires_approval": [
+              "A6a",
+              "A6c"
+            ],
+            "diagnostic_if_finite_domain_selected": "E_SCALAR_DOMAIN",
+            "policy_alternatives": {
+              "P1": {
+                "state": {
+                  "main::x": 1
+                },
+                "derived": {},
+                "dom": {
+                  ".out": [
+                    "Value 1"
+                  ]
+                },
+                "notifications": [],
+                "effects": [],
+                "show": [],
+                "outcome": "episode-error",
+                "state_disposition": "rolled-back",
+                "successful_commit": false,
+                "instance": "terminated",
+                "next_entry": "reject-until-new-initialization"
+              },
+              "P2": {
+                "state": {
+                  "main::x": 1
+                },
+                "derived": {},
+                "dom": {
+                  ".out": [
+                    "Value 1"
+                  ]
+                },
+                "notifications": [],
+                "effects": [],
+                "show": [],
+                "outcome": "action-error",
+                "state_disposition": "rolled-back",
+                "successful_commit": false,
+                "instance": "active",
+                "next_entry": "new-explicit-action-from-last-commit"
+              },
+              "P3": {
+                "state": {
+                  "main::x": 1
+                },
+                "derived": {},
+                "dom": {
+                  ".out": [
+                    "Value 1"
+                  ]
+                },
+                "notifications": [],
+                "effects": [],
+                "show": [],
+                "outcome": "episode-error",
+                "state_disposition": "retained-successful-prefix-only",
+                "successful_commit": false,
+                "instance": "failed-requires-initialization",
+                "next_entry": "reject-until-new-initialization",
+                "state_observation": "failed-partial-diagnostic",
+                "dom_observation": "last-successful-commit"
+              }
             },
-            "derived": {},
-            "dom": {
-              ".out": [
-                "Value 1"
-              ]
-            },
-            "notifications": [],
-            "effects": [],
-            "show": [],
-            "instance": "faulted"
+            "selected_policy": null
           }
         }
       ],
       "baseline": {
         "classification": "not-yet-supported",
         "execution": "compile-and-browser-snapshots",
-        "reason": "Proposed finite-number and failed-episode policy requires approval; not an existing rollback guarantee.",
+        "reason": "A6a error trigger and A6c P1/P2/P3 publication/recovery choice are unapproved. Recorded browser Infinity is an observation, not a rollback or fault-policy conformance pass.",
         "evidence_record": "V19"
       },
       "target_conformance": "pending"
@@ -1430,10 +1484,12 @@
       "baseline": {
         "classification": "already-implemented-and-tested",
         "execution": "compile-rejection",
-        "reason": "PR #76 adversarial correction adds DecodedStringExpressionsCannotBypassBindingProof.",
+        "reason": "PR #76 adversarial correction adds DecodedStringExpressionsCannotBypassBindingProof. This bounded rejection does not ratify a language-wide encoded-brace prohibition; B1/B2 lexical semantics remain pending.",
         "evidence_record": "V23"
       },
-      "target_conformance": "pending"
+      "target_conformance": "pending",
+      "oracle_scope": "current-bounded-backend-certification-rejection",
+      "semantic_escaping_policy": "pending-A6b"
     },
     {
       "id": "V24",

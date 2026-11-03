@@ -2,6 +2,8 @@
 
 This is a design for a **future** interpreter, not its implementation. It is
 normative under the approval conditions in [the specification](../reactive-core-v1.md).
+A6a/A6b/A6c remain unapproved: this contract specifies common transitions and
+conditional failure alternatives, not an implicit rollback/termination default.
 The current snapshot probe and existing conformance adapters are not this model.
 They deliberately execute the implementation under test and cannot establish
 an independent semantics merely by agreeing with each other.
@@ -33,6 +35,7 @@ This schema is conceptual; this PR intentionally adds no parser or evaluator.
 | --- | --- |
 | `schemaVersion` | Integer `1`; independent of Runtime Plan schema/version |
 | `entry` | Module identity of the entry module |
+| `policies` | Explicitly approved scalar (A6a), interpolation (A6b) and failure (A6c P1/P2/P3) choices; no defaults. Missing approval yields `PENDING_POLICY` for dependent evaluation, not a model-chosen policy |
 | `sources` | Exact original UTF-8 file contents and digests; source spans and literal spellings must be checked against these independently of the production frontend |
 | `modules` | Ordered module records: ID, file identity, textual import order, named exports, declarations, actions, component definitions, root effect declarations and render descriptions |
 | `steps` | Ordered external entries: resolved action identity, caller identity, scalar argument literals, optional expected generation; no arbitrary host code |
@@ -54,14 +57,16 @@ An expression is exactly one of:
 - `{ "select": expression, "then": expression, "else": expression }`.
 
 The notation `number|string|boolean` means one of those three strings, not a
-union-valued runtime object. For kind `number`, `value` is a finite decimal
-lexical string; for kind `string` it is a decoded Unicode JSON string; for kind
+union-valued runtime object. For the unapproved S1 encoding candidate, kind `number` uses a finite decimal
+lexical string as `value`; for kind `string` it is a decoded Unicode JSON string; for kind
 `boolean` it is a JSON Boolean. The input encoding MUST preserve `-0` distinctly
 (e.g. number lexical text `"-0"`); JSON numeric round trips alone cannot certify
 that distinction. References are resolved identities after the independent
-resolution pass, never expression strings. Decoded string interpolation must
-become explicit AST expressions, or reject as uncertified; it is not a second
-runtime parsing step.
+resolution pass, never expression strings. Interpolation under the approved B1/B2 lexical policy must become explicit
+resolved AST expressions before execution; B1 literal segments stay data.
+An uncertifiable shape rejects, rather than invoking a second runtime parser.
+If S2 is selected, non-finite values need an explicitly approved input encoding
+before this schema can be finalized; S1 is not an implicit numeric default.
 
 Statements are `assign(targetId, expression)`, `if(condition, then, else)` or
 `show(expression)`. Parameters have their own IDs; no save/restore by replacing
@@ -99,7 +104,7 @@ record also includes source/scope, action identity, modules, imports and observe
 ## Abstract state and transitions
 
 State is `(C, W?, frames, initialized, generations, rootEffects, written,
-phase, sequence, trace, faulted)`. C contains only the last successful persistent
+phase, sequence, trace, dispatchStatus, failedPartial?)`. C contains only the last successful persistent
 state, derived projection and active virtual render tree. Frames contain
 invocation-local cells. `written` contains persistent declaration identities, not
 source names. Transitions are:
@@ -110,8 +115,9 @@ source names. Transitions are:
 2. **Initialize**: use R4 module/source order; create fresh generations and local
    source state; compute formula values by mathematical substitution; register
    non-eager effects. Emit commit 0.
-3. **Enter**: reject a faulted/missing/destroyed action target; check arity and
-   scalar arguments; copy C's persistent source state into W; allocate a fresh
+3. **Enter**: reject a terminated/missing/destroyed action target; check arity and
+   scalar arguments under the approved A6a policy; initialize episode state W
+   from C (rollback-capable under P1/P2); allocate a fresh
    invocation frame. No commit is emitted yet.
 4. **Execute**: interpret one statement at a time. Every read of a `get` recursively
    evaluates its formula from current W and the correct immutable capture/frame
@@ -124,11 +130,18 @@ source names. Transitions are:
    outputs from final W. Remove dead generations and edges, create new generations
    with fresh local state, and publish one complete C at sequence + 1. Emit one
    commit event; only now may commit/DOM observer snapshots be emitted.
-7. **Fault**: append a fault instead of a successful commit; preserve the last
-   valid C, cancel pending deliveries and forbid further entry into that instance.
-   Earlier imperative-output events remain in the trace.
+7. **Error (conditional A6c)**: no successful commit; discard the invocation
+   frame, cancel undelivered work, and retain already delivered output in the trace.
+   P1 restores all episode source/cache/generation state to C and terminates the
+   application; P2 performs that restoration and allows a new explicit action
+   from C with an empty write set; P3 retains successful preceding source writes
+   only as labeled failedPartial, leaves C/DOM last-successful, invalidates partial
+   derived observations and terminates dispatch until new initialization. No
+   automatic retry/replay is permitted. If policy approval is missing, report
+   `PENDING_POLICY`; do not execute a candidate failure oracle as if it were selected.
 
-A conforming simple implementation can copy immutable maps for every statement
+Once the policies are approved, an independent model can copy immutable maps
+for every statement (retaining or discarding the failed W according to policy)
 and recompute every formula on every read, with DFS recursion-stack cycle checks.
 It needs **no production dirty cache, queue, pass budget or incremental scheduler**.
 For the small effect fixtures, enumerate possible effect permutations and select
@@ -154,14 +167,16 @@ and a trace. Permitted trace events are:
 | --- | --- |
 | `imperative-output` | Episode, phase (`action`/effect ID), statement ordinal, scalar value; immediate statement order |
 | `notify` | Episode, subscription identity, watched declaration identity, coherent watched value at delivery; before callback entry |
-| `effect-enter` / `effect-exit` | Episode and subscription identity; never emitted for registration or skipped effects |
+| `effect-enter` / `effect-exit` | Episode and subscription identity; exit status `ok` or `error`; never emitted for registration or skipped effects; error exit precedes episode failure disposition |
 | `destroy` / `create` | Logical generation and owner; terminal render-tree transition, old generation destroyed before replacement delivery |
 | `commit` | Sequence, complete persistent state and derived values, active generation tree, virtual DOM projection; one for initialization and one per successful external entry |
 | `observer` | Owner, commit sequence and requested snapshot; no dead owner; no cross-commit mixture |
-| `reject` / `fault` | Diagnostic category, original source location, affected identities; neither is a successful commit |
+| `reject` / `episode-error` | Diagnostic, original location and affected identities; error includes selected policy, rolled-back/partial-state disposition and next-entry authority; neither is a successful commit |
+| `PENDING_POLICY` | Unapproved/missing A6 choice and affected vector; no candidate outcome is reported as PASS |
 
 Internal evaluation counts and physical patch counts are absent. A structured
-number must distinguish finite values from a domain fault; Infinity cannot become
+number encoding must follow the approved A6a choice and distinguish non-finite
+values from a domain error; Infinity cannot become
 JSON null and accidentally compare equal to “uninitialized”.
 
 ## Comparing an implementation without borrowing its semantics
@@ -186,3 +201,12 @@ instrumentation**. Do not attach expected failures to required CI or replace
 strong existing assertions with this smaller model. Any future model defect
 correction must preserve the original failing production counterexample and
 change its independently reviewed oracle explicitly.
+
+## Failure policy approval boundary
+
+The [A6c comparison](a6-decisions.md#a6c--failure-publication-rollback-faulting-and-recovery)
+is part of this contract. V19 has explicit candidate outcomes, not a default fault
+transition. Test the distinguishing prior-write/show/next-entry witness and an
+error in a later effect after approval; V19's first failing assignment cannot
+prove rollback. Successful-path traces remain as specified by A1/A2/A3/A7.
+The model must not implement P2 merely because this review recommends it.

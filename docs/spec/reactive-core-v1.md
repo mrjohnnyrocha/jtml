@@ -3,8 +3,10 @@
 Baseline investigated: `ae8f984dc3c35163cc702f7e494a5f2b015124fb` (main after
 PR #76). **Proposed contract, not a statement of current conformance.** MUST,
 MUST NOT and MAY are requirements for an implementation claiming this profile
-*after ratification*. Approval items A1–A7 below are open. Until they are resolved,
-this document is a consistent proposal, not permission to implement it as final.
+*after ratification*. A1–A5 and A7 are accepted in principle for a deliberately
+bounded Core, subject to explicit compatibility and unsupported-case boundaries.
+A6a, A6b and A6c remain unapproved. No failure policy has been selected; the
+conditional alternatives below are not permission to implement a default.
 The [gap ledger](reactive-core-v1/gaps.md) classifies every rule against the pinned
 implementation. Existing JTML programs outside this profile retain their existing
 backend contracts; this PR changes no compiler, runtime, CI or performance limit.
@@ -17,6 +19,11 @@ observations are evidence only and cannot redefine those expectations.
 
 ## R1. Domain and admissible programs
 
+The operand/domain rules below are **candidate S1 under unapproved A6a**; the
+interpolation proposal is separately **unapproved A6b**. See the concrete options,
+compatibility analysis and recommendations in [the A6 decision review](reactive-core-v1/a6-decisions.md).
+They are not established behavior of existing JTML backends.
+
 A scalar is a Boolean, a Unicode string (no normalization), or a finite IEEE-754
 binary64 number, including signed zero. Literal escapes are decoded exactly once
 before expression analysis. The admitted pure expression forms are scalar
@@ -25,11 +32,14 @@ literals, resolved binding reads, grouping, unary `-`/`!`, arithmetic
 Friendly quoted interpolation with source delimiters `{e}` is sugar for ordered
 concatenation of literal segments and the scalar text of e (equivalently include
 an empty string on the left). Each embedded e uses this same pure expression
-profile and is resolved before execution. Core v1 does not admit encoded brace
-delimiters such as `\u007b`/`\u007d` inside a literal segment: reject them as
-`E_UNCERTIFIED_EXPR`, rather than introducing a new read while reparsing a decoded
-string later. Literal brace escaping is outside this first profile. Ordinary
-non-delimiter string escapes are decoded once; no string value is executable.
+profile and is resolved before execution. The global policy for encoded/escaped
+brace delimiters is unresolved: A6b
+compares source-delimited literal preservation (B1, preferred) with fully resolved
+decoded-delimiter interpolation (B2). The earlier blanket encoded-brace exclusion
+is not ratified. A backend unable to certify the chosen meaning must explicitly
+reject the shape as unsupported (`E_UNCERTIFIED_EXPR`); it must never introduce a
+read while reparsing a decoded string at runtime. V23 preserves that current
+bounded rejection, not a language-wide escaping oracle. No string value is executable.
 Evaluation is left to right; Boolean operators and conditional arms are lazy.
 Operands of `!`, `&&`, `||` and conditions MUST be Boolean; arithmetic other than
 `+` MUST have numeric operands. `+` adds numbers, or concatenates if either operand
@@ -39,8 +49,10 @@ String comparisons are lexicographic by Unicode scalar value. Numeric comparison
 are numeric; mixed-type comparisons other than equality are errors. Equality is
 false for different scalar kinds; numeric `==` equates `0` and `-0`.
 
-A non-finite arithmetic result, division/remainder by zero, invalid operand kind,
-or non-scalar action argument is `E_SCALAR_DOMAIN`. This is a **proposed** stricter
+Under candidate S1, a non-finite arithmetic result, division/remainder by zero,
+invalid operand kind, or non-scalar action argument would be `E_SCALAR_DOMAIN`.
+Whether such an episode rolls back, remains recoverable or terminates is A6c,
+not an implied consequence of the error category. This is a **proposed** stricter
 profile, not an existing language-wide typechecker. Invalid Unicode scalar strings
 are outside this profile. Vectors use exact small integers and ASCII except escape
 controls, so they do not silently settle every host-number formatting corner.
@@ -137,7 +149,9 @@ Each accepted external action entry starts one **episode** against the last
 committed snapshot `C`. Evaluate its arguments in the caller's committed lexical
 context, left to right, before installing a new invocation frame. Arity is exact.
 The action executes sequential assignments, `if`/`else`, and scalar `show` in
-source order against a private working state `W` initially equal to `C`.
+source order against episode state `W` initially equal in contents to `C`.
+Whether W is isolated/rollback-capable, or can survive as failed partial state,
+depends on unapproved A6c; R5 does not independently select a storage/failure policy.
 Nested action calls, synchronous reentry, `await` and implicit host callbacks
 inside the episode are outside this profile. Later external entries run serially,
 after the preceding episode completes; an implementation MUST NOT merge two
@@ -149,6 +163,9 @@ Destroy the invocation frame before delivering any root subscription. Parameter
 “restoration” is an observational requirement, not permission to temporarily
 replace another declaration's identity. Successful return, including no persistent
 writes, proceeds to exactly one commit; temporary frame state is never published.
+On an episode error, discard the frame and stop normal execution. Rollback,
+application termination and next-entry authority depend on R11/A6c, not on the
+successful-return rule above.
 
 ```jtml
 jtml 2
@@ -185,8 +202,9 @@ uncached implementations must be indistinguishable. In particular, an action
 can read its just-written state and current derived consequences. Recomputing a
 formula is neither a source mutation nor a subscription notification.
 
-For value-change reports use kind-sensitive equality, with signed zeros distinct
-(the `Object.is` relation on this finite scalar domain). This relation never
+Under the unapproved A6a candidate, value-change reports use kind-sensitive
+equality, with signed zeros distinct (the `Object.is` relation on this finite
+scalar domain). This relation never
 suppresses the write notifications specified next. V07 separates these concepts.
 
 ## R7. Subscription notification and effect execution
@@ -218,6 +236,10 @@ there are no recursive dispatches, unbounded fixed-point rounds or feedback.
 An effect may read other state as it stands at its turn; no promise makes an early
 effect see a later effect's future writes. V17 specifies this ordering. This is
 observable staged execution inside one episode, not simultaneous callbacks.
+If a callback/formula fails, stop the episode and cancel undelivered callbacks.
+Delivered notifications and immediate output remain attempted-episode events.
+Whether preceding callback writes are undone, and whether a later external entry
+is allowed, remain conditional on A6c; no automatic replay is permitted.
 Implementation resource limits MAY cause an explicit pre-execution unsupported
 rejection; they MUST NOT silently truncate subscriptions or formulas. The existing
 64-subscription/1024-callback-statement limits remain unchanged by this PR.
@@ -240,7 +262,12 @@ patch counts, and debug dictionary contents are not a stable observation API.
 This profile excludes synchronous arbitrary host/custom-element callbacks during
 patching; it does not promise a transaction over arbitrary third-party JavaScript.
 
-The observation permissions are exact:
+The following permissions describe the successful path. A6c P1/P2 would also
+preserve C on failure; P3 would expose only a separately labeled failed partial
+source state for diagnostics, never a successful commit or coherent derived
+projection. R8 does not imply failed-source rollback until A6c is selected.
+
+The successful-path observation permissions are exact:
 
 | Observer | Permitted values during an episode |
 | --- | --- |
@@ -291,15 +318,22 @@ there is no “best effort” value, runnable partial output or compatibility fa
 Symbolic diagnostic codes in the vectors classify the failure; existing JTML
 messages are not claimed to implement these new codes yet.
 
-For an unforeseen domain failure during an episode, emit a fault, publish **no
-successful commit for that episode**, retain the last committed snapshot as the
-last valid observation, discard pending deliveries, and mark that instance
-faulted. Further dispatches reject until a new instance is initialized. Previously
-emitted imperative outputs remain emitted; already-performed external effects
-are not undone. This is a proposed logical publication/fault policy, not a claim
-that today's runtime rolls back mutations or physical DOM. Host process crashes
-and DOM patch exceptions are outside the scalar model; they cannot be reported
-as successful conforming commits. V19 is pending approval of this policy.
+The failure transition is **unresolved A6c**. Compare the fully specified
+[P1/P2/P3 alternatives](reactive-core-v1/a6-decisions.md#a6c--failure-publication-rollback-faulting-and-recovery):
+
+- P1: roll back all episode persistent writes and terminate the reactive application instance.
+- P2: roll back all episode persistent writes and report a recoverable action error (preferred recommendation, not selected).
+- P3: retain successfully completed writes as explicitly labeled failed partial state, issue no successful commit, and require reinitialization before further dispatch.
+
+All three stop at the error, discard invocation frames, cancel undelivered work,
+and preserve already delivered notifications and imperative/external outputs.
+None promises external-effect rollback. P1/P2 preserve C as the source/derived/DOM
+state; P3 preserves C as the last successful DOM/commit but explicitly weakens
+failed-source atomicity. A model must not silently choose between them.
+Host crashes and DOM patch exceptions remain outside this scalar model, not
+successful conforming commits. V19 stays `pending-policy` until both the A6a error
+trigger and A6c outcome are approved. It currently observed Infinity, not any of
+these error transitions.
 
 ## R12. Conformance claims and exclusions
 
@@ -316,19 +350,26 @@ an unsupported promise that this PR fixes that application.
 
 ## Approval record required before implementing the reference interpreter
 
-All entries are **proposed / awaiting human approval**. They are resolved within
-this draft so its vectors have definite answers; approving or changing them is a
-product/semantics decision, not an implementation detail.
+As of the 2026-11-03 review, A1–A5 and A7 are **accepted in principle for a
+bounded Core**, subject to the compatibility and unsupported-case documentation
+in [the A6 review](reactive-core-v1/a6-decisions.md). This is directional acceptance,
+not a claim of implementation, full ratification or permission to change existing
+backend behavior. **A6 is split; A6a/A6b/A6c are not approved.**
 
-| ID | Exact proposed decision | Consequence requiring approval |
+| ID | Decision/direction | Approval and compatibility boundary |
 | --- | --- | --- |
-| A1 | Fresh read-your-writes for `get` inside actions and effects; `show` remains immediate | Changes current stale root action observations (V03/V20); does not buffer external output |
-| A2 | One commit per external action including its acyclic root-effect cascade; no commit interleaving | Defines batching, notification order and DOM atomicity; no cross-action batching |
-| A3 | Write-triggered, non-eager root subscriptions, same-value writes included; static DAG with source-order ties | Preserves bounded existing root semantics rather than value-change or active-dependency subscriptions |
-| A4 | Source-ordered earlier-`let` initializers; no initializer `get` reads; complete-scope acyclic `get` formulas; import DAG | Sets explicit restrictions and initialization/cycle error behavior; later extensions require a revision |
-| A5 | Defining-module identities, read-only imports/captures and generation-owned render edges | Generalizes beyond PR #76's supported subset; no imported-value write authority |
-| A6 | Finite scalar domain, operand/string-interpolation rules, signed-zero change equality, terminal fault with no successful publication | Tightens current coercion/non-finite/error behavior; does not promise rollback of external effects |
-| A7 | Conservative dependency union with lazy evaluation; commit/DOM observer projection as the conformance oracle | Rejects inactive-arm cycles; requires phase/lifetime instrumentation beyond today's snapshot suites |
+| A1 | Fresh read-your-writes for `get` inside actions/effects; immediate `show` | Direction accepted; current stale root observations remain documented gaps; output is not buffered or reversible |
+| A2 | One successful commit per external action including its acyclic effect cascade; no interleaving/cross-action batching | Direction accepted; failed-episode source atomicity/recovery is explicitly reserved to A6c |
+| A3 | Non-eager write-triggered root subscriptions including same-value writes; static DAG/source-order ties | Direction accepted for the bounded root adapter; derived/imported/component watches remain unsupported |
+| A4 | Source-ordered earlier-`let` initialization; no initializer `get` reads; complete-scope acyclic formulas; import DAG | Direction accepted for this restricted profile; no global redefinition of broader initialization/module contracts |
+| A5 | Defining-module identity, read-only imports/captures, generation-owned render edges | Direction accepted; general capture remains unimplemented; existing unsupported shapes still reject |
+| A6a | Scalar domain, strict operands, numeric equality/coercion | **Not approved**. S1 explicit strict Core preferred over backend-specific S2; supported truthiness and non-finite differences require explicit profile/migration boundaries |
+| A6b | String interpolation, escaping and lexical read certification | **Not approved**. B1 source delimiters/literal preservation preferred; B2 decode-first resolution remains an alternative; no blanket brace ban or hidden read |
+| A6c | Error publication, rollback, instance faulting and recovery | **Not approved; no selected policy**. Compare P1 rollback/termination, P2 rollback/recoverable action error (recommended), P3 bounded nontransactional failure |
+| A7 | Conservative dependency union with lazy evaluation; commit/DOM observer oracle | Direction accepted; full phase/lifetime instrumentation remains pending and must not turn inactive arithmetic into eager execution |
 
-An approved revision MUST record decisions and adjust affected vectors together.
-Neither this PR nor a green CI run constitutes that approval.
+The [A6 decision review](reactive-core-v1/a6-decisions.md) contains concrete
+consequences, a distinguishing failure witness and the R5/R7/R8/R11 consistency
+matrix. Before implementing the reference interpreter, explicitly resolve each
+A6 item and update its dependent oracles together. V19 is not a selected rollback
+policy. Neither the PR nor a green CI run supplies missing semantic approval.

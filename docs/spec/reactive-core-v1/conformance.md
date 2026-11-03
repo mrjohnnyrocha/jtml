@@ -4,8 +4,9 @@
 complete source-file map, entry module, explicit initial source/derived state,
 ordered external action entries, and complete expected post-step state, derived
 values, root notifications, effect invocations, imperative outputs and DOM text.
-Expected rejection has no initial state or DOM; a runtime fault retains the last
-committed snapshot and emits no successful commit. Expectations follow the
+Expected rejection has no initial state or DOM. Failure outcomes depend on
+unapproved A6a/A6c: V19 is `pending-policy` with explicit P1/P2/P3 candidates,
+not an assertion of rollback or failed-instance termination. Expectations follow the
 [normative draft](../reactive-core-v1.md), not current implementation output.
 
 **All full target-conformance cases are pending** human ratification and the future
@@ -25,12 +26,17 @@ Nothing here weakens `verify_all.sh`, CTest, browser assertions, or existing CI.
 - `expected_initial` is commit 0 for an accepted project. Each step with
   `outcome: commit` is exactly one subsequent successful semantic commit, even
   when only a temporary parameter was assigned. Fault/reject steps emit none.
+- `outcome: pending-policy` is not a pass/fail oracle. V19's `policy_alternatives`
+  require explicit A6a/A6c approval; no alternative is selected. V23's scoped
+  rejection is a current backend certification boundary, not approval of A6b's
+  general escaping semantics.
 - State maps are **complete for the vector's mutable `let` cells in active
   generations**; derived maps contain its `get` outputs. They are not patches.
   Component parameters follow the source's invocation expressions and are not
   extra mutable state entries; temporary action parameters are absent.
   The final state is the last successful snapshot, or initial snapshot if there
-  are no actions. Error programs have null state/derived/DOM and empty events.
+  are no actions. Statically rejected programs have null state/derived/DOM and empty events;
+  runtime failures can retain earlier output and use the selected A6c disposition.
 - `.out` selects ordered visible text observations. Compare trimmed textContent
   of each matched wrapper; do not normalize whitespace *inside* scalar strings.
   V16's empty array means the component observer no longer exists. Extra runtime
@@ -83,15 +89,16 @@ classifications, not blanket Core conformance claims.
 | V16 | Local, Toggle off, Bump root, Toggle on | count=1; new local=0/twice=2; no dead delivery; DOM `2\|0` | V |
 | V17 | root effect x→y→z; Step | x=1/y=2/z=3; E1 then E2 watching 1 then 2; DOM `1\|2\|3` | V |
 | V18 | potential effect x↔y feedback | pre-execution E_EFFECT_CYCLE; no state, notification or DOM | T |
-| V19 | x=1; assign 1/0 | E_SCALAR_DOMAIN fault, no commit; last valid x=1/DOM `Value 1`; instance faulted | P |
+| V19 | x=1; assign 1/0 | **Pending A6a/A6c**: P1 rollback/terminate, P2 rollback/recoverable, P3 partial failure/require reinitialization; no selected oracle | P |
 | V20 | write x=1/show twice, x=2/show twice, effect observes | x=2/seen=4/twice=4; action shows 2,4; E1 watches 2; DOM only `2\|4\|4` | I |
 | V21 | importer initializes copy=seed+1 | private seed=7/main copy=8; no notification; DOM `8` | I |
 | V22 | imported seed assigned by importer | pre-execution E_IMPORT_WRITE; no state, notification or DOM | P |
-| V23 | decoded interpolation guesses generated key | pre-execution E_UNCERTIFIED_EXPR; no state, notification or DOM | T |
+| V23 | decoded interpolation guesses generated key | Current bounded E_UNCERTIFIED_EXPR rejection; general B1/B2 escaping semantics pending A6b | T |
 | V24 | component-local effect | pre-execution E_UNSUPPORTED_EFFECT; no state, notification or DOM | T |
 
 V10 is pending because implicit defining-module capture is not yet a supported
-clean-browser contract. V19 and V22 additionally depend on proposed policy A5/A6;
+clean-browser contract. V19 depends on unapproved A6a/A6c; V22 depends on
+A5's accepted direction and a future supported implementation;
 current acceptance is not called a regression against an already established
 language guarantee. V24 deliberately remains a rejection; lifecycle render
 observers in V16 do not covertly enable component-local effects.
@@ -142,3 +149,8 @@ remounts. Add independent read-only-capture shadowing and unimported-file contro
 when capture becomes executable. A future mandatory suite must distinguish
 `PASS`, `FAIL`, `UNSUPPORTED`, `UNVERIFIED`, and `MODEL_LIMIT`; none may be silently
 collapsed to PASS.
+
+The [A6 review](a6-decisions.md) documents compatibility exclusions and the
+R5/R7/R8/R11 failure alternatives. The 21 historical Chromium executions remain
+observations only; none has been promoted to a full conformance pass. No new
+failure/recovery experiment is claimed by this documentation refinement.

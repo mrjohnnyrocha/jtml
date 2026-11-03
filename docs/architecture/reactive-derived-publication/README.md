@@ -32,14 +32,24 @@ written, even without an action reading the offending getter. Previous output
 is preserved. No source scanner, dependency package or second browser scheduler
 is introduced.
 
-The client manifest carries the optional order only after clean certification.
-The closed schema checks its type, unique existing names and complete coverage.
+The client manifest carries the order after clean certification; it is required
+when a clean production bundle has root getters. No-getter bundles and
+compat/debug/inline/live output may omit it. The closed output validator checks
+its type, unique existing names, complete coverage and every dependency position
+using the existing structured expression-plan walker. Both conditional branches
+and all executable module projections are checked; independent components may
+use any valid topological permutation. The executed path segments determine
+roots, not diagnostic source/root hints. Literal application payloads are not
+walked as expression nodes.
 The browser uses this order in its existing derived pass, both at bootstrap and
 at each existing action/effect flush. Each formula still uses the existing
 structured expression plan. Derived cache writes finish before DOM work starts;
-there is no per-assignment DOM flush. The successful synchronous publication
-path exposes coherent caches at every observed DOM text write. This does not
-promise a transaction for arbitrary host effects or external DOM observers.
+there is no per-assignment DOM flush. The tests compare actual values read back immediately after selected
+`Element.textContent` setters with each independently expected phase projection,
+in addition to checking cached source/derived values. This evidence covers the
+single dynamic text projection inside each tested `.out` after runtime bootstrap.
+It does not instrument attributes, `nodeValue`, HTML insertion, pre-bootstrap
+markup or arbitrary host effects, and does not establish complete DOM atomicity.
 
 Compat/debug and inline/live artifacts receive no order metadata and retain
 their previous traversal. Parameter restoration, lazy action reads, subscription
@@ -64,9 +74,13 @@ python3 tests/reference_model/audit.py
 `derived_publication.cjs` extracts original vector source and independently
 authored expected values from `vectors.json`, without modifying either. It
 asserts initial and post-action state, getters and DOM for V01/V03/V04/V05.
-Instrumentation observes cached values at actual DOM text writes, including
-startup; expectations are calculated independently, never from those observed
-caches. Four source/key-order permutations exercise a 12-getter chain feeding
+Instrumentation observes actual text and cached values at the selected setters,
+including initialized startup. Each phase uses authored or independently computed
+expected values, never values inferred from the observed caches. A required
+negative control temporarily changes the generated root renderer to write `X`
+before the correct text. The final DOM and getter caches remain correct, but the
+same publication assertion must reject `X`. The synthetic asset does not grow,
+production code and budgets are unchanged, and the original asset is restored. Four source/key-order permutations exercise a 12-getter chain feeding
 a diamond and another consumer, with four repeated actions. An explicit imported
 getter crosses module order; existing structured collection getters and
 compat/debug behavior have separate controls. Browser errors/CSP violations
@@ -115,7 +129,7 @@ test in the existing Ubuntu/macOS jobs; the local full gate also requires it.
 - Failure-path atomicity, strict scalar/coercion policies and A6c are not ratified
   or implemented. Effects and imperative `show` retain existing behavior.
 
-## Complete local gate
+## Original local gate at `7994c73`
 
 The final complete `scripts/verify_all.sh` run passed: 521 CTests, doctor,
 examples/demos, nine mandatory clean-exit performance browser fixtures plus the
@@ -139,3 +153,63 @@ Existing keyword-linter limitations, reference HTML size warning (100,009 versus
 body-plan complete-attribute discrepancy observations remain explicit. Those
 catalog observations are not newly passing Core semantics. Hosted Ubuntu/macOS
 CI validates the committed candidate separately from this local gate.
+
+
+## Adversarial corrections after `7994c73`
+
+The initial all-getter pass incorrectly treated the Core value import kinds as
+exhaustive. A retained `store` import now resolves, for publication only, to its
+explicit defining module's lowered object binding. `shop.x` is an external state
+member dependency, not an edge to an unrelated root getter named `x`. No store
+name/global lookup is guessed. Missing imports and callable imports remain
+unauthorized, and #79's stronger scalar action-read certification is unchanged:
+a getter closure reaching an imported store is still outside that action-read
+subset. This is restoration of an existing clean-browser publication contract,
+not new store semantics or imported write authority.
+
+The mandatory `imported-store-getter` fixture preserves the pre-PR browser trace
+`2|1`, `3|2`, `4|3`, `5|4` through actual repeated UI dispatch. CTests separately
+verify a getter named like the store member, unauthorized store access and the
+unchanged action-read rejection boundary.
+
+Production output validation now rejects missing, reversed, duplicate and
+incomplete orders. The existing plan walker checks structured child shapes and
+collects executed root segments, so erasing a child or replacing a path with an
+unowned root cannot hide an ordering dependency. This is a compiler-side
+constraint check, not another scheduler or source-string evaluator. Compat/debug
+continue to accept their intentionally absent order. Tests include an alternate
+valid disconnected-component order, inactive-branch edges and literal data that
+resembles a plan.
+
+Artifact boundary: the validator checks the typed plans and declarations present
+in the bundle; original source/module-import authority is certified from retained
+IR during compilation. It does not authenticate arbitrary rewritten assets or
+reconstruct original import authority from untrusted JSON. The browser still
+trusts its checked bundle; editing assets after validation or bypassing validation
+is outside the certification claim. No runtime graph repair/checker was added.
+
+These amendments change no emitted runtime bytes: `7994c73` and the corrected
+candidate both measure **272,985 raw / 51,160 gzip bytes** (Node zlib level 9),
+leaving 15 raw bytes below the unchanged limit. Relative to pre-PR main, the
+original +99 raw / +33 gzip delta remains unchanged. Original V01/V03/V04/V05
+sources, oracles, model fixtures and pinned historical observations are untouched.
+
+
+Final amendment verification: all **523 CTests** passed, including 16 focused
+ownership/action/effect/publication tests. The new imported-store browser trace,
+actual-value observation and required transient-write negative control passed
+with clean exit; all existing action-read, module ownership/storage and root
+effect controls also passed. The independent model's 18 tests and all four
+audits passed separately. The complete browser-required, clean-exit local gate
+passed in one uninterrupted run for these amendments, including nine performance
+fixtures plus reference app, pinned site, packaging/relocation and eight live
+smoke checks. No required checks were skipped. The reviewed native attribute
+observations and existing size/linter/locale warnings remain unchanged; the
+historical reset above was not reproduced in this run and is not claimed fixed.
+
+The emitted runtime is byte-identical to `7994c73` (SHA-256
+`c2c5a083257499d736c8184a65604e1772a7aa88d373227faf8ef9be3260807a`).
+Store-derived member semantics, imported-store getter reads inside the stronger
+#79 action subset, component scheduling, initializer gaps and A6c remain outside
+this correction. Final Ubuntu/macOS CI results are recorded on the PR, separately
+from local verification.

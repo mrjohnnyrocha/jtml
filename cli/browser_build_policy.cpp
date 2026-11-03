@@ -59,15 +59,23 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
             if (binding.name == name) return {&module, &binding, true};
         return {nullptr, nullptr, false};
     };
-    auto resolve = [&](const Module& module, const std::string& name) -> Resolved {
+    auto resolve = [&](const Module& module, const std::string& name, bool publication = false) -> Resolved {
         const auto own = local(module, name);
         if (own.binding) return own;
         for (const auto& symbol : module.importedSymbols) if (symbol.name == name &&
-            (symbol.kind == "let" || symbol.kind == "const" || symbol.kind == "get")) {
+            (symbol.kind == "let" || symbol.kind == "const" || symbol.kind == "get" ||
+             (publication && symbol.kind == "store"))) {
             const auto found = modules.find(symbol.module);
             if (found != modules.end()) {
                 const auto target = local(*found->second, name);
-                if (target.binding && target.derived == (symbol.kind == "get")) return target;
+                if (!target.binding || target.derived != (symbol.kind == "get")) continue;
+                if (symbol.kind == "store") {
+                    // Retained export identity must name its owner's lowered store
+                    // object. Its members are external state leaves, not getters.
+                    const auto initial = jtml::parseExpressionIr(target.binding->expr);
+                    if (!initial || initial->valueType != jtml::ExpressionValueType::Object) continue;
+                }
+                return target;
             }
         }
         return {nullptr, nullptr, false};
@@ -97,7 +105,7 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
             fail(module, binding.sourceSpan, "get `" + binding.name + "` requires a supported " + std::string(scalarRead ? "scalar " : "") + "expression plan");
         for (const auto& dependency : jtml::expressionIrDependencies(*ir)) {
             const auto root = dependency.substr(0, dependency.find_first_of(".["));
-            const auto target = resolve(module, root);
+            const auto target = resolve(module, root, !scalarRead);
             if (!target.binding || root == "__proto__") fail(module, binding.sourceSpan, "unresolved, reserved or unimported binding `" + root + "`");
             if (ambiguous(target)) fail(module, binding.sourceSpan, "ambiguous value/get `" + root + "`");
             if (target.derived) prove(target, scalarRead);

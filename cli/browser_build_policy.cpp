@@ -34,11 +34,13 @@ void validateActionGetReads(const jtml::RuntimeProjectPlan& project) {
     using Binding = jtml::RuntimePlanBinding;
     struct Resolved { const Module* owner; const Binding* binding; bool derived; };
     std::map<jtml::SemanticModuleId, const Module*> modules;
-    std::set<std::string> derivedNames, valueNames;
+    // Actual shared value slots, with their defining owners (ownership collisions
+    // have already been rejected). These are not lexical name sets.
+    std::map<std::string, Resolved> storageOwners;
     for (const auto& module : project.modules) if (module.clientExecutable) {
         modules[module.id] = &module;
-        for (const auto& binding : module.plan.state) valueNames.insert(binding.name);
-        for (const auto& binding : module.plan.derived) { derivedNames.insert(binding.name); valueNames.insert(binding.name); }
+        for (const auto& binding : module.plan.state) storageOwners.emplace(binding.name, Resolved{&module, &binding, false});
+        for (const auto& binding : module.plan.derived) storageOwners.insert_or_assign(binding.name, Resolved{&module, &binding, true});
     }
     auto fail = [](const Module& module, const SourceSpan& span, const std::string& reason) {
         std::string at = module.path;
@@ -70,12 +72,18 @@ void validateActionGetReads(const jtml::RuntimeProjectPlan& project) {
         }
         return {nullptr, nullptr, false};
     };
+    auto ambiguous = [](Resolved target) {
+        const auto sameName = [&](const auto& b) { return b.name == target.binding->name; };
+        const auto derived = std::count_if(target.owner->plan.derived.begin(), target.owner->plan.derived.end(), sameName);
+        return derived && (derived != 1 ||
+            std::any_of(target.owner->plan.state.begin(), target.owner->plan.state.end(), sameName));
+    };
     std::set<std::pair<jtml::SemanticModuleId, std::string>> active, complete;
     std::function<void(Resolved)> prove = [&](Resolved resolved) {
         const auto& module = *resolved.owner;
         const auto& binding = *resolved.binding;
         if (binding.name == "__proto__") fail(module, binding.sourceSpan, "reserved storage binding `__proto__`");
-        if (std::count_if(module.plan.derived.begin(), module.plan.derived.end(), [&](const auto& b) { return b.name == binding.name; }) != 1)
+        if (ambiguous(resolved))
             fail(module, binding.sourceSpan, "ambiguous get `" + binding.name + "`");
         const auto key = std::make_pair(module.id, binding.name);
         if (complete.count(key)) return;
@@ -90,7 +98,7 @@ void validateActionGetReads(const jtml::RuntimeProjectPlan& project) {
             const auto root = dependency.substr(0, dependency.find_first_of(".["));
             const auto target = resolve(module, root);
             if (!target.binding || root == "__proto__") fail(module, binding.sourceSpan, "unresolved, reserved or unimported binding `" + root + "`");
-            if (!target.derived && derivedNames.count(root)) fail(module, binding.sourceSpan, "ambiguous value/get `" + root + "`");
+            if (ambiguous(target)) fail(module, binding.sourceSpan, "ambiguous value/get `" + root + "`");
             if (target.derived) prove(target);
         }
         active.erase(key);
@@ -105,11 +113,16 @@ void validateActionGetReads(const jtml::RuntimeProjectPlan& project) {
                 if (!ir) return;
                 for (const auto& dependency : jtml::expressionIrDependencies(*ir)) {
                     const auto root = dependency.substr(0, dependency.find_first_of(".["));
-                    if (std::find(action.params.begin(), action.params.end(), root) != action.params.end() ||
-                        !derivedNames.count(root)) continue;
+                    if (std::find(action.params.begin(), action.params.end(), root) != action.params.end()) continue;
                     const auto target = resolve(module, root);
-                    if (!target.binding) fail(module, action.sourceSpan, "unimported get `" + root + "`");
-                    if (!target.derived) fail(module, action.sourceSpan, "ambiguous value/get `" + root + "`");
+                    if (!target.binding) {
+                        const auto occupied = storageOwners.find(root);
+                        if (occupied != storageOwners.end() && occupied->second.derived)
+                            fail(module, action.sourceSpan, "unimported get `" + root + "`");
+                        continue;
+                    }
+                    if (ambiguous(target)) fail(module, action.sourceSpan, "ambiguous value/get `" + root + "`");
+                    if (!target.derived) continue;
                     consumesGet = true;
                     prove(target);
                 }
@@ -136,7 +149,13 @@ void validateActionGetReads(const jtml::RuntimeProjectPlan& project) {
                         if (write.localDeclaration && write.lhs->getExprType() == ExpressionStatementNodeType::Variable)
                             name = static_cast<const VariableExpressionStatementNode&>(*write.lhs).name;
                     }
-                    if (valueNames.count(name)) fail(module, node->sourceSpan, "local declaration shadows root storage `" + name + "`");
+                    const auto occupied = storageOwners.find(name);
+                    // Parameter slots are restored after dispatch and masked from
+                    // getter closures, including a local declaration in that slot.
+                    if (occupied != storageOwners.end() &&
+                        std::find(action.params.begin(), action.params.end(), name) == action.params.end())
+                        fail(module, node->sourceSpan, "local declaration shadows root storage `" + name +
+                            "` owned by " + occupied->second.owner->path);
                     if (node->getType() == ASTNodeType::IfStatement) {
                         const auto& branch = static_cast<const IfStatementNode&>(*node);
                         locals(branch.thenStatements); locals(branch.elseStatements);

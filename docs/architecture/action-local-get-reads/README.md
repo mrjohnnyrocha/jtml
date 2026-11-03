@@ -28,7 +28,7 @@ The global derived scheduler is deliberately unchanged.
 plans, import kinds and defining-module identities before output is written.
 Unresolved/unimported roots, cycles, unsupported plans, known collection/null
 results, ambiguous value/get names, reserved storage, and action-local declarations
-that shadow root storage are rejected with source locations. Only explicitly
+that collide with unprotected root storage are rejected with source locations. Only explicitly
 imported values authorize cross-module reads; importing a same-named component
 does not. Unknown expression result types must yield a scalar at execution;
 missing getter dependencies throw instead of reaching the legacy namespace.
@@ -91,3 +91,34 @@ This was a resumed gate, not one uninterrupted zero-exit invocation. No required
 check was skipped. Existing keywords-linter limitations, the 100,009-byte
 reference HTML warning and host locale warnings remain; budgets and assertions
 were not changed. JavaScript syntax and `git diff --check` also passed.
+
+
+## Final ownership adversarial review
+
+Project-wide spelling membership is not evidence of lexical ambiguity. Getter
+reads and dependencies now test ambiguity in their resolved defining owner;
+explicit import resolution and the existing root storage collision guard remain
+in force. A slot-to-owner table is used only to detect actual shared-runtime
+storage capture or an unauthorized read of another owner's getter.
+
+The review confirmed one false rejection: `when step scratch` containing
+`let scratch = 7` and a getter read was rejected merely because another module
+owned `let scratch` or `get scratch`. The invocation slot is restored after the
+action and masked from getter closures, so these declarations are safe. Focused
+Chromium regressions now cover both kinds and repeated dispatch while verifying
+the independent owner remains at nine.
+
+An unprotected action-local `let scratch` does overwrite another module's root
+slot (Chromium before the guard: nine becomes seven), even when that slot is
+outside the consumed getter's closure. That case remains rejected. Mixed-kind
+same-spelled root values also remain rejected by the pre-existing module guard:
+scalar isolation explicitly excludes getters. Distinct value/action namespaces
+and fresh unrelated action locals compile and execute. This correction does not
+extend module storage or block-local runtime semantics.
+
+This validation-only amendment passed 11 focused CTests, the expanded strict-CSP
+Chromium action suite (clean exit), and the existing module collision/storage
+and root-effect controls. Runtime bytes remain 272,886 raw / 51,127 gzip; no
+runtime code or budget changed. The earlier full-gate evidence above applies to
+the original correction; this review uses focused checks and hosted CI for the
+final amended commit, without rerunning the full local gate.

@@ -118,6 +118,37 @@ async function expectView(page, values) {assert.deepEqual(await view(page), valu
     assert.equal(fs.readFileSync(path.join(dest,'index.html'),'utf8'),'previous output');assert(!fs.existsSync(path.join(dest,'app.js')));
     report.cases.push({id:name,status:'REJECTED',diagnostic:r.stderr});
   }
+  // A same-spelled parameter/local slot has invocation ownership, not module ownership.
+  for (const kind of ['let','get']) {
+    const sourceDir=path.join(out,'parameter-local-'+kind);fs.mkdirSync(sourceDir,{recursive:true});
+    const source=path.join(sourceDir,'index.jtml');
+    const entry='jtml 2\nuse Card from "./private.jtml"\nlet count = 0\nget twice = count * 2\nwhen step scratch\n  let scratch = 7\n  count = count + 1\n  show twice\n  show scratch\npage\n  box class "out"\n    text "{twice}"\n  button "Step" click step(100)\n  Card\n';
+    fs.writeFileSync(source,entry);
+    fs.writeFileSync(path.join(sourceDir,'private.jtml'),`jtml 2\n${kind} scratch = 9\nwhen inspectPrivate\n  show scratch\nexport make Card\n  button "Inspect" click inspectPrivate\n`);
+    compile(source,'parameter-local-dist-'+kind);const localPage=await open();
+    for(let i=1;i<=2;i++) {
+      await localPage.page.getByRole('button',{name:'Step',exact:true}).click();
+      await expectView(localPage.page,[String(i*2)]);
+      await localPage.page.getByRole('button',{name:'Inspect',exact:true}).click();
+      assert.deepEqual(localPage.shown.splice(0),[String(i*2),'7','9']);
+    }
+    await localPage.page.close();report.cases.push({id:'parameter-local-with-other-module-'+kind,status:'PASS'});
+    // Without a parameter frame, the local really overwrites shared root storage.
+    fs.writeFileSync(source,entry.replace('when step scratch','when step'));
+    const denied=build(source,path.join(out,'unprotected-local-'+kind));
+    assert.notEqual(denied.status,0);assert.match(denied.stderr,/(local declaration shadows root storage|unimported get) `scratch`/);
+    // Distinct root value owners with different kinds remain outside scalar isolation.
+    fs.writeFileSync(source,entry.replace('let count = 0','let count = 0\n'+(kind==='let'?'get':'let')+' scratch = 1'));
+    const collision=build(source,path.join(out,'mixed-root-'+kind));
+    assert.notEqual(collision.status,0);assert.match(collision.stderr,/browser runtime binding collision `scratch`/);
+  }
+  const independentDir=path.join(out,'independent-local');fs.mkdirSync(independentDir,{recursive:true});
+  fs.writeFileSync(path.join(independentDir,'private.jtml'),'jtml 2\nwhen scratch\n  show 9\nexport make Card\n  text "Card"\n');
+  fs.writeFileSync(path.join(independentDir,'index.jtml'),'jtml 2\nuse Card from "./private.jtml"\nlet count = 1\nget twice = count * 2\nwhen step\n  let scratch = 7\n  show twice\n  show scratch\npage\n  Card\n  button "Step" click step\n');
+  compile(path.join(independentDir,'index.jtml'),'independent-local-dist');const independentPage=await open();
+  await independentPage.page.getByRole('button',{name:'Step',exact:true}).click();
+  assert.deepEqual(independentPage.shown,['2','7']);await independentPage.page.close();
+  report.cases.push({id:'unrelated-action-namespace-and-local-outside-get-closure',status:'PASS'});
   // Preserve V04/V05's global publication defects, not an oracle waiver in the model.
   if (process.argv.includes('--document-gaps')) for(const id of ['V04','V05']) {
     const {v,source}=authored(id);compile(source,id);const {page}=await open();

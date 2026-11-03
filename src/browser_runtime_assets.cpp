@@ -4170,16 +4170,15 @@ const char* browserRuntimeComponentChunk() {
         }
         manifest = mergeProjectManifest(manifest);
         const state = manifest.state || {};
-        const statePlans = manifest.statePlans || {};
-        for (const name in state) {
-          const result = evaluateClientPlan(statePlans[name], state[name], clientState);
+        Object.assign(clientStatePlans, manifest.statePlans || {});
+        for (const name of manifest.stateOrder || Object.keys(state)) {
+          const result = evaluateClientPlan(clientStatePlans[name], state[name], clientState);
           if (result.found) clientState[name] = result.value;
         }
         const routeManifest = Array.isArray(manifest.routes) ? manifest.routes : [];
         const fetchManifest = Array.isArray(manifest.fetches) ? manifest.fetches : [];
         const componentDefinitionManifest = Array.isArray(manifest.componentDefinitions) ? manifest.componentDefinitions : [];
         const componentInstanceManifest = Array.isArray(manifest.componentInstances) ? manifest.componentInstances : [];
-        Object.assign(clientStatePlans, manifest.statePlans || {});
         Object.assign(clientDerived, manifest.derived || {});
         derivedOrder = manifest.derivedOrder;
         Object.assign(clientDerivedPlans, manifest.derivedPlans || {});

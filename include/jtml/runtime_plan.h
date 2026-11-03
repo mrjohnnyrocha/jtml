@@ -6,6 +6,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -124,6 +125,7 @@ struct RuntimeModulePlan {
     std::shared_ptr<const SemanticModuleAst> ast;
     std::map<std::string, std::string> scalarStorageKeys;
     std::vector<SemanticImportedSymbol> importedSymbols;
+    std::vector<SemanticModuleId> initializationSideEffects; // Retained legacy whole-file import scopes.
     SemanticModuleId id = InvalidSemanticModuleId;
     std::string path;
     bool astAvailable = false;
@@ -133,6 +135,8 @@ struct RuntimeModulePlan {
 };
 
 struct RuntimeProjectPlan {
+    // Absent: compat/inline. Empty: explicit legacy initialization boundary.
+    std::optional<std::vector<std::string>> stateOrder;
     std::vector<std::string> derivedOrder; // Certified clean-browser publication order.
     std::string scalarStorageIssue; // Internal proof failure; preserves collision rejection.
     SemanticModuleId entry = InvalidSemanticModuleId;

@@ -1208,8 +1208,10 @@ RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project,
         RuntimeModulePlan modulePlan;
         modulePlan.id = module.id;
         modulePlan.ast = module.ast;
-        for (const auto& import : module.imports)
+        for (const auto& import : module.imports) {
             modulePlan.importedSymbols.insert(modulePlan.importedSymbols.end(), import.resolvedSymbols.begin(), import.resolvedSymbols.end());
+            if (import.kind == "side-effect") modulePlan.initializationSideEffects.push_back(import.resolved);
+        }
         modulePlan.path = module.path;
         modulePlan.astAvailable = module.ast && module.ast->available;
         modulePlan.syntax = module.ast ? module.ast->syntax : "";

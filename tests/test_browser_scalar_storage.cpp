@@ -283,3 +283,68 @@ TEST(BrowserDerivedPublication, OrderValidationUsesStructuredEdgesIncludingInact
         }
     }
 }
+
+
+TEST(BrowserMutableInitialization, SourceOrderIsExplicitAndIndependentOfJsonKeys) {
+    const auto root = temporary();
+    write(root / "index.jtml", "jtml 2\nlet z = 2\nlet a = z + 1\nget result = a + z\npage\n  text result\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    EXPECT_EQ(manifest(root / "out")["stateOrder"], nlohmann::json({"z", "a"}));
+    EXPECT_EQ(manifest(root / "out")["derivedOrder"], nlohmann::json({"result"}));
+    ASSERT_EQ(compile(root / "index.jtml", root / "compat", true), "");
+    EXPECT_FALSE(manifest(root / "compat").contains("stateOrder"));
+}
+
+TEST(BrowserMutableInitialization, RejectionIsSourceLocatedAndPreservesEveryAsset) {
+    const auto root = temporary();
+    write(root / "index.jtml", "jtml 2\nlet z = 2\nlet a = z + 1\npage\n  text a\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    const std::vector<std::string> names = {"index.html", "app.js", "jtml-runtime.js", "components/index.js"};
+    std::vector<std::string> previous; for (const auto& name : names) previous.push_back(read(root / "out" / name));
+    for (const auto& item : std::vector<std::pair<std::string, std::string>>{
+        {"let first = later + 1\nlet later = 2\n", "E_INIT_FORWARD"},
+        {"let self = self + 1\n", "E_INIT_FORWARD"},
+        {"get derived = 2\nlet x = derived\n", "E_INIT_DERIVED"},
+        {"let x = mystery()\n", "E_INIT_UNSUPPORTED"},
+        {"let x = unknown\n", "E_INIT_UNRESOLVED"}}) {
+        write(root / "index.jtml", "jtml 2\n" + item.first + "page\n  text \"Never\"\n");
+        const auto error = compile(root / "index.jtml", root / "out");
+        EXPECT_NE(error.find(item.second), std::string::npos) << error;
+        EXPECT_NE(error.find("index.jtml:"), std::string::npos) << error;
+        for (size_t i = 0; i < names.size(); ++i) EXPECT_EQ(read(root / "out" / names[i]), previous[i]);
+    }
+}
+
+TEST(BrowserMutableInitialization, ForeignOwnersAndRepeatedLoweredSlotsKeepTheirExistingBoundary) {
+    const auto root = temporary();
+    write(root / "private.jtml", "jtml 2\nlet dummy = 1\nexport let aaSeed = 7\n");
+    write(root / "index.jtml", "jtml 2\nuse aaSeed from \"./private.jtml\"\nlet zzCopy = aaSeed + 1\npage\n  text zzCopy\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "foreign"), "");
+    EXPECT_TRUE(manifest(root / "foreign")["stateOrder"].is_null());
+    write(root / "private.jtml", "jtml 2\nlet aaSeed = 7\nexport make Card\n  text \"Card\"\n");
+    write(root / "index.jtml", "jtml 2\nuse \"./private.jtml\"\nlet zzCopy = aaSeed + 1\npage\n  text zzCopy\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "side-effect"), "");
+    EXPECT_TRUE(manifest(root / "side-effect")["stateOrder"].is_null());
+    write(root / "index.jtml", "jtml 2\nuse Card from \"./private.jtml\"\nlet zzCopy = aaSeed + 1\npage\n  Card\n");
+    EXPECT_NE(compile(root / "index.jtml", root / "unimported").find("E_INIT_UNRESOLVED"), std::string::npos);
+    write(root / "index.jtml", "jtml 2\nlet slot = {}\nlet slot = {ready: true}\npage\n  text \"Ready\"\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "lowered"), "");
+    EXPECT_TRUE(manifest(root / "lowered")["stateOrder"].is_null());
+}
+
+TEST(BrowserMutableInitialization, InvalidCertificatesCannotClaimOrderedInitialization) {
+    const auto root = temporary();
+    write(root / "index.jtml", "jtml 2\nlet z = 2\nlet a = z + 1\npage\n  text a\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    const auto html = read(root / "out/index.html");
+    const std::string marker = "id=\"__jtml_client_manifest\">";
+    const auto begin = html.find(marker) + marker.size(), end = html.find("</script>", begin);
+    for (const auto& order : {nlohmann::json::array(), nlohmann::json({"a", "z"}), nlohmann::json({"z", "z", "a"}), nlohmann::json({"z", "unknown"})}) {
+        auto client = nlohmann::json::parse(html.substr(begin, end - begin)); client["stateOrder"] = order;
+        write(root / "out/index.html", html.substr(0, begin) + client.dump() + html.substr(end));
+        EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production), std::runtime_error);
+    }
+    auto missing = nlohmann::json::parse(html.substr(begin, end - begin)); missing.erase("stateOrder");
+    write(root / "out/index.html", html.substr(0, begin) + missing.dump() + html.substr(end));
+    EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production), std::runtime_error);
+}

@@ -27,6 +27,97 @@ bool isHiddenOrNonPublicSegment(const std::filesystem::path& segment) {
     return false;
 }
 
+// Local source order is certified from retained owner vectors, never linked JSON.
+// Imported initializer sequencing (V21) and repeated lowered slots retain the
+// pre-existing bootstrap contract rather than acquiring a new module scheduler.
+std::vector<std::string> planBrowserStateOrder(const jtml::RuntimeProjectPlan& project) {
+    using Module = jtml::RuntimeModulePlan;
+    std::map<jtml::SemanticModuleId, const Module*> modules;
+    std::map<jtml::SemanticModuleId, std::map<std::string, std::vector<size_t>>> positions;
+    std::set<std::string> owned;
+    for (const auto& module : project.modules) if (module.clientExecutable) {
+        modules[module.id] = &module;
+        auto& local = positions[module.id];
+        for (size_t i = 0; i < module.plan.state.size(); ++i) {
+            local[module.plan.state[i].name].push_back(i);
+            owned.insert(module.plan.state[i].name);
+        }
+    }
+    auto fail = [](const Module& module, const jtml::RuntimePlanBinding& binding,
+                   const std::string& code, const std::string& reason) {
+        std::string at = module.path;
+        if (binding.sourceSpan.original) {
+            const auto& origin = *binding.sourceSpan.original;
+            const auto pos = origin.source->coordinates(origin.begin);
+            at = origin.source->file + ":" + std::to_string(pos.first) + ":" + std::to_string(pos.second);
+        } else at += ":" + std::to_string(binding.sourceSpan.startLine) + ":" + std::to_string(binding.sourceSpan.startColumn);
+        throw std::runtime_error(at + ": " + code + ": " + reason +
+            "; use earlier module-local state and structured initializer expressions");
+    };
+    bool legacy = false;
+    std::vector<std::string> order;
+    for (const auto& entry : modules) {
+        const auto& module = *entry.second;
+        const auto& local = positions.at(module.id);
+        for (size_t i = 0; i < module.plan.state.size(); ++i) {
+            const auto& binding = module.plan.state[i];
+            if (binding.name == "__proto__") fail(module, binding, "E_INIT_UNSUPPORTED", "reserved state binding `__proto__`");
+            // UI lowering can repeat a physical slot, e.g. scene `into` defaults.
+            // Do not reinterpret those records as new independent declarations.
+            if (local.at(binding.name).size() != 1) { legacy = true; continue; }
+            const auto ir = jtml::parseExpressionIr(binding.expr);
+            if (!ir || !ir->supported || !jtml::expressionIrSupportsDirectJs(*ir))
+                fail(module, binding, "E_INIT_UNSUPPORTED", "unsupported initializer for `" + binding.name + "`");
+            for (const auto& dependency : jtml::expressionIrDependencies(*ir)) {
+                const auto root = dependency.substr(0, dependency.find_first_of(".["));
+                const auto own = local.find(root);
+                if (own != local.end()) {
+                    if (own->second.size() != 1) { legacy = true; continue; }
+                    if (own->second.front() >= i)
+                        fail(module, binding, "E_INIT_FORWARD", (root == binding.name ? "self-reference to `" : "forward reference to `") + root + "`");
+                    continue;
+                }
+                if (std::any_of(module.plan.derived.begin(), module.plan.derived.end(), [&](const auto& b) { return b.name == root; }))
+                    fail(module, binding, "E_INIT_DERIVED", "initializer reads get `" + root + "` before derived initialization");
+                // Named import authority and legacy whole-file scopes are both
+                // retained identities. Never search unrelated project globals.
+                auto named = [&](const Module& scope) {
+                    for (const auto& symbol : scope.importedSymbols) if (symbol.name == root) {
+                        const auto owner = modules.find(symbol.module);
+                        if (owner == modules.end()) continue;
+                        if (symbol.kind == "get") return 2;
+                        if ((symbol.kind == "let" || symbol.kind == "const" || symbol.kind == "store") &&
+                            positions.at(symbol.module).count(root)) return 1;
+                    }
+                    return 0;
+                };
+                std::set<jtml::SemanticModuleId> seen;
+                std::function<int(const Module&)> sideEffects = [&](const Module& scope) {
+                    for (const auto id : scope.initializationSideEffects) {
+                        const auto owner = modules.find(id);
+                        if (owner == modules.end() || !seen.insert(id).second) continue;
+                        const auto& imported = *owner->second;
+                        if (positions.at(id).count(root)) return 1;
+                        if (std::any_of(imported.plan.derived.begin(), imported.plan.derived.end(), [&](const auto& b) { return b.name == root; })) return 2;
+                        if (const auto value = named(imported)) return value;
+                        if (const auto value = sideEffects(imported)) return value;
+                    }
+                    return 0;
+                };
+                const auto direct = named(module);
+                const auto imported = direct ? direct : sideEffects(module);
+                if (imported == 2) fail(module, binding, "E_INIT_DERIVED", "initializer reads imported get `" + root + "`");
+                if (!imported || root == "__proto__")
+                    fail(module, binding, "E_INIT_UNRESOLVED", "unresolved or unimported initializer binding `" + root + "`");
+                legacy = true; // Do not compare declaration indices across owners.
+            }
+            order.push_back(binding.name);
+        }
+    }
+    for (const auto& binding : project.linkedPlan.state) if (!owned.count(binding.name)) legacy = true;
+    return legacy ? std::vector<std::string>{} : order;
+}
+
 // Certify getter closures from retained module plans/import identities. The
 // resulting dependency-first order is shared by initialization and publication.
 std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan& project) {
@@ -303,6 +394,7 @@ void validateBrowserRuntimeBindingOwnership(jtml::RuntimeProjectPlan& project) {
         if (!project.scalarStorageIssue.empty()) message << "Scalar isolation was not proved: " << project.scalarStorageIssue << "\n";
         throw std::runtime_error(message.str());
     }
+    project.stateOrder = planBrowserStateOrder(project);
     project.derivedOrder = planBrowserDerivedOrder(project);
 }
 

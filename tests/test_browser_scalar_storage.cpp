@@ -295,6 +295,43 @@ TEST(BrowserMutableInitialization, SourceOrderIsExplicitAndIndependentOfJsonKeys
     EXPECT_FALSE(manifest(root / "compat").contains("stateOrder"));
 }
 
+TEST(BrowserMutableInitialization, ClassicImportsUseFirstAuthoredOccurrence) {
+    const auto root = temporary();
+    write(root / "z.jtml", R"(define z = 1\\
+)");
+    write(root / "a.jtml", R"(define a = 2\\
+)");
+    write(root / "index.jtml", R"(import "./z.jtml"\\
+import "./a.jtml"\\
+import "./z.jtml"\\
+define entry = 0\\
+)");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    EXPECT_EQ(manifest(root / "out")["stateOrder"], nlohmann::json({"z", "a", "entry"}));
+}
+
+TEST(BrowserMutableInitialization, CertifiedPathsRequireStringOrNumericPropertyKeys) {
+    const auto root = temporary();
+    write(root / "index.jtml", "jtml 2\nlet z = {a: 7}\nlet copy = z.a\npage\n  text copy\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    const auto html = read(root / "out/index.html");
+    const std::string marker = "id=\"__jtml_client_manifest\">";
+    const auto begin = html.find(marker) + marker.size(), end = html.find("</script>", begin);
+    auto client = nlohmann::json::parse(html.substr(begin, end - begin));
+    auto check = [&](const nlohmann::json& segment) {
+        client["statePlans"]["copy"] = {{"kind", "path"}, {"segments", {"z", segment}}};
+        write(root / "out/index.html", html.substr(0, begin) + client.dump() + html.substr(end));
+        jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production);
+    };
+    EXPECT_NO_THROW(check("a"));
+    EXPECT_NO_THROW(check(0));
+    EXPECT_NO_THROW(check(-1.5));
+    EXPECT_THROW(check(nlohmann::json({{"toString", nullptr}, {"valueOf", nullptr}})), std::runtime_error);
+    EXPECT_THROW(check(nlohmann::json::array({"a"})), std::runtime_error);
+    EXPECT_THROW(check(nullptr), std::runtime_error);
+    EXPECT_THROW(check(true), std::runtime_error);
+}
+
 TEST(BrowserMutableInitialization, RejectionIsSourceLocatedAndPreservesEveryAsset) {
     const auto root = temporary();
     write(root / "index.jtml", "jtml 2\nlet z = 2\nlet a = z + 1\npage\n  text a\n");

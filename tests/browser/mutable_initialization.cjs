@@ -90,6 +90,32 @@ async function check(p,dom,values) {
  await diamond.close();
  report.cases.push('shared transitive dependency, textual imports and local chain PASS');
 
+ // Repeated imports use the first authored edge and initialize each owner once.
+ compile({
+  'index.jtml': String.raw`import "./z.jtml"\\
+import "./a.jtml"\\
+import "./z.jtml"\\
+define entry = 0\\
+`,
+  'z.jtml': String.raw`define z = 1\\`+'\n',
+  'a.jtml': String.raw`define a = 2\\`+'\n'
+ },'classic-repeated-import');
+ const classic=await open();
+ assert.deepEqual(await classic.evaluate(()=>Object.keys(jtml.state)),['z','a','entry']);
+ assert.deepEqual(await classic.evaluate(()=>jtml.state),{z:1,a:2,entry:0});
+ await classic.close();
+ compile({
+  'index.jtml': 'jtml 2\nuse x from "./z.jtml"\nuse "./a.jtml"\nuse y from "./z.jtml"\nlet total = x + y + a\npage\n  box class "out"\n    text total\n',
+  'z.jtml': 'jtml 2\nexport use x from "./x.jtml"\nexport let y = 2\n',
+  'x.jtml': 'jtml 2\nexport let x = 1\n',
+  'a.jtml': 'jtml 2\nlet a = 3\n'
+ },'friendly-repeated-import');
+ const friendly=await open();
+ await check(friendly,['6'],{x:1,y:2,a:3,total:6});
+ assert.deepEqual(await friendly.evaluate(()=>Object.keys(jtml.state)),['x','y','a','total']);
+ await friendly.close();
+ report.cases.push('Classic and Friendly repeated imports under strict CSP PASS');
+
  for(const flag of ['--compat','--debug']) {
   const source={'index.jtml':'jtml 2\nlet z = 2\nlet a = z + 1\nget result = a + z\npage\n  box class "out"\n    text "{a}|{result}"\n'};
   compile(source,'mode-'+flag.slice(2),[flag]);const p=await open();assert.deepEqual(await p.evaluate(()=>({z:jtml.state.z,a:jtml.state.a})),{z:2,a:undefined});await p.close();

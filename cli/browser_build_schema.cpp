@@ -252,7 +252,14 @@ void validateClientExpressionPlan(const nlohmann::json& value,
             if (!value.contains("segments") || !value.at("segments").is_array() ||
                 value.at("segments").empty() || !value.at("segments")[0].is_string())
                 issues.push_back(path + " requires resolved getter path segments");
-            else reads->insert(value.at("segments")[0].get<std::string>());
+            else {
+                const auto& segments = value.at("segments");
+                reads->insert(segments.front().get<std::string>());
+                for (size_t i = 1; i < segments.size(); ++i) {
+                    if (!segments[i].is_string() && !segments[i].is_number())
+                        issues.push_back(path + ".segments[" + std::to_string(i) + "] must be a string or number");
+                }
+            }
         }
     }
     static const std::vector<std::string> allowedExpressionKeys = {

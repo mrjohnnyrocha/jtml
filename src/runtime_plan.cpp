@@ -1208,10 +1208,18 @@ RuntimeProjectPlan buildRuntimePlan(const SemanticProject& project,
         RuntimeModulePlan modulePlan;
         modulePlan.id = module.id;
         modulePlan.ast = module.ast;
+        std::vector<const SemanticModuleImport*> initializationImports;
         for (const auto& import : module.imports) {
+            initializationImports.push_back(&import);
             modulePlan.importedSymbols.insert(modulePlan.importedSymbols.end(), import.resolvedSymbols.begin(), import.resolvedSymbols.end());
             if (import.kind == "side-effect") modulePlan.initializationSideEffects.push_back(import.resolved);
         }
+        // Semantic import records are canonicalized by specifier. Initialization
+        // needs their authored order, so recover it from the retained spans.
+        std::stable_sort(initializationImports.begin(), initializationImports.end(), [](const auto* left, const auto* right) {
+            return std::tie(left->span.line, left->span.column) < std::tie(right->span.line, right->span.column);
+        });
+        for (const auto* import : initializationImports) modulePlan.initializationImports.push_back(import->resolved);
         modulePlan.path = module.path;
         modulePlan.astAvailable = module.ast && module.ast->available;
         modulePlan.syntax = module.ast ? module.ast->syntax : "";

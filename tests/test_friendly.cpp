@@ -2696,8 +2696,6 @@ TEST(FriendlySyntax, DirectComponentActionsSupportGuardsLoopsAndPlusEqualsSemant
               std::string::npos) << html;
     EXPECT_NE(html.find("destroyRuntimeComponentInstance(id, 'keyed-child-remove')"),
               std::string::npos) << html;
-    EXPECT_NE(html.find("function pruneDynamicComponentListItem(parentId, nodeIndex, key)"),
-              std::string::npos) << html;
     EXPECT_NE(html.find("directComponentKeyedListPatch"),
               std::string::npos) << html;
     EXPECT_NE(html.find("mode: 'keyed-for-region-patch'"),

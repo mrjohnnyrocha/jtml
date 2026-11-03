@@ -791,12 +791,13 @@ void validateDerivedPublicationOrder(const nlohmann::json& manifest, bool requir
     }
 }
 
-// A non-null stateOrder is the source-local initialization certificate.
+// A non-null stateOrder certifies initialization across executable owners.
 // Null explicitly retains existing imported/lowered-slot initialization behavior.
 void validateStateInitializationOrder(const nlohmann::json& manifest, bool required,
                                        std::vector<std::string>& issues) {
     std::map<std::string, std::vector<const nlohmann::json*>> states;
     std::vector<const nlohmann::json*> projections;
+    std::map<std::string, size_t> ownerCounts;
     nlohmann::json effective = {{"state", nlohmann::json::object()}, {"statePlans", nlohmann::json::object()}};
     auto collect = [&](const nlohmann::json& plan) {
         projections.push_back(&plan);
@@ -816,7 +817,12 @@ void validateStateInitializationOrder(const nlohmann::json& manifest, bool requi
         if (project.contains("modules") && project.at("modules").is_array())
             for (const auto& module : project.at("modules"))
                 if (module.is_object() && (!module.contains("executable") || module.at("executable") != false) &&
-                    module.contains("plan") && module.at("plan").is_object()) collect(module.at("plan"));
+                    module.contains("plan") && module.at("plan").is_object()) {
+                    const auto& plan = module.at("plan");
+                    collect(plan);
+                    if (plan.contains("state") && plan.at("state").is_object())
+                        for (const auto& item : plan.at("state").items()) ++ownerCounts[item.key()];
+                }
     }
     if (!manifest.contains("stateOrder")) {
         if (required && !states.empty()) issues.push_back("$.stateOrder is required for clean initialization");
@@ -825,6 +831,11 @@ void validateStateInitializationOrder(const nlohmann::json& manifest, bool requi
     const auto& order = manifest.at("stateOrder");
     if (order.is_null()) return; // Explicit compatibility boundary, not a Core certificate.
     if (!requireArrayAt(order, "$.stateOrder", issues)) return;
+    for (const auto& owner : ownerCounts)
+        if (owner.second > 1)
+            issues.push_back("$.stateOrder has conflicting executable owners for " + owner.first);
+    if (states.count("__proto__"))
+        issues.push_back("$.stateOrder contains reserved state name __proto__");
     for (const auto* plan : projections)
         if (plan->contains("statePlans") && plan->at("statePlans").is_object())
             for (const auto& item : plan->at("statePlans").items())

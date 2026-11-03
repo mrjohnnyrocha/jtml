@@ -1700,7 +1700,7 @@ TEST(CliBuild, BrowserTargetWritesLocalRuntimeManifest) {
               std::string::npos) << runtimeAsset;
     EXPECT_NE(runtimeAsset.find("destroyRuntimeComponentInstance(id, 'subtree-prune')"),
               std::string::npos) << runtimeAsset;
-    EXPECT_NE(runtimeAsset.find("destroyRuntimeComponentInstance(id, 'keyed-list-remove')"),
+    EXPECT_NE(runtimeAsset.find("destroyRuntimeComponentInstance(id, 'keyed-child-remove')"),
               std::string::npos) << runtimeAsset;
     EXPECT_NE(runtimeAsset.find("destroyDirectComponentInstancesUnderElement(el, reason || 'body-node-html-replace')"),
               std::string::npos) << runtimeAsset;

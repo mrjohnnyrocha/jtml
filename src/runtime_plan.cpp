@@ -24,25 +24,31 @@ std::vector<RuntimePlanStatement> collectRuntimeStatements(
         if (node->getType() == ASTNodeType::AssignmentStatement) {
             const auto& stmt = static_cast<const AssignmentStatementNode&>(*node);
             RuntimePlanStatement planned;
+            planned.sourceSpan = node->sourceSpan;
             planned.kind = "assign";
             planned.lhs = expressionSource(stmt.lhs.get());
+            if (stmt.localDeclaration) planned.localBinding = stmt.localDeclaration->name;
             planned.expr = expressionSource(stmt.rhs.get());
             statements.push_back(std::move(planned));
         } else if (node->getType() == ASTNodeType::DefineStatement) {
             const auto& stmt = static_cast<const DefineStatementNode&>(*node);
             RuntimePlanStatement planned;
+            planned.sourceSpan = node->sourceSpan;
             planned.kind = "assign";
             planned.lhs = stmt.identifier;
+            planned.localBinding = stmt.identifier;
             planned.expr = expressionSource(stmt.expression.get());
             statements.push_back(std::move(planned));
         } else if (node->getType() == ASTNodeType::ShowStatement) {
             RuntimePlanStatement planned;
+            planned.sourceSpan = node->sourceSpan;
             planned.kind = "show";
             planned.expr = expressionSource(static_cast<const ShowStatementNode&>(*node).expr.get());
             statements.push_back(std::move(planned));
         } else if (node->getType() == ASTNodeType::IfStatement) {
             const auto& stmt = static_cast<const IfStatementNode&>(*node);
             RuntimePlanStatement planned;
+            planned.sourceSpan = node->sourceSpan;
             planned.kind = "if";
             planned.condition = expressionSource(stmt.condition.get());
             planned.thenStatements = collectRuntimeStatements(stmt.thenStatements);

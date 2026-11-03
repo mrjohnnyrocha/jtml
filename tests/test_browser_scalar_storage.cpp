@@ -3,6 +3,7 @@
 #include "cli/browser_build_policy.h"
 #include "json.hpp"
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -284,6 +285,39 @@ TEST(BrowserDerivedPublication, OrderValidationUsesStructuredEdgesIncludingInact
     }
 }
 
+
+TEST(BrowserRootActionAdmission, OriginalRejectionsPreserveSuccessfulAssets) {
+    const auto root = temporary();
+    const auto vectors = nlohmann::json::parse(
+        read(fs::path(JTML_SOURCE_DIR) / "docs/spec/reactive-core-v1/vectors.json")).at("vectors");
+    auto authored = [&](const std::string& id) {
+        return *std::find_if(vectors.begin(), vectors.end(), [&](const auto& vector) { return vector.at("id") == id; });
+    };
+    const auto source = root / "index.jtml";
+    auto writeVector = [&](const nlohmann::json& vector) {
+        write(source, vector.at("files").at("index.jtml").get<std::string>());
+    };
+    writeVector(authored("V11"));
+    ASSERT_EQ(compile(source, root / "previous"), "");
+    const std::vector<std::string> assets = {"index.html", "jtml-runtime.js", "components/index.js", "app.js"};
+    std::vector<std::string> before;
+    for (const auto& name : assets) before.push_back(read(root / "previous" / name));
+
+    for (const std::string id : {"V13", "V14", "V15"}) {
+        SCOPED_TRACE(id);
+        const auto vector = authored(id);
+        writeVector(vector);
+        const auto expected = vector.at("expected_initial").at("diagnostic").get<std::string>();
+        const auto error = compile(source, root / id);
+        EXPECT_NE(error.find(expected), std::string::npos) << error;
+        EXPECT_NE(error.find(id == "V14" ? "index.jtml:4:" : "index.jtml:2:"), std::string::npos) << error;
+        EXPECT_NE(compile(source, root / "previous").find(expected), std::string::npos);
+        for (size_t i = 0; i < assets.size(); ++i) {
+            EXPECT_FALSE(fs::exists(root / id / assets[i]));
+            EXPECT_EQ(read(root / "previous" / assets[i]), before[i]);
+        }
+    }
+}
 
 TEST(BrowserMutableInitialization, SourceOrderIsExplicitAndIndependentOfJsonKeys) {
     const auto root = temporary();

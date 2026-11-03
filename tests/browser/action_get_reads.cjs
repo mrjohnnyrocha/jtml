@@ -149,6 +149,58 @@ async function expectView(page, values) {assert.deepEqual(await view(page), valu
   await independentPage.page.getByRole('button',{name:'Step',exact:true}).click();
   assert.deepEqual(independentPage.shown,['2','7']);await independentPage.page.close();
   report.cases.push({id:'unrelated-action-namespace-and-local-outside-get-closure',status:'PASS'});
+  const admission = path.join(out,'root-admission-source');fs.mkdirSync(admission,{recursive:true});
+  const admissionSource = path.join(admission,'index.jtml');
+  fs.writeFileSync(path.join(admission,'values.jtml'),'jtml 2\nexport let allowed = 7\nexport let privateValue = 11\n');
+  const admissionEntry = 'jtml 2\nuse allowed from "./values.jtml"\nlet saved = 0\nlet rows = [{value: 2}]\nwhen step index\n  let index = index + 0\n  let base = allowed + rows[index].value\n  if base > 0\n    let nested = base + index\n    rows[index].value = nested\n    show nested\n    saved = nested\npage\n  box class "out"\n    text "{saved}|{rows[0].value}"\n  button "Step" click step(0)\n';
+  fs.writeFileSync(admissionSource,admissionEntry);
+  compile(admissionSource,'root-admission-positive');
+  const admitted = await open();
+  await expectView(admitted.page,['0|2']);
+  await admitted.page.getByRole('button',{name:'Step',exact:true}).click();
+  await expectView(admitted.page,['9|9']);
+  assert.deepEqual(admitted.shown,['9']);
+  await admitted.page.close();
+  const wholeFile = admissionEntry.replace('use allowed from','use');
+  fs.writeFileSync(admissionSource,wholeFile);
+  compile(admissionSource,'root-admission-whole-file');
+  const wholeFilePage = await open();
+  await wholeFilePage.page.getByRole('button',{name:'Step',exact:true}).click();
+  await expectView(wholeFilePage.page,['9|9']);
+  await wholeFilePage.page.close();
+
+  const negativeReads = [
+    ['unimported','  saved = privateValue','privateValue'],
+    ['before-local','  saved = late\n  let late = 2','late'],
+    ['self-local','  let late = late + 1','late'],
+    ['branch-local','  if true\n    let branch = 2\n  saved = branch','branch'],
+    ['other-branch','  if true\n    let branch = 2\n  else\n    show branch','branch'],
+    ['dead-branch','  if false\n    show missing','missing'],
+    ['dead-operand','  saved = false && missing','missing'],
+    ['condition','  if missing\n    saved = 1','missing'],
+    ['index','  rows[missing].value = 1','missing'],
+    ['member','  saved = missing.value','missing'],
+    ['storage-key','  show __jtml_scalar_00000000000000000000','__jtml_scalar_00000000000000000000']
+  ];
+  for (const [id,body,missing] of negativeReads) {
+    fs.writeFileSync(admissionSource,admissionEntry.replace(/  let base[\s\S]*?(?=page\n)/,body+'\n'));
+    const dest=path.join(out,'root-admission-'+id);
+    const denied=build(admissionSource,dest);
+    assert.notEqual(denied.status,0,id);
+    assert.match(denied.stderr,/index\.jtml:\d+:\d+: E_UNRESOLVED/);
+    assert(denied.stderr.includes('`'+missing+'`'),denied.stderr);
+    assert(!fs.existsSync(path.join(dest,'index.html')),id);
+  }
+  // The repeated slot forces legacy bootstrap, so copy is absent and the
+  // skipped local initializer would leave the other module's hidden slot visible.
+  fs.writeFileSync(path.join(admission,'values.jtml'),'jtml 2\nexport let seed = 7\nlet hidden = 42\n');
+  fs.writeFileSync(admissionSource,'jtml 2\nuse seed from "./values.jtml"\nlet copy = seed + 1\nlet slot = {}\nlet slot = {ready: true}\nwhen step\n  let hidden = copy\n  show hidden\npage\n  button "Step" click step\n');
+  const shadowDest = path.join(out,'root-admission-private-slot');
+  const shadow = build(admissionSource,shadowDest);
+  assert.notEqual(shadow.status,0);
+  assert.match(shadow.stderr,/index\.jtml:7:3: E_UNRESOLVED:.*local declaration shadows root storage `hidden`/);
+  assert(!fs.existsSync(path.join(shadowDest,'index.html')));
+  report.cases.push({id:'root-action-lexical-admission',status:'PASS'});
   // Compare original V04/V05 oracles; historical browser observations stay frozen.
   if (process.argv.includes('--document-gaps')) for(const id of ['V04','V05']) {
     const {v,source}=authored(id);compile(source,id);const {page}=await open();

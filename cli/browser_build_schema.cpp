@@ -545,7 +545,7 @@ void validateClientRuntimePlanSchema(const nlohmann::json& manifest,
         "state", "statePlans", "derived", "derivedPlans", "actions", "subscriptions", "routes", "fetches",
         "componentDefinitions", "componentInstances"
     };
-    if (allowProject) allowedTopLevel.push_back("project");
+    if (allowProject) { allowedTopLevel.push_back("project"); allowedTopLevel.push_back("derivedOrder"); }
     rejectUnknownKeys(manifest, allowedTopLevel, path, issues);
     for (const auto& required : {"state", "derived", "actions", "routes", "fetches",
                                 "componentDefinitions", "componentInstances"}) {
@@ -568,6 +568,31 @@ void validateClientRuntimePlanSchema(const nlohmann::json& manifest,
     requireObject("derived");
     requireObject("derivedPlans");
     requireObject("actions");
+
+    if (manifest.contains("derivedOrder")) {
+        const auto& order = manifest.at("derivedOrder");
+        if (requireArrayAt(order, path + ".derivedOrder", issues)) {
+            std::set<std::string> names, seen;
+            auto collect = [&](const nlohmann::json& plan) {
+                if (plan.contains("derived") && plan.at("derived").is_object())
+                    for (const auto& item : plan.at("derived").items()) names.insert(item.key());
+            };
+            collect(manifest);
+            if (manifest.contains("project") && manifest.at("project").is_object()) {
+                const auto& project = manifest.at("project");
+                if (project.contains("modules") && project.at("modules").is_array())
+                    for (const auto& module : project.at("modules"))
+                        if (module.is_object() && module.contains("executable") && module.at("executable") == true &&
+                            module.contains("plan") && module.at("plan").is_object()) collect(module.at("plan"));
+            }
+            for (const auto& name : order) {
+                if (!name.is_string() || !names.count(name.get<std::string>()) ||
+                    !seen.insert(name.get<std::string>()).second)
+                    issues.push_back(path + ".derivedOrder requires distinct existing getter names");
+            }
+            if (seen != names) issues.push_back(path + ".derivedOrder must cover all executable getters");
+        }
+    }
 
     if (manifest.contains("subscriptions")) {
         const auto& subscriptions = manifest.at("subscriptions");

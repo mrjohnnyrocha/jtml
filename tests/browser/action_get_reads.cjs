@@ -149,7 +149,7 @@ async function expectView(page, values) {assert.deepEqual(await view(page), valu
   await independentPage.page.getByRole('button',{name:'Step',exact:true}).click();
   assert.deepEqual(independentPage.shown,['2','7']);await independentPage.page.close();
   report.cases.push({id:'unrelated-action-namespace-and-local-outside-get-closure',status:'PASS'});
-  // Preserve V04/V05's global publication defects, not an oracle waiver in the model.
+  // Compare original V04/V05 oracles; historical browser observations stay frozen.
   if (process.argv.includes('--document-gaps')) for(const id of ['V04','V05']) {
     const {v,source}=authored(id);compile(source,id);const {page}=await open();
     await page.getByRole('button',{name:'Step',exact:true}).click();

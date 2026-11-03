@@ -1,4 +1,6 @@
 #include "cli/commands.h"
+#include "cli/browser_build_schema.h"
+#include "cli/browser_build_policy.h"
 #include "json.hpp"
 #include <gtest/gtest.h>
 #include <chrono>
@@ -171,5 +173,48 @@ TEST(BrowserScalarStorage, DecodedStringExpressionsCannotBypassBindingProof) {
         EXPECT_EQ(read(out / "index.html"), "previous successful output");
         EXPECT_FALSE(fs::exists(out / "app.js"));
         EXPECT_FALSE(fs::exists(out / "jtml-runtime.js"));
+    }
+}
+
+
+TEST(BrowserDerivedPublication, DependencyOrderIgnoresSourceAndJsonKeyOrder) {
+    for (const bool reverse : {false, true}) {
+        const auto root = temporary();
+        const std::string declarations = reverse ? "get a = z * 2\nget z = x + 1\n" : "get z = x + 1\nget a = z * 2\n";
+        write(root / "index.jtml", "jtml 2\nlet x = 1\n" + declarations + "page\n  text a\n");
+        ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+        EXPECT_EQ(manifest(root / "out")["derivedOrder"], nlohmann::json({"z", "a"}));
+        ASSERT_EQ(compile(root / "index.jtml", root / "compat", true), "");
+        EXPECT_FALSE(manifest(root / "compat").contains("derivedOrder"));
+    }
+}
+
+TEST(BrowserDerivedPublication, UnconsumedInvalidClosuresRejectBeforeWritingAssets) {
+    for (const std::string formula : {"get a = b + 1\nget b = a + 1\n", "get a = missing + 1\n", "get a = mystery()\n"}) {
+        const auto root = temporary();
+        write(root / "index.jtml", "jtml 2\n" + formula + "page\n  text a\n");
+        fs::create_directories(root / "out"); write(root / "out/index.html", "previous output");
+        const auto error = compile(root / "index.jtml", root / "out");
+        EXPECT_NE(error.find("index.jtml:"), std::string::npos) << error;
+        EXPECT_EQ(read(root / "out/index.html"), "previous output");
+        EXPECT_FALSE(fs::exists(root / "out/app.js"));
+        EXPECT_FALSE(fs::exists(root / "out/jtml-runtime.js"));
+    }
+}
+
+TEST(BrowserDerivedPublication, ClosedManifestRejectsIncompleteDuplicateAndUnknownOrders) {
+    const auto root = temporary();
+    write(root / "index.jtml", "jtml 2\nlet x = 1\nget z = x + 1\nget a = z * 2\npage\n  text a\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    const auto html = read(root / "out/index.html");
+    const std::string marker = "id=\"__jtml_client_manifest\">";
+    const auto begin = html.find(marker) + marker.size();
+    const auto end = html.find("</script>", begin);
+    for (const auto& order : {nlohmann::json::array(), nlohmann::json({"z", "z", "a"}),
+                              nlohmann::json({"z", "unknown"}), nlohmann::json({"z", 1})}) {
+        auto client = manifest(root / "out"); client["derivedOrder"] = order;
+        write(root / "out/index.html", html.substr(0, begin) + client.dump() + html.substr(end));
+        EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production), std::runtime_error);
+        write(root / "out/index.html", html);
     }
 }

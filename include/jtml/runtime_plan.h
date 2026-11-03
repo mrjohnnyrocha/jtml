@@ -133,6 +133,7 @@ struct RuntimeModulePlan {
 };
 
 struct RuntimeProjectPlan {
+    std::vector<std::string> derivedOrder; // Certified clean-browser publication order.
     std::string scalarStorageIssue; // Internal proof failure; preserves collision rejection.
     SemanticModuleId entry = InvalidSemanticModuleId;
     RuntimePlan linkedPlan;

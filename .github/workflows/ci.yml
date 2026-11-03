@@ -160,6 +160,9 @@ jobs:
       - name: Action-local scalar get reads (browser required)
         run: node tests/browser/action_get_reads.cjs
 
+      - name: Topological root derived publication (browser required)
+        run: node tests/browser/derived_publication.cjs
+
       - name: Route layout slot composition (browser required)
         run: node tests/browser/route_layout.cjs
 

@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "vector": "V01",
+  "source": {
+    "catalog": "docs/spec/reactive-core-v1/vectors.json",
+    "file": "index.jtml",
+    "text": "jtml 2\nlet x = 1\nwhen step\n  x = x + 1\npage\n  box class \"out\"\n    text \"Value {x}\"\n  button \"Step\" click step\n",
+    "sha256": "8e9b31a9a8b89b2c48e46559390c980ae3dd2ddda5a590038b92ee4fa4e53ff7"
+  },
+  "program": {
+    "schema_version": 1,
+    "profile": "s1-minimal-success-v1",
+    "scope": "main",
+    "declarations": [
+      {
+        "id": "main::x",
+        "name": "x",
+        "kind": "let",
+        "expression": {
+          "literal": {
+            "kind": "number",
+            "value": "1"
+          }
+        },
+        "source": {
+          "file": "index.jtml",
+          "line": 2,
+          "column": 1
+        }
+      }
+    ],
+    "actions": [
+      {
+        "id": "main::step",
+        "name": "step",
+        "params": [],
+        "body": [
+          {
+            "assign": "main::x",
+            "expression": {
+              "binary": "+",
+              "left": {
+                "read": "main::x"
+              },
+              "right": {
+                "literal": {
+                  "kind": "number",
+                  "value": "1"
+                }
+              }
+            },
+            "source": {
+              "file": "index.jtml",
+              "line": 4,
+              "column": 3
+            }
+          }
+        ],
+        "source": {
+          "file": "index.jtml",
+          "line": 3,
+          "column": 1
+        }
+      }
+    ],
+    "observers": [
+      {
+        "id": ".out",
+        "segments": [
+          {
+            "literal": {
+              "kind": "string",
+              "value": "Value "
+            }
+          },
+          {
+            "read": "main::x"
+          }
+        ],
+        "source": {
+          "file": "index.jtml",
+          "line": 7,
+          "column": 5
+        }
+      }
+    ]
+  },
+  "program_sha256": "9371306d6f84e9a9ecb3f32e338a0ab39189201d37278be8002829bf059c84d1",
+  "audit": [
+    {
+      "line": 1,
+      "text": "jtml 2",
+      "role": "dialect",
+      "model_paths": []
+    },
+    {
+      "line": 2,
+      "text": "let x = 1",
+      "role": "declaration",
+      "model_paths": [
+        "/declarations/0"
+      ]
+    },
+    {
+      "line": 3,
+      "text": "when step",
+      "role": "action",
+      "model_paths": [
+        "/actions/0"
+      ]
+    },
+    {
+      "line": 4,
+      "text": "  x = x + 1",
+      "role": "assignment",
+      "model_paths": [
+        "/actions/0/body/0"
+      ]
+    },
+    {
+      "line": 5,
+      "text": "page",
+      "role": "static-envelope",
+      "model_paths": [
+        "/observers/0"
+      ]
+    },
+    {
+      "line": 6,
+      "text": "  box class \"out\"",
+      "role": "static-envelope",
+      "model_paths": [
+        "/observers/0"
+      ]
+    },
+    {
+      "line": 7,
+      "text": "    text \"Value {x}\"",
+      "role": "virtual-text",
+      "model_paths": [
+        "/observers/0"
+      ]
+    },
+    {
+      "line": 8,
+      "text": "  button \"Step\" click step",
+      "role": "external-entry",
+      "model_paths": [
+        "/actions/0"
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "action": "main::step",
+      "args": []
+    },
+    {
+      "action": "main::step",
+      "args": []
+    }
+  ]
+}

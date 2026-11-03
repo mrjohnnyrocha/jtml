@@ -1,0 +1,262 @@
+{
+  "schema_version": 1,
+  "vector": "V05",
+  "source": {
+    "catalog": "docs/spec/reactive-core-v1/vectors.json",
+    "file": "index.jtml",
+    "text": "jtml 2\nlet x = 1\nget zleft = x + 1\nget zright = x * 2\nget atotal = zleft + zright\nwhen step\n  x = x + 1\npage\n  box class \"out\"\n    text \"{zleft}|{zright}|{atotal}\"\n  button \"Step\" click step\n",
+    "sha256": "cd946f9c7bfb4a594fe2a9c67487dbc5ce0c0c002b2ba6e364956256395b4902"
+  },
+  "program": {
+    "schema_version": 1,
+    "profile": "s1-minimal-success-v1",
+    "scope": "main",
+    "declarations": [
+      {
+        "id": "main::x",
+        "name": "x",
+        "kind": "let",
+        "expression": {
+          "literal": {
+            "kind": "number",
+            "value": "1"
+          }
+        },
+        "source": {
+          "file": "index.jtml",
+          "line": 2,
+          "column": 1
+        }
+      },
+      {
+        "id": "main::zleft",
+        "name": "zleft",
+        "kind": "get",
+        "expression": {
+          "binary": "+",
+          "left": {
+            "read": "main::x"
+          },
+          "right": {
+            "literal": {
+              "kind": "number",
+              "value": "1"
+            }
+          }
+        },
+        "source": {
+          "file": "index.jtml",
+          "line": 3,
+          "column": 1
+        }
+      },
+      {
+        "id": "main::zright",
+        "name": "zright",
+        "kind": "get",
+        "expression": {
+          "binary": "*",
+          "left": {
+            "read": "main::x"
+          },
+          "right": {
+            "literal": {
+              "kind": "number",
+              "value": "2"
+            }
+          }
+        },
+        "source": {
+          "file": "index.jtml",
+          "line": 4,
+          "column": 1
+        }
+      },
+      {
+        "id": "main::atotal",
+        "name": "atotal",
+        "kind": "get",
+        "expression": {
+          "binary": "+",
+          "left": {
+            "read": "main::zleft"
+          },
+          "right": {
+            "read": "main::zright"
+          }
+        },
+        "source": {
+          "file": "index.jtml",
+          "line": 5,
+          "column": 1
+        }
+      }
+    ],
+    "actions": [
+      {
+        "id": "main::step",
+        "name": "step",
+        "params": [],
+        "body": [
+          {
+            "assign": "main::x",
+            "expression": {
+              "binary": "+",
+              "left": {
+                "read": "main::x"
+              },
+              "right": {
+                "literal": {
+                  "kind": "number",
+                  "value": "1"
+                }
+              }
+            },
+            "source": {
+              "file": "index.jtml",
+              "line": 7,
+              "column": 3
+            }
+          }
+        ],
+        "source": {
+          "file": "index.jtml",
+          "line": 6,
+          "column": 1
+        }
+      }
+    ],
+    "observers": [
+      {
+        "id": ".out",
+        "segments": [
+          {
+            "read": "main::zleft"
+          },
+          {
+            "literal": {
+              "kind": "string",
+              "value": "|"
+            }
+          },
+          {
+            "read": "main::zright"
+          },
+          {
+            "literal": {
+              "kind": "string",
+              "value": "|"
+            }
+          },
+          {
+            "read": "main::atotal"
+          }
+        ],
+        "source": {
+          "file": "index.jtml",
+          "line": 10,
+          "column": 5
+        }
+      }
+    ]
+  },
+  "program_sha256": "08fddd6c1d1adb540e15c0fc998accbb77f7a21cedd4b69ccc3f47b48c6453e0",
+  "audit": [
+    {
+      "line": 1,
+      "text": "jtml 2",
+      "role": "dialect",
+      "model_paths": []
+    },
+    {
+      "line": 2,
+      "text": "let x = 1",
+      "role": "declaration",
+      "model_paths": [
+        "/declarations/0"
+      ]
+    },
+    {
+      "line": 3,
+      "text": "get zleft = x + 1",
+      "role": "declaration",
+      "model_paths": [
+        "/declarations/1"
+      ]
+    },
+    {
+      "line": 4,
+      "text": "get zright = x * 2",
+      "role": "declaration",
+      "model_paths": [
+        "/declarations/2"
+      ]
+    },
+    {
+      "line": 5,
+      "text": "get atotal = zleft + zright",
+      "role": "declaration",
+      "model_paths": [
+        "/declarations/3"
+      ]
+    },
+    {
+      "line": 6,
+      "text": "when step",
+      "role": "action",
+      "model_paths": [
+        "/actions/0"
+      ]
+    },
+    {
+      "line": 7,
+      "text": "  x = x + 1",
+      "role": "assignment",
+      "model_paths": [
+        "/actions/0/body/0"
+      ]
+    },
+    {
+      "line": 8,
+      "text": "page",
+      "role": "static-envelope",
+      "model_paths": [
+        "/observers/0"
+      ]
+    },
+    {
+      "line": 9,
+      "text": "  box class \"out\"",
+      "role": "static-envelope",
+      "model_paths": [
+        "/observers/0"
+      ]
+    },
+    {
+      "line": 10,
+      "text": "    text \"{zleft}|{zright}|{atotal}\"",
+      "role": "virtual-text",
+      "model_paths": [
+        "/observers/0"
+      ]
+    },
+    {
+      "line": 11,
+      "text": "  button \"Step\" click step",
+      "role": "external-entry",
+      "model_paths": [
+        "/actions/0"
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "action": "main::step",
+      "args": []
+    },
+    {
+      "action": "main::step",
+      "args": []
+    }
+  ]
+}

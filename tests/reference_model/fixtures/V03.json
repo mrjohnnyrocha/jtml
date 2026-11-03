@@ -1,0 +1,229 @@
+{
+  "schema_version": 1,
+  "vector": "V03",
+  "source": {
+    "catalog": "docs/spec/reactive-core-v1/vectors.json",
+    "file": "index.jtml",
+    "text": "jtml 2\nlet x = 0\nlet saved = 0\nget twice = x * 2\nwhen step\n  x = 1\n  saved = twice\npage\n  box class \"out\"\n    text \"{saved}|{twice}\"\n  button \"Step\" click step\n",
+    "sha256": "591680606934e92b06efaf7ef151cfbc0ea8c0a581feead9cc164b2e4a220063"
+  },
+  "program": {
+    "schema_version": 1,
+    "profile": "s1-minimal-success-v1",
+    "scope": "main",
+    "declarations": [
+      {
+        "id": "main::x",
+        "name": "x",
+        "kind": "let",
+        "expression": {
+          "literal": {
+            "kind": "number",
+            "value": "0"
+          }
+        },
+        "source": {
+          "file": "index.jtml",
+          "line": 2,
+          "column": 1
+        }
+      },
+      {
+        "id": "main::saved",
+        "name": "saved",
+        "kind": "let",
+        "expression": {
+          "literal": {
+            "kind": "number",
+            "value": "0"
+          }
+        },
+        "source": {
+          "file": "index.jtml",
+          "line": 3,
+          "column": 1
+        }
+      },
+      {
+        "id": "main::twice",
+        "name": "twice",
+        "kind": "get",
+        "expression": {
+          "binary": "*",
+          "left": {
+            "read": "main::x"
+          },
+          "right": {
+            "literal": {
+              "kind": "number",
+              "value": "2"
+            }
+          }
+        },
+        "source": {
+          "file": "index.jtml",
+          "line": 4,
+          "column": 1
+        }
+      }
+    ],
+    "actions": [
+      {
+        "id": "main::step",
+        "name": "step",
+        "params": [],
+        "body": [
+          {
+            "assign": "main::x",
+            "expression": {
+              "literal": {
+                "kind": "number",
+                "value": "1"
+              }
+            },
+            "source": {
+              "file": "index.jtml",
+              "line": 6,
+              "column": 3
+            }
+          },
+          {
+            "assign": "main::saved",
+            "expression": {
+              "read": "main::twice"
+            },
+            "source": {
+              "file": "index.jtml",
+              "line": 7,
+              "column": 3
+            }
+          }
+        ],
+        "source": {
+          "file": "index.jtml",
+          "line": 5,
+          "column": 1
+        }
+      }
+    ],
+    "observers": [
+      {
+        "id": ".out",
+        "segments": [
+          {
+            "read": "main::saved"
+          },
+          {
+            "literal": {
+              "kind": "string",
+              "value": "|"
+            }
+          },
+          {
+            "read": "main::twice"
+          }
+        ],
+        "source": {
+          "file": "index.jtml",
+          "line": 10,
+          "column": 5
+        }
+      }
+    ]
+  },
+  "program_sha256": "0325edb34f360e65ac19117199aa446a04fde177870aef997a1257d552dbc131",
+  "audit": [
+    {
+      "line": 1,
+      "text": "jtml 2",
+      "role": "dialect",
+      "model_paths": []
+    },
+    {
+      "line": 2,
+      "text": "let x = 0",
+      "role": "declaration",
+      "model_paths": [
+        "/declarations/0"
+      ]
+    },
+    {
+      "line": 3,
+      "text": "let saved = 0",
+      "role": "declaration",
+      "model_paths": [
+        "/declarations/1"
+      ]
+    },
+    {
+      "line": 4,
+      "text": "get twice = x * 2",
+      "role": "declaration",
+      "model_paths": [
+        "/declarations/2"
+      ]
+    },
+    {
+      "line": 5,
+      "text": "when step",
+      "role": "action",
+      "model_paths": [
+        "/actions/0"
+      ]
+    },
+    {
+      "line": 6,
+      "text": "  x = 1",
+      "role": "assignment",
+      "model_paths": [
+        "/actions/0/body/0"
+      ]
+    },
+    {
+      "line": 7,
+      "text": "  saved = twice",
+      "role": "assignment",
+      "model_paths": [
+        "/actions/0/body/1"
+      ]
+    },
+    {
+      "line": 8,
+      "text": "page",
+      "role": "static-envelope",
+      "model_paths": [
+        "/observers/0"
+      ]
+    },
+    {
+      "line": 9,
+      "text": "  box class \"out\"",
+      "role": "static-envelope",
+      "model_paths": [
+        "/observers/0"
+      ]
+    },
+    {
+      "line": 10,
+      "text": "    text \"{saved}|{twice}\"",
+      "role": "virtual-text",
+      "model_paths": [
+        "/observers/0"
+      ]
+    },
+    {
+      "line": 11,
+      "text": "  button \"Step\" click step",
+      "role": "external-entry",
+      "model_paths": [
+        "/actions/0"
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "action": "main::step",
+      "args": []
+    }
+  ]
+}

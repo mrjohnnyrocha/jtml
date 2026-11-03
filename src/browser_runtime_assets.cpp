@@ -3864,7 +3864,8 @@ const char* browserRuntimeComponentChunk() {
             const value = clientState[subscription.dependency];
             if (!['number', 'string', 'boolean'].includes(typeof value))
               throw Error('Root effect dependency ' + subscription.dependency + ' requires scalar writes; inspect its writers with jtml explain');
-            runClientStatements(clientActions[subscription.action].body);
+            runClientStatements(clientActions[subscription.action].body, undefined,
+              window.jtml.browserBuild && window.jtml.browserBuild.cleanProduction ? actionReadScope([], {}) : clientState);
             applyClientDerived();
           }
         } finally { clientWrites.clear(); }

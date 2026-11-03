@@ -1,0 +1,521 @@
+{
+  "browser_evidence_sha256": "1aea86f83a8c525642b1d03ac5e8c821ec69660a3b05882a80edcc31e59852b5",
+  "model_checkout_baseline": "27d05e9497911f89f3d463dd0fb68ea67fe65b33",
+  "model_profile": "s1-minimal-success-v1",
+  "recorded_browser_baseline": "ae8f984dc3c35163cc702f7e494a5f2b015124fb",
+  "results": [
+    {
+      "browser_phase_trace": "UNVERIFIED",
+      "browser_snapshot": "PASS",
+      "browser_snapshots": [
+        {
+          "derived": {},
+          "dom": {
+            ".out": [
+              "Value 1"
+            ]
+          },
+          "state": {
+            "main::x": 1
+          }
+        },
+        {
+          "derived": {},
+          "dom": {
+            ".out": [
+              "Value 2"
+            ]
+          },
+          "state": {
+            "main::x": 2
+          }
+        },
+        {
+          "derived": {},
+          "dom": {
+            ".out": [
+              "Value 3"
+            ]
+          },
+          "state": {
+            "main::x": 3
+          }
+        }
+      ],
+      "expected": [
+        {
+          "derived": {},
+          "dom": {
+            ".out": [
+              "Value 1"
+            ]
+          },
+          "state": {
+            "main::x": 1
+          }
+        },
+        {
+          "derived": {},
+          "dom": {
+            ".out": [
+              "Value 2"
+            ]
+          },
+          "state": {
+            "main::x": 2
+          }
+        },
+        {
+          "derived": {},
+          "dom": {
+            ".out": [
+              "Value 3"
+            ]
+          },
+          "state": {
+            "main::x": 3
+          }
+        }
+      ],
+      "full_core_conformance": "UNVERIFIED",
+      "missing_browser_fields": [],
+      "model": "PASS",
+      "model_commits": [
+        {
+          "derived": {},
+          "sequence": 0,
+          "state": {
+            "main::x": 1.0
+          },
+          "text": {
+            ".out": [
+              "Value 1"
+            ]
+          }
+        },
+        {
+          "derived": {},
+          "sequence": 1,
+          "state": {
+            "main::x": 2.0
+          },
+          "text": {
+            ".out": [
+              "Value 2"
+            ]
+          }
+        },
+        {
+          "derived": {},
+          "sequence": 2,
+          "state": {
+            "main::x": 3.0
+          },
+          "text": {
+            ".out": [
+              "Value 3"
+            ]
+          }
+        }
+      ],
+      "vector": "V01"
+    },
+    {
+      "browser_phase_trace": "UNVERIFIED",
+      "browser_snapshot": "FAIL",
+      "browser_snapshots": [
+        {
+          "derived": {
+            "main::twice": 0
+          },
+          "dom": {
+            ".out": [
+              "0|0"
+            ]
+          },
+          "state": {
+            "main::saved": 0,
+            "main::x": 0
+          }
+        },
+        {
+          "derived": {
+            "main::twice": 2
+          },
+          "dom": {
+            ".out": [
+              "0|2"
+            ]
+          },
+          "state": {
+            "main::saved": 0,
+            "main::x": 1
+          }
+        }
+      ],
+      "expected": [
+        {
+          "derived": {
+            "main::twice": 0
+          },
+          "dom": {
+            ".out": [
+              "0|0"
+            ]
+          },
+          "state": {
+            "main::saved": 0,
+            "main::x": 0
+          }
+        },
+        {
+          "derived": {
+            "main::twice": 2
+          },
+          "dom": {
+            ".out": [
+              "2|2"
+            ]
+          },
+          "state": {
+            "main::saved": 2,
+            "main::x": 1
+          }
+        }
+      ],
+      "full_core_conformance": "UNVERIFIED",
+      "missing_browser_fields": [],
+      "model": "PASS",
+      "model_commits": [
+        {
+          "derived": {
+            "main::twice": 0.0
+          },
+          "sequence": 0,
+          "state": {
+            "main::saved": 0.0,
+            "main::x": 0.0
+          },
+          "text": {
+            ".out": [
+              "0|0"
+            ]
+          }
+        },
+        {
+          "derived": {
+            "main::twice": 2.0
+          },
+          "sequence": 1,
+          "state": {
+            "main::saved": 2.0,
+            "main::x": 1.0
+          },
+          "text": {
+            ".out": [
+              "2|2"
+            ]
+          }
+        }
+      ],
+      "vector": "V03"
+    },
+    {
+      "browser_phase_trace": "UNVERIFIED",
+      "browser_snapshot": "FAIL",
+      "browser_snapshots": [
+        {
+          "derived": {
+            "main::a": 4,
+            "main::z": 2
+          },
+          "dom": {
+            ".out": [
+              "4|2"
+            ]
+          },
+          "state": {
+            "main::x": 1
+          }
+        },
+        {
+          "derived": {
+            "main::a": 4,
+            "main::z": 3
+          },
+          "dom": {
+            ".out": [
+              "4|3"
+            ]
+          },
+          "state": {
+            "main::x": 2
+          }
+        },
+        {
+          "derived": {
+            "main::a": 6,
+            "main::z": 4
+          },
+          "dom": {
+            ".out": [
+              "6|4"
+            ]
+          },
+          "state": {
+            "main::x": 3
+          }
+        }
+      ],
+      "expected": [
+        {
+          "derived": {
+            "main::a": 4,
+            "main::z": 2
+          },
+          "dom": {
+            ".out": [
+              "4|2"
+            ]
+          },
+          "state": {
+            "main::x": 1
+          }
+        },
+        {
+          "derived": {
+            "main::a": 6,
+            "main::z": 3
+          },
+          "dom": {
+            ".out": [
+              "6|3"
+            ]
+          },
+          "state": {
+            "main::x": 2
+          }
+        },
+        {
+          "derived": {
+            "main::a": 8,
+            "main::z": 4
+          },
+          "dom": {
+            ".out": [
+              "8|4"
+            ]
+          },
+          "state": {
+            "main::x": 3
+          }
+        }
+      ],
+      "full_core_conformance": "UNVERIFIED",
+      "missing_browser_fields": [],
+      "model": "PASS",
+      "model_commits": [
+        {
+          "derived": {
+            "main::a": 4.0,
+            "main::z": 2.0
+          },
+          "sequence": 0,
+          "state": {
+            "main::x": 1.0
+          },
+          "text": {
+            ".out": [
+              "4|2"
+            ]
+          }
+        },
+        {
+          "derived": {
+            "main::a": 6.0,
+            "main::z": 3.0
+          },
+          "sequence": 1,
+          "state": {
+            "main::x": 2.0
+          },
+          "text": {
+            ".out": [
+              "6|3"
+            ]
+          }
+        },
+        {
+          "derived": {
+            "main::a": 8.0,
+            "main::z": 4.0
+          },
+          "sequence": 2,
+          "state": {
+            "main::x": 3.0
+          },
+          "text": {
+            ".out": [
+              "8|4"
+            ]
+          }
+        }
+      ],
+      "vector": "V04"
+    },
+    {
+      "browser_phase_trace": "UNVERIFIED",
+      "browser_snapshot": "FAIL",
+      "browser_snapshots": [
+        {
+          "derived": {
+            "main::atotal": 4,
+            "main::zleft": 2,
+            "main::zright": 2
+          },
+          "dom": {
+            ".out": [
+              "2|2|4"
+            ]
+          },
+          "state": {
+            "main::x": 1
+          }
+        },
+        {
+          "derived": {
+            "main::atotal": 4,
+            "main::zleft": 3,
+            "main::zright": 4
+          },
+          "dom": {
+            ".out": [
+              "3|4|4"
+            ]
+          },
+          "state": {
+            "main::x": 2
+          }
+        },
+        {
+          "derived": {
+            "main::atotal": 7,
+            "main::zleft": 4,
+            "main::zright": 6
+          },
+          "dom": {
+            ".out": [
+              "4|6|7"
+            ]
+          },
+          "state": {
+            "main::x": 3
+          }
+        }
+      ],
+      "expected": [
+        {
+          "derived": {
+            "main::atotal": 4,
+            "main::zleft": 2,
+            "main::zright": 2
+          },
+          "dom": {
+            ".out": [
+              "2|2|4"
+            ]
+          },
+          "state": {
+            "main::x": 1
+          }
+        },
+        {
+          "derived": {
+            "main::atotal": 7,
+            "main::zleft": 3,
+            "main::zright": 4
+          },
+          "dom": {
+            ".out": [
+              "3|4|7"
+            ]
+          },
+          "state": {
+            "main::x": 2
+          }
+        },
+        {
+          "derived": {
+            "main::atotal": 10,
+            "main::zleft": 4,
+            "main::zright": 6
+          },
+          "dom": {
+            ".out": [
+              "4|6|10"
+            ]
+          },
+          "state": {
+            "main::x": 3
+          }
+        }
+      ],
+      "full_core_conformance": "UNVERIFIED",
+      "missing_browser_fields": [],
+      "model": "PASS",
+      "model_commits": [
+        {
+          "derived": {
+            "main::atotal": 4.0,
+            "main::zleft": 2.0,
+            "main::zright": 2.0
+          },
+          "sequence": 0,
+          "state": {
+            "main::x": 1.0
+          },
+          "text": {
+            ".out": [
+              "2|2|4"
+            ]
+          }
+        },
+        {
+          "derived": {
+            "main::atotal": 7.0,
+            "main::zleft": 3.0,
+            "main::zright": 4.0
+          },
+          "sequence": 1,
+          "state": {
+            "main::x": 2.0
+          },
+          "text": {
+            ".out": [
+              "3|4|7"
+            ]
+          }
+        },
+        {
+          "derived": {
+            "main::atotal": 10.0,
+            "main::zleft": 4.0,
+            "main::zright": 6.0
+          },
+          "sequence": 2,
+          "state": {
+            "main::x": 3.0
+          },
+          "text": {
+            ".out": [
+              "4|6|10"
+            ]
+          }
+        }
+      ],
+      "vector": "V05"
+    }
+  ],
+  "schema_version": 1,
+  "scope": "Four success vectors only. Browser data is historical PR #77 evidence; no browser rerun. Snapshot PASS is not phase/lifetime/DOM atomicity conformance."
+}

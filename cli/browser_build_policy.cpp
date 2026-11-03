@@ -155,6 +155,7 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
         modules[module.id] = &module;
         for (const auto& binding : module.plan.state) storageOwners.emplace(binding.name, Resolved{&module, &binding, false});
         for (const auto& binding : module.plan.derived) storageOwners.insert_or_assign(binding.name, Resolved{&module, &binding, true});
+        for (const auto& fetch : module.plan.fetches) storageOwners.emplace(fetch.name, Resolved{&module, nullptr, false});
     }
     auto location = [](const Module& module, const SourceSpan& span) {
         std::string at = module.path;
@@ -162,8 +163,7 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
             const auto& origin = *span.original;
             const auto pos = origin.source->coordinates(origin.begin);
             at = origin.source->file + ":" + std::to_string(pos.first) + ":" + std::to_string(pos.second);
-        }
-        else if (span.valid()) {
+        } else if (span.valid()) {
             at += ":" + std::to_string(span.startLine) + ":" + std::to_string(span.startColumn);
         }
         return at;
@@ -315,9 +315,12 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
                             inspect(statement.lhs, statement.sourceSpan, scope);
                         if (!statement.localBinding.empty()) {
                             const auto occupied = storageOwners.find(statement.localBinding);
-                            if (occupied != storageOwners.end() && occupied->second.derived &&
-                                !parameters.count(statement.localBinding))
-                                fail(module, statement.sourceSpan, "local declaration shadows root storage `" + statement.localBinding + "`");
+                            // Locals share runtime slots. If an initializer produces no value,
+                            // an unprotected local could otherwise read another owner's value.
+                            if (occupied != storageOwners.end() && !parameters.count(statement.localBinding) &&
+                                (occupied->second.derived || occupied->second.owner != &module))
+                                rejectRead(statement.sourceSpan, "E_UNRESOLVED", "local declaration shadows root storage `" +
+                                    statement.localBinding + "` owned by " + occupied->second.owner->path);
                             scope.insert(statement.localBinding);
                         }
                         if (statement.kind == "if") {

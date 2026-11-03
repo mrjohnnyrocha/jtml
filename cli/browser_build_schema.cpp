@@ -585,7 +585,7 @@ void validateClientRuntimePlanSchema(const nlohmann::json& manifest,
         "state", "statePlans", "derived", "derivedPlans", "actions", "subscriptions", "routes", "fetches",
         "componentDefinitions", "componentInstances"
     };
-    if (allowProject) { allowedTopLevel.push_back("project"); allowedTopLevel.push_back("derivedOrder"); }
+    if (allowProject) { allowedTopLevel.push_back("project"); allowedTopLevel.push_back("derivedOrder"); allowedTopLevel.push_back("stateOrder"); }
     rejectUnknownKeys(manifest, allowedTopLevel, path, issues);
     for (const auto& required : {"state", "derived", "actions", "routes", "fetches",
                                 "componentDefinitions", "componentInstances"}) {
@@ -791,6 +791,66 @@ void validateDerivedPublicationOrder(const nlohmann::json& manifest, bool requir
     }
 }
 
+// A non-null stateOrder is the source-local initialization certificate.
+// Null explicitly retains existing imported/lowered-slot initialization behavior.
+void validateStateInitializationOrder(const nlohmann::json& manifest, bool required,
+                                       std::vector<std::string>& issues) {
+    std::map<std::string, std::vector<const nlohmann::json*>> states;
+    std::vector<const nlohmann::json*> projections;
+    nlohmann::json effective = {{"state", nlohmann::json::object()}, {"statePlans", nlohmann::json::object()}};
+    auto collect = [&](const nlohmann::json& plan) {
+        projections.push_back(&plan);
+        // Match mergeProjectManifest: root, linked, then executable modules in
+        // array order. State expressions and plans merge independently; first wins.
+        for (const auto* key : {"state", "statePlans"})
+            if (plan.contains(key) && plan.at(key).is_object())
+                for (const auto& item : plan.at(key).items())
+                    if (!effective[key].contains(item.key())) effective[key][item.key()] = item.value();
+        if (plan.contains("state") && plan.at("state").is_object())
+            for (const auto& item : plan.at("state").items()) states[item.key()].push_back(&plan);
+    };
+    collect(manifest);
+    if (manifest.contains("project") && manifest.at("project").is_object()) {
+        const auto& project = manifest.at("project");
+        if (project.contains("linkedPlan") && project.at("linkedPlan").is_object()) collect(project.at("linkedPlan"));
+        if (project.contains("modules") && project.at("modules").is_array())
+            for (const auto& module : project.at("modules"))
+                if (module.is_object() && (!module.contains("executable") || module.at("executable") != false) &&
+                    module.contains("plan") && module.at("plan").is_object()) collect(module.at("plan"));
+    }
+    if (!manifest.contains("stateOrder")) {
+        if (required && !states.empty()) issues.push_back("$.stateOrder is required for clean initialization");
+        return;
+    }
+    const auto& order = manifest.at("stateOrder");
+    if (order.is_null()) return; // Explicit compatibility boundary, not a Core certificate.
+    if (!requireArrayAt(order, "$.stateOrder", issues)) return;
+    for (const auto* plan : projections)
+        if (plan->contains("statePlans") && plan->at("statePlans").is_object())
+            for (const auto& item : plan->at("statePlans").items())
+                if (!plan->contains("state") || !plan->at("state").is_object() || !plan->at("state").contains(item.key()))
+                    issues.push_back("$.stateOrder has orphan initializer plan " + item.key());
+    // Check the plans the browser actually executes, in addition to every
+    // declaration projection. Neither an orphan nor a shadowed plan may hide an edge.
+    for (const auto& item : effective.at("state").items()) states[item.key()].push_back(&effective);
+    std::map<std::string, size_t> positions;
+    for (size_t i = 0; i < order.size(); ++i)
+        if (!order[i].is_string() || !states.count(order[i].get<std::string>()) ||
+            !positions.emplace(order[i].get<std::string>(), i).second)
+            issues.push_back("$.stateOrder requires distinct existing state names");
+    if (positions.size() != states.size()) { issues.push_back("$.stateOrder must cover all executable state"); return; }
+    for (const auto& state : states) for (const auto* plan : state.second) {
+        if (!plan->contains("statePlans") || !plan->at("statePlans").is_object() || !plan->at("statePlans").contains(state.first)) {
+            issues.push_back("$.stateOrder requires compiled initializer plans"); continue;
+        }
+        std::set<std::string> reads;
+        validateClientExpressionPlan(plan->at("statePlans").at(state.first), "$.statePlans." + state.first, issues, &reads);
+        for (const auto& dependency : reads)
+            if (!positions.count(dependency) || positions.at(dependency) >= positions.at(state.first))
+                issues.push_back("$.stateOrder violates initializer dependency " + dependency + " -> " + state.first);
+    }
+}
+
 void validateClientManifestSchema(const nlohmann::json& manifest,
                                   std::vector<std::string>& issues) {
     validateClientRuntimePlanSchema(manifest, "$", true, issues);
@@ -837,6 +897,7 @@ void validateBrowserBuildOutputSchema(const std::filesystem::path& outDir,
     const auto manifest = extractClientManifestJson(index, issues);
     validateClientManifestSchema(manifest, issues);
     if (manifest.is_object()) validateDerivedPublicationOrder(manifest, mode == BrowserBuildMode::Production, issues);
+    if (manifest.is_object()) validateStateInitializationOrder(manifest, mode == BrowserBuildMode::Production, issues);
 
     requireContains(app, "window.jtml.browserBuild = {", "app.js", issues);
     requireContains(app, std::string("mode: '") + browserBuildModeName(mode) + "'",

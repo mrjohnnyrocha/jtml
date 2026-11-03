@@ -56,6 +56,7 @@ JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/module_binding_collisi
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/module_scalar_storage.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/action_get_reads.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/derived_publication.cjs"
+JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/mutable_initialization.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/route_layout.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/route_slot_ownership.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/media_renderer.cjs"

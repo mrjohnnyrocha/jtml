@@ -283,3 +283,138 @@ TEST(BrowserDerivedPublication, OrderValidationUsesStructuredEdgesIncludingInact
         }
     }
 }
+
+
+TEST(BrowserMutableInitialization, SourceOrderIsExplicitAndIndependentOfJsonKeys) {
+    const auto root = temporary();
+    write(root / "index.jtml", "jtml 2\nlet z = 2\nlet a = z + 1\nget result = a + z\npage\n  text result\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    EXPECT_EQ(manifest(root / "out")["stateOrder"], nlohmann::json({"z", "a"}));
+    EXPECT_EQ(manifest(root / "out")["derivedOrder"], nlohmann::json({"result"}));
+    ASSERT_EQ(compile(root / "index.jtml", root / "compat", true), "");
+    EXPECT_FALSE(manifest(root / "compat").contains("stateOrder"));
+}
+
+TEST(BrowserMutableInitialization, RejectionIsSourceLocatedAndPreservesEveryAsset) {
+    const auto root = temporary();
+    write(root / "index.jtml", "jtml 2\nlet z = 2\nlet a = z + 1\npage\n  text a\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    const std::vector<std::string> names = {"index.html", "app.js", "jtml-runtime.js", "components/index.js"};
+    std::vector<std::string> previous; for (const auto& name : names) previous.push_back(read(root / "out" / name));
+    for (const auto& item : std::vector<std::pair<std::string, std::string>>{
+        {"let first = later + 1\nlet later = 2\n", "E_INIT_FORWARD"},
+        {"let self = self + 1\n", "E_INIT_FORWARD"},
+        {"get derived = 2\nlet x = derived\n", "E_INIT_DERIVED"},
+        {"let x = mystery()\n", "E_INIT_UNSUPPORTED"},
+        {"let x = unknown\n", "E_INIT_UNRESOLVED"}}) {
+        write(root / "index.jtml", "jtml 2\n" + item.first + "page\n  text \"Never\"\n");
+        const auto error = compile(root / "index.jtml", root / "out");
+        EXPECT_NE(error.find(item.second), std::string::npos) << error;
+        EXPECT_NE(error.find("index.jtml:"), std::string::npos) << error;
+        for (size_t i = 0; i < names.size(); ++i) EXPECT_EQ(read(root / "out" / names[i]), previous[i]);
+    }
+}
+
+TEST(BrowserMutableInitialization, ForeignOwnersAndRepeatedLoweredSlotsKeepTheirExistingBoundary) {
+    const auto root = temporary();
+    write(root / "private.jtml", "jtml 2\nlet dummy = 1\nexport let aaSeed = 7\n");
+    write(root / "index.jtml", "jtml 2\nuse aaSeed from \"./private.jtml\"\nlet zzCopy = aaSeed + 1\npage\n  text zzCopy\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "foreign"), "");
+    EXPECT_TRUE(manifest(root / "foreign")["stateOrder"].is_null());
+    write(root / "private.jtml", "jtml 2\nlet aaSeed = 7\nexport make Card\n  text \"Card\"\n");
+    write(root / "index.jtml", "jtml 2\nuse \"./private.jtml\"\nlet zzCopy = aaSeed + 1\npage\n  text zzCopy\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "side-effect"), "");
+    EXPECT_TRUE(manifest(root / "side-effect")["stateOrder"].is_null());
+    write(root / "index.jtml", "jtml 2\nuse Card from \"./private.jtml\"\nlet zzCopy = aaSeed + 1\npage\n  Card\n");
+    EXPECT_NE(compile(root / "index.jtml", root / "unimported").find("E_INIT_UNRESOLVED"), std::string::npos);
+    write(root / "index.jtml", "jtml 2\nlet slot = {}\nlet slot = {ready: true}\npage\n  text \"Ready\"\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "lowered"), "");
+    EXPECT_TRUE(manifest(root / "lowered")["stateOrder"].is_null());
+}
+
+TEST(BrowserMutableInitialization, InvalidCertificatesCannotClaimOrderedInitialization) {
+    const auto root = temporary();
+    write(root / "index.jtml", "jtml 2\nlet z = 2\nlet a = z + 1\npage\n  text a\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    const auto html = read(root / "out/index.html");
+    const std::string marker = "id=\"__jtml_client_manifest\">";
+    const auto begin = html.find(marker) + marker.size(), end = html.find("</script>", begin);
+    for (const auto& order : {nlohmann::json::array(), nlohmann::json({"a", "z"}), nlohmann::json({"z", "z", "a"}), nlohmann::json({"z"}), nlohmann::json({"z", "unknown"})}) {
+        auto client = nlohmann::json::parse(html.substr(begin, end - begin)); client["stateOrder"] = order;
+        write(root / "out/index.html", html.substr(0, begin) + client.dump() + html.substr(end));
+        EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production), std::runtime_error);
+    }
+    auto missing = nlohmann::json::parse(html.substr(begin, end - begin)); missing.erase("stateOrder");
+    write(root / "out/index.html", html.substr(0, begin) + missing.dump() + html.substr(end));
+    EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production), std::runtime_error);
+}
+
+TEST(BrowserMutableInitialization, EffectiveAndProjectedInitializerPlansCannotHideDependencies) {
+    const auto root = temporary();
+    const auto vectors = nlohmann::json::parse(read(fs::path(JTML_SOURCE_DIR) / "docs/spec/reactive-core-v1/vectors.json"));
+    for (const auto& vector : vectors.at("vectors")) if (vector.at("id") == "V11")
+        write(root / "index.jtml", vector.at("files").at("index.jtml").get<std::string>());
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    const auto html = read(root / "out/index.html");
+    const std::string marker = "id=\"__jtml_client_manifest\">";
+    const auto begin = html.find(marker) + marker.size(), end = html.find("</script>", begin);
+    const auto original = nlohmann::json::parse(html.substr(begin, end - begin));
+    auto reject = [&](const nlohmann::json& client) {
+        write(root / "out/index.html", html.substr(0, begin) + client.dump() + html.substr(end));
+        EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production), std::runtime_error);
+    };
+    // Exact adversarial mutation: browser keeps root statePlans.a, although
+    // state.a is supplied by a module with a contradictory, shadowed plan.
+    auto client = original;
+    client["stateOrder"] = {"a", "z"}; client["state"].erase("a");
+    client["project"]["modules"][0]["plan"]["statePlans"]["a"] = {{"kind", "literal"}, {"value", 3}};
+    reject(client);
+    client = original;
+    client["statePlans"]["orphan"] = {{"kind", "literal"}, {"value", 3}};
+    reject(client);
+    // All declaration projections still matter, including ones that lose the
+    // browser's first-wins merge. Do not certify a contradictory dependency.
+    const auto lateRead = nlohmann::json{{"kind", "path"}, {"segments", {"a"}}};
+    client = original;
+    client["project"]["modules"][0]["plan"]["statePlans"]["z"] = lateRead;
+    reject(client);
+    client = original;
+    client["project"]["linkedPlan"]["state"]["z"] = original["state"]["z"];
+    client["project"]["linkedPlan"]["statePlans"]["z"] = lateRead;
+    reject(client);
+    client = original;
+    client["project"]["linkedPlan"]["statePlans"]["orphan"] = {{"kind", "literal"}, {"value", 3}};
+    reject(client);
+}
+
+TEST(BrowserMutableInitialization, LegitimateDuplicateAndInactiveProjectionsRemainValid) {
+    const auto root = temporary();
+    write(root / "index.jtml", "jtml 2\nlet z = 2\nlet a = z + 1\npage\n  text a\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    const auto html = read(root / "out/index.html");
+    const std::string marker = "id=\"__jtml_client_manifest\">";
+    const auto begin = html.find(marker) + marker.size(), end = html.find("</script>", begin);
+    auto client = nlohmann::json::parse(html.substr(begin, end - begin));
+    ASSERT_EQ(client["state"], client["project"]["modules"][0]["plan"]["state"]);
+    ASSERT_EQ(client["statePlans"], client["project"]["modules"][0]["plan"]["statePlans"]);
+    EXPECT_NO_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production));
+    // Redundant linked declarations are legal; identical keys are not orphans.
+    client["project"]["linkedPlan"]["state"] = client["state"];
+    client["project"]["linkedPlan"]["statePlans"] = client["statePlans"];
+    auto inactive = client["project"]["modules"][0]; inactive["id"] = 999; inactive["executable"] = false;
+    inactive["plan"]["statePlans"]["orphan"] = {{"kind", "literal"}, {"value", 3}};
+    inactive["plan"]["statePlans"]["z"] = {{"kind", "path"}, {"segments", {"a"}}};
+    client["project"]["modules"].push_back(inactive);
+    write(root / "out/index.html", html.substr(0, begin) + client.dump() + html.substr(end));
+    EXPECT_NO_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production));
+}
+
+TEST(BrowserMutableInitialization, BarrelStoreInitializersRetainNullCompatibilityBoundary) {
+    const auto root = temporary();
+    write(root / "private.jtml", "jtml 2\nexport store shop\n  let items = [{x: 7}]\n");
+    write(root / "barrel.jtml", "jtml 2\nexport use shop from \"./private.jtml\"\n");
+    write(root / "index.jtml", "jtml 2\nuse shop from \"./barrel.jtml\"\nlet zzCopy = shop.items[0].x + 1\npage\n  text zzCopy\n");
+    ASSERT_EQ(compile(root / "index.jtml", root / "out"), "");
+    EXPECT_TRUE(manifest(root / "out")["stateOrder"].is_null());
+    EXPECT_NO_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production));
+}

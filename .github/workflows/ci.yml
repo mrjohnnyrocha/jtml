@@ -163,6 +163,9 @@ jobs:
       - name: Topological root derived publication (browser required)
         run: node tests/browser/derived_publication.cjs
 
+      - name: Source-ordered mutable initialization (browser required)
+        run: node tests/browser/mutable_initialization.cjs
+
       - name: Route layout slot composition (browser required)
         run: node tests/browser/route_layout.cjs
 

@@ -751,9 +751,10 @@ void validateDerivedPublicationOrder(const nlohmann::json& manifest, bool requir
     collect(manifest);
     if (manifest.contains("project") && manifest.at("project").is_object()) {
         const auto& project = manifest.at("project");
+        if (project.contains("linkedPlan") && project.at("linkedPlan").is_object()) collect(project.at("linkedPlan"));
         if (project.contains("modules") && project.at("modules").is_array())
             for (const auto& module : project.at("modules"))
-                if (module.is_object() && module.contains("executable") && module.at("executable") == true &&
+                if (module.is_object() && (!module.contains("executable") || module.at("executable") != false) &&
                     module.contains("plan") && module.at("plan").is_object()) collect(module.at("plan"));
     }
     if (!manifest.contains("derivedOrder")) {

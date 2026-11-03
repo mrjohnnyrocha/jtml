@@ -265,4 +265,21 @@ TEST(BrowserDerivedPublication, OrderValidationUsesStructuredEdgesIncludingInact
     EXPECT_THROW(check(), std::runtime_error);
     client["derivedPlans"]["a"].erase("whenFalse");
     EXPECT_THROW(check(), std::runtime_error); // No hidden fallback from a missing child.
+    for (const bool linked : {true, false}) {
+        client = nlohmann::json::parse(html.substr(begin, end - begin));
+        auto& projection = linked ? client["project"]["linkedPlan"] : client["project"]["modules"][0]["plan"];
+        if (!linked) client["project"]["modules"][0].erase("executable"); // Runtime default is executable.
+        projection["derived"]["extra"] = client["derived"]["a"];
+        projection["derivedPlans"]["extra"] = client["derivedPlans"]["a"];
+        EXPECT_THROW(check(), std::runtime_error); // Missing executable getter.
+        client["derivedOrder"] = {"other", "w", "z", "extra", "a"};
+        EXPECT_NO_THROW(check());
+        client["derivedOrder"] = {"extra", "other", "w", "z", "a"};
+        EXPECT_THROW(check(), std::runtime_error); // Reversed edge in that projection.
+        if (!linked) {
+            client["project"]["modules"][0]["executable"] = false;
+            client["derivedOrder"] = {"other", "w", "z", "a"};
+            EXPECT_NO_THROW(check()); // Explicitly disabled modules contribute no getters.
+        }
+    }
 }

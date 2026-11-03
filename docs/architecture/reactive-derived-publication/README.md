@@ -36,8 +36,9 @@ The client manifest carries the order after clean certification; it is required
 when a clean production bundle has root getters. No-getter bundles and
 compat/debug/inline/live output may omit it. The closed output validator checks
 its type, unique existing names, complete coverage and every dependency position
-using the existing structured expression-plan walker. Both conditional branches
-and all executable module projections are checked; independent components may
+using the existing structured expression-plan walker. Both conditional branches,
+the root/linked projections and all executable modules are checked (matching the
+browser default when `executable` is omitted); independent components may
 use any valid topological permutation. The executed path segments determine
 roots, not diagnostic source/root hints. Literal application payloads are not
 walked as expression nodes.

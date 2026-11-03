@@ -73,8 +73,13 @@ A clean bundle with state must contain `stateOrder`. An array must contain every
 executable state slot exactly once and put every structured initializer state
 dependency earlier than its consumer. Missing, reversed, duplicate, incomplete,
 and unknown-name arrays reject. This reuses the existing typed-plan dependency
-walker, including executable-module filtering. JSON dictionary ordering is not
-an initialization certificate.
+walker, including executable-module filtering. It also validates the effective
+state/initializer-plan view using the browser's independent first-wins merges:
+root, linked plan, then executable modules in manifest array order. Ordered
+certificates reject orphan state-plan entries in any executable projection;
+shadowed declaration plans still must satisfy dependency ordering. Legitimate
+duplicate projections remain valid. JSON dictionary ordering is not an
+initialization certificate.
 
 Null is an explicit **uncertified compatibility boundary**, not proof of ordered
 initialization. Artifact validation checks supplied plans; it cannot authenticate
@@ -131,9 +136,9 @@ unchanged 273,000-byte limit. Component/app bytes are identical. The small
 headroom remains a maintenance constraint; it is not grounds to relax the budget
 or introduce risky architectural changes.
 
-## Verification result
+## Initial PR verification result
 
-The final local browser-required `scripts/verify_all.sh` passed: 527/527 CTests,
+The initial local browser-required `scripts/verify_all.sh` passed: 527/527 CTests,
 nine performance browser fixtures plus the production reference app with
 `browserExit=clean`, the required browser regressions, doctor, examples/demos,
 package/site/editor/LSP checks, local-server integration and all eight live-runtime
@@ -149,3 +154,42 @@ warnings, the reference-app size warning, and five explicitly retained native
 body-plan attribute discrepancies remain in the broader gate's output. Those
 catalog observations are not new semantic passes and are not fixed by this PR.
 Hosted Ubuntu/macOS CI is separate evidence from this full local gate.
+
+## P2 artifact-validation correction
+
+The adversarial review found that a root initializer plan without a matching root
+state entry could escape projection checks while winning the browser's merge.
+Starting from original V11, reversing `stateOrder` to `a,z`, deleting root
+`state.a` and replacing only module `statePlans.a` with literal 3 passed the old
+validator. The browser still selected root `statePlans.a` (`z+1`), initialized it
+before `z`, and left `a`, `result` and their DOM unresolved.
+
+The compiler-side validator now checks the effective executable dictionaries and
+rejects orphan plans for non-null certificates, in addition to all declaration
+projections. The exact mutation now rejects with both an orphan-plan diagnostic
+and `z -> a` order violation. No runtime code changed in this correction. Tests
+also reject orphan linked plans and contradictory module/linked dependency edges,
+accept normal compiler duplicates and redundant identical linked projections,
+and ignore non-executable modules as the browser does. Missing/reversed/duplicate/
+incomplete order controls remain mandatory. A barrel-imported store containing
+structured values retains `stateOrder: null` and renders 8 in required Chromium.
+
+Null remains the documented uncertified compatibility marker. Validation does
+not authenticate original source text or prove semantic equivalence of source
+strings and plans; this correction validates the graph actually selected from
+known executable artifact plans. It does not implement V21 or alter initialization
+semantics, the independent model, or authored vector/oracle results.
+
+For the P2 amendment, the original V11 build produces byte-identical HTML,
+runtime, component and app assets compared with pinned PR #81 head
+`e0f7568b370dfc6268fe66ae91292992bf7d27eb`. Shared runtime remains **272,973 raw /
+51,162 gzip9 bytes**, SHA-256
+`68c42345a4e3d165e739d381265bb9134970308339c5c70e41811373e13d3b3e`.
+The unchanged cap is 273,000 raw bytes (27 bytes available).
+
+Amendment-focused verification: 22 CTests, all 18 independent-model tests and
+four source/AST audits pass. Real Chromium initialization, action-read,
+derived-publication and root-effects suites pass with clean shutdown. The
+existing Ubuntu/macOS job runs the exact malformed-artifact regression through
+CTest and the additional barrel-store case through its mandatory initialization
+browser step. Final full-gate and hosted-CI results are recorded on PR #81.

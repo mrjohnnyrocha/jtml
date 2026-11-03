@@ -74,6 +74,9 @@ async function check(p,dom,values) {
  }
  compile({'index.jtml':'jtml 2\nuse "./private.jtml"\nlet zzCopy = aaSeed + 1\npage\n  box class "out"\n    text zzCopy\n','private.jtml':'jtml 2\nlet aaSeed = 7\n'},'side-effect-import');
  const sideEffect=await open();await check(sideEffect,['8'],{zzCopy:8});await sideEffect.close();report.cases.push('legacy whole-file import initializer preserved PASS');
+ compile({'index.jtml':'jtml 2\nuse shop from "./barrel.jtml"\nlet zzCopy = shop.items[0].x + 1\npage\n  box class "out"\n    text zzCopy\n','barrel.jtml':'jtml 2\nexport use shop from "./private.jtml"\n','private.jtml':'jtml 2\nexport store shop\n  let items = [{x: 7}]\n'},'barrel-store');
+ const barrel=await open();await check(barrel,['8'],{zzCopy:8});assert.equal(await barrel.evaluate(()=>JSON.parse(document.getElementById('__jtml_client_manifest').textContent).stateOrder),null);await barrel.close();report.cases.push('barrel store structured initializer/null boundary preserved PASS');
+
  for(const flag of ['--compat','--debug']) {
   const source={'index.jtml':'jtml 2\nlet z = 2\nlet a = z + 1\nget result = a + z\npage\n  box class "out"\n    text "{a}|{result}"\n'};
   compile(source,'mode-'+flag.slice(2),[flag]);const p=await open();assert.deepEqual(await p.evaluate(()=>({z:jtml.state.z,a:jtml.state.a})),{z:2,a:undefined});await p.close();

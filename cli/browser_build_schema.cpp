@@ -796,7 +796,16 @@ void validateDerivedPublicationOrder(const nlohmann::json& manifest, bool requir
 void validateStateInitializationOrder(const nlohmann::json& manifest, bool required,
                                        std::vector<std::string>& issues) {
     std::map<std::string, std::vector<const nlohmann::json*>> states;
+    std::vector<const nlohmann::json*> projections;
+    nlohmann::json effective = {{"state", nlohmann::json::object()}, {"statePlans", nlohmann::json::object()}};
     auto collect = [&](const nlohmann::json& plan) {
+        projections.push_back(&plan);
+        // Match mergeProjectManifest: root, linked, then executable modules in
+        // array order. State expressions and plans merge independently; first wins.
+        for (const auto* key : {"state", "statePlans"})
+            if (plan.contains(key) && plan.at(key).is_object())
+                for (const auto& item : plan.at(key).items())
+                    if (!effective[key].contains(item.key())) effective[key][item.key()] = item.value();
         if (plan.contains("state") && plan.at("state").is_object())
             for (const auto& item : plan.at("state").items()) states[item.key()].push_back(&plan);
     };
@@ -816,6 +825,14 @@ void validateStateInitializationOrder(const nlohmann::json& manifest, bool requi
     const auto& order = manifest.at("stateOrder");
     if (order.is_null()) return; // Explicit compatibility boundary, not a Core certificate.
     if (!requireArrayAt(order, "$.stateOrder", issues)) return;
+    for (const auto* plan : projections)
+        if (plan->contains("statePlans") && plan->at("statePlans").is_object())
+            for (const auto& item : plan->at("statePlans").items())
+                if (!plan->contains("state") || !plan->at("state").is_object() || !plan->at("state").contains(item.key()))
+                    issues.push_back("$.stateOrder has orphan initializer plan " + item.key());
+    // Check the plans the browser actually executes, in addition to every
+    // declaration projection. Neither an orphan nor a shadowed plan may hide an edge.
+    for (const auto& item : effective.at("state").items()) states[item.key()].push_back(&effective);
     std::map<std::string, size_t> positions;
     for (size_t i = 0; i < order.size(); ++i)
         if (!order[i].is_string() || !states.count(order[i].get<std::string>()) ||

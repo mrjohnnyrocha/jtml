@@ -191,14 +191,14 @@ async function expectView(page, values) {assert.deepEqual(await view(page), valu
     assert(denied.stderr.includes('`'+missing+'`'),denied.stderr);
     assert(!fs.existsSync(path.join(dest,'index.html')),id);
   }
-  // The repeated slot forces legacy bootstrap, so copy is absent and the
-  // skipped local initializer would leave the other module's hidden slot visible.
+  // Use a genuine lowered controller repetition so initializer admission
+  // succeeds and the root-action shadow guard must still reject this program.
   fs.writeFileSync(path.join(admission,'values.jtml'),'jtml 2\nexport let seed = 7\nlet hidden = 42\n');
-  fs.writeFileSync(admissionSource,'jtml 2\nuse seed from "./values.jtml"\nlet copy = seed + 1\nlet slot = {}\nlet slot = {ready: true}\nwhen step\n  let hidden = copy\n  show hidden\npage\n  button "Step" click step\n');
+  fs.writeFileSync(admissionSource,'jtml 2\nuse seed from "./values.jtml"\nlet copy = seed + 1\nlet slot = {}\nwhen step\n  let hidden = copy\n  show hidden\npage\n  scene3d "Scene" scene example into slot\n  button "Step" click step\n');
   const shadowDest = path.join(out,'root-admission-private-slot');
   const shadow = build(admissionSource,shadowDest);
   assert.notEqual(shadow.status,0);
-  assert.match(shadow.stderr,/index\.jtml:7:3: E_UNRESOLVED:.*local declaration shadows root storage `hidden`/);
+  assert.match(shadow.stderr,/index\.jtml:6:3: E_UNRESOLVED:.*local declaration shadows root storage `hidden`/);
   assert(!fs.existsSync(path.join(shadowDest,'index.html')));
   report.cases.push({id:'root-action-lexical-admission',status:'PASS'});
   const writeSource = path.join(admission, 'index.jtml');

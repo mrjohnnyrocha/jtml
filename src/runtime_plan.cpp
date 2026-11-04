@@ -1070,7 +1070,11 @@ RuntimePlan buildRuntimePlan(const std::vector<std::unique_ptr<ASTNode>>& progra
         if (!node) continue;
         if (node->getType() == ASTNodeType::DefineStatement) {
             const auto& stmt = static_cast<const DefineStatementNode&>(*node);
-            plan.state.push_back({stmt.identifier, expressionSource(stmt.expression.get()), node->sourceSpan, stmt.isConst});
+            const auto& span = node->sourceSpan;
+            const bool controllerDefault = span.provenance &&
+                span.provenance->controllerInitializerLines.count(span.startLine);
+            plan.state.push_back({stmt.identifier, expressionSource(stmt.expression.get()), span,
+                                  stmt.isConst, controllerDefault});
         } else if (node->getType() == ASTNodeType::DeriveStatement) {
             const auto& stmt = static_cast<const DeriveStatementNode&>(*node);
             plan.derived.push_back({stmt.identifier, expressionSource(stmt.expression.get()), node->sourceSpan});

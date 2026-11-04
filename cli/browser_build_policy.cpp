@@ -32,14 +32,14 @@ std::vector<std::string> planBrowserStateOrder(const jtml::RuntimeProjectPlan& p
     using Module = jtml::RuntimeModulePlan;
     std::map<jtml::SemanticModuleId, const Module*> modules;
     std::map<jtml::SemanticModuleId, std::map<std::string, std::vector<size_t>>> positions;
-    std::set<std::string> owned;
+    std::map<std::string, const jtml::RuntimePlanBinding*> effective;
     for (const auto& module : project.modules) {
         modules[module.id] = &module;
         if (!module.clientExecutable) continue;
         auto& local = positions[module.id];
         for (size_t i = 0; i < module.plan.state.size(); ++i) {
             local[module.plan.state[i].name].push_back(i);
-            owned.insert(module.plan.state[i].name);
+            effective.insert_or_assign(module.plan.state[i].name, &module.plan.state[i]);
         }
     }
     std::map<jtml::SemanticModuleId, size_t> ranks;
@@ -72,7 +72,6 @@ std::vector<std::string> planBrowserStateOrder(const jtml::RuntimeProjectPlan& p
         throw std::runtime_error(at + ": " + code + ": " + reason +
             "; use earlier module-local state and structured initializer expressions");
     };
-    bool legacy = false;
     std::vector<std::string> order;
     for (const auto* entry : orderedModules) {
         const auto& module = *entry;
@@ -81,17 +80,16 @@ std::vector<std::string> planBrowserStateOrder(const jtml::RuntimeProjectPlan& p
         for (size_t i = 0; i < module.plan.state.size(); ++i) {
             const auto& binding = module.plan.state[i];
             if (binding.name == "__proto__") fail(module, binding, "E_INIT_UNSUPPORTED", "reserved state binding `__proto__`");
-            // UI lowering can repeat a physical slot, e.g. scene `into` defaults.
-            // Do not reinterpret those records as new independent declarations.
-            if (local.at(binding.name).size() != 1) { legacy = true; continue; }
             const auto ir = jtml::parseExpressionIr(binding.expr);
             if (!ir || !ir->supported || !jtml::expressionIrSupportsDirectJs(*ir))
                 fail(module, binding, "E_INIT_UNSUPPORTED", "unsupported initializer for `" + binding.name + "`");
-            for (const auto& dependency : jtml::expressionIrDependencies(*ir)) {
+            const auto dependencies = jtml::expressionIrDependencies(*ir);
+            if (binding.controllerDefault && !dependencies.empty())
+                fail(module, binding, "E_INIT_UNSUPPORTED", "controller default cannot read state");
+            for (const auto& dependency : dependencies) {
                 const auto root = dependency.substr(0, dependency.find_first_of(".["));
                 const auto own = local.find(root);
                 if (own != local.end()) {
-                    if (own->second.size() != 1) { legacy = true; continue; }
                     if (own->second.front() >= i)
                         fail(module, binding, "E_INIT_FORWARD", (root == binding.name ? "self-reference to `" : "forward reference to `") + root + "`");
                     continue;
@@ -132,13 +130,35 @@ std::vector<std::string> planBrowserStateOrder(const jtml::RuntimeProjectPlan& p
                     fail(module, binding, "E_INIT_UNRESOLVED", "unresolved or unimported initializer binding `" + root + "`");
                 if (ranks.at(imported.owner->id) >= ranks.at(module.id))
                     fail(module, binding, "E_INIT_FORWARD", "imported initializer owner does not precede `" + root + "`");
-                if (positions.at(imported.owner->id).at(root).size() != 1) legacy = true;
             }
-            order.push_back(binding.name);
+            if (local.at(binding.name).front() == i) order.push_back(binding.name);
+        }
+        // Serialization already selects the last record per slot. Admit a
+        // repetition only for an authored mutable slot followed by tagged
+        // controller defaults for that same slot, or identical tagged defaults.
+        for (const auto& [name, records] : local) {
+            if (records.size() == 1) continue;
+            const auto& last = module.plan.state[records.back()];
+            for (const auto index : records) {
+                const auto& binding = module.plan.state[index];
+                if ((!binding.controllerDefault && (index != records.front() || binding.isConst)) ||
+                    (binding.controllerDefault && binding.expr != last.expr))
+                    fail(module, binding, "E_INIT_DUPLICATE", "unproven repeated initialization slot `" + name + "`");
+            }
         }
     }
-    for (const auto& binding : project.linkedPlan.state) if (!owned.count(binding.name)) legacy = true;
-    return legacy ? std::vector<std::string>{} : order;
+    std::map<std::string, const jtml::RuntimePlanBinding*> linked;
+    for (const auto& binding : project.linkedPlan.state) linked[binding.name] = &binding;
+    for (const auto& [name, binding] : linked) {
+        const auto owner = effective.find(name);
+        if (owner == effective.end() || owner->second->expr != binding->expr) {
+            const auto entry = modules.find(project.entry);
+            if (entry != modules.end())
+                fail(*entry->second, *binding, "E_INIT_PROJECTION", "linked initializer has no matching certified owner for `" + name + "`");
+            throw std::runtime_error("E_INIT_PROJECTION: linked initializer has no matching certified owner for `" + name + "`");
+        }
+    }
+    return order;
 }
 
 // Certify getter closures from retained module plans/import identities. The

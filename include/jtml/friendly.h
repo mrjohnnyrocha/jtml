@@ -58,6 +58,7 @@ struct FriendlyClassicResult {
     std::vector<int> classicLineToFriendlyLine;
     std::shared_ptr<const SourceProvenance> provenance;
     std::map<int, LoweredLocalDeclaration> localDeclarations;
+    std::set<int> controllerInitializerLines;
 };
 
 std::string friendlyToClassic(const std::string& source);

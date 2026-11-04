@@ -29,6 +29,7 @@ struct RuntimePlanBinding {
     std::string expr;
     SourceSpan sourceSpan;
     bool isConst = false; // Compiler-only assignment admission.
+    bool controllerDefault = false; // Friendly into lowering provenance.
 };
 
 struct RuntimePlanAction {
@@ -140,7 +141,7 @@ struct RuntimeModulePlan {
 };
 
 struct RuntimeProjectPlan {
-    // Absent: compat/inline. Empty: explicit legacy initialization boundary.
+    // Absent: compat/inline. Empty: clean project with no executable state.
     std::optional<std::vector<std::string>> stateOrder;
     std::vector<std::string> derivedOrder; // Certified clean-browser publication order.
     std::string scalarStorageIssue; // Internal proof failure; preserves collision rejection.

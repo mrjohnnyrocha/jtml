@@ -308,6 +308,14 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
                 };
                 visit(*ir);
             };
+            auto rejectDestination = [&](const SourceSpan& span, const std::string& code, std::string reason) {
+                // Keep the existing effect-specific remediation when this
+                // earlier check also rejects a lowered subscription callback.
+                if (std::any_of(module.plan.semantic.subscriptions.begin(), module.plan.semantic.subscriptions.end(),
+                    [&](const auto& subscription) { return subscription.action == action.name; }))
+                    for (const auto& issue : module.plan.effectIssues) reason += "\n- " + issue;
+                rejectAction(span, code, reason);
+            };
             auto certifyDestination = [&](const jtml::RuntimePlanStatement& statement, const Scope& scope) {
                 const auto destination = jtml::parseExpressionIr(statement.lhs);
                 const auto* root = destination.get();
@@ -315,16 +323,16 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
                                 root->kind == jtml::ExpressionIrKind::Subscript))
                     root = root->children.empty() ? nullptr : root->children.front().get();
                 if (!root || root->kind != jtml::ExpressionIrKind::Path || root->root.empty())
-                    rejectAction(statement.sourceSpan, "E_UNSUPPORTED_EXPR", "requires a binding as its assignment destination");
+                    rejectDestination(statement.sourceSpan, "E_UNSUPPORTED_EXPR", "requires a binding as its assignment destination");
                 const auto& name = root->root;
                 if (name == "__proto__")
-                    rejectAction(statement.sourceSpan, "E_UNRESOLVED", "writes reserved binding `" + name + "`");
+                    rejectDestination(statement.sourceSpan, "E_UNRESOLVED", "writes reserved binding `" + name + "`");
                 if (!statement.localBinding.empty() || scope.count(name)) return;
                 const auto target = resolveActionRoot(name);
                 if (!target.owner)
-                    rejectAction(statement.sourceSpan, "E_UNRESOLVED", "writes unresolved or unimported binding `" + name + "`");
+                    rejectDestination(statement.sourceSpan, "E_UNRESOLVED", "writes unresolved or unimported binding `" + name + "`");
                 if (target.binding && (target.derived || target.binding->isConst || ambiguous(target)))
-                    rejectAction(statement.sourceSpan, "E_NOT_WRITABLE", "requires a writable destination for `" + name + "`");
+                    rejectDestination(statement.sourceSpan, "E_NOT_WRITABLE", "requires a writable destination for `" + name + "`");
             };
             std::function<void(const std::vector<jtml::RuntimePlanStatement>&, Scope)> walk =
                 [&](const auto& statements, Scope scope) {

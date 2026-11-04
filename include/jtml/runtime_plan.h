@@ -28,6 +28,7 @@ struct RuntimePlanBinding {
     std::string name;
     std::string expr;
     SourceSpan sourceSpan;
+    bool isConst = false; // Compiler-only assignment admission.
 };
 
 struct RuntimePlanAction {

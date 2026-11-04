@@ -201,6 +201,86 @@ async function expectView(page, values) {assert.deepEqual(await view(page), valu
   assert.match(shadow.stderr,/index\.jtml:7:3: E_UNRESOLVED:.*local declaration shadows root storage `hidden`/);
   assert(!fs.existsSync(path.join(shadowDest,'index.html')));
   report.cases.push({id:'root-action-lexical-admission',status:'PASS'});
+  const writeSource = path.join(admission, 'index.jtml');
+  fs.writeFileSync(path.join(admission, 'owner.jtml'), `jtml 2
+let hidden = 7
+export let seed = 11
+when ownerStep
+  hidden = hidden + 1
+  show hidden
+export make Card
+  button "Owner" click ownerStep
+`);
+  fs.writeFileSync(path.join(admission, 'barrel.jtml'), 'jtml 2\nexport use seed from "./owner.jtml"\n');
+  for (const [id, imports] of [
+    ['named', 'use seed from "./owner.jtml"'],
+    ['reexport', 'use seed from "./barrel.jtml"'],
+    ['whole-file', 'use "./owner.jtml"']
+  ]) {
+    fs.writeFileSync(writeSource, `jtml 2
+use Card from "./owner.jtml"
+${imports}
+let owned = 1
+let rows = [{value: 2}]
+when step hidden
+  hidden = 99
+  let local = 2
+  local = local + 1
+  rows[0].value = local
+  owned = local + 1
+  seed = seed + 1
+  show hidden
+  show seed
+page
+  box class "out"
+    text "{owned}|{rows[0].value}"
+  Card
+  button "Step" click step(3)
+`);
+    compile(writeSource, 'write-' + id);
+    const control = await open();
+    await expectView(control.page, ['1|2']);
+    await control.page.getByRole('button', {name:'Step', exact:true}).click();
+    await expectView(control.page, ['4|3']);
+    await control.page.getByRole('button', {name:'Owner', exact:true}).click();
+    assert.deepEqual(control.shown, ['99', '12', '8']);
+    await control.page.close();
+  }
+
+  const previous = root;
+  const assetNames = ['index.html', 'jtml-runtime.js', 'components/index.js', 'app.js'];
+  const before = assetNames.map(file => fs.readFileSync(path.join(previous, file)));
+  for (const [id, body, binding, line, column] of [
+    ['private', '  hidden = 9', 'hidden', 4, 3],
+    ['unimported-export', '  seed = 9', 'seed', 4, 3],
+    ['unknown', '  ghost = 9', 'ghost', 4, 3],
+    ['dead-branch', '  if false\n    hidden = 9', 'hidden', 5, 5],
+    ['other-branch', '  if true\n    let temp = 2\n  else\n    temp = 9', 'temp', 7, 5],
+    ['before-local', '  temp = 9\n  let temp = 1', 'temp', 4, 3],
+    ['shadow-foreign', '  let hidden = 1\n  hidden = 9', 'hidden', 4, 3],
+    ['storage-alias', '  __jtml_scalar_00000000000000000000 = 9', '__jtml_scalar_00000000000000000000', 4, 3],
+  ]) {
+    fs.writeFileSync(writeSource, `jtml 2
+use Card from "./owner.jtml"
+when step
+${body}
+page
+  Card
+  button "Step" click step
+`);
+    const dest = path.join(out, 'write-denied-' + id);
+    for (const target of [dest, previous]) {
+      const denied = build(writeSource, target);
+      assert.notEqual(denied.status, 0, id);
+      assert(denied.stderr.includes(`index.jtml:${line}:${column}: E_UNRESOLVED`), denied.stderr);
+      assert(denied.stderr.includes('`' + binding + '`'), denied.stderr);
+    }
+    for (const [index, file] of assetNames.entries()) {
+      assert(!fs.existsSync(path.join(dest, file)), id);
+      assert.deepEqual(fs.readFileSync(path.join(previous, file)), before[index], id);
+    }
+  }
+  report.cases.push({id:'root-action-destination-admission',status:'PASS'});
   // Compare original V04/V05 oracles; historical browser observations stay frozen.
   if (process.argv.includes('--document-gaps')) for(const id of ['V04','V05']) {
     const {v,source}=authored(id);compile(source,id);const {page}=await open();

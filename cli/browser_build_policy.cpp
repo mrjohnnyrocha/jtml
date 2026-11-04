@@ -253,9 +253,26 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
             }
         };
         collectWholeFileScopes(module);
+        auto resolveActionRoot = [&](const std::string& name) -> Resolved {
+            const auto direct = resolve(module, name, true);
+            if (direct.binding) return direct;
+            if (hasFetch(module, name)) return {&module, nullptr, false};
+            for (const auto& symbol : module.importedSymbols) {
+                const auto owner = modules.find(symbol.module);
+                if (symbol.name == name && (symbol.kind == "fetch" || symbol.kind == "let") &&
+                    owner != modules.end() && hasFetch(*owner->second, name))
+                    return {owner->second, nullptr, false};
+            }
+            for (const auto* owner : wholeFileScopes) {
+                if (hasFetch(*owner, name)) return {owner, nullptr, false};
+                const auto imported = resolve(*owner, name, true);
+                if (imported.binding && !imported.derived) return imported;
+            }
+            return {nullptr, nullptr, false};
+        };
         for (const auto& action : module.plan.actions) {
             bool consumesGet = false;
-            auto rejectRead = [&](const SourceSpan& span, const std::string& code, const std::string& reason) {
+            auto rejectAction = [&](const SourceSpan& span, const std::string& code, const std::string& reason) {
                 throw std::runtime_error(location(module, span.valid() ? span : action.sourceSpan) +
                     ": " + code + ": root action `" + action.name + "` " + reason);
             };
@@ -265,35 +282,20 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
                 if (expression.empty()) return;
                 const auto ir = jtml::parseExpressionIr(expression);
                 if (!ir || !ir->supported || !jtml::expressionIrSupportsDirectJs(*ir))
-                    rejectRead(span, "E_UNSUPPORTED_EXPR", "requires a supported expression plan for `" + expression + "`");
+                    rejectAction(span, "E_UNSUPPORTED_EXPR", "requires a supported expression plan for `" + expression + "`");
                 std::function<void(const jtml::ExpressionIr&)> visit = [&](const auto& node) {
                     if (node.kind == jtml::ExpressionIrKind::Path) {
                         const auto& name = node.root;
                         if (name == "__proto__")
-                            rejectRead(span, "E_UNRESOLVED", "reads reserved binding `" + name + "`");
+                            rejectAction(span, "E_UNRESOLVED", "reads reserved binding `" + name + "`");
                         if (scope.count(name)) return;
-                        auto target = resolve(module, name, true);
-                        if (!target.binding) {
-                            if (hasFetch(module, name)) return;
-                            for (const auto& symbol : module.importedSymbols) {
-                                const auto owner = modules.find(symbol.module);
-                                if (symbol.name == name && (symbol.kind == "fetch" || symbol.kind == "let") &&
-                                    owner != modules.end() && hasFetch(*owner->second, name)) return;
-                            }
-                            for (const auto* owner : wholeFileScopes) {
-                                if (hasFetch(*owner, name)) return;
-                                const auto imported = resolve(*owner, name, true);
-                                if (imported.binding && !imported.derived) {
-                                    target = imported;
-                                    break;
-                                }
-                            }
-                        }
+                        const auto target = resolveActionRoot(name);
+                        if (target.owner && !target.binding) return; // Authorized fetch read.
                         if (!target.binding) {
                             const auto occupied = storageOwners.find(name);
                             if (occupied != storageOwners.end() && occupied->second.derived)
-                                rejectRead(span, "E_UNRESOLVED", "reads unimported get `" + name + "`");
-                            rejectRead(span, "E_UNRESOLVED", "reads unresolved or unimported binding `" + name + "`");
+                                rejectAction(span, "E_UNRESOLVED", "reads unimported get `" + name + "`");
+                            rejectAction(span, "E_UNRESOLVED", "reads unresolved or unimported binding `" + name + "`");
                         }
                         if (ambiguous(target)) fail(module, span, "ambiguous value/get `" + name + "`");
                         if (target.derived) {
@@ -306,11 +308,30 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
                 };
                 visit(*ir);
             };
+            auto certifyDestination = [&](const jtml::RuntimePlanStatement& statement, const Scope& scope) {
+                const auto destination = jtml::parseExpressionIr(statement.lhs);
+                const auto* root = destination.get();
+                while (root && (root->kind == jtml::ExpressionIrKind::Member ||
+                                root->kind == jtml::ExpressionIrKind::Subscript))
+                    root = root->children.empty() ? nullptr : root->children.front().get();
+                if (!root || root->kind != jtml::ExpressionIrKind::Path || root->root.empty())
+                    rejectAction(statement.sourceSpan, "E_UNSUPPORTED_EXPR", "requires a binding as its assignment destination");
+                const auto& name = root->root;
+                if (name == "__proto__")
+                    rejectAction(statement.sourceSpan, "E_UNRESOLVED", "writes reserved binding `" + name + "`");
+                if (!statement.localBinding.empty() || scope.count(name)) return;
+                const auto target = resolveActionRoot(name);
+                if (!target.owner)
+                    rejectAction(statement.sourceSpan, "E_UNRESOLVED", "writes unresolved or unimported binding `" + name + "`");
+                if (target.binding && (target.derived || target.binding->isConst || ambiguous(target)))
+                    rejectAction(statement.sourceSpan, "E_NOT_WRITABLE", "requires a writable destination for `" + name + "`");
+            };
             std::function<void(const std::vector<jtml::RuntimePlanStatement>&, Scope)> walk =
                 [&](const auto& statements, Scope scope) {
                     for (const auto& statement : statements) {
                         inspect(statement.expr, statement.sourceSpan, scope);
                         inspect(statement.condition, statement.sourceSpan, scope);
+                        if (statement.kind == "assign") certifyDestination(statement, scope);
                         if (statement.lhs.find_first_of(".[") != std::string::npos)
                             inspect(statement.lhs, statement.sourceSpan, scope);
                         if (!statement.localBinding.empty()) {
@@ -319,7 +340,7 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
                             // an unprotected local could otherwise read another owner's value.
                             if (occupied != storageOwners.end() && !parameters.count(statement.localBinding) &&
                                 (occupied->second.derived || occupied->second.owner != &module))
-                                rejectRead(statement.sourceSpan, "E_UNRESOLVED", "local declaration shadows root storage `" +
+                                rejectAction(statement.sourceSpan, "E_UNRESOLVED", "local declaration shadows root storage `" +
                                     statement.localBinding + "` owned by " + occupied->second.owner->path);
                             scope.insert(statement.localBinding);
                         }

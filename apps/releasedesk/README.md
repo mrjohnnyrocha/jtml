@@ -2,9 +2,13 @@
 
 ReleaseDesk is a local release-blocker/regression notebook, written in Friendly
 JTML 2. It lists real SQLite issues, validates and saves a title, description and
-severity, and recovers them after browser reload or server restart. There are no
-seed records, accounts, dashboard metrics, cloud services or handwritten frontend
-JavaScript. `test_browser.cjs` is a test driver, not a shipped asset.
+severity, and recovers them after browser reload or server restart. Search and
+severity filters operate on the already loaded list. There are no seed records,
+accounts, dashboard metrics or cloud services. JTML owns fetch/create/list
+rendering. The small external `public/issue-filters.js` owns filter controls, row
+visibility and result messages, using ordinary browser APIs and no dependencies.
+It reads app-owned DOM fields and makes no API requests or runtime-state writes.
+`test_browser.cjs` is a test driver, not a shipped asset.
 
 ## Start
 
@@ -34,6 +38,34 @@ location. Back it up while the server is stopped. To deliberately start with an
 empty list, choose a new `--db` file. Rebuilding static output does not reset data.
 The server binds only 127.0.0.1 and is a trusted local development tool, not a
 public deployment, authentication boundary or multi-user service.
+
+## Find saved issues
+
+Type in **Search issues** to match a literal substring in the title or
+description, ignoring case and surrounding search whitespace. Choose
+**Filter by severity** to narrow the same list. Both filters apply together.
+The status reports how many of the loaded issues are shown. An empty database
+keeps its first-issue prompt. A nonempty list with no matches shows a distinct
+message and a **Clear filters** recovery path. Clear resets both controls and
+returns keyboard focus to search.
+
+The URL retains `q` and `severity`, so browser reload, local bookmarks and
+Back/Forward navigation restore the visible filters. Typing replaces the current
+history entry. It does not create a history entry per keystroke or submit the
+creation form. Unknown severity URL values return to All severities.
+
+**Reload issues** preserves filters. A confirmed save also updates the filtered
+list immediately. A newly saved issue may be hidden by your filters, so its
+confirmation explicitly points to Clear filters. Failed refreshes retain and
+filter the last confirmed list alongside the existing recovery message.
+Filtering never changes records in SQLite. All matching is over the records
+already returned by the unchanged API.
+
+Filters become visible when the external helper initializes. Its script is
+loaded from the same origin under strict CSP. The reviewed, literal `html raw`
+script reference produces the expected lint advisory. The core create/load UI
+and unfiltered list remain usable if that helper cannot load.
+
 
 ## API and state ownership
 
@@ -86,11 +118,17 @@ with a temporary SQLite file, and interacts through labels and keyboard/buttons.
 It asserts loading and empty UI, one UI-created record in SQLite, browser reload,
 server restart, required/whitespace rejection, an actual SQLite failure, retained
 draft, save recovery, a stopped API/restart/retry, no unexpected console/page
-errors, and the four-asset production contract. Intentional HTTP 400/503 and
+errors, and the four compiler assets plus the app-owned filter script. Intentional HTTP 400/503 and
 connection-refused resource messages are expected only in the failure phases.
-API responses are never mocked and JTML/DOM state is never injected. Delayed
+Additional acceptance covers title/description substring matching, all four
+severities, combined filters, no results, clearing, keyboard/focus retention,
+zero filtering requests, active-filter saves/refresh/failure recovery, real
+SQLite persistence, URL reload/history and mobile layout. API responses are
+never mocked and JTML/DOM state is never injected. Delayed
 request delivery is used only to observe loading and disabled-submit states.
 
+`dist/releasedesk-filtered.png`, `dist/releasedesk-no-results.png` and
+`dist/releasedesk-filtered-mobile.png` record filter acceptance.
 `dist/releasedesk-e2e.png` is the final browser screenshot. Both CI platforms and
 the full local gate call the same test script. Existing compiler fixtures,
 acceptance oracles and budgets are unchanged.
@@ -127,7 +165,8 @@ broken `for`/ID references. No custom JS patches these behaviors.
 1. Edit/status: add a transactional revision and explicit successful mutation
    flow before allowing updates; add idempotency for uncertain create retries.
 2. Routing: issue detail and an explicit not-found route, with reload tests.
-3. Filtering: severity/text filters, retaining a clear unfiltered recovery path.
+3. Scale the loaded-list search only after a measured need for pagination. The
+   current API and UI intentionally load the full issue list.
 
 No authentication, teams, GitHub synchronization, public hosting or release
 publication is part of this slice. Existing native renderer differences, HTML

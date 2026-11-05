@@ -4,6 +4,33 @@ These findings come from compiling the directory and operating the real browser
 against HTTP/SQLite, rather than assuming an example's source proves behavior.
 No accepted compiler fixture, budget or oracle was changed.
 
+## Issue search application findings
+
+At merged PR #87 `ce25f3e2872313f87ff80d677e1b1d9927d737f5`, the real API/browser
+suite creates and recovers SQLite issues, but the list has no search, severity
+filter, result count or no-match recovery. These are application usability gaps.
+The search helper now filters confirmed rendered rows and observes list updates
+from GET/POST. No compiler/runtime changes or new endpoint are involved.
+
+- A confirmed save can be hidden by an active filter. The app retains the save
+  confirmation and explains Clear filters, with the shown/total count nearby.
+  Acceptance creates both matching and nonmatching issues through the real UI.
+- The filter form must cancel native submission so Enter cannot navigate away
+  or submit an issue. The app handler and no-request assertions cover this.
+- The severity filter has an explicit accessible name, following the existing
+  creation select, so its name excludes option text. Clear sets the app-owned
+  native select property directly. The historical JTML root-select finding
+  below remains separate from these controls.
+- Applying pre-wrap to the description container also preserves generated
+  surrounding whitespace, creating excessive row spacing. App styling now
+  preserves line breaks on the bound description text and collapses surrounding
+  layout whitespace. Record content remains unchanged.
+
+The feature uses a small, reviewed app-owned external script through the
+existing trusted HTML interop surface. It adds no dependencies and never reads
+or writes `jtml.state`. Filter state lives in the URL and native controls.
+No newly reproduced compiler/runtime defect blocks this implementation.
+
 ## Fixed: lazy fetch starts busy without any request
 
 ```jtml

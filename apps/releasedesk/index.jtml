@@ -84,11 +84,28 @@ style
   .issues
     list-style: none
     padding: 0
+  .filters
+    display: grid
+    gap: 12px
+    margin: 16px 0
+    padding: 16px
+    border: 1px solid #cad5db
+    border-radius: 10px
+    background: #f5f8fa
+  .filter-status
+    margin: 12px 0
+    color: #415968
+  .no-results
+    padding: 16px
+    border: 1px dashed #617987
+    border-radius: 6px
   .issue
     border-top: 1px solid #cad5db
     padding: 16px 0
     overflow-wrap: anywhere
   .description
+    white-space: normal
+  .description [data-jtml-expr]
     white-space: pre-wrap
   .metadata
     font-size: 0.9rem
@@ -129,9 +146,26 @@ page class "releasedesk"
         box class "notice" role "status" data-testid "save-success"
           strong "Last confirmed save: Issue {saveResult.data.created.id} — {saveResult.data.created.title}"
           p "Stored in SQLite. Reloading the browser will keep this issue."
+          p "If this issue is hidden by your filters, choose Clear filters to find it."
           button "Clear text for next issue" click newIssue
-    section aria-label "Saved issues"
+    section aria-label "Saved issues" data-issue-browser "true"
       h2 "Saved issues"
+      form class "filters" aria-label "Filter saved issues" data-issue-filters "true" hidden
+        label "Search issues"
+          input type "search" data-issue-query "true" placeholder "Search title or description" autocomplete "off"
+        label "Filter by severity"
+          select data-issue-severity "true" aria-label "Filter by severity"
+            option "All severities" value ""
+            option "Low" value "low"
+            option "Medium" value "medium"
+            option "High" value "high"
+            option "Critical" value "critical"
+        p "Matches title or description, ignoring case. Search and severity work together." class "hint"
+        button "Clear filters" type "button" data-clear-filters "true"
+      p class "filter-status" role "status" aria-live "polite" aria-atomic "true" data-filter-status "true" hidden
+      box class "no-results" data-testid "no-results" data-no-results "true" hidden
+        strong "No issues match your filters."
+        p "Try a different search or severity, or choose Clear filters."
       button "Reload issues" click reloadIssues disabled=loadingIssues
       if loadingIssues
         box role "status"
@@ -141,17 +175,19 @@ page class "releasedesk"
           strong "Could not load issues."
           p "Check that the local server is running, then choose Reload issues. Any last confirmed list below may be out of date."
           p "API response: {issueList.error}"
-      if issueList.hasData || saveResult.hasData
-        if current.issues.length == 0
-          box data-testid "empty-state"
-            text "No issues yet. Capture your first release blocker or regression."
-        else
-          list class "issues" aria-label "Saved issues"
-            for issue in current.issues
-              item class "issue" data-testid "issue"
-                h3 "Issue {issue.id} — {issue.title}"
-                p "Severity: {issue.severity} · Open · {issue.created_at}" class "metadata"
-                box class "description"
-                  text issue.description
+      box data-issue-results "true"
+        if issueList.hasData || saveResult.hasData
+          if current.issues.length == 0
+            box data-testid "empty-state"
+              text "No issues yet. Capture your first release blocker or regression."
+          else
+            list class "issues" aria-label "Saved issues"
+              for issue in current.issues
+                item class "issue" data-testid "issue" data-issue-title issue.title data-issue-severity issue.severity
+                  h3 "Issue {issue.id} — {issue.title}"
+                  p "Severity: {issue.severity} · Open · {issue.created_at}" class "metadata"
+                  box class "description"
+                    text issue.description
   footer
     p "Local development tool · No accounts or cloud sync · Back up the SQLite file before deleting local data." class "hint"
+  html raw "<script src=\"./public/issue-filters.js\" defer></script>"

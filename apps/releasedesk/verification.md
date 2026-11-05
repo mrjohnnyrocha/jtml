@@ -1,3 +1,28 @@
+# Issue search and filtering evidence
+
+Baseline is merged PR #87 `ce25f3e2872313f87ff80d677e1b1d9927d737f5`.
+The unchanged real HTTP/SQLite/Chromium suite passed create, persistence,
+full reload, genuine database failure, server restart and recovery before edits.
+The baseline exposes no filter controls. The candidate adds a same-origin,
+dependency-free app script, with source changes confined to ReleaseDesk.
+
+The extended browser test creates every issue through the real UI and committed
+SQLite API. Its independently specified cases use five saved issues to prove
+case-insensitive title matching (two results), description matching (two),
+all four severities, combined text/severity (one), no matches (zero), and
+Clear filters (all five). Filtering sends zero requests and retains the original
+row nodes, focus and cursor. Both matching and nonmatching saves then grow the
+actual database to seven records. Reload, URL history, a genuine SQLite failure
+and repair preserve records and restore the expected filtered views.
+
+Screenshots are emitted to `dist/releasedesk-filtered.png`,
+`dist/releasedesk-no-results.png`, `dist/releasedesk-filtered-mobile.png`,
+`dist/releasedesk-e2e.png` and `dist/releasedesk-mobile.png`.
+
+Run `scripts/test_releasedesk.sh` with the real Chromium/Playwright environment.
+Final full-gate and hosted CI evidence is recorded on PR #88. The dated records
+below retain their original verification scope.
+
 # ReleaseDesk verification
 
 ## Root-conditional component lifecycle — 2026-10-26

@@ -163,7 +163,7 @@ std::vector<std::string> planBrowserStateOrder(const jtml::RuntimeProjectPlan& p
 
 // Certify getter closures from retained module plans/import identities. The
 // resulting dependency-first order is shared by initialization and publication.
-std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan& project) {
+std::vector<std::string> planBrowserDerivedOrder(jtml::RuntimeProjectPlan& project) {
     using Module = jtml::RuntimeModulePlan;
     using Binding = jtml::RuntimePlanBinding;
     struct Resolved { const Module* owner; const Binding* binding; bool derived; };
@@ -408,6 +408,99 @@ std::vector<std::string> planBrowserDerivedOrder(const jtml::RuntimeProjectPlan&
                 if (node->getType() == ASTNodeType::FunctionDeclaration &&
                     static_cast<const FunctionDeclarationNode&>(*node).name == action.name)
                     locals(static_cast<const FunctionDeclarationNode&>(*node).body);
+        }
+    }
+    // Capture certification consumes retained body read sets and lexical scopes.
+    // Module identity is resolved before selecting any physical storage slot.
+    using Type = jtml::ExpressionValueType;
+    std::map<std::pair<jtml::SemanticModuleId, std::string>, Type> captureTypes;
+    std::set<std::pair<jtml::SemanticModuleId, std::string>> captureActive;
+    std::function<Type(Resolved)> scalar = [&](Resolved target) -> Type {
+        const auto key = std::make_pair(target.owner->id, target.binding->name);
+        if (const auto found = captureTypes.find(key); found != captureTypes.end()) return found->second;
+        if (!captureActive.insert(key).second) fail(*target.owner, target.binding->sourceSpan, "cyclic capture dependency");
+        jtml::ExpressionTypeEnvironment environment;
+        const auto expression = jtml::parseExpressionIr(target.binding->expr);
+        if (!expression || !expression->supported || !jtml::expressionIrSupportsDirectJs(*expression))
+            fail(*target.owner, target.binding->sourceSpan, "unsupported capture expression");
+        for (const auto& dependency : jtml::expressionIrDependencies(*expression)) {
+            const auto name = dependency.substr(0, dependency.find_first_of(".["));
+            const auto source = resolve(*target.owner, name);
+            if (!source.binding || dependency != name)
+                fail(*target.owner, target.binding->sourceSpan, "capture requires owned scalar dependencies");
+            environment.symbols[name] = scalar(source);
+        }
+        const auto typed = jtml::parseExpressionIr(target.binding->expr, environment);
+        const auto type = typed->valueType;
+        if (type != Type::Number && type != Type::String && type != Type::Boolean)
+            fail(*target.owner, target.binding->sourceSpan, "capture requires a scalar value");
+        if (target.derived) prove(target, true);
+        captureActive.erase(key);
+        captureTypes[key] = type;
+        return type;
+    };
+    for (auto& owner : project.modules) {
+        // The first capture slice admits imported defining modules. Entry
+        // components retain their existing broader application/bridge contracts.
+        if (!owner.clientExecutable || owner.id == project.entry) continue;
+        for (auto& definition : owner.plan.componentDefinitions) {
+            const auto& body = definition.bodyPlan;
+            std::map<int, std::set<std::string>> scopes;
+            std::set<std::string> controllerBindings;
+            for (const auto& node : body) if (node.kind == "template")
+                for (const auto& write : node.writes)
+                    controllerBindings.insert(write.substr(0, write.find_first_of(".[")));
+            scopes[-1].insert(definition.params.begin(), definition.params.end());
+            for (size_t i = 0; i < body.size(); ++i) {
+                const auto& node = body[i];
+                if (node.kind == "state" || node.kind == "derived") scopes[node.parentIndex].insert(node.name);
+                scopes[static_cast<int>(i)].insert(node.introducedBindings.begin(), node.introducedBindings.end());
+            }
+            for (size_t i = 0; i < body.size(); ++i) {
+                const auto& node = body[i];
+                // The first slice covers text and local initialization/formulas.
+                // Attribute/controller and action execution keep their existing contracts.
+                if (node.head != "text" && node.kind != "derived" && node.kind != "state") continue;
+                for (const auto& read : node.reads) {
+                    const auto name = read.substr(0, read.find_first_of(".["));
+                    bool bound = false;
+                    for (int scope = node.parentIndex;; scope = body[scope].parentIndex) {
+                        if (scopes[scope].count(name)) { bound = true; break; }
+                        if (scope == -1) break;
+                    }
+                    // Explicit template into/controller bindings retain their
+                    // separately validated lifecycle and value-shape contract.
+                    if (bound || controllerBindings.count(name)) continue;
+                    const auto target = local(owner, name);
+                    // Structured reads remain on their existing controller/parameter path.
+                    if (read != name) continue;
+                    auto reject = [&](const std::string& reason) {
+                        throw std::runtime_error(location(owner, node.sourceSpan) + ": component " +
+                            definition.name + " capture `" + name + "` " + reason);
+                    };
+                    if (!target.binding || name == "__proto__") reject("is unresolved in its defining module");
+                    if (ambiguous(target)) reject("has ambiguous defining-module identity");
+                    scalar(target);
+                    definition.captures.emplace(name, target.binding->name);
+                }
+            }
+            // Nested declarations share one runtime scope and cannot shadow a
+            // capture in another branch or action through that physical scope.
+            for (const auto& node : body) if ((node.kind == "state" || node.kind == "derived") &&
+                definition.captures.count(node.name))
+                throw std::runtime_error(location(owner, node.sourceSpan) + ": component " +
+                    definition.name + " declaration shadows read-only capture `" + node.name + "`");
+        }
+    }
+    for (auto& linked : project.linkedPlan.componentDefinitions) {
+        if (linked.bodyPlan.empty() || !linked.bodyPlan.front().sourceSpan.original) continue;
+        const auto& origin = *linked.bodyPlan.front().sourceSpan.original;
+        for (const auto& owner : project.modules) for (const auto& definition : owner.plan.componentDefinitions) {
+            if (linked.name == definition.name && !definition.bodyPlan.empty() &&
+                definition.bodyPlan.front().sourceSpan.original &&
+                definition.bodyPlan.front().sourceSpan.original->source->file == origin.source->file &&
+                definition.bodyPlan.front().sourceSpan.original->begin == origin.begin)
+                linked.captures = definition.captures;
         }
     }
     // Action reads were checked first with the stronger scalar-result contract.

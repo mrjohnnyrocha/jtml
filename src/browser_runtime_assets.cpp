@@ -664,11 +664,18 @@ const char* browserRuntimePreludeChunk() {
         });
       }
 
+      function captureValue(key) {
+        const value=clientState[key];
+        if(!['string','number','boolean'].includes(typeof value))throw Error('Unsupported scalar capture '+key);
+        return value;
+      }
+
       function componentScopeFor(i,d) {
         if(!i||!i.id)return {};
         if(i.argumentPlans)i.params=Object.fromEntries(Object.entries(i.argumentPlans).map(([k,p])=>[k,evaluateCompiledComponentExpression(p,'',clientState)]));
         if(componentScopes[i.id])return Object.assign(componentScopes[i.id],i.params||{});
         const scope=Object.assign({},i.params||{});
+        for(const [name,key] of Object.entries(d.captures||{})) scope[name]=captureValue(key);
         (d.bodyPlan||[]).forEach(function(n){
           if(!n||n.kind!=='state'||!n.name||n.parentIndex!==-1)return;
           const r=evaluateCompiledComponentExpressionResult(n.expressionPlan||compileComponentExpressionPlan(n.expression||''),n.expression||'',scope);
@@ -3298,6 +3305,7 @@ const char* browserRuntimeComponentChunk() {
               params: Array.isArray(record.params) ? record.params.slice() : [],
               emits: Array.isArray(record.emits) ? record.emits.slice() : [],
               ...componentEmitContract(record),
+              captures: record.captures,
               localState: Array.isArray(record.localState) ? record.localState.slice() : [],
               localDerived: Array.isArray(record.localDerived) ? record.localDerived.slice() : [],
               localActions: Array.isArray(record.localActions) ? record.localActions.slice() : [],
@@ -3875,8 +3883,9 @@ const char* browserRuntimeComponentChunk() {
         applyClientDerived();
         if (browserLocalRuntime) flushRootSubscriptions();
         componentInstances.forEach(function(i){
-          if(!i.argumentPlans||!i.element||!i.element.isConnected)return;
+          if(!i.element||!i.element.isConnected)return;
           const d=componentDefinitionForInstance(i),p=i.params,s=componentScopeFor(i,d),c=changedParamNames(p,i.params);
+          for(const [name,key] of Object.entries(d.captures||{})){const value=captureValue(key);if(!Object.is(s[name],value)){s[name]=value;c.push(name);}}
           if(c.length){applyComponentDerived(s,d);if(!applyCompiledComponentUpdatePlan(i,d,c,s).handled)throw Error('Unsupported component argument update');}
         });
         applyClientExpressions();

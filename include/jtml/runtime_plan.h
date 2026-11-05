@@ -54,6 +54,7 @@ struct RuntimePlanComponentBodyNode {
     std::string operatorToken;
     std::string expression;
     std::string keyExpression;
+    std::vector<std::string> introducedBindings; // Compiler-only action/iterator scope.
     std::vector<std::string> reads;
     std::vector<std::string> writes;
     bool renderRoot = false;
@@ -64,6 +65,7 @@ struct RuntimePlanComponentDefinition {
     SemanticModuleId moduleId = InvalidSemanticModuleId;
     std::string name;
     std::vector<std::string> params;
+    std::map<std::string, std::string> captures; // Certified defining-owner scalar slots.
     std::vector<std::string> emits;
     std::map<std::string, int> emitArity;
     std::map<std::string, std::vector<std::string>> emitPayloads;

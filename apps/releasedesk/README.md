@@ -8,7 +8,9 @@ accounts, dashboard metrics or cloud services. JTML owns fetch/create/list
 rendering. The small external `public/issue-filters.js` owns filter controls, row
 visibility and result messages, using ordinary browser APIs and no dependencies.
 It reads app-owned DOM fields and makes no API requests or runtime-state writes.
-`test_browser.cjs` is a test driver, not a shipped asset.
+`public/issue-create.js` retains creation keys/drafts and synchronizes declared
+form bindings through native input events. It never sends requests or replaces
+JTML request handling. `test_browser.cjs` is a test driver, not a shipped asset.
 
 ## Start
 
@@ -30,8 +32,9 @@ Enter the three fields and choose **Save issue** (or Enter from Title). Success
 means a *Last confirmed save* notice and a row in Saved issues. Reload the whole
 page: the row must return. **Clear text for next issue** resets the title/description and retains your last
 severity choice;
-it does not delete records. Unsaved drafts are kept on request failure, but do
-not survive a browser reload. **Reload issues** explicitly reads the API again.
+it does not delete records. Once submitted, the draft and request key survive
+failure, same-tab reload and backend restart in browser session storage. Drafts
+that have never been submitted are not retained across reload. **Reload issues** explicitly reads the API again.
 
 Keep the SQLite file outside the static directory; the server rejects an unsafe
 location. Back it up while the server is stopped. To deliberately start with an
@@ -72,12 +75,36 @@ and unfiltered list remain usable if that helper cannot load.
 - `GET /api/issues` returns `{issues: [...], revision: number}` from SQLite,
   newest first. `revision` is the highest persisted issue ID for this append-only
   slice.
-- `POST /api/issues` accepts JSON `{title, description, severity}`. Both text
+- `POST /api/issues` accepts JSON `{title, description, severity, request_key?}`. Both text
   fields are trimmed and required; maximum lengths are 120 and 4000. Severity
   must be `low`, `medium`, `high` or `critical`. Unknown fields/types are rejected.
-- HTTP 201 is sent **after commit**, with `{created, issues, revision}` from the
-  same transaction. Invalid input returns 400, database failure 503; no fake
-  success is reported. Cross-origin browser writes and oversized bodies fail.
+- A supplied `request_key` must be exactly 32 lowercase hexadecimal characters.
+  First creation returns 201 **after commit**. Replaying the same key with the
+  same normalized fields returns 200 and the original `created` issue. Both
+  responses include `{created, issues, revision, request_key, replayed}`; replay
+  sets `replayed: true`. Each response contains the **current** transaction's
+  list/revision, not a stored stale copy of the original response. The original
+  issue's ID, fields and creation timestamp remain unchanged.
+- Reusing a key with different normalized fields returns 409 without mutation.
+  Different keys can create separate issues with identical content. Invalid
+  fields/keys return 400 before any transaction and do not consume the key.
+  Database failures return 503 and roll back issue and key together.
+- Compatibility: omitting the key retains the legacy non-idempotent contract:
+  every valid POST returns 201 with `{created, issues, revision}` and creates a
+  new row. An empty or invalid supplied key is rejected. The shipped UI always
+  supplies a key; its Save control starts disabled until protection initializes.
+  Cross-origin browser writes and oversized bodies still fail.
+
+`issue_requests.request_key` is a SQLite primary key, with a unique foreign key
+link to the created issue. `BEGIN IMMEDIATE` serializes lookup, payload comparison,
+issue insertion, key insertion and snapshot reading in **one transaction**. The
+connection commits before sending the response. There is no in-memory key cache,
+time-based deduplication or content hash. Every request uses a fresh connection;
+the mapping survives process restart. Initialization adds the mapping table to
+existing databases without changing legacy rows. Payload comparison uses the
+immutable issue fields in this append-only API; adding issue edits would require
+retaining the original request payload separately. Keys are retained indefinitely
+with their issues in this local application.
 
 The app uses an eager GET, a lazy POST, native required/length validation and
 JTML fetch `loading`, `error`, `ok` and `data`. The request body reads the draft
@@ -85,13 +112,36 @@ when submitted, not while typing. The newer confirmed revision wins between the
 GET snapshot and POST snapshot; no optimistic rows are inserted. This is a small
 append-only API contract, not a general mutation cache. The UI retains the last
 confirmed snapshots during reload/failure with `stale keep`. List refresh never repeats
-a POST. Mutation retries are manual: after a network error, reload issues first
-because a lost response can leave an uncertain commit. There is no idempotency
-key yet, so blindly repeating an uncertain save can create a duplicate.
+a POST. Mutation retries are manual; the POST declaration has no automatic retry.
+
+The existing JTML fetch body transmits the per-request JSON key. Custom headers
+and UUID generation are not assumed. The app-owned external helper uses
+`crypto.getRandomValues` to generate 128 random bits and session storage to retain
+one logical creation intent per tab. Before JTML handles submit it stores the
+key/draft, sets the hidden `into requestKey` input and dispatches its normal input
+event. JTML continues to own fetch dispatch, loading, errors, success and snapshots.
+The helper never reads runtime state or patches global fetch.
+
+An uncertain/failed submission keeps its key, including across reload. Save issue
+retries that intent without automatically sending anything on reload/recovery.
+Editing an uncertain draft keeps the key: if the first request committed, changed
+fields receive 409, protecting the original. Restore the original fields to replay,
+or inspect Saved issues and deliberately choose **Start a separate issue**.
+Validation failures can be corrected using the same unconsumed key. Repeating a
+confirmed unchanged submission also reuses its key. Editing confirmed fields
+starts a new intent on the next submit. **Start a separate issue** explicitly
+starts a new intent even with identical fields; **Clear text for next issue**
+also clears the old intent.
+
+Secure randomness and working session storage are required for the UI Save path.
+A storage failure prevents dispatch rather than sending an unretained key. Closing
+the tab, clearing storage or using another browser/tab can lose the retry intent;
+inspect saved records before deliberately starting another. This is per-tab retry
+protection, not deduplication of independent user submissions.
 
 A failed load has an explicit Reload issues path. A failed save preserves the
 draft and shows recovery instructions; repair/restart the server, reload to check
-for a completed save, then retry if needed. The runtime currently surfaces HTTP
+for a completed save if desired, then manually retry the retained intent. The runtime currently surfaces HTTP
 status text rather than the backend JSON validation message, so the form always
 shows its field limits and required values.
 
@@ -118,14 +168,25 @@ with a temporary SQLite file, and interacts through labels and keyboard/buttons.
 It asserts loading and empty UI, one UI-created record in SQLite, browser reload,
 server restart, required/whitespace rejection, an actual SQLite failure, retained
 draft, save recovery, a stopped API/restart/retry, no unexpected console/page
-errors, and the four compiler assets plus the app-owned filter script. Intentional HTTP 400/503 and
-connection-refused resource messages are expected only in the failure phases.
+errors, and the four compiler assets plus the two app-owned scripts. Intentional
+HTTP 400/409/503, deliberately aborted responses and connection-refused resource
+messages are expected only in the failure phases.
 Additional acceptance covers title/description substring matching, all four
 severities, combined filters, no results, clearing, keyboard/focus retention,
 zero filtering requests, active-filter saves/refresh/failure recovery, real
-SQLite persistence, URL reload/history and mobile layout. API responses are
+SQLite persistence, URL reload/history and mobile layout. Successful API responses are
 never mocked and JTML/DOM state is never injected. Delayed
 request delivery is used only to observe loading and disabled-submit states.
+
+The 12 API tests additionally cover normalized replay, payload conflict,
+different-key identical content, eight concurrent same-key requests, concurrent
+conflicting payloads, a dropped real HTTP response, mapping-insert rollback,
+legacy database migration, validation/key rejection and keyless compatibility.
+The browser forwards an actual POST to SQLite, observes its committed 201, then
+aborts response delivery. It retains the draft/key, rejects a changed uncertain
+draft with 409, restarts the backend, reloads the page, and manually replays the
+original request with 200 and the original ID. Row counts stay at eight until an
+explicit separate identical-content submission creates the ninth issue.
 
 `dist/releasedesk-filtered.png`, `dist/releasedesk-no-results.png` and
 `dist/releasedesk-filtered-mobile.png` record filter acceptance.
@@ -163,7 +224,7 @@ broken `for`/ID references. No custom JS patches these behaviors.
 ## Small next steps
 
 1. Edit/status: add a transactional revision and explicit successful mutation
-   flow before allowing updates; add idempotency for uncertain create retries.
+   flow before allowing updates; preserve original request payloads when adding edits.
 2. Routing: issue detail and an explicit not-found route, with reload tests.
 3. Scale the loaded-list search only after a measured need for pagination. The
    current API and UI intentionally load the full issue list.

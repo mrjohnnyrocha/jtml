@@ -3,8 +3,9 @@ jtml 2
 let draftTitle = ""
 let draftDescription = ""
 let draftSeverity = ""
+let requestKey = ""
 let issueList = fetch "/api/issues" stale keep cache "no-store" timeout 5000 refresh reloadIssues
-let saveResult = fetch "/api/issues" method "POST" body { title: draftTitle, description: draftDescription, severity: draftSeverity } cache "no-store" timeout 5000 stale keep lazy refresh submitIssue
+let saveResult = fetch "/api/issues" method "POST" body { title: draftTitle, description: draftDescription, severity: draftSeverity, request_key: requestKey } cache "no-store" timeout 5000 stale keep lazy refresh submitIssue
 get saving = saveResult.loading
 get loadingIssues = issueList.loading
 get current = saveResult.hasData && (!issueList.hasData || saveResult.data.revision >= issueList.data.revision) ? saveResult.data : issueList.data
@@ -120,34 +121,41 @@ page class "releasedesk"
     section class "editor" aria-label "New issue"
       h2 "New issue"
       p "All fields are required. Title: up to 120 characters. Description: up to 4000 characters. Whitespace-only text is not accepted." class "hint"
-      form submit submitIssue aria-label "Create issue"
+      p "Save issue safely retries the current request. Use Start a separate issue only when you intend another record." class "hint"
+      p role "alert" data-create-protection "true"
+        text "Preparing safe issue creation…"
+      form submit submitIssue aria-label "Create issue" data-create-form "true"
+        input type "hidden" into requestKey data-request-key "true"
         fieldset class "fields" disabled=saving
           label "Title"
-            input into draftTitle required maxlength "120"
+            input into draftTitle required maxlength "120" data-draft-title "true"
           label "Description"
-            textarea into draftDescription required maxlength "4000" rows "5"
+            textarea into draftDescription required maxlength "4000" rows "5" data-draft-description "true"
           label "Severity"
-            select into draftSeverity required aria-label "Severity"
+            select into draftSeverity required aria-label "Severity" data-draft-severity "true"
               option "Choose severity…" value ""
               option "Low" value "low"
               option "Medium" value "medium"
               option "High" value "high"
               option "Critical" value "critical"
-          button "Save issue" type "submit"
-      if saving
-        box role "status"
-          text "Saving issue…"
-      if saveResult.error
-        box class "failure" role "alert" data-testid "save-error"
-          strong "Issue was not confirmed saved."
-          p "Your draft is kept. Check the required fields and limits above. If the API is unavailable, restart the local server. Reload issues to check whether the request reached the database before trying Save issue again."
-          p "API response: {saveResult.error}"
-      if saveResult.ok
-        box class "notice" role "status" data-testid "save-success"
-          strong "Last confirmed save: Issue {saveResult.data.created.id} — {saveResult.data.created.title}"
-          p "Stored in SQLite. Reloading the browser will keep this issue."
-          p "If this issue is hidden by your filters, choose Clear filters to find it."
-          button "Clear text for next issue" click newIssue
+          button "Save issue" type "submit" disabled data-create-submit "true"
+          button "Start a separate issue" type "button" disabled data-new-create-intent "true"
+      box data-create-feedback "true"
+        if saving
+          box role "status"
+            text "Saving issue…"
+        if saveResult.error
+          box class "failure" role "alert" data-testid "save-error"
+            strong "Issue was not confirmed saved."
+            p "Your draft is kept. After a network or database error, Save issue reuses the pending request so a retry cannot create a duplicate. Reload issues to inspect the saved list."
+            p "If the response is 409 Conflict, this request already created an issue with different fields. Restore those fields to confirm it, or choose Start a separate issue only if you intend another record."
+            p "API response: {saveResult.error}"
+        if saveResult.ok
+          box class "notice" role "status" data-testid "save-success" data-confirmed-key saveResult.data.request_key
+            strong "Last confirmed save: Issue {saveResult.data.created.id} — {saveResult.data.created.title}"
+            p "Stored in SQLite. Repeating Save issue with the same fields confirms this issue again."
+            p "If this issue is hidden by your filters, choose Clear filters to find it."
+            button "Clear text for next issue" click newIssue data-clear-create-intent "true"
     section aria-label "Saved issues" data-issue-browser "true"
       h2 "Saved issues"
       form class "filters" aria-label "Filter saved issues" data-issue-filters "true" hidden
@@ -191,3 +199,4 @@ page class "releasedesk"
   footer
     p "Local development tool · No accounts or cloud sync · Back up the SQLite file before deleting local data." class "hint"
   html raw "<script src=\"./public/issue-filters.js\" defer></script>"
+  html raw "<script src=\"./public/issue-create.js\" defer></script>"

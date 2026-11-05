@@ -329,6 +329,46 @@ TEST(BrowserMutableInitialization, SourceOrderIsExplicitAndIndependentOfJsonKeys
     EXPECT_FALSE(manifest(root / "compat").contains("stateOrder"));
 }
 
+TEST(BrowserComponentDerivedAdmission, NonprecedingGettersRejectAndPreserveSuccessfulAssets) {
+    const auto root = temporary();
+    const auto source = root / "index.jtml";
+    write(source, "jtml 2\nmake Card\n  let x = 1\n  get z = x + 1\n  get a = z * 2\n  text a\npage\n  Card\n");
+    ASSERT_EQ(compile(source, root / "previous"), "");
+    const std::vector<std::string> assets = {"index.html", "jtml-runtime.js", "components/index.js", "app.js"};
+    std::vector<std::string> before;
+    for (const auto& name : assets) before.push_back(read(root / "previous" / name));
+    for (const auto& declarations : {
+             "  get a = z * 2\n  get z = x + 1\n",
+             "  get a = a + 1\n",
+             "  get a = z + 1\n  get z = a + 1\n",
+             "  get a = false ? z : 1\n  get z = x + 1\n"}) {
+        SCOPED_TRACE(declarations);
+        write(source, "jtml 2\nmake Card\n  let x = 1\n" + std::string(declarations) + "  text a\npage\n  Card\n");
+        const auto error = compile(source, root / "rejected");
+        EXPECT_NE(error.find("E_COMPONENT_DERIVED_ORDER"), std::string::npos) << error;
+        EXPECT_NE(error.find("index.jtml:4:3"), std::string::npos) << error;
+        EXPECT_NE(error.find("component Card"), std::string::npos) << error;
+        EXPECT_NE(error.find("dependency order"), std::string::npos) << error;
+        EXPECT_NE(compile(source, root / "previous").find("E_COMPONENT_DERIVED_ORDER"), std::string::npos);
+        for (size_t i = 0; i < assets.size(); ++i) {
+            EXPECT_FALSE(fs::exists(root / "rejected" / assets[i]));
+            EXPECT_EQ(read(root / "previous" / assets[i]), before[i]);
+        }
+    }
+}
+
+TEST(BrowserComponentDerivedAdmission, PropertyNamesAndRootGraphKeepTheirExistingContracts) {
+    const auto root = temporary();
+    write(root / "index.jtml", "jtml 2\nmake Card record\n  get a = record.z\n  get z = 2\n  text a\npage\n  Card {z: 7}\n");
+    EXPECT_EQ(compile(root / "index.jtml", root / "member"), "");
+    write(root / "index.jtml", "jtml 2\nlet x = 1\nget a = z * 2\nget z = x + 1\npage\n  text a\n");
+    EXPECT_EQ(compile(root / "index.jtml", root / "root-order"), "");
+    write(root / "index.jtml", read(fs::path(JTML_SOURCE_DIR) /
+        "docs/architecture/browser-core-v1/probes/component-forward-chain.jtml"));
+    EXPECT_EQ(compile(root / "index.jtml", root / "compat", true), "");
+    EXPECT_EQ(compile(root / "index.jtml", root / "debug", false, true), "");
+}
+
 TEST(BrowserMutableInitialization, ClassicImportsUseFirstAuthoredOccurrence) {
     const auto root = temporary();
     write(root / "z.jtml", R"(define z = 1\\

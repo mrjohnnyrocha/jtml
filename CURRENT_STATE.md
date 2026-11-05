@@ -2,6 +2,21 @@
 
 Status: v0.3 DEVELOPMENT BASELINE / RESEARCH
 
+## Browser Core v1 audit and component-order prerequisite
+
+The fresh `bc5350d` audit records 15 bounded Core passes, seven intended
+rejections and two pending policies: numeric/failure behavior in V19 and V22's
+conflict between proposed read-only imports and mandatory imported-write
+acceptance. Existing import-write oracles remain unchanged. A narrowly selected
+compiler prerequisite now rejects top-level component getters that read a
+same-scope nonpreceding getter with source-located E_COMPONENT_DERIVED_ORDER;
+source-ordered component getters and root graph scheduling retain acceptance.
+No runtime code or size cap changes. Browser Core v1 remains **NO-GO**:
+component action derived reads are still stale and policy is unresolved.
+See [the proposed profile and complete evidence](docs/architecture/browser-core-v1/README.md).
+The new component-order browser check is mandatory in CI and the local gate;
+the full-profile audit remains nonzero while policy is pending. PR #89 is excluded.
+
 The repository is being prepared for disciplined v0.3 development. Read this
 snapshot before selecting a scoped change; this baseline does not add language
 features or declare production readiness.

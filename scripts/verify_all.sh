@@ -57,6 +57,7 @@ JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/module_scalar_storage.
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/action_get_reads.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/derived_publication.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/reactive_core_observation.cjs" > "$repo_root/dist/reactive-core-observations.json"
+JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/component_derived_order.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/component_module_capture.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/mutable_initialization.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/route_layout.cjs"

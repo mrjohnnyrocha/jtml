@@ -1,0 +1,167 @@
+{
+  "catalogSHA256": "964a220479561c77ab1f428c570f64c8eb5a75fa10691cc81087672818c27e8f",
+  "compilerSHA256": "c21f3c5931f72a98005e3d641b30d41deb625bc7b4beb12ab07f04052d2d2d89",
+  "browser": "151.0.7922.34",
+  "profileAuditExit": 1,
+  "profileReadiness": "NO-GO",
+  "vectors": [
+    {
+      "id": "V01",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V02",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V03",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V04",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V05",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V06",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V07",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V08",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V09",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V10",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V11",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V12",
+      "classification": "REJECTED BY DESIGN",
+      "policyConflict": null
+    },
+    {
+      "id": "V13",
+      "classification": "REJECTED BY DESIGN",
+      "policyConflict": null
+    },
+    {
+      "id": "V14",
+      "classification": "REJECTED BY DESIGN",
+      "policyConflict": null
+    },
+    {
+      "id": "V15",
+      "classification": "REJECTED BY DESIGN",
+      "policyConflict": null
+    },
+    {
+      "id": "V16",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V17",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V18",
+      "classification": "REJECTED BY DESIGN",
+      "policyConflict": null
+    },
+    {
+      "id": "V19",
+      "classification": "PENDING POLICY",
+      "policyConflict": null
+    },
+    {
+      "id": "V20",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V21",
+      "classification": "PASS",
+      "policyConflict": null
+    },
+    {
+      "id": "V22",
+      "classification": "PENDING POLICY",
+      "policyConflict": "Catalog requires read-only imports; unchanged action_get_reads.cjs requires named/reexported imported writes. Original mismatch checks remain FAIL; this is not a waived green gate."
+    },
+    {
+      "id": "V23",
+      "classification": "REJECTED BY DESIGN",
+      "policyConflict": null
+    },
+    {
+      "id": "V24",
+      "classification": "REJECTED BY DESIGN",
+      "policyConflict": null
+    },
+    {
+      "id": "owner-authority",
+      "classification": "PASS",
+      "policyConflict": null
+    }
+  ],
+  "cleanBrowserExit": true,
+  "cleanServerExit": true,
+  "rawReportSHA256": "0b5175ebb9bfc9373754e45355eb50d4b6ccb73a0cba0ef52b59159ce7412f7f",
+  "targetedComponentOrder": {
+    "checks": [
+      "unchanged counterexample rejects at original source; no assets; successful assets preserved",
+      "dependency-ordered component getters update repeatedly; sibling and DOM identity retained; strict CSP"
+    ],
+    "errors": [],
+    "cleanBrowserExit": true,
+    "cleanServerExit": true,
+    "rejection": {
+      "exit": 1,
+      "diagnostic": "error: This app cannot compile to clean browser production yet.\nThe clean production target only ships static browser assets and does not include the legacy compatibility update-plan fallback.\nUnsupported shape(s):\n- component Card (linked) [global:Card:8:5df736c2a683daf3] E_COMPONENT_DERIVED_ORDER at /private/tmp/jtml-browser-core-v1/docs/architecture/browser-core-v1/probes/component-forward-chain.jtml:4:3: get `a` reads nonpreceding get `z`; declare component getters in dependency order; component getter cycles are unsupported\n- component Card (module:0) [0:Card:8:5df736c2a683daf3] E_COMPONENT_DERIVED_ORDER at /private/tmp/jtml-browser-core-v1/docs/architecture/browser-core-v1/probes/component-forward-chain.jtml:4:3: get `a` reads nonpreceding get `z`; declare component getters in dependency order; component getter cycles are unsupported\n\nWhat to do:\n- Temporary migration build: jtml build /private/tmp/jtml-browser-core-v1/docs/architecture/browser-core-v1/probes/component-forward-chain.jtml --target browser --compat --out /private/tmp/jtml-browser-core-v1/dist/component-derived-order/ordered\n- Diagnostic build with source-rich compatibility metadata: jtml build /private/tmp/jtml-browser-core-v1/docs/architecture/browser-core-v1/probes/component-forward-chain.jtml --target browser --debug --out /private/tmp/jtml-browser-core-v1/dist/component-derived-order/ordered\n- Or change the component shape above to clean-prod supported template/action semantics.\n"
+    },
+    "runtimeBytes": 272217,
+    "browser": "151.0.7922.34"
+  },
+  "localGate": {
+    "exit": 0,
+    "ctests": 536,
+    "requiredPerformanceFixtures": 9,
+    "referenceBrowser": "clean exit",
+    "liveSmokePassed": 8,
+    "verificationSkips": [],
+    "logSHA256": "349c872798ea1f3ba722ee9861a68b43d5040f9589bd4df79279d6fb1835907c",
+    "knownLimits": [
+      "five native complete-attribute observations",
+      "reference HTML 100027 > 70000 microfixture bytes"
+    ],
+    "configuration": "local macOS /tmp physical fixture-root normalization; existing assertions unchanged"
+  },
+  "productionSourceSHA256": "105094151c12a29950a6a0dff956476eb139a17fc2d75452b6aa01ed49dfe300"
+}

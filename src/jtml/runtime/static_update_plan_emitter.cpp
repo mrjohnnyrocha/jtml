@@ -2841,6 +2841,28 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
             }
             return -1;
         };
+        // Component getters are evaluated in body order, unlike certified root
+        // derivedOrder. Reject an unschedulable read instead of publishing a
+        // cached value from an earlier pass. Keep this admission on resolved
+        // component bindings; a property spelling is not a getter identity.
+        for (size_t i = 0; i < body.size(); ++i) {
+            const auto& node = body[i];
+            if (node.value("kind", "") != "derived" || node.value("parentIndex", -1) != -1) continue;
+            for (const auto& read : node.value("reads", std::vector<std::string>{})) {
+                const auto root = read.substr(0, read.find_first_of(".["));
+                const auto found = scopes.find({-1, root});
+                if (found == scopes.end()) continue;
+                for (const auto binding : found->second) {
+                    const auto declaration = bindings[binding].declaration;
+                    if (declaration < static_cast<int>(i) || declaration < 0 ||
+                        body[declaration].value("kind", "") != "derived") continue;
+                    issues.push_back("component " + context + " E_COMPONENT_DERIVED_ORDER at " +
+                        sourceLabelFor(component, node) + ": get `" + node.value("name", "") +
+                        "` reads nonpreceding get `" + root +
+                        "`; declare component getters in dependency order; component getter cycles are unsupported");
+                }
+            }
+        }
         auto expressionSources = [&](int binding, const std::string& expression, size_t at) {
             const auto rhs = parseExpressionIr(expression);
             if (!rhs || !expressionIrSupportsDirectJs(*rhs)) {

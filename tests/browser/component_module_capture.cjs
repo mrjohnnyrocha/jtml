@@ -76,9 +76,23 @@ async function observe(page,dom,values={}) {
   compile(v.files,'V10');
   const page=await open();
   const initial=await observe(page,v.expected_initial.dom['.out'],{tone:'private',label:'private!',entryTone:'entry'});
+  const definition=await page.evaluate(()=>{
+    const instance=jtml.getComponentInstances().find(i=>i.component==='Card');
+    const owner=jtml.componentDefinitionManifest.find(d=>d.name==='Card'&&d.moduleId===instance.definitionModule);
+    const plan=Object.values(window.__jtml_static_component_plan_index.components).find(d=>d.name==='Card'&&d.moduleId===owner.moduleId);
+    return {moduleId:owner.moduleId,definitionModule:instance.definitionModule,captures:owner.captures,
+      updateKey:plan.key,reads:[...new Set(owner.bodyPlan.flatMap(n=>n.reads||[]))],
+      generatedUpdate:typeof window.__jtml_static_update_functions[plan.key]==='function'};
+  });
+  assert.equal(definition.moduleId,definition.definitionModule);
+  assert.deepEqual(definition.captures,{label:'label'});
+  assert(definition.reads.includes('label'));
+  assert(definition.generatedUpdate);
+  report.v10={definition,initial,phases:[]};
   for(let i=1;i<=3;i++) {
     await page.getByRole('button',{name:'Step',exact:true}).click();
     const phase=await observe(page,['private'+'!'.repeat(i+1)],{tone:'private'+'!'.repeat(i),label:'private'+'!'.repeat(i+1)});
+    report.v10.phases.push(phase);
     assert.deepEqual(phase.instances,initial.instances,'retained component identity');
     assert(phase.events.some(e=>e.kind==='update'&&e.changed.includes('label')),'capture invalidation reaches generated update');
   }

@@ -20,8 +20,17 @@ Screenshots are emitted to `dist/releasedesk-filtered.png`,
 `dist/releasedesk-e2e.png` and `dist/releasedesk-mobile.png`.
 
 Run `scripts/test_releasedesk.sh` with the real Chromium/Playwright environment.
-Final full-gate and hosted CI evidence is recorded on PR #88. The dated records
-below retain their original verification scope.
+The complete browser-required local gate passed on this source tree with
+534/534 CTests, nine mandatory clean-exit browser benchmarks plus the production
+reference, all five real API tests and the expanded ReleaseDesk browser workflow,
+pinned website equivalence, package relocation and all eight live smoke checks.
+No verification checks were skipped. The app has one expected raw-HTML lint
+advisory for the literal same-origin script reference. Shared runtime remains
+272,217 raw bytes against the unchanged 273,000-byte cap.
+
+The broader gate retains the existing reference HTML size warning and five known
+native renderer discrepancies. Final-head hosted Ubuntu/macOS CI is separate
+PR #88 evidence. The dated records below retain their original verification scope.
 
 # ReleaseDesk verification
 

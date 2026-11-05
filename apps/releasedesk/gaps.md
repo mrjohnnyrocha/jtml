@@ -24,6 +24,12 @@ event did not update its declared input binding. Dispatching the existing input
 event fixes the app bridge and is covered by a successful HTTP replay after reload.
 It does not claim to repair the independently retained root-select limitation.
 
+Mobile screenshot review also caught invalid app markup: a paragraph containing
+JTML's paragraph-producing `text` node let Chromium move the preparation message
+outside its app-owned notice. A `box` wrapper keeps the notice valid and clearable;
+browser acceptance checks the actual restored-pending message and absence of
+stale preparation text after reload.
+
 A new browser tab or cleared session storage cannot recover the previous tab's
 logical intent automatically. The UI requires explicit separate intent for an
 identical confirmed record and explains conflicts after an uncertain edited save.

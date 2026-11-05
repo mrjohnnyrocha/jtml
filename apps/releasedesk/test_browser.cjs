@@ -336,6 +336,8 @@ async function visible(locator) { await locator.waitFor({state:'visible'}); }
   origin=await start(restartPort);
   await page.reload();
   await visible(page.getByRole('heading',{name:'Issue 8 — Lost response release blocker',exact:true}));
+  await visible(page.getByText('Pending save restored. Save issue retries it; no request was sent automatically.',{exact:true}));
+  assert(!(await page.locator('body').innerText()).includes('Preparing safe issue creation'),'ready app must clear the preparation notice');
   assert.equal(await page.getByLabel('Title',{exact:true}).inputValue(),'Lost response release blocker','pending draft survives reload');
   assert.equal(await page.getByLabel('Severity',{exact:true}).inputValue(),'high');
   assert.equal(await page.locator('[data-request-key]').inputValue(),originalKey);

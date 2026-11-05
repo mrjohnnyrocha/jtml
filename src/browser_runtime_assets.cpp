@@ -3884,7 +3884,9 @@ const char* browserRuntimeComponentChunk() {
         if (browserLocalRuntime) flushRootSubscriptions();
         componentInstances.forEach(function(i){
           if(!i.element||!i.element.isConnected)return;
-          const d=componentDefinitionForInstance(i),p=i.params,s=componentScopeFor(i,d),c=changedParamNames(p,i.params);
+          const d=componentDefinitionForInstance(i);
+          if(!i.argumentPlans&&!d?.captures)return;
+          const p=i.params,s=componentScopeFor(i,d),c=changedParamNames(p,i.params);
           for(const [name,key] of Object.entries(d.captures||{})){const value=captureValue(key);if(!Object.is(s[name],value)){s[name]=value;c.push(name);}}
           if(c.length){applyComponentDerived(s,d);if(!applyCompiledComponentUpdatePlan(i,d,c,s).handled)throw Error('Unsupported component argument update');}
         });

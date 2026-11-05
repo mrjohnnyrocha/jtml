@@ -481,7 +481,7 @@ void validateClientComponentDefinitions(const nlohmann::json& definitions,
                                        "emitPayloads", "emitPayloadTypes", "localState",
                                        "localDerived", "localActions", "localEffects",
                                        "eventBindings", "bodyPlan", "hasSlot", "bodyNodeCount",
-                                       "rootTemplateNodeCount", "slotCount"},
+                                       "rootTemplateNodeCount", "slotCount", "captures"},
                           itemPath, issues);
         requireOptionalModuleId(definition, "moduleId", itemPath, issues);
         if (!definition.contains("name") || !definition.at("name").is_string()) {
@@ -491,6 +491,11 @@ void validateClientComponentDefinitions(const nlohmann::json& definitions,
                                 "localEffects", "eventBindings"}) {
             requireOptionalArray(definition, key, itemPath, issues);
         }
+        requireOptionalObject(definition, "captures", itemPath, issues);
+        if (definition.contains("captures") && definition["captures"].is_object())
+            for (const auto& capture : definition["captures"].items())
+                if (!capture.value().is_string() || capture.key() == "__proto__")
+                    issues.push_back(itemPath + ".captures requires certified scalar slot names");
         requireOptionalObject(definition, "emitArity", itemPath, issues);
         requireOptionalObject(definition, "emitPayloads", itemPath, issues);
         requireOptionalObject(definition, "emitPayloadTypes", itemPath, issues);

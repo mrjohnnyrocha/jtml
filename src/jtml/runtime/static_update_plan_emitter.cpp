@@ -819,7 +819,7 @@ nlohmann::json compileStaticComponentUpdatePlan(
         }
     }
 
-    return {
+    nlohmann::json result = {
         {"origin", origin},
         {"moduleId", moduleIdToJson(definition.moduleId)},
         {"name", definition.name},
@@ -838,6 +838,8 @@ nlohmann::json compileStaticComponentUpdatePlan(
         {"staticPatchCoverage", "text-region-slot-nested-element-first-slice"},
         {"staticCreateCoverage", "direct-text-button-element-container-control-flow-slot-nested-create-first-slice"},
     };
+    if (!definition.captures.empty()) result["captures"] = definition.captures;
+    return result;
 }
 
 void appendComponentPlans(
@@ -2785,6 +2787,9 @@ std::vector<std::string> validateStaticComponentModuleForProduction(
         };
         const auto componentParams = component.value("params", std::vector<std::string>{});
         for (const auto& param : componentParams) declare(-1, param, -1, false, false, true);
+        const auto captures = component.value("captures", nlohmann::json::object());
+        for (const auto& capture : captures.items())
+            declare(-1, capture.key(), -1, false, false, true);
         std::map<size_t, int> declarations;
         for (size_t i = 0; i < body.size(); ++i) {
             const auto& node = body[i];

@@ -864,6 +864,8 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
              node.kind == "action" || node.kind == "effect") &&
             tokens.size() > 1) {
             node.name = cleanComponentNameToken(tokens[1]);
+            if (node.kind == "action" && tokens.size() > 2)
+                node.introducedBindings.assign(tokens.begin() + 2, tokens.end());
             const auto equals = std::find(tokens.begin(), tokens.end(), "=");
             if (equals != tokens.end()) {
                 node.operatorToken = "=";
@@ -879,6 +881,7 @@ std::vector<RuntimePlanComponentBodyNode> buildComponentBodyPlan(
             node.name = cleanComponentNameToken(tokens[0]);
             node.expression = joinTokens(tokens, 1);
             if (node.name == "for") {
+                if (tokens.size() > 1) node.introducedBindings.push_back(tokens[1]);
                 auto keyIt = std::find(tokens.begin() + 1, tokens.end(), "key");
                 if (keyIt != tokens.end()) {
                     const size_t keyIndex = static_cast<size_t>(keyIt - tokens.begin());

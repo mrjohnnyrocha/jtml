@@ -278,6 +278,7 @@ nlohmann::json runtimePlanComponentDefinitionsToClientJson(
             {"rootTemplateNodeCount", definition.rootTemplateNodeCount},
             {"slotCount", definition.slotCount},
         });
+        if (!definition.captures.empty()) out.back()["captures"] = definition.captures;
     }
     return out;
 }

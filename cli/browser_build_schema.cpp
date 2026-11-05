@@ -836,7 +836,10 @@ void validateStateInitializationOrder(const nlohmann::json& manifest, bool requi
         return;
     }
     const auto& order = manifest.at("stateOrder");
-    if (order.is_null()) return; // Explicit compatibility boundary, not a Core certificate.
+    if (order.is_null()) {
+        if (!states.empty()) issues.push_back("$.stateOrder cannot be null with executable state");
+        return;
+    }
     if (!requireArrayAt(order, "$.stateOrder", issues)) return;
     for (const auto& owner : ownerCounts)
         if (owner.second > 1)
@@ -875,6 +878,17 @@ void validateClientManifestSchema(const nlohmann::json& manifest,
 }
 
 } // namespace
+
+void validateBrowserInitializationManifest(const std::string& html) {
+    std::vector<std::string> issues;
+    const auto manifest = extractClientManifestJson(html, issues);
+    if (manifest.is_object()) validateStateInitializationOrder(manifest, true, issues);
+    if (issues.empty()) return;
+    std::ostringstream out;
+    out << "browser initialization manifest failed";
+    for (const auto& issue : issues) out << "\n- " << issue;
+    throw std::runtime_error(out.str());
+}
 
 void validateBrowserBuildOutputSchema(const std::filesystem::path& outDir,
                                       BrowserBuildMode mode) {

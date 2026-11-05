@@ -4139,6 +4139,7 @@ const char* browserRuntimeComponentChunk() {
         for (const name of manifest.stateOrder || Object.keys(state)) {
           const result = evaluateClientPlan(clientStatePlans[name], state[name], clientState);
           if (result.found) clientState[name] = result.value;
+          else if (manifest.stateOrder) throw Error("Cannot initialize " + name);
         }
         const routeManifest = Array.isArray(manifest.routes) ? manifest.routes : [];
         const fetchManifest = Array.isArray(manifest.fetches) ? manifest.fetches : [];

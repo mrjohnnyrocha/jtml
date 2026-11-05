@@ -11,6 +11,8 @@
 
 namespace jtml::cli {
 
+void validateBrowserInitializationManifest(const std::string& html);
+
 void validateBrowserBuildOutputSchema(const std::filesystem::path& outDir,
                                       BrowserBuildMode mode);
 

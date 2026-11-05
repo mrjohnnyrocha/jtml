@@ -386,7 +386,7 @@ TEST(BrowserMutableInitialization, RejectionIsSourceLocatedAndPreservesEveryAsse
     }
 }
 
-TEST(BrowserMutableInitialization, ForeignOwnersAreOrderedAndRepeatedSlotsKeepTheirBoundary) {
+TEST(BrowserMutableInitialization, ForeignOwnersAreOrderedAndAuthoredDuplicatesReject) {
     const auto root = temporary();
     write(root / "private.jtml", "jtml 2\nlet dummy = 1\nexport let aaSeed = 7\n");
     write(root / "index.jtml", "jtml 2\nuse aaSeed from \"./private.jtml\"\nlet zzCopy = aaSeed + 1\npage\n  text zzCopy\n");
@@ -399,8 +399,8 @@ TEST(BrowserMutableInitialization, ForeignOwnersAreOrderedAndRepeatedSlotsKeepTh
     write(root / "index.jtml", "jtml 2\nuse Card from \"./private.jtml\"\nlet zzCopy = aaSeed + 1\npage\n  Card\n");
     EXPECT_NE(compile(root / "index.jtml", root / "unimported").find("E_INIT_UNRESOLVED"), std::string::npos);
     write(root / "index.jtml", "jtml 2\nlet slot = {}\nlet slot = {ready: true}\npage\n  text \"Ready\"\n");
-    ASSERT_EQ(compile(root / "index.jtml", root / "lowered"), "");
-    EXPECT_TRUE(manifest(root / "lowered")["stateOrder"].is_null());
+    EXPECT_NE(compile(root / "index.jtml", root / "lowered").find("index.jtml:3:1: E_INIT_DUPLICATE"), std::string::npos);
+    EXPECT_FALSE(fs::exists(root / "lowered" / "index.html"));
 }
 
 TEST(BrowserMutableInitialization, InvalidCertificatesCannotClaimOrderedInitialization) {
@@ -410,7 +410,7 @@ TEST(BrowserMutableInitialization, InvalidCertificatesCannotClaimOrderedInitiali
     const auto html = read(root / "out/index.html");
     const std::string marker = "id=\"__jtml_client_manifest\">";
     const auto begin = html.find(marker) + marker.size(), end = html.find("</script>", begin);
-    for (const auto& order : {nlohmann::json::array(), nlohmann::json({"a", "z"}), nlohmann::json({"z", "z", "a"}), nlohmann::json({"z"}), nlohmann::json({"z", "unknown"})}) {
+    for (const auto& order : {nlohmann::json(nullptr), nlohmann::json::array(), nlohmann::json({"a", "z"}), nlohmann::json({"z", "z", "a"}), nlohmann::json({"z"}), nlohmann::json({"z", "unknown"})}) {
         auto client = nlohmann::json::parse(html.substr(begin, end - begin)); client["stateOrder"] = order;
         write(root / "out/index.html", html.substr(0, begin) + client.dump() + html.substr(end));
         EXPECT_THROW(jtml::cli::validateBrowserBuildOutputSchema(root / "out", jtml::cli::BrowserBuildMode::Production), std::runtime_error);

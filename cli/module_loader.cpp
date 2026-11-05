@@ -659,6 +659,7 @@ NormalizedCompilationSource normalizeCompilationSource(const CompilationSource& 
     MappedSource generated = unit.classicPrefix;
     std::vector<int> lineMap(1, 0);
     std::map<int, LoweredLocalDeclaration> declarations;
+    std::set<int> controllerInitializers;
     for (const char ch : unit.classicPrefix.text()) if (ch == '\n') lineMap.push_back(0);
     if (unit.syntax == SyntaxMode::Friendly) {
         auto lowered = friendlyToClassicWithSourceMap(unit.source);
@@ -666,6 +667,7 @@ NormalizedCompilationSource normalizeCompilationSource(const CompilationSource& 
         for (const auto& binding : lowered.localDeclarations) {
             declarations.emplace(binding.first + prefixLines, binding.second);
         }
+        for (const int line : lowered.controllerInitializerLines) controllerInitializers.insert(line + prefixLines);
         generated.appendSynthetic(lowered.classicSource);
         lineMap.insert(lineMap.end(), lowered.classicLineToFriendlyLine.begin() + 1,
                        lowered.classicLineToFriendlyLine.end());
@@ -678,7 +680,7 @@ NormalizedCompilationSource normalizeCompilationSource(const CompilationSource& 
     }
     auto provenance = std::make_shared<const SourceProvenance>(generated, unit.source, std::move(lineMap),
         unit.syntax == SyntaxMode::Friendly ? SourceProvenance::Kind::FriendlyLowering : SourceProvenance::Kind::Identity,
-        std::move(declarations));
+        std::move(declarations), std::move(controllerInitializers));
     return {generated.text(), std::move(provenance)};
 }
 

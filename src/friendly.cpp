@@ -2566,6 +2566,7 @@ struct ElementResult {
     std::vector<std::string> elementWords;
     std::vector<std::string> bodyLines;
     std::vector<std::string> synthesizedSetters;
+    std::vector<std::string> controllerInitializers;
     bool closesWithHash = false;
     bool isVoid = false;
 };
@@ -3037,13 +3038,13 @@ ElementResult translateElement(const std::vector<std::string>& tokens, int lineN
             const std::string setter = setterNameFor(variable);
             if (isScene3d) {
                 attrs.push_back("data-jtml-scene3d-controller=" + quote(variable));
-                result.synthesizedSetters.push_back(
+                result.controllerInitializers.push_back(
                     "define " + variable + " = " + scene3dControllerInitialState() + "\\\\\n");
                 continue;
             }
             if (resolvedTag == "video" || resolvedTag == "audio") {
                 attrs.push_back("data-jtml-media-controller=" + quote(variable));
-                result.synthesizedSetters.push_back(
+                result.controllerInitializers.push_back(
                     "define " + variable + " = " + mediaControllerInitialState() + "\\\\\n");
                 continue;
             }
@@ -3312,6 +3313,7 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source, 
     std::ostringstream out;
     std::vector<OpenBlock> stack;
     std::map<std::string, int> synthesizedSetters;
+    std::set<std::string> controllerInitializers;
     // Maps action name → redirect path for client-side wiring.
     std::map<std::string, std::pair<std::string, int>> redirectActions;
     // Maps action name → fetch names refreshed after the action runs.
@@ -3814,6 +3816,10 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source, 
                     synthesizedSetters.emplace(setter, line.number);
                 }
             }
+            for (const auto& initializer : element.controllerInitializers) {
+                synthesizedSetters.emplace(initializer, line.number);
+                controllerInitializers.insert(initializer);
+            }
             emitLine(out, level, element.openLine);
             for (const auto& body : element.bodyLines) emitLine(out, level + 1, body);
             if (hasChildren && element.closesWithHash) {
@@ -3833,6 +3839,8 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source, 
 
     for (const auto& [setter, origin] : synthesizedSetters) {
         activeFriendlySourceLine = origin;
+        if (controllerInitializers.count(setter))
+            result.controllerInitializerLines.insert(static_cast<int>(result.classicLineToFriendlyLine.size()));
         std::istringstream input(setter);
         std::string helperLine;
         while (std::getline(input, helperLine)) emitLine(out, 0, helperLine);
@@ -3909,7 +3917,7 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const MappedSource& source,
     generated.appendSynthetic(result.classicSource);
     result.provenance = std::make_shared<const SourceProvenance>(
         std::move(generated), source, result.classicLineToFriendlyLine, SourceProvenance::Kind::FriendlyLowering,
-        result.localDeclarations);
+        result.localDeclarations, result.controllerInitializerLines);
     return result;
 }
 

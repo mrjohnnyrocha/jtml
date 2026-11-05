@@ -27,6 +27,66 @@ async function check(p,dom,values) {
   r.setHeader('Content-Security-Policy',"script-src 'self'");r.setHeader('Content-Type',f.endsWith('.js')?'text/javascript':'text/html');r.end(fs.readFileSync(f));
  });await new Promise(r=>server.listen(0,'127.0.0.1',r));
  browser=await chromium.launch({executablePath:process.env.JTML_BENCH_BROWSER,headless:true});report.browser=browser.version();
+ const scene = '  scene3d "Scene" scene example camera orbit controls orbit renderer "three" into slot\n';
+ for (const [id, declaration, controller] of [
+  ['ordered-chain', '', ''],
+  ['scene-single', '', scene],
+  ['scene-repeated', 'let slot = {}\n', scene],
+ ]) {
+  const files = {'index.jtml': `jtml 2
+${declaration}let z = 2
+let a = z + 1
+get total = a + z
+page
+${controller}  box class "out"
+    text "{a}|{total}"
+`};
+  compile(files,id);
+  const page = await open();
+  await check(page,['3|5'],{z:2,a:3,total:5});
+  const order = await page.evaluate(()=>JSON.parse(document.querySelector('#__jtml_client_manifest').textContent).stateOrder);
+  assert.deepEqual(order, id === 'scene-repeated' ? ['slot','z','a'] :
+   id === 'scene-single' ? ['z','a','slot'] : ['z','a']);
+  if (controller) assert.equal(await page.evaluate(()=>jtml.state.slot.scene),'example');
+  await page.close();
+  report.cases.push(id+' PASS');
+ }
+ const goodRoot = root;
+ const assets = ['index.html','jtml-runtime.js','components/index.js','app.js'];
+ const previous = assets.map(file=>fs.readFileSync(path.join(goodRoot,file)));
+ for (const [id, declarations, reason, line, exported, controller, column = 1] of [
+  ['hidden-read', 'let slot = 0\nlet slot = seed', 'E_INIT_UNRESOLVED', 4, false],
+  ['hidden-overwritten', 'let slot = seed\nlet slot = 0', 'E_INIT_UNRESOLVED', 3, false],
+  ['exported-unimported', 'let slot = 0\nlet slot = seed', 'E_INIT_UNRESOLVED', 4, true],
+  ['inactive-overwritten', 'let slot = false ? missing : 0', 'E_INIT_UNRESOLVED', 3, false, scene],
+  ['duplicate-authored', 'let slot = 0\nlet slot = 1', 'E_INIT_DUPLICATE', 4, false],
+  ['conflicting-controller-defaults', 'let slot = {}', 'E_INIT_DUPLICATE', 6, false,
+   scene + '  audio src "/unused.mp3" into slot\n', 3],
+ ]) {
+  const files = {
+   'index.jtml': `jtml 2
+use Card from "./owner.jtml"
+${declarations}
+page
+${controller || ''}  Card
+`,
+   'owner.jtml': `jtml 2
+${exported ? 'export ' : ''}let seed = 7
+export make Card
+  text "Owner"
+`,
+  };
+  const denied = build(files,id);
+  assert.notEqual(denied.status,0,id);
+  assert(denied.stderr.includes(`index.jtml:${line}:${column}: ${reason}`),denied.stderr);
+  for (const file of assets) assert(!fs.existsSync(path.join(root,file)),file);
+  const preserved = spawnSync(bin,['build',path.join(out,id+'-source','index.jtml'),
+   '--target','browser','--out',goodRoot],{encoding:'utf8'});
+  assert.notEqual(preserved.status,0,id);
+  for (const [index,file] of assets.entries())
+   assert.deepEqual(fs.readFileSync(path.join(goodRoot,file)),previous[index],file);
+  report.cases.push(id+' rejection and asset preservation PASS');
+ }
  for(const id of ['V11','V21','V01','V03','V04','V05']) {
   const v=vectors.find(v=>v.id===id);compile(v.files,id);const p=await open();
   await check(p,v.expected_initial.dom['.out'],{...v.expected_initial.state,...v.expected_initial.derived});

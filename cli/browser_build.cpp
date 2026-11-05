@@ -366,6 +366,7 @@ int cmdBuildBrowser(const Options& o) {
     }
 
     std::string html = transpiler.transpile(program);
+    if (buildMode == BrowserBuildMode::Production) validateBrowserInitializationManifest(html);
     html = injectBrowserBuildAssetScript(html, "jtml-runtime.js");
     html = injectBrowserBuildAssetScript(html, "components/index.js");
     html = injectBrowserBuildAssetScript(html, "app.js");

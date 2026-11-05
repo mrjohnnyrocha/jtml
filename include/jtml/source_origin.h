@@ -5,6 +5,7 @@
 #include <map>
 #include <optional>
 #include <stdexcept>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -134,12 +135,15 @@ struct SourceProvenance {
     std::vector<int> generatedLineToInputLine;
     std::vector<size_t> inputLineStarts{0};
     std::map<int, LoweredLocalDeclaration> localDeclarations;
+    std::set<int> controllerInitializerLines;
 
     SourceProvenance(MappedSource output, MappedSource originalInput,
                      std::vector<int> lines = {}, Kind sourceKind = Kind::Identity,
-                     std::map<int, LoweredLocalDeclaration> declarations = {})
+                     std::map<int, LoweredLocalDeclaration> declarations = {},
+                     std::set<int> controllerInitializers = {})
         : kind(sourceKind), generated(std::move(output)), input(std::move(originalInput)),
-          generatedLineToInputLine(std::move(lines)), localDeclarations(std::move(declarations)) {
+          generatedLineToInputLine(std::move(lines)), localDeclarations(std::move(declarations)),
+          controllerInitializerLines(std::move(controllerInitializers)) {
         for (size_t i = 0; i < input.size(); ++i)
             if (input.text()[i] == '\n') inputLineStarts.push_back(i + 1);
     }

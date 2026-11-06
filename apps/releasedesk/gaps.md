@@ -4,6 +4,37 @@ These findings come from compiling the directory and operating the real browser
 against HTTP/SQLite, rather than assuming an example's source proves behavior.
 No accepted compiler fixture, budget or oracle was changed.
 
+## Idempotent creation application findings
+
+Baseline merged PR #88 `bc5350db56220c3c5f68993ed22711ba1c1a883c` accepts two
+identical POSTs as 201, with IDs 1 and 2 and two persisted rows. A lost response
+therefore makes a manual retry unsafe. This is an application/API contract gap.
+The existing JTML JSON body can transmit a per-request bound string: an independent
+strict-CSP Chromium probe sent a 32-hex `request_key` to the real baseline server
+(which correctly rejected that then-unknown field with 400). Custom request
+headers and UUID support were not assumed. The actual browser fetch implementation
+evaluates declared bodies at dispatch and defaults to zero automatic retries.
+
+ReleaseDesk now persists a unique key-to-issue mapping atomically with creation,
+and the explicit external creation helper retains a random key and draft per tab.
+See [transaction and lifecycle details](README.md#api-and-state-ownership).
+No compiler/runtime code changes were needed. The real browser test originally
+exposed an integration error: restoring the native severity select with a change
+event did not update its declared input binding. Dispatching the existing input
+event fixes the app bridge and is covered by a successful HTTP replay after reload.
+It does not claim to repair the independently retained root-select limitation.
+
+Mobile screenshot review also caught invalid app markup: a paragraph containing
+JTML's paragraph-producing `text` node let Chromium move the preparation message
+outside its app-owned notice. A `box` wrapper keeps the notice valid and clearable;
+browser acceptance checks the actual restored-pending message and absence of
+stale preparation text after reload.
+
+A new browser tab or cleared session storage cannot recover the previous tab's
+logical intent automatically. The UI requires explicit separate intent for an
+identical confirmed record and explains conflicts after an uncertain edited save.
+Keyless API clients retain their documented legacy duplicate-creation behavior.
+
 ## Issue search application findings
 
 At merged PR #87 `ce25f3e2872313f87ff80d677e1b1d9927d737f5`, the real API/browser
@@ -151,9 +182,10 @@ fallback for component `input into draft` without `value` is outside this fix.
 Async `when`/await and a success callback that invalidates other fetches are not
 assumed. The app consumes the newest authoritative append-only snapshot returned
 by GET or committed POST. HTTP errors currently expose status text, not the JSON
-error body. Drafts survive a failed request, not a page reload. Network retries
-cannot promise exactly-once writes without an idempotency key, so recovery asks
-the user to read the persisted list before retrying an uncertain save.
+error body. The former keyless create limitation is resolved for the shipped UI by the
+bounded transaction/key lifecycle above. Session storage now retains submitted
+drafts across same-tab reload; never-submitted drafts remain ephemeral. Legacy
+keyless API requests remain non-idempotent.
 
 Native rendering parity, TypeEnvironment, precise spans, global HTML payload size
 and enterprise/public-server readiness remain outside this application claim.

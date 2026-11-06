@@ -6,6 +6,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
+import re
 import sqlite3
 from urllib.parse import urlsplit
 
@@ -14,10 +15,15 @@ MAX_BODY = 20000
 ROOT = Path(__file__).resolve().parents[2]
 
 
+class Server(ThreadingHTTPServer):
+    request_queue_size = 32
+
+
 @contextmanager
 def connect(database):
     connection = sqlite3.connect(database, timeout=3)
     connection.row_factory = sqlite3.Row
+    connection.execute('PRAGMA foreign_keys = ON')
     try:
         with connection:
             yield connection
@@ -35,6 +41,10 @@ def initialize(database):
             severity TEXT NOT NULL CHECK(severity IN ('low', 'medium', 'high', 'critical')),
             created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
         )''')
+        connection.execute('''CREATE TABLE IF NOT EXISTS issue_requests (
+            request_key TEXT PRIMARY KEY NOT NULL CHECK(length(request_key) = 32),
+            issue_id INTEGER NOT NULL UNIQUE REFERENCES issues(id)
+        )''')
 
 
 def snapshot(connection):
@@ -43,7 +53,8 @@ def snapshot(connection):
 
 
 def validate(payload):
-    if not isinstance(payload, dict) or set(payload) != {'title', 'description', 'severity'}:
+    required = {'title', 'description', 'severity'}
+    if not isinstance(payload, dict) or not required <= set(payload) or set(payload) - required - {'request_key'}:
         raise ValueError('Provide title, description and severity')
     if not all(isinstance(payload[key], str) for key in payload):
         raise ValueError('Issue fields must be strings')
@@ -52,7 +63,37 @@ def validate(payload):
         raise ValueError('Title must be 1–120 characters and description 1–4000; whitespace is not content')
     if payload['severity'] not in SEVERITIES:
         raise ValueError('Choose low, medium, high or critical severity')
-    return title, description, payload['severity']
+    key = payload.get('request_key')
+    if 'request_key' in payload and (not isinstance(key, str) or not re.fullmatch('[0-9a-f]{32}', key)):
+        raise ValueError('Request key must contain 32 lowercase hexadecimal characters')
+    return title, description, payload['severity'], key
+
+
+def create_issue(connection, title, description, severity, key):
+    """Called inside BEGIN IMMEDIATE; the unique mapping and issue commit together."""
+    existing = None
+    if key is not None:
+        existing = connection.execute('''SELECT issues.* FROM issue_requests
+            JOIN issues ON issues.id = issue_requests.issue_id
+            WHERE issue_requests.request_key = ?''', (key,)).fetchone()
+    if existing is not None:
+        if (existing['title'], existing['description'], existing['severity']) != (title, description, severity):
+            return 409, {'error': 'This request key already created an issue with different fields'}
+        created = dict(existing)
+        status = 200
+    else:
+        cursor = connection.execute('INSERT INTO issues (title, description, severity) VALUES (?, ?, ?)',
+                                    (title, description, severity))
+        issue_id = cursor.lastrowid
+        if key is not None:
+            connection.execute('INSERT INTO issue_requests (request_key, issue_id) VALUES (?, ?)', (key, issue_id))
+        created = dict(connection.execute('SELECT * FROM issues WHERE id = ?', (issue_id,)).fetchone())
+        status = 201
+    result = snapshot(connection)
+    result['created'] = created
+    if key is not None:
+        result.update(request_key=key, replayed=status == 200)
+    return status, result
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -72,7 +113,11 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(encoded)))
         self.end_headers()
-        self.wfile.write(encoded)
+        try:
+            self.wfile.write(encoded)
+        except (BrokenPipeError, ConnectionResetError):
+            # The transaction has already committed. A keyed retry recovers it.
+            pass
 
     def do_GET(self):
         path = urlsplit(self.path).path
@@ -105,19 +150,16 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(413, {'error': 'Request body must be 1–20000 bytes'})
                 return
             payload = json.loads(self.rfile.read(length))
-            title, description, severity = validate(payload)
+            title, description, severity, key = validate(payload)
         except (ValueError, UnicodeError):
-            self.send_json(400, {'error': 'Invalid issue: provide title (1–120), description (1–4000) and a supported severity'})
+            self.send_json(400, {'error': 'Invalid issue: provide title (1–120), description (1–4000), a supported severity and, when supplied, a 32-character lowercase hexadecimal request_key'})
             return
         try:
             with connect(self.database) as connection:
                 # Serialize mutation + returned snapshot, and commit before success is sent.
                 connection.execute('BEGIN IMMEDIATE')
-                cursor = connection.execute('INSERT INTO issues (title, description, severity) VALUES (?, ?, ?)',
-                                            (title, description, severity))
-                result = snapshot(connection)
-                result['created'] = next(row for row in result['issues'] if row['id'] == cursor.lastrowid)
-            self.send_json(201, result)
+                status, result = create_issue(connection, title, description, severity, key)
+            self.send_json(status, result)
         except sqlite3.Error:
             self.send_json(503, {'error': 'Database unavailable; the save was not confirmed'})
 
@@ -136,7 +178,7 @@ def main():
         parser.error('Keep the SQLite database outside the served static directory')
     initialize(database)
     handler = partial(Handler, directory=str(dist), database=database)
-    with ThreadingHTTPServer(('127.0.0.1', args.port), handler) as server:
+    with Server(('127.0.0.1', args.port), handler) as server:
         print(f'ReleaseDesk: http://127.0.0.1:{server.server_port} · database: {database}', flush=True)
         try:
             server.serve_forever()

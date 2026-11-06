@@ -2807,6 +2807,40 @@ const char* browserRuntimeComponentChunk() {
         return true;
       }
 
+      function componentActionScope(s,d,p) {
+        if(!window.jtml.browserBuild?.cleanProduction)return s;
+        // Temporary bindings never replace a getter's owning state.
+        const local=Object.create(null);
+        const getters=d&&Object.fromEntries(d.bodyPlan.filter(n=>n.parentIndex===-1&&n.kind==='derived').map(n=>[n.name,n]));
+        const root=d?new Proxy(s,{
+          get(t,k){const n=ownProperty(getters,k)&&getters[k];return n?evaluateComponentBodyNodeExpression(n,n.expression,root):t[k];},
+          getOwnPropertyDescriptor(t,k){const v=Object.getOwnPropertyDescriptor(t,k);if(!v)throw Error('Unresolved component get: '+String(k));return v;}
+        }):s;
+        return new Proxy(s,{
+          get:(t,k)=>ownProperty(local,k)?local[k]:root[k],
+          set(t,k,v){if(p.includes(k))local[k]=v;else t[k]=v;return true;},
+          getOwnPropertyDescriptor:(t,k)=>Object.getOwnPropertyDescriptor(local,k)||Object.getOwnPropertyDescriptor(t,k)
+        });
+      }
+
+      function runComponentActionBody(definition, owner, actionNode, args, instance, changes, actionContext) {
+        const params = splitComponentWords(actionNode.text || '').slice(2);
+        const scope = componentActionScope(owner, definition, params);
+        const previous = {}, hadPrevious = {};
+        params.forEach(function(param,index){
+          hadPrevious[param] = Object.prototype.hasOwnProperty.call(scope, param);
+          previous[param] = scope[param];
+          scope[param] = (args || [])[index];
+        });
+        const handled = runComponentPlanStatements(definition, scope,
+          componentNodeChildren(definition, actionNode), instance, changes, actionContext);
+        params.forEach(function(param){
+          if (hadPrevious[param]) scope[param] = previous[param];
+          else delete scope[param];
+        });
+        return handled;
+      }
+
       function runComponentPlanStatements(definition, scope, nodes, instance, changes, actionContext) {
         const list = nodes || [];
         for (let i = 0; i < list.length; i += 1) {
@@ -2853,27 +2887,8 @@ const char* browserRuntimeComponentChunk() {
               sourceColumn: actionNode.sourceColumn || 0,
               text: actionNode.text || ''
             };
-            const actionWords = splitComponentWords(actionNode.text || '');
-            const previous = {};
-            const hadPrevious = {};
-            (actionWords.slice(2) || []).forEach(function (param, index) {
-              if (!param) return;
-              hadPrevious[param] = Object.prototype.hasOwnProperty.call(scope, param);
-              previous[param] = scope[param];
-              scope[param] = callArgs[index];
-            });
-            const nestedOk = runComponentPlanStatements(
-                definition,
-                scope,
-                componentNodeChildren(definition, actionNode),
-                instance,
-                changes,
-                nestedActionContext);
-            (actionWords.slice(2) || []).forEach(function (param) {
-              if (!param) return;
-              if (hadPrevious[param]) scope[param] = previous[param];
-              else delete scope[param];
-            });
+            const nestedOk = runComponentActionBody(definition,
+              componentScopes[instance.id] || scope, actionNode, callArgs, instance, changes, nestedActionContext);
             if (!nestedOk) return false;
             continue;
           }
@@ -2919,16 +2934,20 @@ const char* browserRuntimeComponentChunk() {
               else if (typeof values === 'object') values = Object.values(values);
               else values = [values];
             }
-            const previous = Object.prototype.hasOwnProperty.call(scope, loopItemName)
-              ? scope[loopItemName]
-              : undefined;
-            const hadPrevious = Object.prototype.hasOwnProperty.call(scope, loopItemName);
-            for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1) {
-              scope[loopItemName] = values[itemIndex];
-              if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance, changes, actionContext)) return false;
+            const enclosing = scope;
+            {
+              const scope = componentActionScope(enclosing,null,[loopItemName]);
+              const previous = Object.prototype.hasOwnProperty.call(scope, loopItemName)
+                ? scope[loopItemName]
+                : undefined;
+              const hadPrevious = Object.prototype.hasOwnProperty.call(scope, loopItemName);
+              for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1) {
+                scope[loopItemName] = values[itemIndex];
+                if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance, changes, actionContext)) return false;
+              }
+              if (hadPrevious) scope[loopItemName] = previous;
+              else delete scope[loopItemName];
             }
-            if (hadPrevious) scope[loopItemName] = previous;
-            else delete scope[loopItemName];
             continue;
           }
           if (node.kind === 'template' && head === 'while') {
@@ -3088,15 +3107,6 @@ const char* browserRuntimeComponentChunk() {
         });
         if (!actionNode) return emitComponentEvent(instance, actionName, args);
         const scope = componentScopeFor(instance, definition);
-        const actionWords = splitComponentWords(actionNode.text || '');
-        const previous = {};
-        const hadPrevious = {};
-        (actionWords.slice(2) || []).forEach(function (param, index) {
-          if (!param) return;
-          hadPrevious[param] = Object.prototype.hasOwnProperty.call(scope, param);
-          previous[param] = scope[param];
-          scope[param] = (args || [])[index];
-        });
         const changes = { writes: {} };
         const actionContext = {
           name: actionNode.name || actionName || '',
@@ -3104,18 +3114,7 @@ const char* browserRuntimeComponentChunk() {
           sourceColumn: actionNode.sourceColumn || 0,
           text: actionNode.text || ''
         };
-        const handled = runComponentPlanStatements(
-          definition,
-          scope,
-          componentNodeChildren(definition, actionNode),
-          instance,
-          changes,
-          actionContext);
-        (actionWords.slice(2) || []).forEach(function (param) {
-          if (!param) return;
-          if (hadPrevious[param]) scope[param] = previous[param];
-          else delete scope[param];
-        });
+        const handled = runComponentActionBody(definition, scope, actionNode, args, instance, changes, actionContext);
         if (!handled) {
           return false;
         }

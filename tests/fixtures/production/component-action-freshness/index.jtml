@@ -1,0 +1,11 @@
+jtml 2
+use Probe from "./probe.jtml"
+let x = 500
+let visible = true
+when toggle
+  visible = !visible
+page
+  button "Toggle A" click toggle
+  if visible
+    Probe "A" 0
+  Probe "B" 10

@@ -11,8 +11,11 @@ acceptance. Existing import-write oracles remain unchanged. A narrowly selected
 compiler prerequisite now rejects top-level component getters that read a
 same-scope nonpreceding getter with source-located E_COMPONENT_DERIVED_ORDER;
 source-ordered component getters and root graph scheduling retain acceptance.
-No runtime code or size cap changes. Browser Core v1 remains **NO-GO**:
-component action derived reads are still stale and policy is unresolved.
+That prerequisite changed no runtime code or size cap. Clean component actions
+now read top-level component getters freshly through owner-scoped read frames;
+temporary action parameters and iterators cannot replace getter dependencies.
+Browser Core v1 remains **NO-GO**: numeric/failure and imported-write policy
+remain unresolved. No arbitrary effects, closures or rollback model is added.
 See [the proposed profile and complete evidence](docs/architecture/browser-core-v1/README.md).
 The new component-order browser check is mandatory in CI and the local gate;
 the full-profile audit remains nonzero while policy is pending. PR #89 is excluded.

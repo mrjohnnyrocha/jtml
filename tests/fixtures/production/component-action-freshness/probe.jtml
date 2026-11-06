@@ -1,0 +1,82 @@
+jtml 2
+
+export make Probe label seed
+  let x = seed
+  let saved = 0
+  let first = 0
+  let second = 0
+  let parameterSeen = 0
+  let rows = [0, 0, 0]
+  let hidden = 0
+  get twice = x * 2
+  get quad = twice * 2
+  get next = x + 1
+  get hiddenTwice = hidden * 2
+
+  when step
+    x += 1
+    saved = twice
+    first = quad
+    x += 1
+    second = quad
+
+  when shadowX x
+    saved = twice
+    first = x
+    second = quad
+
+  when shadowGet twice
+    saved = twice
+    first = quad
+
+  when inner x
+    saved = twice
+    parameterSeen = x
+    second = quad
+
+  when observe
+    first = x
+
+  when nested x
+    inner(x + 1)
+    observe()
+
+  when loopShadow
+    for x in [10, 20]
+      saved = twice
+      first = x
+      second = quad
+
+  when loopFresh
+    x = 0
+    while twice < 6
+      x += 1
+    saved = twice
+    first = quad
+
+  when indexFresh
+    x = 0
+    x = 1
+    rows[next] = quad
+    saved = twice
+
+  when changeHidden
+    hidden = 3
+
+  when readHidden
+    saved = hiddenTwice
+
+  box class "probe" data-label label
+    box class "values"
+      text "{x}|{saved}|{first}|{second}|{twice}|{quad}|{parameterSeen}"
+    box class "row-value"
+      text rows[2]
+    button "Step" click step
+    button "Shadow x" click shadowX(100)
+    button "Shadow getter" click shadowGet(77)
+    button "Nested" click nested(1000)
+    button "Iterator" click loopShadow
+    button "While" click loopFresh
+    button "Index" click indexFresh
+    button "Change hidden" click changeHidden
+    button "Read hidden" click readHidden

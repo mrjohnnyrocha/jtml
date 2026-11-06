@@ -169,6 +169,9 @@ jobs:
       - name: Component derived order admission (browser required)
         run: node tests/browser/component_derived_order.cjs
 
+      - name: Fresh component action derived reads (browser required)
+        run: node tests/browser/component_action_freshness.cjs
+
       - name: Defining-module scalar component capture (browser required)
         run: node tests/browser/component_module_capture.cjs
 

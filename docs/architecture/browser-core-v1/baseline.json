@@ -1,0 +1,936 @@
+{
+  "baseline": "bc5350db56220c3c5f68993ed22711ba1c1a883c",
+  "browser": "151.0.7922.34",
+  "binary_sha256": "197f3b3c564f5478512e330c3a96033c45667b596fb90da931a84f47aff41fd0",
+  "catalog_sha256": "964a220479561c77ab1f428c570f64c8eb5a75fa10691cc81087672818c27e8f",
+  "clean_browser_exit": true,
+  "scope": "state, derived, settled DOM and show; phase/lifecycle evidence in unchanged existing suites",
+  "vectors": [
+    {
+      "id": "V01",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 3,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "x": 1
+          },
+          "dom": [
+            "Value 1"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 1,
+          "state": {
+            "x": 2
+          },
+          "dom": [
+            "Value 2"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 2,
+          "state": {
+            "x": 3
+          },
+          "dom": [
+            "Value 3"
+          ],
+          "show": [],
+          "active_components": []
+        }
+      ]
+    },
+    {
+      "id": "V02",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 2,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "x": 0,
+            "hits": 0
+          },
+          "dom": [
+            "0|0"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 1,
+          "state": {
+            "x": 2,
+            "hits": 1
+          },
+          "dom": [
+            "2|1"
+          ],
+          "show": [
+            "2"
+          ],
+          "active_components": []
+        }
+      ]
+    },
+    {
+      "id": "V03",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 2,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "x": 0,
+            "saved": 0,
+            "twice": 0
+          },
+          "dom": [
+            "0|0"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 1,
+          "state": {
+            "x": 1,
+            "saved": 2,
+            "twice": 2
+          },
+          "dom": [
+            "2|2"
+          ],
+          "show": [],
+          "active_components": []
+        }
+      ]
+    },
+    {
+      "id": "V04",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 3,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "x": 1,
+            "z": 2,
+            "a": 4
+          },
+          "dom": [
+            "4|2"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 1,
+          "state": {
+            "x": 2,
+            "z": 3,
+            "a": 6
+          },
+          "dom": [
+            "6|3"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 2,
+          "state": {
+            "x": 3,
+            "z": 4,
+            "a": 8
+          },
+          "dom": [
+            "8|4"
+          ],
+          "show": [],
+          "active_components": []
+        }
+      ]
+    },
+    {
+      "id": "V05",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 3,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "x": 1,
+            "zleft": 2,
+            "zright": 2,
+            "atotal": 4
+          },
+          "dom": [
+            "2|2|4"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 1,
+          "state": {
+            "x": 2,
+            "zleft": 3,
+            "zright": 4,
+            "atotal": 7
+          },
+          "dom": [
+            "3|4|7"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 2,
+          "state": {
+            "x": 3,
+            "zleft": 4,
+            "zright": 6,
+            "atotal": 10
+          },
+          "dom": [
+            "4|6|10"
+          ],
+          "show": [],
+          "active_components": []
+        }
+      ]
+    },
+    {
+      "id": "V06",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 3,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "x": 10,
+            "hits": 0
+          },
+          "dom": [
+            "10|0"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 1,
+          "state": {
+            "x": 10,
+            "hits": 0
+          },
+          "dom": [
+            "10|0"
+          ],
+          "show": [
+            "4"
+          ],
+          "active_components": []
+        },
+        {
+          "phase": 2,
+          "state": {
+            "x": 10,
+            "hits": 0
+          },
+          "dom": [
+            "10|0"
+          ],
+          "show": [
+            "4"
+          ],
+          "active_components": []
+        }
+      ]
+    },
+    {
+      "id": "V07",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 3,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "x": 1,
+            "hits": 0
+          },
+          "dom": [
+            "1|0"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 1,
+          "state": {
+            "x": 1,
+            "hits": 1
+          },
+          "dom": [
+            "1|1"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 2,
+          "state": {
+            "x": 1,
+            "hits": 2
+          },
+          "dom": [
+            "1|2"
+          ],
+          "show": [],
+          "active_components": []
+        }
+      ]
+    },
+    {
+      "id": "V08",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 5,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "enabled": true,
+            "left": 2,
+            "right": 9,
+            "chosen": 2
+          },
+          "dom": [
+            "2"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 1,
+          "state": {
+            "enabled": true,
+            "left": 2,
+            "right": 11,
+            "chosen": 2
+          },
+          "dom": [
+            "2"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 2,
+          "state": {
+            "enabled": false,
+            "left": 2,
+            "right": 11,
+            "chosen": 11
+          },
+          "dom": [
+            "11"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 3,
+          "state": {
+            "enabled": false,
+            "left": 5,
+            "right": 11,
+            "chosen": 11
+          },
+          "dom": [
+            "11"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 4,
+          "state": {
+            "enabled": true,
+            "left": 5,
+            "right": 11,
+            "chosen": 5
+          },
+          "dom": [
+            "5"
+          ],
+          "show": [],
+          "active_components": []
+        }
+      ]
+    },
+    {
+      "id": "V09",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 5,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "__jtml_scalar_00000000000000000001": "private",
+            "__jtml_scalar_00000000000000000000": "entry"
+          },
+          "dom": [
+            "controls"
+          ],
+          "show": [],
+          "active_components": [
+            {
+              "component": "Card",
+              "scope": {}
+            }
+          ]
+        },
+        {
+          "phase": 1,
+          "state": {
+            "__jtml_scalar_00000000000000000001": "private!",
+            "__jtml_scalar_00000000000000000000": "entry"
+          },
+          "dom": [
+            "controls"
+          ],
+          "show": [],
+          "active_components": [
+            {
+              "component": "Card",
+              "scope": {}
+            }
+          ]
+        },
+        {
+          "phase": 2,
+          "state": {
+            "__jtml_scalar_00000000000000000001": "private!",
+            "__jtml_scalar_00000000000000000000": "entry!"
+          },
+          "dom": [
+            "controls"
+          ],
+          "show": [],
+          "active_components": [
+            {
+              "component": "Card",
+              "scope": {}
+            }
+          ]
+        },
+        {
+          "phase": 3,
+          "state": {
+            "__jtml_scalar_00000000000000000001": "private!",
+            "__jtml_scalar_00000000000000000000": "entry!"
+          },
+          "dom": [
+            "controls"
+          ],
+          "show": [
+            "private!"
+          ],
+          "active_components": [
+            {
+              "component": "Card",
+              "scope": {}
+            }
+          ]
+        },
+        {
+          "phase": 4,
+          "state": {
+            "__jtml_scalar_00000000000000000001": "private!",
+            "__jtml_scalar_00000000000000000000": "entry!"
+          },
+          "dom": [
+            "controls"
+          ],
+          "show": [
+            "entry!"
+          ],
+          "active_components": [
+            {
+              "component": "Card",
+              "scope": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V10",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 2,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "tone": "private",
+            "entryTone": "entry",
+            "label": "private!"
+          },
+          "dom": [
+            "private!"
+          ],
+          "show": [],
+          "active_components": [
+            {
+              "component": "Card",
+              "scope": {
+                "label": "private!"
+              }
+            }
+          ]
+        },
+        {
+          "phase": 1,
+          "state": {
+            "tone": "private!",
+            "entryTone": "entry",
+            "label": "private!!"
+          },
+          "dom": [
+            "private!!"
+          ],
+          "show": [],
+          "active_components": [
+            {
+              "component": "Card",
+              "scope": {
+                "label": "private!!"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V11",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 1,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "z": 2,
+            "a": 3,
+            "result": 5
+          },
+          "dom": [
+            "3|5"
+          ],
+          "show": [],
+          "active_components": []
+        }
+      ]
+    },
+    {
+      "id": "V12",
+      "classification": "REJECTED BY DESIGN",
+      "build_exit": 1,
+      "diagnostic": "error: <evidence>/V12/source/index.jtml:2:1: E_INIT_FORWARD: forward reference to `later`; use earlier module-local state and structured initializer expressions",
+      "phases_checked": 0,
+      "rejected_assets_absent": true,
+      "unauthorized_after": null,
+      "observations": []
+    },
+    {
+      "id": "V13",
+      "classification": "REJECTED BY DESIGN",
+      "build_exit": 1,
+      "diagnostic": "error: <evidence>/V13/source/index.jtml:2:1: browser get is unsupported: E_DERIVED_CYCLE: cycle involving `a`; use an owned, acyclic structured formula",
+      "phases_checked": 0,
+      "rejected_assets_absent": true,
+      "unauthorized_after": null,
+      "observations": []
+    },
+    {
+      "id": "V14",
+      "classification": "REJECTED BY DESIGN",
+      "build_exit": 1,
+      "diagnostic": "error: <evidence>/V14/source/index.jtml:4:3: E_UNRESOLVED: root action `step` reads unresolved or unimported binding `missing`",
+      "phases_checked": 0,
+      "rejected_assets_absent": true,
+      "unauthorized_after": null,
+      "observations": []
+    },
+    {
+      "id": "V15",
+      "classification": "REJECTED BY DESIGN",
+      "build_exit": 1,
+      "diagnostic": "error: <evidence>/V15/source/index.jtml:2:1: browser get is unsupported: E_UNSUPPORTED_EXPR: get `result` requires a supported expression plan; use an owned, acyclic structured formula",
+      "phases_checked": 0,
+      "rejected_assets_absent": true,
+      "unauthorized_after": null,
+      "observations": []
+    },
+    {
+      "id": "V16",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 5,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "count": 0,
+            "visible": true
+          },
+          "dom": [
+            "0|0"
+          ],
+          "show": [],
+          "active_components": [
+            {
+              "component": "Card",
+              "scope": {
+                "value": 0,
+                "local": 0,
+                "twice": 0
+              }
+            }
+          ]
+        },
+        {
+          "phase": 1,
+          "state": {
+            "count": 0,
+            "visible": true
+          },
+          "dom": [
+            "0|1"
+          ],
+          "show": [],
+          "active_components": [
+            {
+              "component": "Card",
+              "scope": {
+                "value": 0,
+                "local": 1,
+                "twice": 0
+              }
+            }
+          ]
+        },
+        {
+          "phase": 2,
+          "state": {
+            "count": 0,
+            "visible": false
+          },
+          "dom": [],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 3,
+          "state": {
+            "count": 1,
+            "visible": false
+          },
+          "dom": [],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 4,
+          "state": {
+            "count": 1,
+            "visible": true
+          },
+          "dom": [
+            "2|0"
+          ],
+          "show": [],
+          "active_components": [
+            {
+              "component": "Card",
+              "scope": {
+                "value": 1,
+                "local": 0,
+                "twice": 2
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V17",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 2,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "dom": [
+            "0|0|0"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 1,
+          "state": {
+            "x": 1,
+            "y": 2,
+            "z": 3
+          },
+          "dom": [
+            "1|2|3"
+          ],
+          "show": [],
+          "active_components": []
+        }
+      ]
+    },
+    {
+      "id": "V18",
+      "classification": "REJECTED BY DESIGN",
+      "build_exit": 1,
+      "diagnostic": "error: This app cannot compile to clean browser production yet.\nThe clean production target only ships static browser assets and does not include the legacy compatibility update-plan fallback.\nUnsupported shape(s):\n- effect at <evidence>/V18/source/index.jtml:4:1: cyclic root effect writes involving `x` are unsupported; remove the dependency/write cycle\n- effect at <evidence>/V18/source/index.jtml:4:1: cyclic root effect writes involving `x` are unsupported; remove the dependency/write cycle\n\nWhat to do:\n- Temporary migration build: jtml build <evidence>/V18/source/index.jtml --target browser --compat --out <evidence>/V18/app\n- Diagnostic build with source-rich compatibility metadata: jtml build <evidence>/V18/source/index.jtml --target browser --debug --out <evidence>/V18/app\n- Or change the component shape above to clean-prod supported template/action semantics.",
+      "phases_checked": 0,
+      "rejected_assets_absent": true,
+      "unauthorized_after": null,
+      "observations": []
+    },
+    {
+      "id": "V19",
+      "classification": "PENDING POLICY",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 2,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "x": 1
+          },
+          "dom": [
+            "Value 1"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 1,
+          "state": {
+            "x": "Infinity"
+          },
+          "dom": [
+            "Value Infinity"
+          ],
+          "show": [],
+          "active_components": []
+        }
+      ],
+      "encoding_note": "The observer encodes non-finite number values as their String form for JSON; the DOM independently shows Infinity."
+    },
+    {
+      "id": "V20",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 2,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "x": 0,
+            "seen": 0,
+            "twice": 0
+          },
+          "dom": [
+            "0|0|0"
+          ],
+          "show": [],
+          "active_components": []
+        },
+        {
+          "phase": 1,
+          "state": {
+            "x": 2,
+            "seen": 4,
+            "twice": 4
+          },
+          "dom": [
+            "2|4|4"
+          ],
+          "show": [
+            "2",
+            "4"
+          ],
+          "active_components": []
+        }
+      ]
+    },
+    {
+      "id": "V21",
+      "classification": "PASS",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 1,
+      "rejected_assets_absent": null,
+      "unauthorized_after": null,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "seed": 7,
+            "copy": 8
+          },
+          "dom": [
+            "8"
+          ],
+          "show": [],
+          "active_components": []
+        }
+      ]
+    },
+    {
+      "id": "V22",
+      "classification": "PENDING POLICY",
+      "build_exit": 0,
+      "diagnostic": "",
+      "phases_checked": 1,
+      "rejected_assets_absent": null,
+      "unauthorized_after": 9,
+      "observations": [
+        {
+          "phase": 0,
+          "state": {
+            "seed": 7
+          },
+          "dom": [
+            "never"
+          ],
+          "show": [],
+          "active_components": []
+        }
+      ],
+      "initial_audit_classification": "CONFIRMED DEFECT",
+      "reason": "Confirmed catalog mismatch: expected rejection, actual seed 7 -> 9. Existing mandatory action_get_reads.cjs explicitly requires named/reexported import writes. Read-only replacement needs contract reconciliation; preserve existing oracle."
+    },
+    {
+      "id": "V23",
+      "classification": "REJECTED BY DESIGN",
+      "build_exit": 1,
+      "diagnostic": "error: Cannot emit clean browser production assets:\n- browser runtime binding collision `tone` (state at <evidence>/V23/source/index.jtml:3:1; state at <evidence>/V23/source/private.jtml:2:1). Distinct executable modules share the value namespace. Give these declarations distinct names and update their references; module-scoped browser storage is unsupported for this shape.\nScalar isolation was not proved: <evidence>/V23/source/index.jtml:5:3: string interpolation requires resolved expression nodes; use explicit scalar concatenation",
+      "phases_checked": 0,
+      "rejected_assets_absent": true,
+      "unauthorized_after": null,
+      "observations": []
+    },
+    {
+      "id": "V24",
+      "classification": "REJECTED BY DESIGN",
+      "build_exit": 1,
+      "diagnostic": "error: This app cannot compile to clean browser production yet.\nThe clean production target only ships static browser assets and does not include the legacy compatibility update-plan fallback.\nUnsupported shape(s):\n- component Card at <evidence>/V24/source/index.jtml:2:1: component-local effects are unsupported in clean production; use a module-owned scalar let/effect\n- effect at <evidence>/V24/source/index.jtml:4:3: nested subscriptions are unsupported; declare the effect at module root\n\nWhat to do:\n- Temporary migration build: jtml build <evidence>/V24/source/index.jtml --target browser --compat --out <evidence>/V24/app\n- Diagnostic build with source-rich compatibility metadata: jtml build <evidence>/V24/source/index.jtml --target browser --debug --out <evidence>/V24/app\n- Or change the component shape above to clean-prod supported template/action semantics.",
+      "phases_checked": 0,
+      "rejected_assets_absent": true,
+      "unauthorized_after": null,
+      "observations": []
+    }
+  ],
+  "supplemental": [
+    {
+      "id": "component-action-fresh",
+      "build": 0,
+      "stderr": "",
+      "errors": [],
+      "initial": "0|0",
+      "after": "0|2",
+      "scope": {
+        "x": 1,
+        "saved": 0,
+        "twice": 2
+      }
+    },
+    {
+      "id": "component-forward-chain",
+      "build": 0,
+      "stderr": "",
+      "errors": [],
+      "initial": "z * 2.000000000000000|2",
+      "after": "4|3",
+      "scope": {
+        "x": 2,
+        "a": 4,
+        "z": 3
+      }
+    }
+  ],
+  "raw_report_sha256": "67eb57f6da9f7c5a4ca4946204f93f28b2ac884ec41a56e201b2539148f1c7e0"
+}

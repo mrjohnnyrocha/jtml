@@ -166,6 +166,9 @@ jobs:
       - name: Reactive Core commit and effect observations (browser required)
         run: node tests/browser/reactive_core_observation.cjs
 
+      - name: Component derived order admission (browser required)
+        run: node tests/browser/component_derived_order.cjs
+
       - name: Defining-module scalar component capture (browser required)
         run: node tests/browser/component_module_capture.cjs
 

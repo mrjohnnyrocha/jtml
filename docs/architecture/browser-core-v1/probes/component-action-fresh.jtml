@@ -1,0 +1,13 @@
+jtml 2
+make Card
+  let x = 0
+  let saved = 0
+  get twice = x * 2
+  when step
+    x = 1
+    saved = twice
+  box class "out"
+    text "{saved}|{twice}"
+  button "Step" click step
+page
+  Card

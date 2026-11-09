@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile the JTML public pages and original Counter; never deploy anything."""
+"""Compile the JTML public pages and tutorial demos; never deploy anything."""
 import argparse
 import gzip
 import hashlib
@@ -239,6 +239,17 @@ def _build(output, compiler, base_url):
         demo = output / 'demo/counter'
         shutil.copytree(generated, originals / 'counter')
         shutil.copytree(generated, demo)
+        # The guide remains the single source of truth for the first application.
+        guide = (ROOT / 'docs/getting-started.md').read_text()
+        coffee_source = re.search(r'```jtml\n(.*?)```', guide, re.S).group(1)
+        (work / 'coffee.jtml').write_text(coffee_source)
+        subprocess.run([compiler, 'build', 'coffee.jtml', '--target', 'browser', '--out', 'coffee'], cwd=work, check=True)
+        coffee = output / 'demo/coffee'
+        shutil.copytree(work / 'coffee', coffee)
+        shutil.copytree(work / 'coffee', originals / 'coffee')
+        (output / 'coffee.jtml').write_text(coffee_source)
+        assert {p.relative_to(coffee).as_posix() for p in coffee.rglob('*') if p.is_file()} == set(ASSETS)
+        coffee_hashes = {name: digest(coffee / name) for name in ASSETS}
     shutil.copyfile(source, output / 'counter.jtml')
     shutil.copytree(ROOT / 'docs', output / 'docs')
     for name in ('README.md', 'ROADMAP.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md'):
@@ -246,7 +257,7 @@ def _build(output, compiler, base_url):
     for name, original in [('language-reference.md', 'docs/reference/language-reference.md'), ('deployment.md', 'docs/tooling/deployment.md')]:
         shutil.copyfile(ROOT / original, output / name)
     shutil.copytree(ROOT / 'third_party/licenses', output / 'third_party/licenses')
-    pages = sorted(output.glob('*.html')) + [demo / 'index.html']
+    pages = sorted(output.glob('*.html')) + [demo / 'index.html', coffee / 'index.html']
     for page in pages:
         text = page.read_text()
         assert '<head>' in text
@@ -257,10 +268,10 @@ def _build(output, compiler, base_url):
             if len(policies) != 1 or any(directive not in html.unescape(policies[0]) for directive in required_policy):
                 raise ValueError('Static compiler output must retain strict CSP')
         additions = '' if is_static else '<meta http-equiv="Content-Security-Policy" content="' + html.escape(CSP, quote=True) + '">\n'
-        icon = '../../favicon.svg' if page == demo / 'index.html' else './favicon.svg'
+        icon = '../../favicon.svg' if page.parent in (demo, coffee) else './favicon.svg'
         additions += '<link rel="icon" type="image/svg+xml" href="' + icon + '">\n'
         location = page.relative_to(output).as_posix()
-        canonical = base_url + ('' if location == 'index.html' else location.replace('demo/counter/index.html', 'demo/counter/'))
+        canonical = base_url + ('' if location == 'index.html' else location.replace('demo/counter/index.html', 'demo/counter/').replace('demo/coffee/index.html', 'demo/coffee/'))
         additions += '<link rel="canonical" href="' + html.escape(canonical, quote=True) + '">\n'
         text = text.replace('<head>', '<head>\n' + additions, 1)
         if page.parent == output and page.name in compiled:
@@ -279,6 +290,10 @@ def _build(output, compiler, base_url):
             if 'themeColor' in metadata:
                 head += '<meta name="theme-color" content="' + html.escape(metadata['themeColor'], quote=True) + '">\n'
             text = text.replace('</head>', head + '</head>', 1)
+        if page == coffee / 'index.html':
+            text = text.replace('<html>', '<html lang="en">', 1)
+            text = re.sub(r'<title>.*?</title>', '<title>CoffeeOrder — Try JTML</title>', text, count=1)
+            text = text.replace('</head>', '<meta name="viewport" content="width=device-width, initial-scale=1">\n</head>', 1)
         page.write_text(text)
     for name in ASSETS[1:]:
         assert digest(demo / name) == original_hashes[name], 'Generated JavaScript must remain untouched'
@@ -286,7 +301,7 @@ def _build(output, compiler, base_url):
         for name in (() if page_info['target'] == 'static' else ASSETS[1:]):
             assert digest(output / ('' if name == registry['sharedRuntime'] else page_info['assetDirectory']) / name) == page_info['generatedAssetsSHA256'][name], 'Generated page JavaScript must remain untouched'
     locations = [base_url + ('' if p.name == 'index.html' else p.name) for p in sorted(output.glob('*.html'))]
-    locations.append(base_url + 'demo/counter/')
+    locations.extend(base_url + 'demo/' + name + '/' for name in ('counter', 'coffee'))
     (output / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + ''.join('  <url><loc>' + escape(u) + '</loc></url>\n' for u in locations) + '</urlset>\n')
     (output / 'robots.txt').write_text('User-agent: *\nAllow: /\n\nSitemap: ' + base_url + 'sitemap.xml\n')
     revision = subprocess.check_output(['git', '-C', ROOT, 'rev-parse', 'HEAD'], text=True).strip()
@@ -294,6 +309,7 @@ def _build(output, compiler, base_url):
     for page in registry['pages']:
         compiled[page['output']]['deployedAssetsSHA256'] = {name: digest(output / name) for name in deployed_page_assets(page, registry)}
     info = dict(schema=6, sharedRuntime=dict(path=registry['sharedRuntime'], verifiedByteEqualPages=sorted(bundles), sha256=digest(output / registry['sharedRuntime'])), originalCompilerOutputSuffix='.compiler-output', registrySHA256=digest(ROOT / "site/pages.json"), pages=compiled, packagingPolicy="Registry-selected compiler targets; document metadata, browser script URLs and byte-equal runtime sharing only; application markup and generated JS are unchanged", compiler=compiler_info, homepageSource='site/index.jtml', homepageSourceSHA256=digest(ROOT / 'site/index.jtml'), homepageGeneratedAssetsSHA256=homepage_hashes, sourceRevision=revision, sourceDirty=dirty, compilerVersion=version,
+                coffee=dict(source='docs/getting-started.md', sourceSHA256=digest(output / 'coffee.jtml'), generatedAssetsSHA256=coffee_hashes),
                 baseURL=base_url, counterSource='examples/friendly_counter.jtml', counterSourceSHA256=digest(source),
                 generatedAssetsSHA256=original_hashes, demoPolicy='Only document head/language metadata is added to compiled HTML; body and generated JavaScript are unchanged')
     (output / 'site-build.json').write_text(json.dumps(info, sort_keys=True, indent=2) + '\n')

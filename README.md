@@ -5,7 +5,7 @@ Friendly JTML 2 puts observable state, actions and HTML-shaped UI in one readabl
 file. The C++17 compiler owns dependency analysis and generates static,
 CSP-safe JavaScript; supported browser apps update locally without a JTML server.
 
-[Build and try it](#get-started-from-source) · [Write your first app](docs/getting-started.md) · [RC.3 support and release status](docs/releases/v0.3.0-rc.3.md) · [Architecture](https://github.com/mrjohnnyrocha/jtml/blob/main/ARCHITECTURE.md)
+[Try JTML in your browser](https://mrjohnnyrocha.github.io/jtml/#demo) · [Write your first app](docs/getting-started.md) · [RC.3 support and release status](docs/releases/v0.3.0-rc.3.md) · [Architecture](https://github.com/mrjohnnyrocha/jtml/blob/main/ARCHITECTURE.md)
 
 ```jtml
 jtml 2

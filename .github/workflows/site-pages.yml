@@ -14,6 +14,7 @@ on:
       - 'tests/test_application_paths.py'
       - 'tests/test_site_registry.py'
       - 'examples/friendly_counter.jtml'
+      - 'docs/getting-started.md'
       - 'docs/tooling/website-launch.md'
       - 'docs/tooling/website-reference/**'
       - 'docs/tooling/website-six-pages/**'

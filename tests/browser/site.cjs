@@ -59,7 +59,9 @@ const baseline=baselineInput?path.resolve(baselineInput):path.resolve(root,'../p
 if(!baselineInput){const result=require('node:child_process').spawnSync('python3',[path.resolve(__dirname,'../../scripts/materialize_site_baseline.py'),baseline],{encoding:'utf8'});assert.equal(result.status,0,result.stdout+result.stderr);}
 const publishedInfo=JSON.parse(fs.readFileSync(path.join(baseline,'site-build.json')));
 assert.equal(publishedInfo.sourceRevision,'5f970b44e2c4f98595ef156050f093328c632686','compare the previous published release');
-for(const file of ['index.html','reference.html'])assert.deepEqual(info.pages[file].generatedAssetsSHA256,publishedInfo.pages[file].generatedAssetsSHA256,'browser compiler output unchanged '+file);
+assert.deepEqual(info.pages['reference.html'].generatedAssetsSHA256,publishedInfo.pages['reference.html'].generatedAssetsSHA256,'Reference compiler output unchanged');
+// Homepage copy/links intentionally change its HTML and component module, not its runtime/bootstrap.
+for(const name of ['app.js','jtml-runtime.js'])assert.equal(info.pages['index.html'].generatedAssetsSHA256[name],publishedInfo.pages['index.html'].generatedAssetsSHA256[name]);
 assert.deepEqual(info.generatedAssetsSHA256,publishedInfo.generatedAssetsSHA256,'original Counter compiler output unchanged');
 assert.equal(JSON.parse(fs.readFileSync(path.join(root,'compiler.json'))).revision,'69a2cb7a60bd12887cc434e47d22cce0e8a0a8c3');
 if(info.compiler.revision)assert.equal(info.compiler.revision,'69a2cb7a60bd12887cc434e47d22cce0e8a0a8c3');
@@ -70,6 +72,15 @@ for(const name of ['jtml-runtime.js','components/index.js','app.js'])assert.equa
 assert.equal(info.baseURL,'https://mrjohnnyrocha.github.io/jtml/');
 assert(!fs.existsSync(path.join(root,'CNAME')));
 assert.equal(sha(path.join(root,'counter.jtml')),info.counterSourceSHA256);
+const coffeeSource=fs.readFileSync(path.join(root,'docs/getting-started.md'),'utf8').match(/```jtml\n([\s\S]*?)```/)[1];
+assert.equal(fs.readFileSync(path.join(root,'coffee.jtml'),'utf8'),coffeeSource);
+assert.equal(sha(path.join(root,'coffee.jtml')),info.coffee.sourceSHA256);
+for(const name of ['jtml-runtime.js','components/index.js','app.js']){
+ assert.equal(sha(path.join(root,'demo/coffee',name)),info.coffee.generatedAssetsSHA256[name]);
+ assert(!/\beval\s*\(|\bnew\s+Function\b/.test(fs.readFileSync(path.join(root,'demo/coffee',name),'utf8')));
+}
+const coffeeBody=file=>fs.readFileSync(file,'utf8').match(/<body[^>]*>([\s\S]*?)<\/body>/)[1];
+assert.equal(coffeeBody(path.join(root,'demo/coffee/index.html')),coffeeBody(path.join(originals,'coffee/index.html')),'CoffeeOrder application markup unchanged');
 for(const name of ['jtml-runtime.js','components/index.js','app.js'])assert.equal(sha(path.join(root,'demo/counter',name)),info.generatedAssetsSHA256[name]);
 assert.deepEqual(fs.readdirSync(path.join(root,'demo/counter')).sort(),['app.js','components','index.html','jtml-runtime.js']);
 for(const line of fs.readFileSync(path.join(root,'manifest.txt'),'utf8').trim().split('\n')){
@@ -162,9 +173,18 @@ let browser;
    const reference=await context.newPage();
    reference.on('pageerror',e=>errors.push(e.message));reference.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
    await reference.goto(origin+'/__baseline/'+file);
+   if(file==='index.html'){
+    // #demo and #try intentionally change for the CoffeeOrder journey. Keep the
+    // published baseline immutable; hide both changed sections to avoid layout shifts.
+    const styles=await Promise.all([page,reference].map(p=>p.addStyleTag({content:'#demo, #try { display: none !important; }'})));
+    assert.equal(await page.locator('body').ariaSnapshot(),await reference.locator('body').ariaSnapshot(),'unchanged homepage accessible tree');
+    assert((await page.screenshot({fullPage:true})).equals(await reference.screenshot({fullPage:true})),'unchanged homepage pixels with changed sections hidden');
+    for(const style of styles)await style.evaluate(e=>e.remove());
+   }else{
    assert.deepEqual(await authoredAttributes(page),await authoredAttributes(reference),file+' DOM attributes against published baseline');
    assert.equal(await page.locator('body').ariaSnapshot(),await reference.locator('body').ariaSnapshot(),file+' accessible tree against published baseline');
    assert((await page.screenshot({fullPage:true})).equals(await reference.screenshot({fullPage:true})),file+' pixels against published baseline '+prefix+' '+viewport.width);
+   }
    await reference.close();
    if(viewport.width!==320)await page.screenshot({path:path.join(root,`../website-six-${file.replace('.html','')}-${prefix==='/'?'root':'project'}-${viewport.width}.png`),fullPage:true});
    const policy=await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
@@ -217,14 +237,6 @@ let browser;
   await page.screenshot({path:path.join(root,`../website-${prefix==='/'?'root':'project'}-${viewport.width}.png`),fullPage:true});
   await page.evaluate(()=>scrollTo({top:0,left:0,behavior:'instant'}));
   await page.screenshot({path:path.join(root,`../website-viewport-${prefix==='/'?'root':'project'}-${viewport.width}.png`)});
-  if(baseline){
-   for(const file of ['index.html','reference.html']){
-    await page.goto(origin+prefix+file);
-    const current=await page.screenshot({fullPage:true});
-    await page.goto(origin+'/__baseline/'+file);
-    assert(current.equals(await page.screenshot({fullPage:true})),file+' visual regression against clean-main baseline');
-   }
-  }
   await page.goto(origin+prefix+'reference.html');
   assert.equal(await page.title(),'JTML Reference — Friendly JTML 2');
   assert.equal(await page.locator('main').count(),1);assert.equal(await page.locator('h1').count(),1);
@@ -262,7 +274,31 @@ let browser;
   await page.getByRole('button',{name:'Add one',exact:true}).press('Enter');await page.getByText('Count: 2',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Reset',exact:true}).click();await page.getByText('Count: 0',{exact:true}).waitFor();
   await page.reload();await page.getByText('Count: 0',{exact:true}).waitFor();
-  console.log(`PASS ${prefix} ${viewport.width}px: all six JTML pages/content/metadata, isolated bundles, Reference and both Counters`);
+  await page.goto(origin+prefix+'index.html#demo');
+  assert.equal(await page.getByRole('link',{name:'Complete CoffeeOrder source ↗',exact:true}).getAttribute('href'),'./coffee.jtml');
+  await page.getByRole('link',{name:'Try CoffeeOrder ↗',exact:true}).click();
+  assert.equal(new URL(page.url()).pathname,prefix+'demo/coffee/');
+  assert.equal(await page.locator('meta[http-equiv="Content-Security-Policy"]').count(),1);
+  assert.equal(await page.title(),'CoffeeOrder — Try JTML');
+  assert.equal(await page.locator('html').getAttribute('lang'),'en');
+  assert.equal(await page.locator('meta[name="viewport"]').count(),1);
+  const name=page.getByRole('textbox',{name:'Your name',exact:true});
+  await page.getByRole('button',{name:'Place order',exact:true}).click();
+  await page.getByText('Enter your name',{exact:true}).waitFor();
+  await name.fill('Ada');await name.press('Enter');
+  await page.getByText('Order for Ada: 1 cups, EUR 3',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Add cup',exact:true}).click();
+  await page.getByText('Total: EUR 6',{exact:true}).waitFor();
+  await page.getByText('Order for Ada: 1 cups, EUR 3',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Place order',exact:true}).click();
+  await page.getByText('Order for Ada: 2 cups, EUR 6',{exact:true}).waitFor();
+  assert(await page.evaluate(()=>jtml.browserBuild.cleanProduction));
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'CoffeeOrder fits viewport');
+  await page.screenshot({path:path.join(root,`../coffee-${prefix==='/'?'root':'project'}-${viewport.width}.png`),fullPage:true});
+  await page.getByRole('button',{name:'Clear',exact:true}).click();
+  assert.equal(await name.inputValue(),'');
+  for(const text of ['No order yet','Cups: 1','Total: EUR 3'])await page.getByText(text,{exact:true}).waitFor();
+  console.log(`PASS ${prefix} ${viewport.width}px: six pages, Reference, Counters and CoffeeOrder first-run journey`);
   await context.close();
  }
  for(const prefix of ['/','/jtml/'])for(const viewport of [{width:1440,height:1000},{width:900,height:1100},{width:390,height:844},{width:320,height:720}]){

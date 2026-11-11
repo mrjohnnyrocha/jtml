@@ -1634,13 +1634,7 @@ std::string directStaticForCreateExpression(const nlohmann::json& componentPlan,
 
     std::ostringstream out;
     out << "(function(){ "
-        << "let values = " << jsDirectExpressionCall(collectionPlan) << "; "
-        << "if (values == null) values = []; "
-        << "else if (!Array.isArray(values)) { "
-        << "if (typeof values === 'string') values = values.split(''); "
-        << "else if (typeof values === 'object') values = Object.values(values); "
-        << "else values = [values]; "
-        << "} "
+        << "const values = h.normalizeLoopValues(" << jsDirectExpressionCall(collectionPlan) << "); "
         << "const rendered = []; "
         << "for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1) { "
         << "const childScope = Object.assign({}, scope); "
@@ -2140,12 +2134,7 @@ std::string directStaticRegionPatchExpression(
             (keyExpression.empty() || isDirectJsExpressionPlan(keyPlan))) {
             out << "if ((function(){ "
                 << "const expressionStarted = performance.now(); "
-                << "let values = " << jsDirectExpressionCall(collectionPlan) << "; "
-                << "if (values == null) values = []; "
-                << "else if (!Array.isArray(values)) { "
-                << "if (typeof values === 'string') values = values.split(''); "
-                << "else if (typeof values === 'object') values = Object.values(values); "
-                << "else values = [values]; } "
+                << "const values = h.normalizeLoopValues(" << jsDirectExpressionCall(collectionPlan) << "); "
                 << "const items = []; const keys = []; const seen = {}; "
                 << "for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1) { "
                 << "const childScope = Object.assign({}, scope); childScope["

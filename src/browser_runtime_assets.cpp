@@ -1620,6 +1620,14 @@ const char* browserRuntimeComponentChunk() {
         return '<' + tag + attrs + '>' + inline + children + '</' + tag + '>';
       }
 
+      function normalizeLoopValues(value) {
+        if (value == null) return [];
+        if (Array.isArray(value)) return value;
+        if (typeof value === 'string') return value.split('');
+        if (typeof value === 'object') return Object.values(value);
+        return [value];
+      }
+
       function renderComponentForRegion(definition, instance, node, scope, words) {
         return renderComponentForItems(definition, instance, node, scope, words)
           .map(function (item) { return item.wrapperHtml; })
@@ -1639,13 +1647,7 @@ const char* browserRuntimeComponentChunk() {
           collectionExpr,
           scope);
         if (!result.found) return [];
-        let values = result.value;
-        if (values == null) values = [];
-        if (!Array.isArray(values)) {
-          if (typeof values === 'string') values = values.split('');
-          else if (typeof values === 'object') values = Object.values(values);
-          else values = [values];
-        }
+        const values = normalizeLoopValues(result.value);
         const nodeIndex = (definition.bodyPlan || []).indexOf(node);
         const keySegments = values.map(function (item, itemIndex) {
           const childScope = Object.assign({}, scope);
@@ -2221,6 +2223,7 @@ const char* browserRuntimeComponentChunk() {
           renderStaticComponentElementNode,
           patchStaticComponentNodeHtml,
           directComponentElementForNode,
+          normalizeLoopValues,
           patchComponentForRegion,
           patchStaticComponentRegionNode,
           patchStaticComponentSlotNode,
@@ -2927,13 +2930,7 @@ const char* browserRuntimeComponentChunk() {
             if (!result.found) {
               return recordComponentBodyPlanFallback(instance, definition, node, 'for loop collection could not be evaluated', actionContext);
             }
-            let values = result.value;
-            if (values == null) values = [];
-            if (!Array.isArray(values)) {
-              if (typeof values === 'string') values = values.split('');
-              else if (typeof values === 'object') values = Object.values(values);
-              else values = [values];
-            }
+            const values = normalizeLoopValues(result.value);
             const enclosing = scope;
             {
               const scope = componentActionScope(enclosing,null,[loopItemName]);
@@ -3911,13 +3908,7 @@ const char* browserRuntimeComponentChunk() {
             if (!result.found) return;
             const iterator = el.getAttribute('data-jtml-iterator') || 'item';
             const body = el.getAttribute('data-body') || '';
-            let values = result.value;
-            if (values == null) values = [];
-            if (!Array.isArray(values)) {
-              if (typeof values === 'string') values = values.split('');
-              else if (typeof values === 'object') values = Object.values(values);
-              else values = [values];
-            }
+            const values = normalizeLoopValues(result.value);
             const html = values.map(function (item) { return renderLoopBody(body, iterator, item); }).join('');
             if (el.dataset.jtmlRendered !== html) {
               replaceClientTemplate(el, html);
@@ -5157,13 +5148,7 @@ const char* browserRuntimeDataPlatformChunk() {
             if (!result.found) return;
             const iterator = el.getAttribute('data-jtml-iterator') || 'item';
             const body = el.getAttribute('data-body') || '';
-            let values = result.value;
-            if (values == null) values = [];
-            if (!Array.isArray(values)) {
-              if (typeof values === 'string') values = values.split('');
-              else if (typeof values === 'object') values = Object.values(values);
-              else values = [values];
-            }
+            const values = normalizeLoopValues(result.value);
             const html = values.map(function (nestedItem) {
               return renderLoopBody(body, iterator, nestedItem, scope);
             }).join('');
@@ -5216,13 +5201,7 @@ const char* browserRuntimeDataPlatformChunk() {
             if (!el) continue;
             const iterator = el.getAttribute('data-jtml-iterator') || 'item';
             const body = el.getAttribute('data-body') || '';
-            let values = b.loops[id];
-            if (values == null) values = [];
-            if (!Array.isArray(values)) {
-              if (typeof values === 'string') values = values.split('');
-              else if (typeof values === 'object') values = Object.values(values);
-              else values = [values];
-            }
+            const values = normalizeLoopValues(b.loops[id]);
             const html = values.map(function (item) { return renderLoopBody(body, iterator, item); }).join('');
             if (el.dataset.jtmlRendered !== html) {
               el.innerHTML = html;

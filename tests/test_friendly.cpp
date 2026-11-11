@@ -2175,7 +2175,9 @@ TEST(FriendlySyntax, DirectComponentBodyPlanRendererCoversConditionalsAndLoops) 
     EXPECT_NE(html.find("\"text\":\"for person in people\""), std::string::npos) << html;
     EXPECT_NE(html.find("evaluateCompiledComponentExpressionResult("),
               std::string::npos) << html;
-    EXPECT_NE(html.find("else if (typeof values === 'object') values = Object.values(values);"),
+    EXPECT_NE(html.find("const values = normalizeLoopValues(result.value);"),
+              std::string::npos) << html;
+    EXPECT_NE(html.find("if (typeof value === 'object') return Object.values(value);"),
               std::string::npos) << html;
 }
 

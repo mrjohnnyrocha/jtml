@@ -1,0 +1,6 @@
+jtml 2
+let answer = false
+when step
+  answer = true ? true : missingFunction(1)
+page
+  button "Step" click step

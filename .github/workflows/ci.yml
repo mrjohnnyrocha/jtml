@@ -160,6 +160,9 @@ jobs:
       - name: Action-local scalar get reads (browser required)
         run: node tests/browser/action_get_reads.cjs
 
+      - name: Short-circuit operand evaluation (browser required)
+        run: node tests/browser/short_circuit.cjs
+
       - name: Topological root derived publication (browser required)
         run: node tests/browser/derived_publication.cjs
 

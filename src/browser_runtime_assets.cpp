@@ -1166,13 +1166,15 @@ const char* browserRuntimePreludeChunk() {
         }
         if (plan.kind === 'binary') {
           const left = evaluateCompiledComponentExpressionResult(plan.left, '', scope);
+          if (left.found && ((plan.operator === '&&' && !left.value) ||
+                             (plan.operator === '||' && left.value))) return left;
           const right = evaluateCompiledComponentExpressionResult(plan.right, '', scope);
           if (!left.found || !right.found) {
             return evaluateClientExpression(plan.source || fallbackExpr || '', scope);
           }
           switch (plan.operator) {
-            case '||': return { found: true, value: left.value || right.value };
-            case '&&': return { found: true, value: left.value && right.value };
+            case '||':
+            case '&&': return right;
             case '==': return { found: true, value: left.value == right.value };
             case '!=': return { found: true, value: left.value != right.value };
             case '<=': return { found: true, value: left.value <= right.value };

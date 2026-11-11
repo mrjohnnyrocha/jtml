@@ -1,0 +1,74 @@
+jtml 2
+let answer = false
+let rightValue = "right"
+let yesValue = "yes"
+let noValue = "no"
+let firstValue = true
+let secondValue = false
+let thirdValue = "third"
+
+when both flag
+  answer = flag && rightValue
+when either flag
+  answer = flag || rightValue
+when choose flag
+  answer = flag ? yesValue : noValue
+when nested
+  answer = (firstValue && secondValue) || (thirdValue || rightValue)
+
+make ActionProbe
+  let answer = false
+  let rightValue = "right"
+  let yesValue = "yes"
+  let noValue = "no"
+  let firstValue = true
+  let secondValue = false
+  let thirdValue = "third"
+  when both flag
+    answer = flag && rightValue
+  when either flag
+    answer = flag || rightValue
+  when choose flag
+    answer = flag ? yesValue : noValue
+  when nested
+    answer = (firstValue && secondValue) || (thirdValue || rightValue)
+  box class "action-probe"
+    text "{answer}"
+    button "Skip and" click both(false)
+    button "Skip or" click either(true)
+    button "Take and" click both(true)
+    button "Take or" click either(false)
+    button "Choose yes" click choose(true)
+    button "Choose no" click choose(false)
+    button "Nested" click nested
+
+make ProjectionProbe
+  let gate = true
+  let rightValue = "right"
+  let generatedValue = "generated"
+  get choice = gate || rightValue
+  when skip
+    gate = true
+  when take
+    gate = false
+  box class "projection-probe"
+    box class "derived-out"
+      text "{choice}"
+    box class "generated-out"
+      text "{gate || generatedValue}"
+    button "Skip projection" click skip
+    button "Take projection" click take
+
+page
+  box class "root-probe"
+    box class "root-out"
+      text "{answer}"
+    button "Skip and" click both(false)
+    button "Skip or" click either(true)
+    button "Take and" click both(true)
+    button "Take or" click either(false)
+    button "Choose yes" click choose(true)
+    button "Choose no" click choose(false)
+    button "Nested" click nested
+  ActionProbe
+  ProjectionProbe

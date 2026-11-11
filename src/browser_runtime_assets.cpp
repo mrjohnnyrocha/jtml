@@ -26,6 +26,15 @@ const char* browserRuntimePreludeChunk() {
         } catch (_) {}
       }
 
+      function attributeRuntimeFault(error, code, key) {
+        const site = window.__jtml_fault_sites?.[key];
+        if (site) {
+          error.code = code;
+          error.message = site + ': ' + code + ': ' + error.message;
+        }
+        return error;
+      }
+
       const clientState = {};
       const clientStatePlans = {};
       const clientDerived = {};
@@ -1856,7 +1865,9 @@ const char* browserRuntimeComponentChunk() {
         try {
           items = renderComponentForItems(definition, instance, node, scope);
           nextKeys = items.map(function (item) { return item.key; });
-          if (hasDuplicateStrings(nextKeys) || hasDuplicateStrings(previousKeys)) throw Error('Duplicate keyed row keys');
+          if (hasDuplicateStrings(nextKeys) || hasDuplicateStrings(previousKeys)) {
+            throw Object.assign(Error('Duplicate keyed row keys'), {code: 'E_DUPLICATE_KEYED_ROW'});
+          }
           const template = document.createElement('template');
           template.innerHTML = items.map(function (item) { return item.wrapperHtml; }).join('');
           desired = template.content;
@@ -1896,6 +1907,10 @@ const char* browserRuntimeComponentChunk() {
             (recoveryError ? '; recovery failed: ' + recoveryError.message : ''));
           failure.cause = error;
           failure.jtmlReconciliation = true;
+          if (error.code === 'E_DUPLICATE_KEYED_ROW') {
+            attributeRuntimeFault(failure, error.code, 'component:' + (definition.moduleId ?? 'global') +
+              ':' + definition.name + ':' + componentNodeIndex(definition, node));
+          }
           throw failure;
         }
         // Only a successful DOM commit may destroy omitted old identities.
@@ -3869,7 +3884,9 @@ const char* browserRuntimeComponentChunk() {
             if (!clientWrites.has(subscription.dependency)) continue;
             const value = clientState[subscription.dependency];
             if (!['number', 'string', 'boolean'].includes(typeof value))
-              throw Error('Root effect dependency ' + subscription.dependency + ' requires scalar writes; inspect its writers with jtml explain');
+              throw attributeRuntimeFault(
+                Error('Root effect dependency ' + subscription.dependency + ' requires scalar writes; inspect its writers with jtml explain'),
+                'E_EFFECT_SCALAR_WRITE', 'effect:' + clientSubscriptions.indexOf(subscription));
             runClientStatements(clientActions[subscription.action].body, undefined,
               window.jtml.browserBuild && window.jtml.browserBuild.cleanProduction ? actionReadScope([], {}) : clientState);
             applyClientDerived();

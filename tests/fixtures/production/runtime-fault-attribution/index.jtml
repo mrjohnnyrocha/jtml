@@ -1,0 +1,9 @@
+jtml 2
+use {Board, writeCount, watched, hits} from "./owners.jtml"
+
+page
+  box class "effect-out"
+    text "{watched}|{hits}"
+  button "Invalid write" click writeCount([1, 2])
+  button "Valid write" click writeCount(7)
+  Board

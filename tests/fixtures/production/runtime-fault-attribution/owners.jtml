@@ -1,0 +1,23 @@
+jtml 2
+
+export let watched = 0
+export let hits = 0
+
+effect watched
+  hits += 1
+
+export when writeCount value
+  watched = value
+
+export make Board
+  let items = ["a", "b"]
+  when duplicate
+    items = ["a", "a", "c"]
+  when repair
+    items = ["b", "a"]
+  box class "board"
+    box class "rows"
+      for item in items key item
+        text item
+    button "Duplicate" click duplicate
+    button "Repair" click repair

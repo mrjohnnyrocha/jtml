@@ -393,7 +393,7 @@ int cmdBuildBrowser(const Options& o) {
                     componentModuleAsset,
                     "browser component module output");
     writeBuildAsset(appFile,
-                    emitBrowserBuildAppBootstrap(buildMode),
+                    emitBrowserBuildAppBootstrap(buildMode) + emitBrowserFaultSites(runtimeProjectPlan, input),
                     "browser app bootstrap output");
     if (emitCompatibilityAsset) {
         writeBuildAsset(legacyUpdatePlanFile,

@@ -1101,9 +1101,8 @@ std::string jsExpressionPlanArgument(const nlohmann::json& plan) {
             !isDirectJsExpressionPlan(right)) {
             return plan.dump();
         }
-        return "(function(scope){ const left = " + jsExpressionPlanArgument(left) +
-               "(scope); const right = " + jsExpressionPlanArgument(right) +
-               "(scope); return left " + op + " right; })";
+        return "(function(scope){ return " + jsExpressionPlanArgument(left) +
+               "(scope) " + op + " " + jsExpressionPlanArgument(right) + "(scope); })";
     }
     if (kind == "conditional") {
         const auto test = plan.value("test", nlohmann::json::object());

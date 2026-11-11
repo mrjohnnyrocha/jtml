@@ -201,6 +201,9 @@ jobs:
       - name: Root scalar effects (browser required)
         run: node tests/browser/root_effects.cjs
 
+      - name: Original-source runtime fault attribution (browser required)
+        run: node tests/browser/runtime_fault_attribution.cjs
+
       - name: Input state synchronization (browser required)
         run: node tests/browser/input_state_sync.cjs
 

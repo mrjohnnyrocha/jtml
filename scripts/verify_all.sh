@@ -69,6 +69,7 @@ JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/component_redirect.cjs
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/root_action_redirect.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/enterprise_action_redirect.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/root_effects.cjs"
+JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/runtime_fault_attribution.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/input_state_sync.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/component_input_name.cjs"
 JTML_BIN="$build_dir/jtml" node "$repo_root/tests/browser/explicit_input.cjs"

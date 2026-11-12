@@ -1,7 +1,7 @@
 #include "browser_build.h"
 
 #include "browser_build_assets.h"
-#include "browser_build_policy.h"
+#include "browser_build_internal.h"
 #include "browser_build_schema.h"
 
 #include "jtml/browser_runtime_emitter.h"
@@ -305,8 +305,14 @@ jtml::RuntimeProjectPlan buildRuntimeProjectPlanForInput(
 }
 
 int cmdBuildBrowser(const Options& o) {
+    return detail::buildBrowser(o, BrowserCertification::Default);
+}
+
+int detail::buildBrowser(const Options& o, BrowserCertification certification) {
     if (o.inputFile.empty() || o.outputFile.empty()) usage();
     const auto buildMode = browserBuildModeFromOptions(o);
+    if (certification != BrowserCertification::Default && buildMode != BrowserBuildMode::Production)
+        throw std::runtime_error("Private certification requires a clean browser build");
 
     std::filesystem::path input = o.inputFile;
     const bool inputWasDirectory = std::filesystem::is_directory(input);
@@ -337,7 +343,7 @@ int cmdBuildBrowser(const Options& o) {
                                         browserBuildModeAllowsImportStubs(buildMode));
     if (buildMode == BrowserBuildMode::Production) {
         jtml::lowerBrowserScalarStorage(runtimeProjectPlan);
-        validateBrowserRuntimeBindingOwnership(runtimeProjectPlan);
+        validateBrowserRuntimeBindingOwnership(runtimeProjectPlan, certification);
     }
     transpiler.setRuntimeProjectPlan(runtimeProjectPlan);
 

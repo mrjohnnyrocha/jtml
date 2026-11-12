@@ -25,7 +25,13 @@ bool browserBuildModeEmitsCompatibilityAsset(BrowserBuildMode mode);
 bool browserBuildModeAllowsImportStubs(BrowserBuildMode mode);
 std::string emitBrowserBuildAppBootstrap(BrowserBuildMode mode);
 
-void validateBrowserRuntimeBindingOwnership(jtml::RuntimeProjectPlan& project);
+enum class BrowserCertification {
+    Default,
+    PrivateImportAuthority,
+};
+
+void validateBrowserRuntimeBindingOwnership(jtml::RuntimeProjectPlan& project,
+                                            BrowserCertification certification = BrowserCertification::Default);
 
 bool shouldCopyBrowserBuildAsset(const std::filesystem::path& rel);
 

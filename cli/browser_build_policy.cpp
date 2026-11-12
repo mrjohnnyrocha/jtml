@@ -1,4 +1,5 @@
 #include "browser_build_policy.h"
+#include "jtml/attribute_classifier.h"
 #include "jtml/browser_runtime_emitter.h"
 #include "jtml/expression_ir.h"
 
@@ -163,7 +164,9 @@ std::vector<std::string> planBrowserStateOrder(const jtml::RuntimeProjectPlan& p
 
 // Certify getter closures from retained module plans/import identities. The
 // resulting dependency-first order is shared by initialization and publication.
-std::vector<std::string> planBrowserDerivedOrder(jtml::RuntimeProjectPlan& project) {
+std::vector<std::string> planBrowserDerivedOrder(jtml::RuntimeProjectPlan& project,
+                                                 BrowserCertification certification) {
+    const bool privateAuthority = certification == BrowserCertification::PrivateImportAuthority;
     using Module = jtml::RuntimeModulePlan;
     using Binding = jtml::RuntimePlanBinding;
     struct Resolved { const Module* owner; const Binding* binding; bool derived; };
@@ -260,6 +263,64 @@ std::vector<std::string> planBrowserDerivedOrder(jtml::RuntimeProjectPlan& proje
     };
     for (const auto& entry : modules) {
         const auto& module = *entry.second;
+        if (privateAuthority && (module.syntax != "friendly" || !module.initializationSideEffects.empty()))
+            throw std::runtime_error(module.path +
+                ": E_STRICT_IMPORT_FORM: private certification requires Friendly named imports");
+        if (privateAuthority) {
+            auto checkDispatch = [&](const std::string& name, const SourceSpan& span) {
+                for (const auto& entry : modules) {
+                    const auto* owner = entry.second;
+                    if (owner->id == module.id || std::none_of(owner->plan.actions.begin(), owner->plan.actions.end(),
+                        [&](const auto& action) { return action.name == name; })) continue;
+                    const bool imported = std::any_of(module.importedSymbols.begin(), module.importedSymbols.end(),
+                        [&](const auto& symbol) {
+                            return symbol.module == owner->id && symbol.name == name && symbol.kind == "when";
+                        });
+                    if (!imported)
+                        throw std::runtime_error(location(module, span) +
+                            ": E_ACTION_AUTHORITY: foreign action `" + name + "` must be explicitly imported from its public export");
+                }
+            };
+            // Certify authored markup in its own module, rather than the
+            // flattened dispatch table, which also contains private actions.
+            std::function<void(const std::vector<std::unique_ptr<ASTNode>>&)> markup =
+                [&](const auto& nodes) {
+                    for (const auto& node : nodes) {
+                        if (node->getType() == ASTNodeType::JtmlElement) {
+                            const auto& element = static_cast<const JtmlElementNode&>(*node);
+                            for (const auto& attr : element.attributes) {
+                                if (!attr.value || classifyJtmlAttribute(attr).kind != JtmlAttributeKind::Event) continue;
+                                const auto& value = *attr.value;
+                                const auto& span = value.sourceSpan.original ? value.sourceSpan : node->sourceSpan;
+                                if (value.getExprType() == ExpressionStatementNodeType::FunctionCall)
+                                    checkDispatch(static_cast<const FunctionCallExpressionStatementNode&>(value).functionName, span);
+                                else if (value.getExprType() == ExpressionStatementNodeType::Variable)
+                                    checkDispatch(static_cast<const VariableExpressionStatementNode&>(value).name, span);
+                            }
+                            markup(element.content);
+                        } else if (node->getType() == ASTNodeType::IfStatement) {
+                            const auto& branch = static_cast<const IfStatementNode&>(*node);
+                            markup(branch.thenStatements);
+                            markup(branch.elseStatements);
+                        } else if (node->getType() == ASTNodeType::ForStatement) {
+                            markup(static_cast<const ForStatementNode&>(*node).body);
+                        } else if (node->getType() == ASTNodeType::WhileStatement) {
+                            markup(static_cast<const WhileStatementNode&>(*node).body);
+                        } else if (node->getType() == ASTNodeType::BlockStatement) {
+                            markup(static_cast<const BlockStatementNode&>(*node).statements);
+                        }
+                    }
+                };
+            if (module.ast) markup(module.ast->nodes);
+            for (const auto& definition : module.plan.componentDefinitions) {
+                for (const auto& binding : definition.eventBindings) {
+                    const auto name = binding.substr(0, binding.find('('));
+                    if (std::find(definition.localActions.begin(), definition.localActions.end(), name) == definition.localActions.end() &&
+                        std::find(definition.emits.begin(), definition.emits.end(), name) == definition.emits.end())
+                        checkDispatch(name, definition.bodyPlan.empty() ? SourceSpan{} : definition.bodyPlan.front().sourceSpan);
+                }
+            }
+        }
         std::vector<const Module*> wholeFileScopes;
         std::set<jtml::SemanticModuleId> seen{module.id};
         std::function<void(const Module&)> collectWholeFileScopes = [&](const Module& scope) {
@@ -347,12 +408,26 @@ std::vector<std::string> planBrowserDerivedOrder(jtml::RuntimeProjectPlan& proje
                 const auto& name = root->root;
                 if (name == "__proto__")
                     rejectDestination(statement.sourceSpan, "E_UNRESOLVED", "writes reserved binding `" + name + "`");
-                if (!statement.localBinding.empty() || scope.count(name)) return;
+                const bool structured = root != destination.get() || root->segments.size() > 1;
+                auto rejectUnprovedMutation = [&] {
+                    if (privateAuthority && structured)
+                        rejectDestination(statement.sourceSpan, "E_STRICT_WRITE_FORM",
+                            "cannot prove ownership for structured assignment to `" + name + "`");
+                };
+                if (!statement.localBinding.empty() || scope.count(name)) {
+                    rejectUnprovedMutation();
+                    return;
+                }
                 const auto target = resolveActionRoot(name);
                 if (!target.owner)
                     rejectDestination(statement.sourceSpan, "E_UNRESOLVED", "writes unresolved or unimported binding `" + name + "`");
-                if (target.binding && (target.derived || target.binding->isConst || ambiguous(target)))
+                if ((privateAuthority && !target.binding) ||
+                    (target.binding && (target.derived || target.binding->isConst || ambiguous(target))))
                     rejectDestination(statement.sourceSpan, "E_NOT_WRITABLE", "requires a writable destination for `" + name + "`");
+                if (privateAuthority && target.owner->id != module.id)
+                    rejectDestination(statement.sourceSpan, "E_IMPORT_WRITE", "cannot write imported binding `" + name +
+                        "` owned by " + target.owner->path + "; dispatch an exported action of its defining module");
+                rejectUnprovedMutation();
             };
             std::function<void(const std::vector<jtml::RuntimePlanStatement>&, Scope)> walk =
                 [&](const auto& statements, Scope scope) {
@@ -579,7 +654,8 @@ std::string emitBrowserBuildAppBootstrap(BrowserBuildMode mode) {
 
 // Validate retained executable module records, never the duplicate linked projection.
 // Values share clientState; actions and fetch refresh aliases share event dispatch.
-void validateBrowserRuntimeBindingOwnership(jtml::RuntimeProjectPlan& project) {
+void validateBrowserRuntimeBindingOwnership(jtml::RuntimeProjectPlan& project,
+                                            BrowserCertification certification) {
     struct Owner {
         jtml::SemanticModuleId module;
         std::string category;
@@ -629,7 +705,7 @@ void validateBrowserRuntimeBindingOwnership(jtml::RuntimeProjectPlan& project) {
         throw std::runtime_error(message.str());
     }
     project.stateOrder = planBrowserStateOrder(project);
-    project.derivedOrder = planBrowserDerivedOrder(project);
+    project.derivedOrder = planBrowserDerivedOrder(project, certification);
 }
 
 bool shouldCopyBrowserBuildAsset(const std::filesystem::path& rel) {

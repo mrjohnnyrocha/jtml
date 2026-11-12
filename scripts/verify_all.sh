@@ -85,6 +85,7 @@ JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_keyed_lifecycle.sh"
 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_local_server_security.sh"
 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_async_runtime.sh"
 JTML_BIN="$build_dir/jtml" "$repo_root/scripts/test_literal_fidelity.sh"
+BUILD_DIR="$build_dir" "$repo_root/scripts/test_browser_local_runtime.sh"
 
 tmp_pkg_root="$(mktemp -d "${TMPDIR:-/tmp}/jtml-package.XXXXXX")"
 mkdir -p "$tmp_pkg_root/shared" "$tmp_pkg_root/app"

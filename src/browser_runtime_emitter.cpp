@@ -1,6 +1,6 @@
 #include "jtml/browser_runtime_emitter.h"
 
-#include "jtml/browser_runtime_assets.h"
+#include "browser_runtime_internal.h"
 
 #include <cstring>
 #include <string>
@@ -25,8 +25,7 @@ std::string parameterizeRuntime(std::string script,
     return script;
 }
 
-std::string assembleRuntimeChunks() {
-    const auto chunks = browserRuntimeAssetChunks();
+std::string assembleRuntimeChunks(const BrowserRuntimeAssetChunks& chunks) {
     std::size_t size = 0;
     for (const auto& chunk : chunks) {
         size += std::strlen(chunk.source);
@@ -76,7 +75,7 @@ std::string emitBrowserRuntimeScript(int webSocketPort,
     // giant emitter literal. Keep this function as the stable C++ API that
     // parameterizes the runtime for live WebSocket and browser-local modes.
     return "<script>\n" +
-        parameterizeRuntime(assembleRuntimeChunks(), webSocketPort, browserLocalRuntime) +
+        parameterizeRuntime(assembleRuntimeChunks(browserRuntimeAssetChunks()), webSocketPort, browserLocalRuntime) +
         (browserLocalRuntime ? emitBrowserRootEventBindings() : "") +
         "\n</script>";
 }
@@ -86,7 +85,13 @@ std::string emitBrowserRuntimeExternalAsset(int webSocketPort,
     // Split browser builds load jtml-runtime.js as a normal external script.
     // Asset chunks are authored as JavaScript, while emitBrowserRuntimeScript()
     // adds wrappers only for inline transpile/live paths.
-    return parameterizeRuntime(assembleRuntimeChunks(), webSocketPort, browserLocalRuntime);
+    return parameterizeRuntime(assembleRuntimeChunks(browserRuntimeAssetChunks()), webSocketPort, browserLocalRuntime);
+}
+
+std::string detail::emitBrowserLocalRuntimeAsset() {
+    auto script = assembleRuntimeChunks(browserLocalRuntimeAssetChunks());
+    replaceAll(script, "@JTML_BROWSER_LOCAL_RUNTIME@", "true");
+    return script;
 }
 
 } // namespace jtml

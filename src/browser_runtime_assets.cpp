@@ -1,15 +1,30 @@
-#include "jtml/browser_runtime_assets.h"
+#include "browser_runtime_internal.h"
 
-#include <array>
+#include <initializer_list>
 
 namespace jtml {
 namespace {
 
-const char* browserRuntimePreludeChunk() {
-    return R"JTR0(
+struct RuntimeFragment {
+    const char* source;
+    bool liveOnly = false;
+};
+
+// Keep the full runtime's original concatenation. Only authored live
+// transport fragments are skipped by the browser-local test emitter.
+std::string assembleChunk(bool includeLive, std::initializer_list<RuntimeFragment> fragments) {
+    std::string result;
+    for (const auto& fragment : fragments) {
+        if (includeLive || !fragment.liveOnly) result += fragment.source;
+    }
+    return result;
+}
+
+std::string browserRuntimePreludeChunk(bool includeLive) {
+    return assembleChunk(includeLive, {{R"JTR0(
     (function () {
-      const wsPort = @JTML_WS_PORT@;
-      const browserLocalRuntime = @JTML_BROWSER_LOCAL_RUNTIME@;
+)JTR0"}, {R"JTR0(      const wsPort = @JTML_WS_PORT@;
+)JTR0", true}, {R"JTR0(      const browserLocalRuntime = @JTML_BROWSER_LOCAL_RUNTIME@;
 
       function reportStatus(state, message) {
         document.documentElement.dataset.jtmlStatus = state;
@@ -1413,11 +1428,11 @@ const char* browserRuntimePreludeChunk() {
         return handlers;
       }
 
-)JTR0";
+)JTR0"}});
 }
 
-const char* browserRuntimeComponentChunk() {
-    return R"JTR1(      function nestedComponentDefinitionForNode(parentDefinition, parentInstance, node, name) {
+std::string browserRuntimeComponentChunk(bool includeLive) {
+    return assembleChunk(includeLive, {{R"JTR1(      function nestedComponentDefinitionForNode(parentDefinition, parentInstance, node, name) {
         return componentDefinitionForName(
           name,
           node && node.definitionModule != null
@@ -3148,7 +3163,7 @@ const char* browserRuntimeComponentChunk() {
         return executeClientAction(name, args) || redirect(name);
       }
 
-      async function runLiveComponentAction(componentId, actionName, args) {
+)JTR1"}, {R"JTR1(      async function runLiveComponentAction(componentId, actionName, args) {
         if (browserLocalRuntime || !componentId || !actionName) return false;
         try {
           const res = await fetch('/api/component-action', {
@@ -3177,7 +3192,7 @@ const char* browserRuntimeComponentChunk() {
         }
       }
 
-      function startDirectComponentBindings() {
+)JTR1", true}, {R"JTR1(      function startDirectComponentBindings() {
         if (document.documentElement.dataset.jtmlDirectComponentBindings === 'true') return;
         document.documentElement.dataset.jtmlDirectComponentBindings = 'true';
         document.addEventListener('click', async function (event) {
@@ -3193,10 +3208,10 @@ const char* browserRuntimeComponentChunk() {
             args = [];
           }
           const active = document.activeElement, focusScope = button.closest('[data-jtml-focus-after-removal]');
-          const handled = browserLocalRuntime
-            ? (runDirectComponentAction(componentId, actionName, args) ||
-               runDirectComponentFallbackAction(componentId, actionName, args))
-            : await runLiveComponentAction(componentId, actionName, args);
+          const handled = )JTR1"}, {R"JTR1(browserLocalRuntime
+            ? )JTR1", true}, {R"JTR1((runDirectComponentAction(componentId, actionName, args) ||
+               runDirectComponentFallbackAction(componentId, actionName, args)))JTR1"}, {R"JTR1(
+            : await runLiveComponentAction(componentId, actionName, args))JTR1", true}, {R"JTR1(;
           if (handled) {
             if (browserLocalRuntime && active && !active.isConnected) {
               const target = button.isConnected ? button : focusScope && focusScope.querySelector(focusScope.dataset.jtmlFocusAfterRemoval);
@@ -3224,10 +3239,10 @@ const char* browserRuntimeComponentChunk() {
           } catch (_) {
             args = [];
           }
-          const handled = browserLocalRuntime
-            ? (runDirectComponentAction(componentId, actionName, args) ||
-               runDirectComponentFallbackAction(componentId, actionName, args))
-            : await runLiveComponentAction(componentId, actionName, args);
+          const handled = )JTR1"}, {R"JTR1(browserLocalRuntime
+            ? )JTR1", true}, {R"JTR1((runDirectComponentAction(componentId, actionName, args) ||
+               runDirectComponentFallbackAction(componentId, actionName, args)))JTR1"}, {R"JTR1(
+            : await runLiveComponentAction(componentId, actionName, args))JTR1", true}, {R"JTR1(;
           if (handled) event.stopPropagation();
         });
         document.addEventListener('input', function (event) {
@@ -4382,11 +4397,11 @@ const char* browserRuntimeComponentChunk() {
         if (!lazy) __jtml_fetch_fns[name](false);
       }
 
-)JTR1";
+)JTR1"}});
 }
 
-const char* browserRuntimeDataPlatformChunk() {
-    return R"JTR2(      function startFetchBindings() {
+std::string browserRuntimeDataPlatformChunk(bool includeLive) {
+    return assembleChunk(includeLive, {{R"JTR2(      function startFetchBindings() {
         const manifestFetches = (window.jtml && Array.isArray(window.jtml.fetchManifest))
           ? window.jtml.fetchManifest
           : [];
@@ -4465,7 +4480,7 @@ const char* browserRuntimeDataPlatformChunk() {
         if (__jtml_router_ready) applyRoutes();
       }
 
-      function jtmlStableHash(value) {
+)JTR2"}, {R"JTR2(      function jtmlStableHash(value) {
         value = String(value == null ? '' : value);
         let hash = 2166136261;
         const bytes = typeof TextEncoder !== 'undefined'
@@ -4568,7 +4583,7 @@ const char* browserRuntimeDataPlatformChunk() {
         }
       }
 
-      function applyAttribute(el, attr, value) {
+)JTR2", true}, {R"JTR2(      function applyAttribute(el, attr, value) {
         el.setAttribute(attr, value);
           if (attr === 'value' && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
           el.value = value;
@@ -5611,11 +5626,11 @@ const char* browserRuntimeDataPlatformChunk() {
         });
       }
 
-)JTR2";
+)JTR2"}});
 }
 
-const char* browserRuntimeBootTransportChunk() {
-    return R"JTR3(      function applyInitial() {
+std::string browserRuntimeBootTransportChunk(bool includeLive) {
+    return assembleChunk(includeLive, {{R"JTR3(      function applyInitial() {
         bootstrapClientManifest();
         if (window.__jtml_bindings) applyBindings(window.__jtml_bindings);
         scanComponentInstances();
@@ -5636,8 +5651,8 @@ const char* browserRuntimeBootTransportChunk() {
         processImageBindings();
         applyClientState();
         applyRoutes();
-        refreshLiveBodyPlanRender();
-      }
+)JTR3"}, {R"JTR3(        refreshLiveBodyPlanRender();
+)JTR3", true}, {R"JTR3(      }
       if (document.readyState === 'loading' ||
           (document.readyState === 'interactive' && document.currentScript && document.currentScript.defer)) {
         document.addEventListener('DOMContentLoaded', applyInitial);
@@ -5645,10 +5660,10 @@ const char* browserRuntimeBootTransportChunk() {
         applyInitial();
       }
 
-      let ws = null;
+)JTR3"}, {R"JTR3(      let ws = null;
       if (browserLocalRuntime) {
-        reportStatus('browser-local', 'Browser-local runtime active');
-      } else {
+)JTR3", true}, {R"JTR3(        reportStatus('browser-local', 'Browser-local runtime active');
+)JTR3"}, {R"JTR3(      } else {
         try {
           const host = location.hostname || 'localhost';
           ws = new WebSocket('ws://' + host + ':' + wsPort);
@@ -5680,12 +5695,12 @@ const char* browserRuntimeBootTransportChunk() {
         }
       }
 
-      window.sendEvent = async function (elementId, eventType, args) {
+)JTR3", true}, {R"JTR3(      window.sendEvent = async function (elementId, eventType, args) {
         args = args || [];
         const action = parseActionCall(args[0] || '');
         const fnName = action.name;
-        if (!browserLocalRuntime && redirect(fnName)) return;
-        if (fnName && __jtml_refresh_fns[fnName]) {
+)JTR3"}, {R"JTR3(        if (!browserLocalRuntime && redirect(fnName)) return;
+)JTR3", true}, {R"JTR3(        if (fnName && __jtml_refresh_fns[fnName]) {
           await __jtml_refresh_fns[fnName]();
           return;
         }
@@ -5705,7 +5720,7 @@ const char* browserRuntimeBootTransportChunk() {
           reportStatus('error', 'No browser-local action named: ' + (fnName || '(unknown)'));
           return;
         }
-        try {
+)JTR3"}, {R"JTR3(        try {
           const res = await fetch('/api/event', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -5721,7 +5736,7 @@ const char* browserRuntimeBootTransportChunk() {
           reportStatus('error', err && err.message ? err.message : 'event dispatch failed');
           console.error('[jtml] event dispatch failed:', err);
         }
-      };
+)JTR3", true}, {R"JTR3(      };
 
       function normalizeRoute(path) {
         if (!path || path === '#') return '/';
@@ -5831,18 +5846,31 @@ const char* browserRuntimeBootTransportChunk() {
 
       window.addEventListener('hashchange', applyRoutes);
     })();
-)JTR3";
+)JTR3"}});
+}
+
+template <bool IncludeLive>
+BrowserRuntimeAssetChunks runtimeAssetChunks() {
+    static const auto prelude = browserRuntimePreludeChunk(IncludeLive);
+    static const auto components = browserRuntimeComponentChunk(IncludeLive);
+    static const auto platform = browserRuntimeDataPlatformChunk(IncludeLive);
+    static const auto boot = browserRuntimeBootTransportChunk(IncludeLive);
+    return {{
+        {"prelude", prelude.c_str()},
+        {"components", components.c_str()},
+        {"data-platform", platform.c_str()},
+        {"boot-transport", boot.c_str()},
+    }};
 }
 
 } // namespace
 
 BrowserRuntimeAssetChunks browserRuntimeAssetChunks() {
-    return {{
-        {"prelude", browserRuntimePreludeChunk()},
-        {"components", browserRuntimeComponentChunk()},
-        {"data-platform", browserRuntimeDataPlatformChunk()},
-        {"boot-transport", browserRuntimeBootTransportChunk()},
-    }};
+    return runtimeAssetChunks<true>();
+}
+
+BrowserRuntimeAssetChunks detail::browserLocalRuntimeAssetChunks() {
+    return runtimeAssetChunks<false>();
 }
 
 } // namespace jtml

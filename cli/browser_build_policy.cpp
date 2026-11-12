@@ -267,19 +267,59 @@ std::vector<std::string> planBrowserDerivedOrder(jtml::RuntimeProjectPlan& proje
             throw std::runtime_error(module.path +
                 ": E_STRICT_IMPORT_FORM: private certification requires Friendly named imports");
         if (privateAuthority) {
-            auto checkDispatch = [&](const std::string& name, const SourceSpan& span) {
-                for (const auto& entry : modules) {
-                    const auto* owner = entry.second;
-                    if (owner->id == module.id || std::none_of(owner->plan.actions.begin(), owner->plan.actions.end(),
-                        [&](const auto& action) { return action.name == name; })) continue;
-                    const bool imported = std::any_of(module.importedSymbols.begin(), module.importedSymbols.end(),
-                        [&](const auto& symbol) {
-                            return symbol.module == owner->id && symbol.name == name && symbol.kind == "when";
-                        });
-                    if (!imported)
-                        throw std::runtime_error(location(module, span) +
-                            ": E_ACTION_AUTHORITY: foreign action `" + name + "` must be explicitly imported from its public export");
+            auto componentEventSite = [](const auto& node, const std::string& name) -> SourceSpan {
+                if (node.kind != "template" || !node.sourceSpan.original) return {};
+                const auto words = jtml::splitFriendlyWords(node.text);
+                for (size_t i = 1; i + 1 < words.size(); ++i)
+                    if (jtml::isFriendlyEventWord(words[i]) &&
+                        words[i + 1].substr(0, words[i + 1].find('(')) == name)
+                        return node.sourceSpan;
+                return {};
+            };
+            auto isLoweredLocalEvent = [&](const std::string& name, const SourceSpan& span) {
+                if (!span.original) return false;
+                const auto& event = *span.original;
+                const auto line = event.source->coordinates(event.begin).first;
+                for (const auto& instance : module.plan.componentInstances) {
+                    if (instance.definitionModule != module.id) continue;
+                    for (const auto& binding : instance.locals) {
+                        if (binding.value != name) continue;
+                        for (const auto& definition : module.plan.componentDefinitions) {
+                            if (definition.name != instance.component ||
+                                std::find(definition.localActions.begin(), definition.localActions.end(), binding.name) ==
+                                    definition.localActions.end()) continue;
+                            for (const auto& node : definition.bodyPlan) {
+                                const auto site = componentEventSite(node, binding.name);
+                                if (site.original && site.original->source->file == event.source->file &&
+                                    site.original->source->coordinates(site.original->begin).first == line)
+                                    return true;
+                            }
+                        }
+                    }
                 }
+                return false;
+            };
+            auto checkDispatch = [&](const std::string& name, const SourceSpan& span) {
+                const auto actionCount = [&](const Module& owner) {
+                    return std::count_if(owner.plan.actions.begin(), owner.plan.actions.end(),
+                        [&](const auto& action) { return action.name == name; });
+                };
+                // The public flat-dispatch collision check has already run.
+                // Resolve lexically, using only this module's explicit import edges.
+                const auto localCount = actionCount(module);
+                if (localCount == 1 || (localCount == 0 && isLoweredLocalEvent(name, span))) return;
+                std::set<jtml::SemanticModuleId> importedOwners;
+                for (const auto& symbol : module.importedSymbols) {
+                    if (symbol.name == name && (symbol.kind == "when" || symbol.kind == "action"))
+                        importedOwners.insert(symbol.module);
+                }
+                if (localCount == 0 && importedOwners.size() == 1) {
+                    const auto owner = modules.find(*importedOwners.begin());
+                    if (owner != modules.end() && actionCount(*owner->second) == 1) return;
+                }
+                throw std::runtime_error(location(module, span) +
+                    ": E_ACTION_AUTHORITY: action `" + name + "` must resolve to a local declaration "
+                    "or one explicitly imported public action");
             };
             // Certify authored markup in its own module, rather than the
             // flattened dispatch table, which also contains private actions.
@@ -296,6 +336,9 @@ std::vector<std::string> planBrowserDerivedOrder(jtml::RuntimeProjectPlan& proje
                                     checkDispatch(static_cast<const FunctionCallExpressionStatementNode&>(value).functionName, span);
                                 else if (value.getExprType() == ExpressionStatementNodeType::Variable)
                                     checkDispatch(static_cast<const VariableExpressionStatementNode&>(value).name, span);
+                                else
+                                    throw std::runtime_error(location(module, span) +
+                                        ": E_ACTION_AUTHORITY: event requires a statically named action");
                             }
                             markup(element.content);
                         } else if (node->getType() == ASTNodeType::IfStatement) {
@@ -315,9 +358,17 @@ std::vector<std::string> planBrowserDerivedOrder(jtml::RuntimeProjectPlan& proje
             for (const auto& definition : module.plan.componentDefinitions) {
                 for (const auto& binding : definition.eventBindings) {
                     const auto name = binding.substr(0, binding.find('('));
-                    if (std::find(definition.localActions.begin(), definition.localActions.end(), name) == definition.localActions.end() &&
-                        std::find(definition.emits.begin(), definition.emits.end(), name) == definition.emits.end())
-                        checkDispatch(name, definition.bodyPlan.empty() ? SourceSpan{} : definition.bodyPlan.front().sourceSpan);
+                    if (std::find(definition.localActions.begin(), definition.localActions.end(), name) != definition.localActions.end() ||
+                        std::find(definition.emits.begin(), definition.emits.end(), name) != definition.emits.end()) continue;
+
+                    // The event summary has no span. Use the actual event's
+                    // element only if it has an original source mapping.
+                    SourceSpan site;
+                    for (const auto& node : definition.bodyPlan) {
+                        site = componentEventSite(node, name);
+                        if (site.original) break;
+                    }
+                    checkDispatch(name, site);
                 }
             }
         }

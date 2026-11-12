@@ -160,6 +160,61 @@ page
       assert.equal(await view(page), '7');
       assert.equal(await page.evaluate(() => jtml.state.seed), 7);
     });
+    const localCollision = fixture('local-action-collision', {
+      'index.jtml': 'jtml 2\nuse seed from "./foreign.jtml"\nwhen step\n  show 11\npage\n  button "Step" click step\n',
+      'foreign.jtml': 'jtml 2\nexport let seed = 7\nexport when step\n  show 99\n'
+    });
+    // Both owners are lexical declarations, but the existing clean emitter
+    // cannot keep two executable root actions with the same dispatch key.
+    const collision = /browser runtime binding collision `step`/;
+    const ordinaryCollision = compile(localCollision, path.join(work, 'public-local-action-collision'), false);
+    assert.notEqual(ordinaryCollision.status, 0);
+    assert.match(ordinaryCollision.stderr, collision);
+    reject(localCollision, 'strict-local-action-collision', collision);
+
+    for (const [id, imports] of [
+      ['no-action-import', 'use seed from "./first.jtml"\nuse other from "./second.jtml"'],
+      ['one-action-import', 'use {seed, step} from "./first.jtml"\nuse other from "./second.jtml"'],
+      ['two-action-imports', 'use {seed, step} from "./first.jtml"\nuse {other, step} from "./second.jtml"']
+    ]) {
+      const dir = fixture(id, {
+        'index.jtml': `jtml 2\n${imports}\npage\n  button "Step" click step\n`,
+        'first.jtml': 'jtml 2\nexport let seed = 7\nexport when step\n  show 11\n',
+        'second.jtml': 'jtml 2\nexport let other = 8\nexport when step\n  show 99\n'
+      });
+      reject(dir, 'strict-' + id, /collision `step`|(?:duplicate|ambiguous).*step/i);
+    }
+
+    const componentLocal = fixture('component-local-action', {
+      'index.jtml': `jtml 2
+use seed from "./foreign.jtml"
+make Probe
+  let count = 0
+  when step
+    count += 1
+  box class "out"
+    text count
+    button "Step" click step
+page
+  if seed > 0
+    Probe
+`,
+      'foreign.jtml': 'jtml 2\nexport let seed = 7\nexport when step\n  show 99\n'
+    });
+    await open(browser, accept(componentLocal, 'strict-component-local-action', true), async (page, shows) => {
+      assert.ok(await page.getByRole('button', {name: 'Step', exact: true})
+        .getAttribute('data-jtml-direct-component-action'));
+      await step(page);
+      assert.deepEqual(shows, []);
+      assert.match(await view(page), /^1/);
+      assert.equal(await page.evaluate(() =>
+        jtml.getComponentInstances().find(instance => instance.component === 'Probe').scope.count), 1);
+      console.log('Component-local step updates Probe while foreign root step is not dispatched');
+    });
+    const componentSource = path.join(componentLocal, 'index.jtml');
+    fs.appendFileSync(componentSource, '  button "Guessed" click __Probe_1_step\n');
+    reject(componentLocal, 'strict-forged-component-target', /index\.jtml:\d+:3: E_ACTION_AUTHORITY:.*__Probe_1_step/);
+
     for (const [name, use, body, code, line, col, spelling] of [
       ['compound', 'use seed from "./owner.jtml"', '  seed += 1', 'E_IMPORT_WRITE', 4, 3, 'seed'],
       ['reexport', 'use seed from "./barrel.jtml"', '  seed = 9', 'E_IMPORT_WRITE', 4, 3, 'seed'],
@@ -179,7 +234,7 @@ page
     }
     reject(write('alias', 'use seed as alias from "./owner.jtml"', '  show alias'),
       'reject-alias', /export|import/i);
-    for (const action of ['hiddenAction', 'advance']) {
+    for (const action of ['hiddenAction', 'advance', 'missingAction']) {
       const dir = make('without-' + action, `use seed from "./owner.jtml"
 page
   button "Step" click ${action}(2)
@@ -188,11 +243,12 @@ page
     }
     const component = make('component-dispatch', `use {seed, hits} from "./owner.jtml"
 make Probe
-  button "Step" click hiddenAction(2)
+  box
+    button "Step" click hiddenAction(2)
 page
   Probe
 `);
-    reject(component, 'reject-component-dispatch', /index\.jtml:\d+:\d+: E_ACTION_AUTHORITY:.*hiddenAction/);
+    reject(component, 'reject-component-dispatch', /index\.jtml:5:5: E_ACTION_AUTHORITY:.*hiddenAction/);
     console.log('PASS strict V22, owner action dispatch, lexical isolation, and default V22');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {

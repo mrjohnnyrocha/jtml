@@ -1196,7 +1196,7 @@ std::string browserRuntimePreludeChunk(bool includeLive) {
         if (plan.kind === 'unary' && (plan.operator === '!' || plan.operator === '-')) {
           const argument = evaluateCompiledComponentExpressionResult(plan.argument, '', scope);
           return argument.found
-            ? { found: true, value: plan.operator === '!' ? !argument.value : -argument.value }
+            ? { found: true, value: plan.operator === '!' ? !argument.value : )JTR0"}, privateOnly(R"JTR0(privateFinite()JTR0"), {R"JTR0(-argument.value)JTR0"}, privateOnly(R"JTR0(, "-"))JTR0"), {R"JTR0( }
             : evaluateClientExpression(plan.source || fallbackExpr || '', scope);
         }
         if (plan.kind === 'binary') {
@@ -1216,11 +1216,11 @@ std::string browserRuntimePreludeChunk(bool includeLive) {
             case '>=': return { found: true, value: left.value >= right.value };
             case '<': return { found: true, value: left.value < right.value };
             case '>': return { found: true, value: left.value > right.value };
-            case '+': return { found: true, value: left.value + right.value };
-            case '-': return { found: true, value: left.value - right.value };
-            case '*': return { found: true, value: left.value * right.value };
-            case '/': return { found: true, value: left.value / right.value };
-            case '%': return { found: true, value: left.value % right.value };
+            case '+': return { found: true, value: )JTR0"}, privateOnly(R"JTR0(privateFinite()JTR0"), {R"JTR0(left.value + right.value)JTR0"}, privateOnly(R"JTR0(, '+'))JTR0"), {R"JTR0( };
+            case '-': return { found: true, value: )JTR0"}, privateOnly(R"JTR0(privateFinite()JTR0"), {R"JTR0(left.value - right.value)JTR0"}, privateOnly(R"JTR0(, '-'))JTR0"), {R"JTR0( };
+            case '*': return { found: true, value: )JTR0"}, privateOnly(R"JTR0(privateFinite()JTR0"), {R"JTR0(left.value * right.value)JTR0"}, privateOnly(R"JTR0(, '*'))JTR0"), {R"JTR0( };
+            case '/': return { found: true, value: )JTR0"}, privateOnly(R"JTR0(privateFinite()JTR0"), {R"JTR0(left.value / right.value)JTR0"}, privateOnly(R"JTR0(, '/'))JTR0"), {R"JTR0( };
+            case '%': return { found: true, value: )JTR0"}, privateOnly(R"JTR0(privateFinite()JTR0"), {R"JTR0(left.value % right.value)JTR0"}, privateOnly(R"JTR0(, '%'))JTR0"), {R"JTR0( };
           }
         }
         if (plan.kind === 'conditional') {
@@ -2820,7 +2820,8 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
         else if (op === '/=') assigned = Number(current || 0) / Number(next);
         else if (op === '%=') assigned = Number(current || 0) % Number(next);
         else return false;
-        if (isPathAssignment) {
+)JTR1"}, privateOnly(R"JTR1(        if (op !== '=') privateFinite(assigned, op);
+)JTR1"), {R"JTR1(        if (isPathAssignment) {
           if (!Object.prototype.hasOwnProperty.call(scope, targetParts[0]) ||
               scope[targetParts[0]] == null) {
             scope[targetParts[0]] = typeof targetParts[1] === 'number' ? [] : {};
@@ -3756,19 +3757,19 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
         if (minusParts.length === 2) {
           const left = evaluateClientExpression(minusParts[0], scope);
           const right = evaluateClientExpression(minusParts[1], scope);
-          if (left.found && right.found) return { found: true, value: Number(left.value) - Number(right.value) };
+          if (left.found && right.found) return { found: true, value: )JTR1"}, privateOnly(R"JTR1(privateFinite()JTR1"), {R"JTR1(Number(left.value) - Number(right.value))JTR1"}, privateOnly(R"JTR1(, '-'))JTR1"), {R"JTR1( };
         }
         const multiplyParts = splitTopLevelToken(expr, '*');
         if (multiplyParts.length === 2) {
           const left = evaluateClientExpression(multiplyParts[0], scope);
           const right = evaluateClientExpression(multiplyParts[1], scope);
-          if (left.found && right.found) return { found: true, value: Number(left.value) * Number(right.value) };
+          if (left.found && right.found) return { found: true, value: )JTR1"}, privateOnly(R"JTR1(privateFinite()JTR1"), {R"JTR1(Number(left.value) * Number(right.value))JTR1"}, privateOnly(R"JTR1(, '*'))JTR1"), {R"JTR1( };
         }
         const divideParts = splitTopLevelToken(expr, '/');
         if (divideParts.length === 2) {
           const left = evaluateClientExpression(divideParts[0], scope);
           const right = evaluateClientExpression(divideParts[1], scope);
-          if (left.found && right.found) return { found: true, value: Number(left.value) / Number(right.value) };
+          if (left.found && right.found) return { found: true, value: )JTR1"}, privateOnly(R"JTR1(privateFinite()JTR1"), {R"JTR1(Number(left.value) / Number(right.value))JTR1"}, privateOnly(R"JTR1(, '/'))JTR1"), {R"JTR1( };
         }
         if (expr === 'true') return { found: true, value: true };
         if (expr === 'false') return { found: true, value: false };
@@ -3924,9 +3925,15 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
               throw attributeRuntimeFault(
                 Error('Root effect dependency ' + subscription.dependency + ' requires scalar writes; inspect its writers with jtml explain'),
                 'E_EFFECT_SCALAR_WRITE', 'effect:' + clientSubscriptions.indexOf(subscription));
-            runClientStatements(clientActions[subscription.action].body, undefined,
+)JTR1"}, privateOnly(R"JTR1(            try {
+)JTR1"), {R"JTR1(            runClientStatements(clientActions[subscription.action].body, undefined,
               window.jtml.browserBuild && window.jtml.browserBuild.cleanProduction ? actionReadScope([], {}) : clientState);
-            applyClientDerived();
+)JTR1"}, privateOnly(R"JTR1(            } catch (error) {
+              if (error?.code === 'E_NON_FINITE_ARITHMETIC' && !error.site)
+                attributeRuntimeFault(error, error.code, 'effect:' + clientSubscriptions.indexOf(subscription));
+              throw error;
+            }
+)JTR1"), {R"JTR1(            applyClientDerived();
 )JTR1"}, privateOnly(R"JTR1(            });
 )JTR1"), {R"JTR1(          }
         } finally { clientWrites.clear(); }
@@ -5744,6 +5751,14 @@ std::string browserRuntimeBootTransportChunk(bool includeLive) {
 
       let privateFetchPublishing = false;
       const privateFetchTimeouts = new Map();
+
+      function privateFinite(value, operator) {
+        if (typeof value === 'number' && !Number.isFinite(value)) {
+          throw Object.assign(Error('Non-finite arithmetic result for ' + operator),
+            {code: 'E_NON_FINITE_ARITHMETIC'});
+        }
+        return value;
+      }
 
       function privateCanEnter() {
         return !privateFault && !privateEpisode && !privateFetchPublishing;

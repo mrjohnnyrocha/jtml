@@ -1,0 +1,38 @@
+jtml 2
+let count = 0
+let hits = 0
+let job = fetch "/api/job" lazy retry 1 cache "no-store"
+let side = fetch "/api/side" lazy timeout 60000 retry 1 cache "no-store"
+let later = fetch "/api/later" lazy cache "no-store"
+let tail = fetch "/api/tail" lazy cache "no-store"
+get value = job.hasData ? job.data + 1 : 0
+
+effect count
+  hits += 1
+  show count
+
+when increment
+  count += 1
+
+when load
+  invalidate job tail
+
+make Counter
+  let clicks = 0
+  when incrementLocal
+    clicks += 1
+  box class "component"
+    text "{clicks}"
+    button "Component step" click incrementLocal
+
+page
+  box class "early"
+    text "{value}"
+  box class "late"
+    text "{value}"
+  box class "root-out"
+    text "{count}|{hits}"
+  button "Root step" click increment
+  button "Load" click load
+  if count >= 0
+    Counter

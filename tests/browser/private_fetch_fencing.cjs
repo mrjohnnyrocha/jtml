@@ -80,6 +80,15 @@ async function open(browser, mode, test, gate = null) {
 }
 
 const click = (page, name) => page.getByRole('button', {name, exact: true}).click();
+async function triggerFault(page) {
+  // Playwright can deliver pageerror after the in-page latch is observable.
+  const [error] = await Promise.all([
+    page.waitForEvent('pageerror', {timeout: 10000}),
+    click(page, 'Fault')
+  ]);
+  assert.match(error.message, /index\.jtml:10:1: E_EFFECT_SCALAR_WRITE/);
+}
+
 const snapshot = page => page.evaluate(() => ({
   lifecycle: window.__jtml_test_failure?.(),
   source: {job: jtml.state.job, plain: jtml.state.plain, tail: jtml.state.tail, ticker: jtml.state.ticker, timed: jtml.state.timed},
@@ -93,7 +102,7 @@ const snapshot = page => page.evaluate(() => ({
 
 async function fault(page, errors, shows, name, revision = 1) {
   await click(page, 'Valid');
-  await click(page, 'Fault');
+  await triggerFault(page);
   await page.waitForFunction(() => __jtml_test_failure().status === 'FAILED');
   const failed = await snapshot(page);
   assert.equal(failed.lifecycle.revision, revision);
@@ -134,6 +143,7 @@ async function fault(page, errors, shows, name, revision = 1) {
 async function remainsFailed(page, errors, shows, failed, counts) {
   await click(page, 'Valid');
   assert.equal(await page.evaluate(() => jtml.runAction('writeCount', 8)), false);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   assert.deepEqual(await snapshot(page), failed);
   assert.deepEqual(requests, counts);
   assert.deepEqual(shows, ['[SHOW] 7']);
@@ -273,7 +283,7 @@ async function recoveryControl(browser, mode) {
     await waitForRequest('job');
     if (mode === 'full') {
       assert.equal(await page.evaluate(() => window.__jtml_test_failure), undefined);
-      await click(page, 'Fault');
+      await triggerFault(page);
     }
     gate.release();
     await page.evaluate(() => operation);

@@ -1,0 +1,47 @@
+jtml 2
+let roots = 0
+when rootStep
+  roots += 1
+
+make Trigger emits sent(value: number)
+  let after = 0
+  when launch
+    sent(3)
+    after += 1
+  box class "trigger"
+    text "{after}"
+    button "Launch" click launch
+
+make Parent
+  let items = ["a", "b"]
+  let received = 0
+  when breakRows payload
+    received = payload
+    items = ["a", "a", "c"]
+  when repair
+    items = ["b", "a"]
+  box class "parent"
+    Trigger on sent breakRows
+    box class "rows"
+      for item in items key item
+        text item
+    button "Repair nested" click repair
+
+make Sibling
+  let draft = "seed"
+  let clicks = 0
+  when bump
+    clicks += 1
+  box class "sibling"
+    input aria-label "Draft" into draft
+    box class "draft"
+      text "{draft}"
+    button "Sibling step" click bump
+
+page
+  box class "root-out"
+    text "{roots}"
+  button "Root step" click rootStep
+  box click rootStep
+    Parent
+  Sibling

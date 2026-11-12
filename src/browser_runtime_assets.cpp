@@ -7,15 +7,20 @@ namespace {
 
 struct RuntimeFragment {
     const char* source;
-    bool liveOnly = false;
+    bool fullOnly = false;
+    bool privateOnly = false;
 };
 
-// Keep the full runtime's original concatenation. Only authored live
-// transport fragments are skipped by the browser-local test emitter.
+RuntimeFragment privateOnly(const char* source) {
+    return {source, false, true};
+}
+
+// Full emission preserves the original concatenation. The test emitter can
+// omit live transport and substitute private execution boundaries.
 std::string assembleChunk(bool includeLive, std::initializer_list<RuntimeFragment> fragments) {
     std::string result;
     for (const auto& fragment : fragments) {
-        if (includeLive || !fragment.liveOnly) result += fragment.source;
+        if (includeLive ? !fragment.privateOnly : !fragment.fullOnly) result += fragment.source;
     }
     return result;
 }
@@ -45,7 +50,8 @@ std::string browserRuntimePreludeChunk(bool includeLive) {
         const site = window.__jtml_fault_sites?.[key];
         if (site) {
           error.code = code;
-          error.message = site + ': ' + code + ': ' + error.message;
+)JTR0"}, privateOnly(R"JTR0(          error.site = site;
+)JTR0"), {R"JTR0(          error.message = site + ': ' + code + ': ' + error.message;
         }
         return error;
       }
@@ -427,7 +433,8 @@ std::string browserRuntimePreludeChunk(bool includeLive) {
           nodeKind: node && node.kind || '',
           reason: reason || 'unsupported component body-plan node'
         };
-        componentBodyPlanFallbacks.push(diagnostic);
+)JTR0"}, privateOnly(R"JTR0(        if (privateEpisode && actionContext) throw Error(diagnostic.reason);
+)JTR0"), {R"JTR0(        componentBodyPlanFallbacks.push(diagnostic);
         window.jtml = Object.assign(window.jtml || {}, {
           directComponentFallbacks: componentBodyPlanFallbacks
         });
@@ -617,7 +624,11 @@ std::string browserRuntimePreludeChunk(bool includeLive) {
             handled = !!(result && result.handled);
           }
         } catch (err) {
-          window.jtml = window.jtml || {};
+)JTR0"}, privateOnly(R"JTR0(          if (privateEpisode) {
+            delete instance.__jtmlDestroying;
+            throw err;
+          }
+)JTR0"), {R"JTR0(          window.jtml = window.jtml || {};
           window.jtml.directComponentStaticDestroyError =
             err && err.message ? err.message : 'static destroy function unavailable';
         }
@@ -2397,7 +2408,8 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
             if (result && result.handled) return result;
             return result || { handled: false, patched: 0 };
           } catch (err) {
-            if (err.jtmlReconciliation) throw err;
+)JTR1"}, privateOnly(R"JTR1(            if (privateEpisode) throw err;
+)JTR1"), {R"JTR1(            if (err.jtmlReconciliation) throw err;
             window.jtml = Object.assign(window.jtml || {}, {
               directComponentStaticUpdateError: {
                 component: plan && plan.component || '',
@@ -2750,7 +2762,8 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
         const scope = componentScopeFor(instance, definition);
         applyComponentDerived(scope, definition);
         instance.scope = scope;
-        const compiled = applyCompiledComponentUpdatePlan(instance, definition, changed, scope);
+)JTR1"}, privateOnly(R"JTR1(        privateMarkPublication();
+)JTR1"), {R"JTR1(        const compiled = applyCompiledComponentUpdatePlan(instance, definition, changed, scope);
         if (compiled.handled) {
           if (compiled.patched) {
             window.jtml = Object.assign(window.jtml || {}, {
@@ -2861,20 +2874,23 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
       function runComponentActionBody(definition, owner, actionNode, args, instance, changes, actionContext) {
         const params = splitComponentWords(actionNode.text || '').slice(2);
         const scope = componentActionScope(owner, definition, params);
-        const previous = {}, hadPrevious = {};
+)JTR1"}, {R"JTR1(        const previous = {}, hadPrevious = {};
         params.forEach(function(param,index){
           hadPrevious[param] = Object.prototype.hasOwnProperty.call(scope, param);
           previous[param] = scope[param];
           scope[param] = (args || [])[index];
         });
-        const handled = runComponentPlanStatements(definition, scope,
+)JTR1", true}, privateOnly(R"JTR1(        return privateInvoke({kind: 'component', componentId: instance.id, action: actionNode.name}, () => {
+        params.forEach((param, index) => { scope[param] = (args || [])[index]; });
+)JTR1"), {R"JTR1(        const handled = runComponentPlanStatements(definition, scope,
           componentNodeChildren(definition, actionNode), instance, changes, actionContext);
-        params.forEach(function(param){
+)JTR1"}, {R"JTR1(        params.forEach(function(param){
           if (hadPrevious[param]) scope[param] = previous[param];
           else delete scope[param];
         });
-        return handled;
-      }
+)JTR1", true}, {R"JTR1(        return handled;
+)JTR1"}, privateOnly(R"JTR1(        }, true);
+)JTR1"), {R"JTR1(      }
 
       function runComponentPlanStatements(definition, scope, nodes, instance, changes, actionContext) {
         const list = nodes || [];
@@ -2966,17 +2982,17 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
             const enclosing = scope;
             {
               const scope = componentActionScope(enclosing,null,[loopItemName]);
-              const previous = Object.prototype.hasOwnProperty.call(scope, loopItemName)
+)JTR1"}, {R"JTR1(              const previous = Object.prototype.hasOwnProperty.call(scope, loopItemName)
                 ? scope[loopItemName]
                 : undefined;
               const hadPrevious = Object.prototype.hasOwnProperty.call(scope, loopItemName);
-              for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1) {
+)JTR1", true}, {R"JTR1(              for (let itemIndex = 0; itemIndex < values.length; itemIndex += 1) {
                 scope[loopItemName] = values[itemIndex];
                 if (!runComponentPlanStatements(definition, scope, componentNodeChildren(definition, node), instance, changes, actionContext)) return false;
               }
-              if (hadPrevious) scope[loopItemName] = previous;
+)JTR1"}, {R"JTR1(              if (hadPrevious) scope[loopItemName] = previous;
               else delete scope[loopItemName];
-            }
+)JTR1", true}, {R"JTR1(            }
             continue;
           }
           if (node.kind === 'template' && head === 'while') {
@@ -3017,7 +3033,8 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
         const scope = componentScopeFor(instance, definition);
         applyComponentDerived(scope, definition);
         instance.scope = scope;
-        const renderedDynamicIds = new Set();
+)JTR1"}, privateOnly(R"JTR1(        privateMarkPublication();
+)JTR1"), {R"JTR1(        const renderedDynamicIds = new Set();
         dynamicComponentRenderStack.push(renderedDynamicIds);
         let html = '';
         try {
@@ -3120,7 +3137,7 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
         return runDirectComponentAction(
           parent.id,
           handler.name,
-          presetArgs.concat(forwardedArgs)
+          presetArgs.concat(forwardedArgs))JTR1"}, privateOnly(R"JTR1(, true)JTR1"), {R"JTR1(
         );
       }
 
@@ -3157,7 +3174,8 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
       }
 
       function runDirectComponentFallbackAction(componentId, actionName, args) {
-        const instance = findRuntimeComponentInstance(componentId);
+)JTR1"}, privateOnly(R"JTR1(        if (!privateCanEnter()) return false;
+)JTR1"), {R"JTR1(        const instance = findRuntimeComponentInstance(componentId);
         if (!instance) return false;
         const name = (instance.locals || {})[actionName] || actionName;
         return executeClientAction(name, args) || redirect(name);
@@ -3249,7 +3267,8 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
           const el = event.target && event.target.closest &&
             event.target.closest('[data-jtml-direct-component-bind]');
           if (!el) return;
-          const componentId = el.getAttribute('data-jtml-direct-component-id') || '';
+)JTR1"}, privateOnly(R"JTR1(          if (!privateCanEnter()) return;
+)JTR1"), {R"JTR1(          const componentId = el.getAttribute('data-jtml-direct-component-id') || '';
           const name = el.getAttribute('data-jtml-direct-component-bind') || '';
           if (!componentId || !name) return;
           const instance = findRuntimeComponentInstance(componentId);
@@ -3263,13 +3282,15 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
             recordDirectComponentBindingDiagnostic(instance, definition, el, name, targetStatus);
             return;
           }
-          const scope = componentScopeFor(instance, definition);
+)JTR1"}, privateOnly(R"JTR1(          privateInvoke({kind: 'input', componentId, binding: name}, () => {
+)JTR1"), {R"JTR1(          const scope = componentScopeFor(instance, definition);
           scope[name] = el.type === 'checkbox' ? !!el.checked : el.value;
           instance.scope = scope;
           const writes = {};
           writes[name] = true;
           patchDirectComponentFromWrites(instance, definition, writes);
-        });
+)JTR1"}, privateOnly(R"JTR1(          });
+)JTR1"), {R"JTR1(        });
       }
 
       function initializeComponentRuntime(instance) {
@@ -3897,7 +3918,8 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
         try {
           for (const subscription of clientSubscriptions) {
             if (!clientWrites.has(subscription.dependency)) continue;
-            const value = clientState[subscription.dependency];
+)JTR1"}, privateOnly(R"JTR1(            privateDeliverEffect(subscription.dependency, () => {
+)JTR1"), {R"JTR1(            const value = clientState[subscription.dependency];
             if (!['number', 'string', 'boolean'].includes(typeof value))
               throw attributeRuntimeFault(
                 Error('Root effect dependency ' + subscription.dependency + ' requires scalar writes; inspect its writers with jtml explain'),
@@ -3905,7 +3927,8 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
             runClientStatements(clientActions[subscription.action].body, undefined,
               window.jtml.browserBuild && window.jtml.browserBuild.cleanProduction ? actionReadScope([], {}) : clientState);
             applyClientDerived();
-          }
+)JTR1"}, privateOnly(R"JTR1(            });
+)JTR1"), {R"JTR1(          }
         } finally { clientWrites.clear(); }
       }
 
@@ -3918,9 +3941,10 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
           if(!i.argumentPlans&&!d?.captures)return;
           const p=i.params,s=componentScopeFor(i,d),c=changedParamNames(p,i.params);
           for(const [name,key] of Object.entries(d.captures||{})){const value=captureValue(key);if(!Object.is(s[name],value)){s[name]=value;c.push(name);}}
-          if(c.length){applyComponentDerived(s,d);if(!applyCompiledComponentUpdatePlan(i,d,c,s).handled)throw Error('Unsupported component argument update');}
+          if(c.length){applyComponentDerived(s,d);)JTR1"}, privateOnly(R"JTR1(privateMarkPublication();)JTR1"), {R"JTR1(if(!applyCompiledComponentUpdatePlan(i,d,c,s).handled)throw Error('Unsupported component argument update');}
         });
-        applyClientExpressions();
+)JTR1"}, privateOnly(R"JTR1(        privateMarkPublication();
+)JTR1"), {R"JTR1(        applyClientExpressions();
         applyClientAttributes();
 
         for (let pass = 0; pass < 5; pass += 1) {
@@ -4018,13 +4042,14 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
         args = args || [];
         const restore = {};
         const missing = {};
-        (action.params || []).forEach(function (param, index) {
+)JTR1"}, privateOnly(R"JTR1(        try {
+)JTR1"), {R"JTR1(        (action.params || []).forEach(function (param, index) {
           if (Object.prototype.hasOwnProperty.call(clientState, param)) restore[param] = clientState[param];
           else missing[param] = true;
           clientState[param] = args[index];
         });
-        try {
-          runClientStatements(action.body || [], action.params,
+)JTR1"}, {R"JTR1(        try {
+)JTR1", true}, {R"JTR1(          runClientStatements(action.body || [], action.params,
             window.jtml.browserBuild && window.jtml.browserBuild.cleanProduction ? actionReadScope(action.params, restore) : clientState);
         } finally {
           (action.params || []).forEach(function (param) {
@@ -5695,8 +5720,76 @@ std::string browserRuntimeBootTransportChunk(bool includeLive) {
         }
       }
 
-)JTR3", true}, {R"JTR3(      window.sendEvent = async function (elementId, eventType, args) {
-        args = args || [];
+)JTR3", true}, privateOnly(R"JTR3(      let privateFault = null, privateEpisode = null, privateRevision = 0;
+
+      function privateCanEnter() {
+        return !privateFault && !privateEpisode;
+      }
+
+      function privateMarkPublication() {
+        if (privateEpisode) privateEpisode.publicationEntered = true;
+      }
+
+      // An authored synchronous call joins the current episode. Browser
+      // dispatch and host reentry must use a fresh episode or be rejected.
+      function privateInvoke(invocation, run, nested = false) {
+        if (privateFault || (privateEpisode && !nested)) return false;
+        const outer = !privateEpisode;
+        if (outer) privateEpisode = {invocation, publicationEntered: false};
+        try {
+          const result = run();
+          if (outer && privateEpisode.publicationEntered) privateRevision++;
+          return result;
+        } catch (error) {
+          privateEpisode.failedInvocation ??= invocation;
+          if (outer) {
+            clientWrites.clear();
+            privateFault = {...privateEpisode, code: error?.code ?? null,
+              site: error?.site ?? null, message: error?.message ?? String(error)};
+          }
+          throw error;
+        } finally {
+          if (outer) privateEpisode = null;
+        }
+      }
+
+      function privateDeliverEffect(dependency, deliver) {
+        return privateEpisode
+          ? privateInvoke({kind: 'effect', dependency}, deliver, true)
+          : deliver();
+      }
+
+      const privateRootAction = executeClientAction;
+      executeClientAction = (name, args) =>
+        privateInvoke({kind: 'root', action: name}, () => privateRootAction(name, args));
+      const privateComponentAction = runDirectComponentAction;
+      runDirectComponentAction = (id, name, args, nested) =>
+        privateInvoke({kind: 'component', componentId: id, action: name},
+          () => privateComponentAction(id, name, args), nested);
+
+      function privateSourceState(names, scope) {
+        return Object.fromEntries(names.filter(name => ownProperty(scope, name))
+          .map(name => [name, scope[name]]));
+      }
+
+      window.__jtml_test_failure = () => structuredClone({
+        status: privateFault ? 'FAILED' : 'ACTIVE',
+        revision: privateRevision,
+        fault: privateFault,
+        pendingWrites: [...clientWrites],
+        partial: privateFault && {
+          root: privateSourceState(Object.keys(clientStatePlans), clientState),
+          components: componentInstances.map(instance => ({
+            id: instance.id, component: instance.component,
+            state: privateSourceState(componentDefinitionForInstance(instance)?.localState || [],
+              componentScopes[instance.id])
+          }))
+        }
+      });
+
+)JTR3"), {R"JTR3(      window.sendEvent = async function (elementId, eventType, args) {
+)JTR3"}, privateOnly(R"JTR3(        if (!privateCanEnter()) return;
+)JTR3"), {R"JTR3(        args = args || [];
         const action = parseActionCall(args[0] || '');
         const fnName = action.name;
 )JTR3"}, {R"JTR3(        if (!browserLocalRuntime && redirect(fnName)) return;

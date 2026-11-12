@@ -1,0 +1,61 @@
+jtml 2
+let x = 1
+let y = 1
+let trigger = 2
+let divisor = 2
+let hits = 0
+let effectValue = 9
+let tail = 0
+let base = 100000000000000000000
+get quotient = 1 / divisor
+effect x
+  hits += 1
+effect trigger
+  effectValue = 1 / trigger
+effect trigger
+  tail += 1
+when healthy
+  x = (8 + 4 - 2) * 3 / 5 % 4
+  y = 0 / -2
+  show false && (1 / 0 > 0)
+  show true || (1 % 0 > 0)
+  show true ? 7 : 1 / 0
+when divide
+  x = 2
+  show x
+  y = 1 / 0
+when negative
+  y = 1 / (-0)
+when remainder
+  y = 1 % 0
+when overflow
+  y = base * base * base * base * base * base * base * base * base * base * base * base * base * base * base * base
+when deriveFault
+  divisor = 0
+when effectFault
+  trigger = 0
+make Counter
+  let count = 2
+  let div = 2
+  get result = 1 / div
+  when step
+    count += 1
+    count /= 0
+  when getFault
+    div = 0
+  box class "component"
+    text "{count}|{result}"
+    button "Component" click step
+    button "Component derived" click getFault
+page
+  box class "out"
+    text "{x}|{y}|{quotient}|{hits}|{effectValue}|{tail}"
+  button "Healthy" click healthy
+  button "Divide" click divide
+  button "Negative" click negative
+  button "Remainder" click remainder
+  button "Overflow" click overflow
+  button "Derived" click deriveFault
+  button "Effect" click effectFault
+  if x >= 0
+    Counter

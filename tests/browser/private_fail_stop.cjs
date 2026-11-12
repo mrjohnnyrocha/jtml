@@ -25,8 +25,9 @@ for (const [mode, compiler] of [['full', process.env.JTML_REAL_BIN], ['private',
     keyed: path.join(fixtures, 'runtime-fault-attribution/index.jtml'),
     nested: path.join(fixtures, 'private-fail-stop/index.jtml'),
   })) {
-    const r = spawnSync(compiler, ['build', source, '--target', 'browser', '--out', path.join(work, mode, fixture)],
-      {encoding: 'utf8', timeout: 30000});
+    const r = spawnSync(compiler, ['build', path.basename(source), '--target', 'browser',
+      '--out', path.join(work, mode, fixture)],
+      {cwd: path.dirname(source), encoding: 'utf8', timeout: 30000});
     assert.equal(r.status, 0, r.stdout + r.stderr);
   }
 }
@@ -147,8 +148,7 @@ async function oneFault(page, errors, pattern) {
       assert.deepEqual(failed.partial.root, {watched: [1, 2], hits: 1, later: 1});
       assert.equal(failed.fault.invocation.action, 'writeCount');
       assert.equal(failed.fault.code, 'E_EFFECT_SCALAR_WRITE');
-      assert.equal(fs.realpathSync(failed.fault.site.replace(/:6:1$/, '')), fs.realpathSync(owners));
-      assert.ok(failed.fault.site.endsWith(':6:1'));
+      assert.equal(failed.fault.site, 'owners.jtml:6:1');
       assert.equal(failed.fault.failedInvocation.kind, 'effect');
       assert.equal(await page.evaluate(() => Object.hasOwn(jtml.state, 'value')), false);
       assert.equal(failed.fault.publicationEntered, false);

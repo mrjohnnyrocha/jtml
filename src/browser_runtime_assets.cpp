@@ -4397,7 +4397,7 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
             updatedAt: Date.now()
           });
         }
-)JTR1"}, privateOnly(R"JTR1(        privateApplyFetchState(lifetime);
+)JTR1"}, privateOnly(R"JTR1(        privateApplyFetchState(lifetime, name);
 )JTR1"), {R"JTR1(        applyClientState();
 )JTR1", true}, {R"JTR1(      }
 
@@ -5749,13 +5749,16 @@ std::string browserRuntimeBootTransportChunk(bool includeLive) {
         return !privateFault && !privateEpisode && !privateFetchPublishing;
       }
 
-      function privateApplyFetchState(lifetime) {
+      function privateApplyFetchState(lifetime, completionName) {
         if (privateFault !== lifetime) return;
         // A synchronous host callback during publication cannot dispatch an
         // action in the middle of the state/DOM pass.
         privateFetchPublishing = true;
         try {
-          applyClientState();
+          // Only a settled HTTP result owns a fetch fault episode. Loading
+          // can run during startup or navigation before any HTTP result.
+          if (completionName === undefined) applyClientState();
+          else privateInvoke({kind: 'fetch', name: completionName}, applyClientState, true);
         } finally {
           privateFetchPublishing = false;
         }
@@ -5792,7 +5795,8 @@ std::string browserRuntimeBootTransportChunk(bool includeLive) {
         if (outer) privateEpisode = {invocation, publicationEntered: false};
         try {
           const result = run();
-          if (outer && privateEpisode.publicationEntered) privateRevision++;
+          // The observer's revision counts successful synchronous dispatch.
+          if (outer && invocation.kind !== 'fetch' && privateEpisode.publicationEntered) privateRevision++;
           return result;
         } catch (error) {
           privateEpisode.failedInvocation ??= invocation;

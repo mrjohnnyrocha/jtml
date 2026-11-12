@@ -4295,7 +4295,10 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
       }
 
       async function executeFetch(name, url, method, bodyExpr, cachePolicy, credentialsPolicy, timeoutMs, retryCount, stalePolicy, cacheKeyExpr, dedupe, force) {
-        const resolvedUrl = resolveFetchUrl(url);
+)JTR1"}, privateOnly(R"JTR1(        // The latch is monotonic for the lifetime of this browser instance.
+        const lifetime = privateFault;
+        if (lifetime || privateFetchPublishing) return;
+)JTR1"), {R"JTR1(        const resolvedUrl = resolveFetchUrl(url);
         const previous = createFetchState(clientState[name], {});
         const resolvedKey = resolveFetchKey(name, resolvedUrl, method, bodyExpr, cacheKeyExpr);
         if (dedupe && !force && previous.hasData && previous.key === resolvedKey && previous.url === resolvedUrl && previous.method === method) {
@@ -4303,7 +4306,8 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
         }
         const keepStale = stalePolicy === 'keep';
         const hasPreviousData = !!previous.hasData;
-        clientState[name] = createFetchState(previous, {
+)JTR1"}, privateOnly(R"JTR1(        if (privateFault !== lifetime) return;
+)JTR1"), {R"JTR1(        clientState[name] = createFetchState(previous, {
           loading: true,
           data: keepStale ? previous.data : [],
           error: '',
@@ -4314,8 +4318,9 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
           key: resolvedKey,
           method: method
         });
-        applyClientState();
-        let lastError = null;
+)JTR1"}, privateOnly(R"JTR1(        privateApplyFetchState(lifetime);
+)JTR1"), {R"JTR1(        applyClientState();
+)JTR1", true}, {R"JTR1(        let lastError = null;
         let lastStatus = 0;
         const maxRetries = Math.max(0, Number(retryCount || 0) || 0);
         for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
@@ -4329,18 +4334,26 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
               controller = new AbortController();
               options.signal = controller.signal;
               timeoutId = setTimeout(function () { controller.abort(); }, Math.max(1, Number(timeoutMs) || 1));
-            }
+)JTR1"}, privateOnly(R"JTR1(              privateFetchTimeouts.set(timeoutId, controller);
+)JTR1"), {R"JTR1(            }
             if (bodyExpr) {
               const body = evaluateClientBodyExpression(bodyExpr);
               options.headers = Object.assign({ 'content-type': 'application/json' }, options.headers || {});
               options.body = JSON.stringify(body.found ? body.value : bodyExpr);
             }
-            const response = await fetch(resolvedUrl, options);
+)JTR1"}, privateOnly(R"JTR1(            if (privateFault !== lifetime) {
+              privateClearFetchTimeout(timeoutId);
+              return;
+            }
+)JTR1"), {R"JTR1(            const response = await fetch(resolvedUrl, options);
             lastStatus = response.status;
-            if (timeoutId) clearTimeout(timeoutId);
-            const type = response.headers.get('content-type') || '';
+)JTR1"}, privateOnly(R"JTR1(            privateClearFetchTimeout(timeoutId);
+)JTR1"), {R"JTR1(            if (timeoutId) clearTimeout(timeoutId);
+)JTR1", true}, {R"JTR1()JTR1"}, privateOnly(R"JTR1(            if (privateFault !== lifetime) return;
+)JTR1"), {R"JTR1(            const type = response.headers.get('content-type') || '';
             const payload = type.indexOf('application/json') !== -1 ? await response.json() : await response.text();
-            if (!response.ok) throw new Error(response.status + ' ' + response.statusText);
+)JTR1"}, privateOnly(R"JTR1(            if (privateFault !== lifetime) return;
+)JTR1"), {R"JTR1(            if (!response.ok) throw new Error(response.status + ' ' + response.statusText);
             clientState[name] = createFetchState(previous, {
               loading: false,
               data: payload,
@@ -4358,12 +4371,15 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
             lastError = null;
             break;
           } catch (err) {
-            if (timeoutId) clearTimeout(timeoutId);
-            lastError = err;
+)JTR1"}, privateOnly(R"JTR1(            privateClearFetchTimeout(timeoutId);
+)JTR1"), {R"JTR1(            if (timeoutId) clearTimeout(timeoutId);
+)JTR1", true}, {R"JTR1()JTR1"}, privateOnly(R"JTR1(            if (privateFault !== lifetime) return;
+)JTR1"), {R"JTR1(            lastError = err;
             if (attempt < maxRetries) continue;
           }
         }
-        if (lastError) {
+)JTR1"}, privateOnly(R"JTR1(        if (privateFault !== lifetime) return;
+)JTR1"), {R"JTR1(        if (lastError) {
           clientState[name] = createFetchState(previous, {
             loading: false,
             data: keepStale ? previous.data : [],
@@ -4381,8 +4397,9 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
             updatedAt: Date.now()
           });
         }
-        applyClientState();
-      }
+)JTR1"}, privateOnly(R"JTR1(        privateApplyFetchState(lifetime);
+)JTR1"), {R"JTR1(        applyClientState();
+)JTR1", true}, {R"JTR1(      }
 
       function registerFetchBinding(record, lazy) {
         const name = record && record.name ? record.name : '';
@@ -4415,7 +4432,8 @@ std::string browserRuntimeComponentChunk(bool includeLive) {
         }
         if (revalidateMs > 0 && !__jtml_fetch_timers[name]) {
           __jtml_fetch_timers[name] = setInterval(function () {
-            if (!background && typeof document !== 'undefined' && document.hidden) return;
+)JTR1"}, privateOnly(R"JTR1(            if (privateFault) return;
+)JTR1"), {R"JTR1(            if (!background && typeof document !== 'undefined' && document.hidden) return;
             if (__jtml_fetch_fns[name]) __jtml_fetch_fns[name](true);
           }, revalidateMs);
         }
@@ -4459,7 +4477,8 @@ std::string browserRuntimeDataPlatformChunk(bool includeLive) {
           resolveFetchUrl: resolveFetchUrl,
           resolveFetchKey: resolveFetchKey,
           refreshFetch: function (name) {
-            if (__jtml_fetch_fns[name]) return __jtml_fetch_fns[name](true);
+)JTR2"}, privateOnly(R"JTR2(            if (privateFault) return Promise.resolve();
+)JTR2"), {R"JTR2(            if (__jtml_fetch_fns[name]) return __jtml_fetch_fns[name](true);
             return Promise.reject(new Error('Unknown JTML fetch: ' + name));
           }
         });
@@ -5306,7 +5325,8 @@ std::string browserRuntimeDataPlatformChunk(bool includeLive) {
           Object.keys(__jtml_fetch_fns).forEach(function (name) { names.add(name); });
         }
         for (const name of names) {
-          if (__jtml_fetch_fns[name]) await __jtml_fetch_fns[name](true);
+)JTR2"}, privateOnly(R"JTR2(          if (privateFault) return;
+)JTR2"), {R"JTR2(          if (__jtml_fetch_fns[name]) await __jtml_fetch_fns[name](true);
         }
       }
 
@@ -5722,8 +5742,42 @@ std::string browserRuntimeBootTransportChunk(bool includeLive) {
 
 )JTR3", true}, privateOnly(R"JTR3(      let privateFault = null, privateEpisode = null, privateRevision = 0;
 
+      let privateFetchPublishing = false;
+      const privateFetchTimeouts = new Map();
+
       function privateCanEnter() {
-        return !privateFault && !privateEpisode;
+        return !privateFault && !privateEpisode && !privateFetchPublishing;
+      }
+
+      function privateApplyFetchState(lifetime) {
+        if (privateFault !== lifetime) return;
+        // A synchronous host callback during publication cannot dispatch an
+        // action in the middle of the state/DOM pass.
+        privateFetchPublishing = true;
+        try {
+          applyClientState();
+        } finally {
+          privateFetchPublishing = false;
+        }
+      }
+
+      function privateClearFetchTimeout(id) {
+        if (id == null) return;
+        clearTimeout(id);
+        privateFetchTimeouts.delete(id);
+      }
+
+      function privateClearFetchTimers() {
+        // Timed requests already own an AbortController. Cancel those still
+        // waiting for headers. Publication fencing covers every response.
+        for (const [id, controller] of privateFetchTimeouts) {
+          privateClearFetchTimeout(id);
+          controller.abort();
+        }
+        for (const name of Object.keys(__jtml_fetch_timers)) {
+          clearInterval(__jtml_fetch_timers[name]);
+          delete __jtml_fetch_timers[name];
+        }
       }
 
       function privateMarkPublication() {
@@ -5733,7 +5787,7 @@ std::string browserRuntimeBootTransportChunk(bool includeLive) {
       // An authored synchronous call joins the current episode. Browser
       // dispatch and host reentry must use a fresh episode or be rejected.
       function privateInvoke(invocation, run, nested = false) {
-        if (privateFault || (privateEpisode && !nested)) return false;
+        if (privateFault || (!nested && !privateCanEnter())) return false;
         const outer = !privateEpisode;
         if (outer) privateEpisode = {invocation, publicationEntered: false};
         try {
@@ -5746,6 +5800,7 @@ std::string browserRuntimeBootTransportChunk(bool includeLive) {
             clientWrites.clear();
             privateFault = {...privateEpisode, code: error?.code ?? null,
               site: error?.site ?? null, message: error?.message ?? String(error)};
+            privateClearFetchTimers();
           }
           throw error;
         } finally {

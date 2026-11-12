@@ -37,7 +37,7 @@ print(f"Browser-local runtime raw {len(full)} -> {len(local)} bytes, "
       f"gzip {len(gzip.compress(full, mtime=0))} -> {len(gzip.compress(local, mtime=0))} bytes")
 PY
 
-for suite in strict_csp root_effects component_action_freshness root_conditional_mount imported_components input_state_sync route_precedence private_fail_stop; do
+for suite in strict_csp root_effects component_action_freshness root_conditional_mount imported_components input_state_sync route_precedence private_fail_stop private_fetch_fencing; do
   node "$root/tests/browser/$suite.cjs"
 done
 "$root/scripts/test_releasedesk.sh"

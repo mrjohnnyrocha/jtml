@@ -1,0 +1,29 @@
+jtml 2
+let watched = 0
+let hits = 0
+let job = fetch "/api/job" lazy retry 1 cache "no-store" dedupe refresh reloadJob
+let plain = fetch "/api/plain" lazy cache "no-store"
+let tail = fetch "/api/tail" lazy cache "no-store"
+let ticker = fetch "/api/ticker" lazy cache "no-store" revalidate 60000 background
+get summary = "{job.loading}|{job.status}|{job.attempts}"
+
+effect watched
+  hits += 1
+  show watched
+
+when writeCount value
+  watched = value
+
+when refreshChain
+  invalidate job tail
+
+page
+  box class "effect-out"
+    text "{watched}|{hits}"
+  box class "fetch-out"
+    text "{summary}"
+  button "Fault" click writeCount([1, 2])
+  button "Valid" click writeCount(7)
+  button "Refresh" click reloadJob
+
+let timed = fetch "/api/timed" lazy timeout 60000 retry 1 cache "no-store"

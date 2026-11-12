@@ -40,4 +40,6 @@ PY
 for suite in strict_csp root_effects component_action_freshness root_conditional_mount imported_components input_state_sync route_precedence private_fail_stop private_fetch_fencing private_fetch_publication private_finite_arithmetic; do
   node "$root/tests/browser/$suite.cjs"
 done
+JTML_PRIVATE_COMPILER="$(dirname "$JTML_REAL_BIN")/jtml_browser_private_compiler" \
+  node "$root/tests/browser/private_import_authority.cjs"
 "$root/scripts/test_releasedesk.sh"

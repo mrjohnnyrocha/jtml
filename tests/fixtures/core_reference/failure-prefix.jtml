@@ -1,0 +1,25 @@
+jtml 2
+let x = 0
+let y = 0
+let stopped = 0
+let recovered = false
+get doubled = y * 2
+effect x
+  y = 2
+  show doubled
+effect y
+  show "failing"
+  stopped = 1 / 0
+effect y
+  show "downstream"
+when step
+  x = 1
+  show x
+when recover
+  recovered = true
+  show "recovered"
+page
+  box class "out"
+    text "{x}|{doubled}|{stopped}|{recovered}"
+  button "Step" click step
+  button "Recover" click recover

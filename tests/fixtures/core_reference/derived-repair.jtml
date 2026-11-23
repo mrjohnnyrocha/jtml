@@ -1,0 +1,14 @@
+jtml 2
+let trigger = 1
+let divisor = 1
+get quotient = 1 / divisor
+effect trigger
+  show "repair"
+  divisor = 2
+when step
+  trigger = 2
+  divisor = 0
+page
+  box class "out"
+    text "{quotient}|{divisor}"
+  button "Step" click step

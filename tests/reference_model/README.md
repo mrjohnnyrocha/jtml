@@ -1,5 +1,9 @@
 # Minimal independent scalar reference model
 
+The [strict root scalar episode report](../../docs/spec/reactive-core-v1/episode-reference-evidence.md)
+covers the extension to 17 original vectors, live Chromium comparison and
+experimental P3. The report below preserves the original four-vector baseline.
+
 Implementation baseline: main `27d05e9497911f89f3d463dd0fb68ea67fe65b33`, after
 PR #77. This first executable slice selects **exactly V01, V03, V04 and V05** from
 [the authored vectors](../../docs/spec/reactive-core-v1/vectors.json). It implements

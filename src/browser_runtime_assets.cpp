@@ -5705,14 +5705,14 @@ std::string browserRuntimeBootTransportChunk(bool includeLive) {
         applyRoutes();
 )JTR3"}, {R"JTR3(        refreshLiveBodyPlanRender();
 )JTR3", true}, {R"JTR3(      }
-      if (document.readyState === 'loading' ||
+)JTR3"}, {R"JTR3(      if (document.readyState === 'loading' ||
           (document.readyState === 'interactive' && document.currentScript && document.currentScript.defer)) {
         document.addEventListener('DOMContentLoaded', applyInitial);
       } else {
         applyInitial();
       }
 
-)JTR3"}, {R"JTR3(      let ws = null;
+)JTR3", true}, {R"JTR3(      let ws = null;
       if (browserLocalRuntime) {
 )JTR3", true}, {R"JTR3(        reportStatus('browser-local', 'Browser-local runtime active');
 )JTR3"}, {R"JTR3(      } else {
@@ -5810,8 +5810,9 @@ std::string browserRuntimeBootTransportChunk(bool includeLive) {
         if (outer) privateEpisode = {invocation, publicationEntered: false};
         try {
           const result = run();
-          // The observer's revision counts successful synchronous dispatch.
-          if (outer && invocation.kind !== 'fetch' && privateEpisode.publicationEntered) privateRevision++;
+          // This diagnostic counts successful synchronous publication, excluding boot.
+          if (outer && invocation.kind !== 'fetch' && invocation.kind !== 'initialization' &&
+              privateEpisode.publicationEntered) privateRevision++;
           return result;
         } catch (error) {
           privateEpisode.failedInvocation ??= invocation;
@@ -5835,7 +5836,12 @@ std::string browserRuntimeBootTransportChunk(bool includeLive) {
 
       const privateRootAction = executeClientAction;
       executeClientAction = (name, args) =>
-        privateInvoke({kind: 'root', action: name}, () => privateRootAction(name, args));
+        privateInvoke({kind: 'root', action: name}, () => {
+          if (@JTML_PRIVATE_STRICT_SCALAR@ && (!ownProperty(clientActions, name) ||
+              (args || []).length !== clientActions[name].params.length || !(args || []).every(Number.isFinite)))
+            return false;
+          return privateRootAction(name, args);
+        });
       const privateComponentAction = runDirectComponentAction;
       runDirectComponentAction = (id, name, args, nested) =>
         privateInvoke({kind: 'component', componentId: id, action: name},
@@ -6012,7 +6018,14 @@ std::string browserRuntimeBootTransportChunk(bool includeLive) {
       }
 
       window.addEventListener('hashchange', applyRoutes);
-    })();
+)JTR3"}, privateOnly(R"JTR3(      const initialize = () => privateInvoke({kind: 'initialization'}, applyInitial);
+      if (document.readyState === 'loading' ||
+          (document.readyState === 'interactive' && document.currentScript && document.currentScript.defer)) {
+        document.addEventListener('DOMContentLoaded', initialize, {once: true});
+      } else {
+        initialize();
+      }
+)JTR3"), {R"JTR3(    })();
 )JTR3"}});
 }
 

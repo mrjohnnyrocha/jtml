@@ -10,7 +10,8 @@ assert(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT && process.env.JTML_BENCH_
   'Real Chromium and Playwright are required; no skip');
 const {chromium} = createRequire(path.join(process.env.JTML_BROWSER_BENCH_PLAYWRIGHT_ROOT, 'package.json'))('playwright');
 const repo = path.resolve(__dirname, '../..');
-const binary = process.env.JTML_BIN || path.join(repo, 'build/jtml');
+const privateCompiler = process.env.JTML_CORE_PRIVATE_COMPILER;
+const binary = privateCompiler || process.env.JTML_BIN || path.join(repo, 'build/jtml');
 const output = path.resolve(process.env.JTML_CORE_OUT || path.join(repo, 'dist/browser-core-v1'));
 const catalogBytes = fs.readFileSync(path.join(repo, 'docs/spec/reactive-core-v1/vectors.json'));
 const vectors = JSON.parse(catalogBytes).vectors;
@@ -32,6 +33,7 @@ const rejection = {
 };
 const assets = ['index.html', 'jtml-runtime.js', 'components/index.js', 'app.js'];
 const report = {catalogSHA256: hash(catalogBytes), compilerSHA256: hash(fs.readFileSync(binary)),
+  profile: privateCompiler ? 'private-strict-scalar' : 'default',
   scope: 'bounded vector observations; not general commit/observer atomicity or failure-policy ratification',
   vectors: [], cleanBrowserExit: false, cleanServerExit: false};
 let target, browser;
@@ -118,7 +120,8 @@ async function main() {
     }
     row.sourceSHA256 = Object.fromEntries(Object.entries(vector.files).map(([name, text]) => [name, hash(text)]));
     target = path.join(directory, 'app');
-    const build = spawnSync(binary, ['build', path.join(source, vector.entry), '--target', 'browser', '--out', target],
+    const input = path.join(source, vector.entry);
+    const build = spawnSync(binary, privateCompiler ? [input, target] : ['build', input, '--target', 'browser', '--out', target],
       {encoding: 'utf8', timeout: 60000});
     row.build = {exit: build.status, signal: build.signal, error: build.error?.message, diagnostic: build.stderr};
     const check = (name, actual, expected) => row.checks.push({name,
@@ -156,13 +159,34 @@ async function main() {
       await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
       const phases = [vector.expected_initial, ...vector.steps.map(step => step.expected)];
       for (const [index, expected] of phases.entries()) {
+        const fault = privateCompiler && vector.id === 'V19' && expected.outcome === 'pending-policy'
+          ? page.waitForEvent('pageerror') : null;
         if (index) await page.getByRole('button', {name: labels[vector.id]?.[index - 1] || 'Step', exact: true}).click();
+        if (fault) await fault;
         const actual = await page.evaluate(() => coreObservation());
         row.phases.push({index, actual, shown: shown.splice(0)});
         check('prod ' + index, actual.mode.cleanProduction, true);
         check('CSP ' + index, actual.csp, []);
         check('no fallback ' + index, actual.forbiddenFallback, false);
-        if (expected.outcome === 'pending-policy') continue; // Observation, never a chosen numeric/fault oracle.
+        if (expected.outcome === 'pending-policy') {
+          if (privateCompiler && vector.id === 'V19') {
+            // A private experiment against the already-authored P3 alternative.
+            // The historical vector's selected policy remains unset.
+            const p3 = expected.policy_alternatives.P3;
+            const life = await page.evaluate(() => __jtml_test_failure());
+            check('private P3 fault', life.status, 'FAILED');
+            check('private P3 fault diagnostic', life.fault?.code, 'E_NON_FINITE_ARITHMETIC');
+            check('no successful publication revision', life.revision, 0);
+            check('private P3 partial state', life.partial?.root, {x: p3.state['main::x']});
+            check('private P3 DOM', actual.dom, p3.dom['.out']);
+            check('private P3 source state', actual.state.x, p3.state['main::x']);
+            check('private P3 output', row.phases.at(-1).shown, p3.show);
+            check('private P3 dispatch revoked', await page.evaluate(() => jtml.runAction('step')), false);
+          }
+          continue;
+        }
+        if (privateCompiler)
+          check('private runtime active', await page.evaluate(() => __jtml_test_failure().status), 'ACTIVE');
         const project = oracle => Object.fromEntries(Object.keys(oracle || {}).map(key => {
           const parts = key.split('::');
           const value = parts.length === 3
@@ -186,8 +210,10 @@ async function main() {
           [...new Set(Object.keys({...expected.state, ...expected.derived}).filter(k => k.split('::').length === 3).map(k => k.split('::').slice(0, 2).join('::')))]);
       }
     } finally { await page.close(); }
-    check('no browser errors', row.errors, []);
-    row.classification = vector.id === 'V22' ? 'PENDING POLICY' : row.checks.some(c => c.status === 'FAIL') ? 'CONFIRMED DEFECT'
+    const privateP3 = privateCompiler && vector.id === 'V19';
+    check('expected browser errors', row.errors, privateP3 ? ['Non-finite arithmetic result for /'] : []);
+    row.classification = !privateCompiler && vector.id === 'V22' ? 'PENDING POLICY' : row.checks.some(c => c.status === 'FAIL') ? 'CONFIRMED DEFECT'
+      : privateP3 ? 'PRIVATE P3 CONTROL PASSES; HISTORICAL POLICY PENDING'
       : vector.steps.some(step => step.expected.outcome === 'pending-policy') ? 'PENDING POLICY' : 'PASS';
     if (vector.id === 'V22') row.policyConflict = 'Catalog requires read-only imports; unchanged action_get_reads.cjs requires named/reexported imported writes. Original mismatch checks remain FAIL; this is not a waived green gate.';
   }
@@ -199,6 +225,6 @@ main().catch(error => { report.infrastructureError = String(error); process.exit
   fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify({vectors: report.vectors.map(row => ({id: row.id, classification: row.classification})),
     cleanBrowserExit: report.cleanBrowserExit, cleanServerExit: report.cleanServerExit,
-    profileReadiness: 'NO-GO: component derived coherence and failure policy remain unresolved'}, null, 2));
+    profileReadiness: 'NO-GO for Browser Core v1 certification'}, null, 2));
   if (report.vectors.some(row => row.classification === 'CONFIRMED DEFECT' || row.classification === 'PENDING POLICY')) process.exitCode = 1;
 });

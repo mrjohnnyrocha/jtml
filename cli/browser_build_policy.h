@@ -28,10 +28,13 @@ std::string emitBrowserBuildAppBootstrap(BrowserBuildMode mode);
 enum class BrowserCertification {
     Default,
     PrivateImportAuthority,
+    PrivateStrictScalar,
 };
 
 void validateBrowserRuntimeBindingOwnership(jtml::RuntimeProjectPlan& project,
                                             BrowserCertification certification = BrowserCertification::Default);
+void validatePrivateScalarProfile(const jtml::RuntimeProjectPlan& project,
+                                  const std::vector<std::unique_ptr<ASTNode>>& linkedAst);
 
 bool shouldCopyBrowserBuildAsset(const std::filesystem::path& rel);
 

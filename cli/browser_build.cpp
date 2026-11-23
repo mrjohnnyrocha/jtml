@@ -13,6 +13,7 @@
 #include "jtml/semantic.h"
 #include "jtml/semantic/module_graph.h"
 #include "jtml/transpiler.h"
+#include "src/browser_runtime_internal.h"
 
 #include <algorithm>
 #include <cctype>
@@ -371,6 +372,9 @@ int detail::buildBrowser(const Options& o, BrowserCertification certification) {
         }
     }
 
+    if (certification == BrowserCertification::PrivateStrictScalar)
+        validatePrivateScalarProfile(runtimeProjectPlan, program);
+
     std::string html = transpiler.transpile(program);
     if (buildMode == BrowserBuildMode::Production) validateBrowserInitializationManifest(html);
     html = injectBrowserBuildAssetScript(html, "jtml-runtime.js");
@@ -392,9 +396,10 @@ int detail::buildBrowser(const Options& o, BrowserCertification certification) {
     const auto legacyUpdatePlanFile = outDir / "jtml-update-plans.js";
     const auto componentModuleAsset =
         emitStaticComponentModuleAsset(runtimeProjectPlan);
-    writeBuildAsset(runtimeFile,
-                    jtml::emitBrowserRuntimeExternalAsset(8080, true),
-                    "browser runtime output");
+    const auto runtimeAsset = certification == BrowserCertification::Default
+        ? jtml::emitBrowserRuntimeExternalAsset(8080, true)
+        : jtml::detail::emitBrowserLocalRuntimeAsset(certification == BrowserCertification::PrivateStrictScalar);
+    writeBuildAsset(runtimeFile, runtimeAsset, "browser runtime output");
     writeBuildAsset(componentModuleFile,
                     componentModuleAsset,
                     "browser component module output");

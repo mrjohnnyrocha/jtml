@@ -1,7 +1,9 @@
 # Independent reference-model contract
 
-This is a design for a **future** interpreter, not its implementation. It is
-normative under the approval conditions in [the specification](../reactive-core-v1.md).
+This is the full reference-model contract. The
+[independent root scalar episode experiment](episode-reference-evidence.md)
+implements a reviewed subset. This broader contract is normative under the
+approval conditions in [the specification](../reactive-core-v1.md).
 A6a/A6b/A6c remain unapproved: this contract specifies common transitions and
 conditional failure alternatives, not an implicit rollback/termination default.
 The current snapshot probe and existing conformance adapters are not this model.
@@ -29,7 +31,7 @@ and guessed storage aliases are not a resolver.
 
 The future model accepts one closed document with these fields. Unknown fields
 or node kinds reject the model input, rather than becoming generic source text.
-This schema is conceptual; this PR intentionally adds no parser or evaluator.
+This schema is conceptual; the executable fixture models use a narrower schema.
 
 | Field | Contract |
 | --- | --- |

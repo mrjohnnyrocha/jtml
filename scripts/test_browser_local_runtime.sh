@@ -45,4 +45,8 @@ JTML_PRIVATE_COMPILER="$(dirname "$JTML_REAL_BIN")/jtml_browser_private_compiler
 export JTML_CORE_PRIVATE_COMPILER="$(dirname "$JTML_REAL_BIN")/jtml_browser_private_compiler"
 node "$root/tests/browser/private_strict_scalar.cjs"
 JTML_CORE_OUT="${JTML_CORE_OUT:-$root/dist/private-strict-core-v1}" node "$root/tests/browser/browser_core_v1.cjs"
+python3 -m unittest discover -s "$root/tests/reference_model" -q
+python3 "$root/tests/reference_model/audit.py"
+node --test "$root/tests/reference_model/test_episode_compare.cjs"
+node "$root/tests/browser/core_reference.cjs"
 "$root/scripts/test_releasedesk.sh"

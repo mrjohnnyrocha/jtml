@@ -1,0 +1,26 @@
+jtml 2
+let x = 1
+let y = 0
+let active = false
+let word = "old"
+get chosen = active || (1 / x > 0)
+effect y
+  show "downstream"
+effect x
+  y = x + 1
+  show "writer"
+effect x
+  show y
+when step n
+  if n == 0
+    show -n
+    active = true
+    word = "new" + "!"
+    show chosen
+  else
+    active = false
+  x = n
+page
+  box class "out"
+    text "{word}|{chosen}|{x}|{y}"
+  button "Step" click step(0)

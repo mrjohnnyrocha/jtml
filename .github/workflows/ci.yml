@@ -249,6 +249,14 @@ jobs:
       - name: Private browser-local runtime (browser required)
         run: scripts/test_browser_local_runtime.sh
 
+      - name: Preserve independent Browser Core traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-reference-${{ matrix.os }}
+          path: dist/core-reference/results.json
+          if-no-files-found: warn
+
       - name: Adversarial Taskboard Core C01–C14 (browser required)
         run: scripts/test_taskboard_core.sh
 

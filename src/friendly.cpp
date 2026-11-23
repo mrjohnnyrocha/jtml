@@ -24,6 +24,7 @@ struct Line {
     std::string text;
     int number = 0;
     int sourceColumn = 0;
+    std::optional<LoweredComponentMarkup> componentMarkup;
 };
 
 struct OpenBlock {
@@ -2404,7 +2405,7 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
                     lines[i].indent + 2,
                     componentInstanceLine(def, routeInstanceId, localBindings,
                                           routeParamBindings, lines[i].number, "route"),
-                    lines[i].number
+                    lines[i].number, 0, LoweredComponentMarkup{LoweredComponentMarkup::Kind::Instance, routeInstanceId}
                 });
                 for (auto copy : routeBody) {
                     copy.indent = lines[i].indent + 4 + copy.indent;
@@ -2418,7 +2419,7 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
             std::vector<Line> routeSlotLines{{0,
                 componentInstanceLine(def, routeInstanceId, localBindings,
                                       routeParamBindings, lines[i].number, "route"),
-                lines[i].number}};
+                lines[i].number, 0, LoweredComponentMarkup{LoweredComponentMarkup::Kind::Instance, routeInstanceId}}};
             for (auto copy : routeBody) {
                 copy.indent += 2;
                 routeSlotLines.push_back(std::move(copy));
@@ -2443,7 +2444,7 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
                                       routeSlotHex,
                                       "data-jtml-layout=" + quote(layoutDef->name) +
                                       " data-jtml-slot-instance=" + quote(def.name + "_" + std::to_string(routeInstanceId))),
-                lines[i].number
+                lines[i].number, 0, LoweredComponentMarkup{LoweredComponentMarkup::Kind::Instance, layoutInstanceId}
             });
             for (const auto& layoutLine : layoutBody) {
                 auto layoutTokens = splitTokens(layoutLine.text);
@@ -2452,7 +2453,8 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
                     const auto slotName = layoutTokens.size() > 1 ? layoutTokens[1] : "";
                     expanded.push_back({slotIndent,
                         "span data-jtml-supplied-slot " + quote(slotName) +
-                            " style \"display:contents\"", lines[i].number});
+                            " style \"display:contents\"", lines[i].number, 0,
+                            LoweredComponentMarkup{LoweredComponentMarkup::Kind::SuppliedSlot}});
                     for (auto copy : routeSlotLines) {
                         copy.indent += slotIndent + 2;
                         expanded.push_back(std::move(copy));
@@ -2521,7 +2523,8 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
             componentInstanceLine(def, instanceId, localBindings, bindings,
                                   lines[i].number, "", slotHex,
                                   callParts.bindingArguments.empty() ? "" : "data-jtml-binding-args=" + quote(hexEncode(nlohmann::json(callParts.bindingArguments).dump())));
-        expanded.push_back({lines[i].indent, instanceMarker, lines[i].number});
+        expanded.push_back({lines[i].indent, instanceMarker, lines[i].number, 0,
+                            LoweredComponentMarkup{LoweredComponentMarkup::Kind::Instance, instanceId}});
         for (const auto& bodyLine : body) {
             auto bodyTokens = splitTokens(bodyLine.text);
             if (!bodyTokens.empty() && bodyTokens[0] == "slot") {
@@ -2532,7 +2535,8 @@ std::vector<Line> expandComponentLinesImpl(const std::vector<Line>& lines,
                 const int slotIndent = lines[i].indent + 2 + bodyLine.indent;
                 expanded.push_back({slotIndent,
                     "span data-jtml-supplied-slot " + quote(requestedSlot) +
-                        " style \"display:contents\"", lines[i].number});
+                        " style \"display:contents\"", lines[i].number, 0,
+                        LoweredComponentMarkup{LoweredComponentMarkup::Kind::SuppliedSlot}});
                 for (const auto& slotLine : selectedSlotLines) {
                     Line injected = slotLine;
                     injected.indent = slotIndent + 2 + slotLine.indent;
@@ -3369,6 +3373,8 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source, 
 
     for (const auto& [_, def] : componentDefs) {
         activeFriendlySourceLine = def.number;
+        result.componentMarkup.emplace(static_cast<int>(result.classicLineToFriendlyLine.size()),
+                                       LoweredComponentMarkup{LoweredComponentMarkup::Kind::Definition});
         emitLine(out, 0, componentDefinitionLine(def));
         emitLine(out, 0, "#");
     }
@@ -3824,6 +3830,9 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const std::string& source, 
                 synthesizedSetters.emplace(initializer, line.number);
                 controllerInitializers.insert(initializer);
             }
+            if (line.componentMarkup)
+                result.componentMarkup.emplace(static_cast<int>(result.classicLineToFriendlyLine.size()),
+                                               *line.componentMarkup);
             emitLine(out, level, element.openLine);
             for (const auto& body : element.bodyLines) emitLine(out, level + 1, body);
             if (hasChildren && element.closesWithHash) {
@@ -3921,7 +3930,7 @@ FriendlyClassicResult friendlyToClassicWithSourceMap(const MappedSource& source,
     generated.appendSynthetic(result.classicSource);
     result.provenance = std::make_shared<const SourceProvenance>(
         std::move(generated), source, result.classicLineToFriendlyLine, SourceProvenance::Kind::FriendlyLowering,
-        result.localDeclarations, result.controllerInitializerLines);
+        result.localDeclarations, result.controllerInitializerLines, result.componentMarkup);
     return result;
 }
 

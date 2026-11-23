@@ -125,6 +125,14 @@ struct LoweredLocalDeclaration {
     std::string declaredType;
 };
 
+// Compiler-issued boundaries in expanded Friendly markup. HTML attributes
+// alone cannot establish that markup belongs to a component or its caller.
+struct LoweredComponentMarkup {
+    enum class Kind { Instance, SuppliedSlot, Definition };
+    Kind kind;
+    int instanceId = 0;
+};
+
 // Exact copied bytes and generated construct attribution are distinct.
 // A generated token attributed to a construct is never an exact original token.
 struct SourceProvenance {
@@ -136,14 +144,17 @@ struct SourceProvenance {
     std::vector<size_t> inputLineStarts{0};
     std::map<int, LoweredLocalDeclaration> localDeclarations;
     std::set<int> controllerInitializerLines;
+    std::map<int, LoweredComponentMarkup> componentMarkup;
 
     SourceProvenance(MappedSource output, MappedSource originalInput,
                      std::vector<int> lines = {}, Kind sourceKind = Kind::Identity,
                      std::map<int, LoweredLocalDeclaration> declarations = {},
-                     std::set<int> controllerInitializers = {})
+                     std::set<int> controllerInitializers = {},
+                     std::map<int, LoweredComponentMarkup> markup = {})
         : kind(sourceKind), generated(std::move(output)), input(std::move(originalInput)),
           generatedLineToInputLine(std::move(lines)), localDeclarations(std::move(declarations)),
-          controllerInitializerLines(std::move(controllerInitializers)) {
+          controllerInitializerLines(std::move(controllerInitializers)),
+          componentMarkup(std::move(markup)) {
         for (size_t i = 0; i < input.size(); ++i)
             if (input.text()[i] == '\n') inputLineStarts.push_back(i + 1);
     }

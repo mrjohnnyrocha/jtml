@@ -4,6 +4,7 @@
 #include "jtml/expression_ir.h"
 
 #include <algorithm>
+#include <cctype>
 #include <functional>
 
 #include <filesystem>
@@ -267,110 +268,227 @@ std::vector<std::string> planBrowserDerivedOrder(jtml::RuntimeProjectPlan& proje
             throw std::runtime_error(module.path +
                 ": E_STRICT_IMPORT_FORM: private certification requires Friendly named imports");
         if (privateAuthority) {
-            auto componentEventSite = [](const auto& node, const std::string& name) -> SourceSpan {
-                if (node.kind != "template" || !node.sourceSpan.original) return {};
-                const auto words = jtml::splitFriendlyWords(node.text);
-                for (size_t i = 1; i + 1 < words.size(); ++i)
-                    if (jtml::isFriendlyEventWord(words[i]) &&
-                        words[i + 1].substr(0, words[i + 1].find('(')) == name)
-                        return node.sourceSpan;
-                return {};
+            using Component = jtml::RuntimePlanComponentDefinition;
+            using Instance = jtml::RuntimePlanComponentInstance;
+            using Boundary = jtml::LoweredComponentMarkup;
+            using Names = std::set<std::string>;
+            auto hasName = [](const auto& names, const std::string& name) {
+                return std::find(names.begin(), names.end(), name) != names.end();
             };
-            auto isLoweredLocalEvent = [&](const std::string& name, const SourceSpan& span) {
-                if (!span.original) return false;
-                const auto& event = *span.original;
-                const auto line = event.source->coordinates(event.begin).first;
-                for (const auto& instance : module.plan.componentInstances) {
-                    if (instance.definitionModule != module.id) continue;
-                    for (const auto& binding : instance.locals) {
-                        if (binding.value != name) continue;
-                        for (const auto& definition : module.plan.componentDefinitions) {
-                            if (definition.name != instance.component ||
-                                std::find(definition.localActions.begin(), definition.localActions.end(), binding.name) ==
-                                    definition.localActions.end()) continue;
-                            for (const auto& node : definition.bodyPlan) {
-                                const auto site = componentEventSite(node, binding.name);
-                                if (site.original && site.original->source->file == event.source->file &&
-                                    site.original->source->coordinates(site.original->begin).first == line)
-                                    return true;
-                            }
-                        }
-                    }
+            auto markupError = [&](const SourceSpan& span, const std::string& code, const std::string& message) {
+                throw std::runtime_error(location(module, span) + ": " + code + ": " + message);
+            };
+            auto read = [&](const Module& owner, const std::string& dependency, const SourceSpan& span,
+                            const Names& locals) {
+                const auto name = dependency.substr(0, dependency.find_first_of(".["));
+                const auto target = resolve(owner, name, true);
+                if (name != "__proto__" && (locals.count(name) || owner.scalarStorageKeys.count(name) ||
+                    (target.binding && !ambiguous(target) && owner.scalarStorageKeys.empty()) ||
+                    hasFetch(owner, name))) return name;
+                markupError(span, "E_READ_AUTHORITY", "markup reads unresolved or unimported binding `" + name + "`");
+                return name;
+            };
+            auto inspect = [&](const Module& owner, const jtml::ExpressionIr* ir, const SourceSpan& span,
+                               const Names& locals, Names* reads = nullptr) {
+                if (!ir || !ir->supported)
+                    markupError(span, "E_READ_AUTHORITY", "markup requires a statically resolvable expression");
+                for (const auto& dependency : jtml::expressionIrDependencies(*ir)) {
+                    const auto name = read(owner, dependency, span, locals);
+                    if (reads) reads->insert(name);
                 }
-                return false;
             };
-            auto checkDispatch = [&](const std::string& name, const SourceSpan& span) {
-                const auto actionCount = [&](const Module& owner) {
-                    return std::count_if(owner.plan.actions.begin(), owner.plan.actions.end(),
+            auto checkDispatch = [&](const Module& owner, const std::string& name, const SourceSpan& span) {
+                const auto actionCount = [&](const Module& scope) {
+                    return std::count_if(scope.plan.actions.begin(), scope.plan.actions.end(),
                         [&](const auto& action) { return action.name == name; });
                 };
-                // The public flat-dispatch collision check has already run.
-                // Resolve lexically, using only this module's explicit import edges.
-                const auto localCount = actionCount(module);
-                if (localCount == 1 || (localCount == 0 && isLoweredLocalEvent(name, span))) return;
+                // The emitted dispatch table is flat and its collision check has
+                // already run. Only lexical declarations and resolved imports
+                // can grant authority to use a spelling in that table.
+                const auto localCount = actionCount(owner);
+                if (localCount == 1) return;
                 std::set<jtml::SemanticModuleId> importedOwners;
-                for (const auto& symbol : module.importedSymbols) {
+                for (const auto& symbol : owner.importedSymbols)
                     if (symbol.name == name && (symbol.kind == "when" || symbol.kind == "action"))
                         importedOwners.insert(symbol.module);
-                }
                 if (localCount == 0 && importedOwners.size() == 1) {
-                    const auto owner = modules.find(*importedOwners.begin());
-                    if (owner != modules.end() && actionCount(*owner->second) == 1) return;
+                    const auto target = modules.find(*importedOwners.begin());
+                    if (target != modules.end() && actionCount(*target->second) == 1) return;
                 }
-                throw std::runtime_error(location(module, span) +
-                    ": E_ACTION_AUTHORITY: action `" + name + "` must resolve to a local declaration "
-                    "or one explicitly imported public action");
+                markupError(span, "E_ACTION_AUTHORITY", "action `" + name +
+                    "` must resolve to a local declaration or one explicitly imported public action");
             };
-            // Certify authored markup in its own module, rather than the
-            // flattened dispatch table, which also contains private actions.
-            std::function<void(const std::vector<std::unique_ptr<ASTNode>>&)> markup =
-                [&](const auto& nodes) {
-                    for (const auto& node : nodes) {
-                        if (node->getType() == ASTNodeType::JtmlElement) {
-                            const auto& element = static_cast<const JtmlElementNode&>(*node);
-                            for (const auto& attr : element.attributes) {
-                                if (!attr.value || classifyJtmlAttribute(attr).kind != JtmlAttributeKind::Event) continue;
-                                const auto& value = *attr.value;
-                                const auto& span = value.sourceSpan.original ? value.sourceSpan : node->sourceSpan;
-                                if (value.getExprType() == ExpressionStatementNodeType::FunctionCall)
-                                    checkDispatch(static_cast<const FunctionCallExpressionStatementNode&>(value).functionName, span);
-                                else if (value.getExprType() == ExpressionStatementNodeType::Variable)
-                                    checkDispatch(static_cast<const VariableExpressionStatementNode&>(value).name, span);
-                                else
-                                    throw std::runtime_error(location(module, span) +
-                                        ": E_ACTION_AUTHORITY: event requires a statically named action");
-                            }
-                            markup(element.content);
-                        } else if (node->getType() == ASTNodeType::IfStatement) {
-                            const auto& branch = static_cast<const IfStatementNode&>(*node);
-                            markup(branch.thenStatements);
-                            markup(branch.elseStatements);
-                        } else if (node->getType() == ASTNodeType::ForStatement) {
-                            markup(static_cast<const ForStatementNode&>(*node).body);
-                        } else if (node->getType() == ASTNodeType::WhileStatement) {
-                            markup(static_cast<const WhileStatementNode&>(*node).body);
-                        } else if (node->getType() == ASTNodeType::BlockStatement) {
-                            markup(static_cast<const BlockStatementNode&>(*node).statements);
+            auto resolveComponent = [&](const Module& caller, const Instance& instance, const SourceSpan& span)
+                -> const Component& {
+                std::set<jtml::SemanticModuleId> owners;
+                for (const auto& definition : caller.plan.componentDefinitions)
+                    if (definition.name == instance.component) owners.insert(caller.id);
+                for (const auto& symbol : caller.importedSymbols)
+                    if (symbol.name == instance.component && (symbol.kind == "make" || symbol.kind == "component"))
+                        owners.insert(symbol.module);
+                const Component* result = nullptr;
+                if (owners.size() == 1) {
+                    const auto definingModule = modules.find(*owners.begin());
+                    if (definingModule != modules.end()) {
+                        for (const auto& definition : definingModule->second->plan.componentDefinitions) {
+                            if (definition.name != instance.component) continue;
+                            if (result) markupError(span, "E_ACTION_AUTHORITY", "ambiguous component `" + instance.component + "`");
+                            result = &definition;
                         }
                     }
+                }
+                if (!result || (caller.id == module.id && instance.definitionModule != result->moduleId))
+                    markupError(span, "E_ACTION_AUTHORITY", "cannot resolve the defining module for component `" +
+                        instance.component + "`");
+                return *result;
+            };
+            struct ComponentScope {
+                const Component& definition;
+                const Instance& instance;
+                const ComponentScope* caller;
+                const Names& callerLocals;
+            };
+            std::function<void(const std::vector<std::unique_ptr<ASTNode>>&, const ComponentScope*, const Names&)> markup;
+            markup = [&](const auto& nodes, const ComponentScope* component, const Names& locals) {
+                const auto& owner = component ? *modules.at(component->definition.moduleId) : module;
+                auto expression = [&](const ExpressionStatementNode* value) {
+                    if (value) inspect(owner, jtml::buildExpressionIr(value).get(), value->sourceSpan, locals);
                 };
-            if (module.ast) markup(module.ast->nodes);
-            for (const auto& definition : module.plan.componentDefinitions) {
-                for (const auto& binding : definition.eventBindings) {
-                    const auto name = binding.substr(0, binding.find('('));
-                    if (std::find(definition.localActions.begin(), definition.localActions.end(), name) != definition.localActions.end() ||
-                        std::find(definition.emits.begin(), definition.emits.end(), name) != definition.emits.end()) continue;
-
-                    // The event summary has no span. Use the actual event's
-                    // element only if it has an original source mapping.
-                    SourceSpan site;
-                    for (const auto& node : definition.bodyPlan) {
-                        site = componentEventSite(node, name);
-                        if (site.original) break;
+                for (const auto& node : nodes) {
+                    const auto& span = node->sourceSpan;
+                    if (node->getType() == ASTNodeType::JtmlElement) {
+                        const auto& element = static_cast<const JtmlElementNode&>(*node);
+                        const Boundary* boundary = nullptr;
+                        if (span.provenance) {
+                            const auto& boundaries = span.provenance->componentMarkup;
+                            if (const auto found = boundaries.find(span.startLine); found != boundaries.end())
+                                boundary = &found->second;
+                        }
+                        if (element.tagName == "raw")
+                            markupError(span, "E_ACTION_AUTHORITY", "raw HTML cannot establish markup authority");
+                        for (const auto& attr : element.attributes) {
+                            auto key = attr.key;
+                            std::transform(key.begin(), key.end(), key.begin(),
+                                [](unsigned char ch) { return std::tolower(ch); });
+                            if ((!boundary && (key.rfind("data-jtml-instance", 0) == 0 ||
+                                               key.rfind("data-jtml-component", 0) == 0 ||
+                                               key == "data-jtml-supplied-slot")) ||
+                                key.rfind("data-jtml-event-", 0) == 0 || key.rfind("data-jtml-direct-", 0) == 0 ||
+                                key.rfind("data-jtml-attr-", 0) == 0 || key == "data-jtml-expr" ||
+                                key == "data-jtml-cond-expr" || key == "data-jtml-for-expr")
+                                markupError(span, "E_ACTION_AUTHORITY", "authored markup cannot supply compiler metadata `" + key + "`");
+                            if (!attr.value) continue;
+                            const auto kind = classifyJtmlAttribute(attr).kind;
+                            if (kind == JtmlAttributeKind::Reactive) expression(attr.value.get());
+                            if (kind != JtmlAttributeKind::Event) continue;
+                            const auto& value = *attr.value;
+                            const auto& site = value.sourceSpan.original ? value.sourceSpan : span;
+                            std::string name;
+                            if (value.getExprType() == ExpressionStatementNodeType::FunctionCall) {
+                                const auto& call = static_cast<const FunctionCallExpressionStatementNode&>(value);
+                                name = call.functionName;
+                                for (const auto& argument : call.arguments) expression(argument.get());
+                            } else if (value.getExprType() == ExpressionStatementNodeType::Variable) {
+                                name = static_cast<const VariableExpressionStatementNode&>(value).name;
+                            } else {
+                                markupError(site, "E_ACTION_AUTHORITY", "event requires a statically named action");
+                            }
+                            if (component) {
+                                const auto& definition = component->definition;
+                                const auto& bindings = component->instance.locals;
+                                const auto alias = std::find_if(bindings.begin(), bindings.end(),
+                                    [&](const auto& binding) { return binding.value == name; });
+                                if (alias != bindings.end() && hasName(definition.localActions, alias->name) &&
+                                    hasName(definition.eventBindings, alias->name)) continue;
+                                if (hasName(definition.emits, name) && hasName(definition.eventBindings, name)) continue;
+                            }
+                            checkDispatch(owner, name, site);
+                        }
+                        if (boundary && boundary->kind == Boundary::Kind::Instance) {
+                            const auto& instances = module.plan.componentInstances;
+                            const Instance* instance = nullptr;
+                            for (const auto& candidate : instances) if (candidate.instanceId == boundary->instanceId) {
+                                if (instance) markupError(span, "E_ACTION_AUTHORITY", "ambiguous lowered component instance");
+                                instance = &candidate;
+                            }
+                            if (!instance) markupError(span, "E_ACTION_AUTHORITY", "missing lowered component instance");
+                            const auto& definition = resolveComponent(owner, *instance, span);
+                            // Lowered body expressions may contain caller arguments
+                            // and this instance's compiler-generated local names.
+                            Names bodyLocals;
+                            for (const auto& arg : instance->argumentExpressions)
+                                inspect(owner, jtml::parseExpressionIr(arg.value).get(), span, locals, &bodyLocals);
+                            for (const auto& binding : instance->locals) bodyLocals.insert(binding.value);
+                            const ComponentScope scope{definition, *instance, component, locals};
+                            markup(element.content, &scope, bodyLocals);
+                        } else if (boundary && boundary->kind == Boundary::Kind::SuppliedSlot) {
+                            if (!component) markupError(span, "E_ACTION_AUTHORITY", "supplied slot has no component caller");
+                            markup(element.content, component->caller, component->callerLocals);
+                        } else {
+                            markup(element.content, component, locals);
+                        }
+                    } else if (node->getType() == ASTNodeType::ShowStatement) {
+                        expression(static_cast<const ShowStatementNode&>(*node).expr.get());
+                    } else if (node->getType() == ASTNodeType::IfStatement) {
+                        const auto& branch = static_cast<const IfStatementNode&>(*node);
+                        expression(branch.condition.get());
+                        markup(branch.thenStatements, component, locals);
+                        markup(branch.elseStatements, component, locals);
+                    } else if (node->getType() == ASTNodeType::ForStatement) {
+                        const auto& loop = static_cast<const ForStatementNode&>(*node);
+                        expression(loop.iterableExpression.get());
+                        expression(loop.rangeEndExpr.get());
+                        auto loopLocals = locals;
+                        loopLocals.insert(loop.iteratorName);
+                        markup(loop.body, component, loopLocals);
+                    } else if (node->getType() == ASTNodeType::WhileStatement) {
+                        const auto& loop = static_cast<const WhileStatementNode&>(*node);
+                        expression(loop.condition.get());
+                        markup(loop.body, component, locals);
+                    } else if (node->getType() == ASTNodeType::BlockStatement) {
+                        markup(static_cast<const BlockStatementNode&>(*node).statements, component, locals);
                     }
-                    checkDispatch(name, site);
+                }
+            };
+
+            // Independently check the unexpanded component definition. Reads
+            // here may use component lexical bindings, but never the caller's
+            // argument dependencies or its generated component-local names.
+            for (const auto& definition : module.plan.componentDefinitions) {
+                const auto& body = definition.bodyPlan;
+                std::map<int, Names> scopes;
+                scopes[-1].insert(definition.params.begin(), definition.params.end());
+                for (size_t i = 0; i < body.size(); ++i) {
+                    const auto& node = body[i];
+                    if (node.kind == "state" || node.kind == "derived") scopes[node.parentIndex].insert(node.name);
+                    scopes[static_cast<int>(i)].insert(node.introducedBindings.begin(), node.introducedBindings.end());
+                }
+                for (const auto& node : body) {
+                    Names locals;
+                    for (int scope = node.parentIndex;; scope = body[scope].parentIndex) {
+                        const auto& names = scopes[scope];
+                        locals.insert(names.begin(), names.end());
+                        if (scope == -1) break;
+                    }
+                    if (node.kind != "template") {
+                        for (const auto& dependency : node.reads) read(module, dependency, node.sourceSpan, locals);
+                        continue;
+                    }
+                    if (node.head == "slot" || node.head == "else") continue;
+                    const auto words = jtml::splitFriendlyWords(node.text);
+                    for (const auto& dependency : node.reads) read(module, dependency, node.sourceSpan, locals);
+                    for (size_t i = 1; i + 1 < words.size(); ++i) {
+                        if (!jtml::isFriendlyEventWord(words[i])) continue;
+                        const auto& invocation = words[++i];
+                        const auto name = invocation.substr(0, invocation.find('('));
+                        const auto ir = jtml::parseExpressionIr(invocation);
+                        if (invocation != name) inspect(module, ir.get(), node.sourceSpan, locals);
+                        if (!hasName(definition.localActions, name) && !hasName(definition.emits, name))
+                            checkDispatch(module, name, node.sourceSpan);
+                    }
                 }
             }
+            if (module.ast) markup(module.ast->nodes, nullptr, {});
         }
         std::vector<const Module*> wholeFileScopes;
         std::set<jtml::SemanticModuleId> seen{module.id};

@@ -60,6 +60,7 @@ struct FriendlyClassicResult {
     std::shared_ptr<const SourceProvenance> provenance;
     std::map<int, LoweredLocalDeclaration> localDeclarations;
     std::set<int> controllerInitializerLines;
+    std::map<int, LoweredComponentMarkup> componentMarkup;
 };
 
 std::string friendlyToClassic(const std::string& source);

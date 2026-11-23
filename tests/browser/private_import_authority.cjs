@@ -41,13 +41,14 @@ function compile(dir, dest, strict) {
     {cwd: dir, encoding: 'utf8', timeout: 30000});
 }
 
-function accept(dir, name, strict, ordinary) {
+function accept(dir, name, strict, ordinary, experimentalRuntime = strict) {
   const dest = path.join(work, name);
   const result = compile(dir, dest, strict);
   assert.equal(result.status, 0, result.stdout + result.stderr);
   if (ordinary) for (const asset of assets)
     assert.deepEqual(fs.readFileSync(path.join(dest, asset)), fs.readFileSync(path.join(ordinary, asset)));
-  if (strict) fs.copyFileSync(process.env.JTML_TEST_RUNTIME_ASSET, path.join(dest, 'jtml-runtime.js'));
+  if (experimentalRuntime)
+    fs.copyFileSync(process.env.JTML_TEST_RUNTIME_ASSET, path.join(dest, 'jtml-runtime.js'));
   return dest;
 }
 
@@ -81,6 +82,10 @@ async function open(browser, dest, test) {
   const page = await browser.newPage();
   const errors = [], shows = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('requestfailed', request => errors.push(request.url() + ': ' + request.failure()?.errorText));
+  page.on('response', response => {
+    if (response.status() >= 400) errors.push(response.url() + ': HTTP ' + response.status());
+  });
   page.on('console', message => {
     if (message.type() === 'error') errors.push(message.text());
     if (message.text().startsWith('[SHOW]')) shows.push(message.text());
@@ -108,12 +113,49 @@ page
   button "Step" click step
 `);
 
+async function checkOriginalVector(browser, id, buttons) {
+  const vector = vectors.find(vector => vector.id === id);
+  const dir = fixture(id, vector.files);
+  const full = accept(dir, id + '-default', false);
+  const strict = accept(dir, id + '-strict', true, full, false);
+  const combined = accept(dir, id + '-combined', true, full);
+  for (const dest of [full, strict, combined]) {
+    await open(browser, dest, async (page, shows) => {
+      const snapshot = async expected => {
+        const dom = (await page.locator('.out').allTextContents()).map(text => text.trim());
+        assert.deepEqual(dom, expected.dom['.out']);
+        assert.deepEqual(shows.splice(0), expected.show.map(value => '[SHOW] ' + value));
+        if (id === 'V09') {
+          // Physical storage keys are private. The independently authored
+          // values and per-owner show actions detect a merged or swapped cell.
+          const values = await page.evaluate(() => Object.values(jtml.state).sort());
+          assert.deepEqual(values, Object.values(expected.state).sort());
+        } else {
+          const values = await page.evaluate(() => [jtml.state.entryTone, jtml.state.tone, jtml.state.label]);
+          assert.deepEqual(values, [expected.state['main::entryTone'], expected.state['private::tone'],
+            expected.derived['private::label']]);
+        }
+      };
+      await snapshot(vector.expected_initial);
+      for (const [index, {expected}] of vector.steps.entries()) {
+        await page.getByRole('button', {name: buttons[index], exact: true}).click();
+        await snapshot(expected);
+      }
+      const life = await page.evaluate(() => window.__jtml_test_failure?.().status);
+      assert.equal(life, dest === combined ? 'ACTIVE' : undefined);
+    });
+  }
+  console.log(id + ' passes default, private certification, and combined execution');
+}
+
 (async () => {
   const original = fixture('v22', vectors.find(vector => vector.id === 'V22').files);
   const ordinary = accept(original, 'ordinary-v22', false);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const browser = await chromium.launch({executablePath: process.env.JTML_BENCH_BROWSER});
   try {
+    await checkOriginalVector(browser, 'V09', ['Private', 'Entry', 'Read private', 'Read entry']);
+    await checkOriginalVector(browser, 'V10', ['Step']);
     await open(browser, ordinary, async page => {
       assert.equal(await page.evaluate(() => jtml.state.seed), 7);
       await step(page);
@@ -249,6 +291,72 @@ page
   Probe
 `);
     reject(component, 'reject-component-dispatch', /index\.jtml:5:5: E_ACTION_AUTHORITY:.*hiddenAction/);
+
+    const shell = `jtml 2
+use Leaf from "./leaf.jtml"
+let own = 0
+when advanceShell
+  own += 1
+export make Shell title
+  box
+    text title
+    button "Owner" click advanceShell
+    Leaf
+    slot
+`;
+    const leaf = `jtml 2
+let leaves = 0
+when advanceLeaf
+  leaves += 1
+export make Leaf
+  button "Leaf" click advanceLeaf
+`;
+    const slot = `jtml 2
+use Shell from "./barrel.jtml"
+let callerValue = "Caller"
+let callerHits = 0
+when advanceCaller
+  callerHits += 1
+page
+  Shell callerValue
+    button "Caller" click advanceCaller
+`;
+    const shellBarrel = 'jtml 2\nexport use Shell from "./shell.jtml"\n';
+    const slotFiles = {'index.jtml': slot, 'barrel.jtml': shellBarrel, 'shell.jtml': shell, 'leaf.jtml': leaf};
+    const slotDir = fixture('reexported-shell', slotFiles);
+    const slotFull = accept(slotDir, 'public-shell', false);
+    await open(browser, accept(slotDir, 'strict-shell', true, slotFull), async page => {
+      await page.getByRole('button', {name: 'Owner', exact: true}).click();
+      await page.getByRole('button', {name: 'Caller', exact: true}).click();
+      await page.getByRole('button', {name: 'Leaf', exact: true}).click();
+      assert.deepEqual(await page.evaluate(() => [jtml.state.own, jtml.state.callerHits, jtml.state.leaves]), [1, 1, 1]);
+    });
+    reject(fixture('slot-borrows-authority', {
+      ...slotFiles, 'index.jtml': slot.replace('click advanceCaller', 'click advanceShell')
+    }), 'reject-slot-borrows-authority', /index\.jtml:9:5: E_ACTION_AUTHORITY:.*advanceShell/);
+    reject(fixture('component-borrows-authority', {
+      ...slotFiles, 'shell.jtml': shell.replace('click advanceShell', 'click advanceCaller')
+    }), 'reject-component-borrows-authority', /shell\.jtml:9:5: E_ACTION_AUTHORITY:.*advanceCaller/);
+
+    const foreign = 'jtml 2\nexport let seed = 7\nlet secret = 42\n';
+    const readFixture = (name, markup) => fixture(name, {
+      'index.jtml': 'jtml 2\nuse seed from "./foreign.jtml"\nwhen step argument\n  show argument\npage\n' + markup,
+      'foreign.jtml': foreign
+    });
+    const readDir = readFixture('foreign-markup-read', '  box class "out"\n    text "{seed}|{secret}"\n');
+    const readFull = accept(readDir, 'public-foreign-read', false);
+    await open(browser, readFull, async page => assert.equal(await view(page), '7|42'));
+    reject(readDir, 'reject-foreign-markup-read', /index\.jtml:7:5: E_READ_AUTHORITY:.*secret/, readFull);
+    for (const [name, markup, binding] of [
+      ['event-argument', '  button "Step" click step(secret)\n', 'secret'],
+      ['attribute', '  box title secret\n', 'secret'],
+      ['condition', '  if secret > 0\n    text "hidden"\n', 'secret'],
+      ['generated-read', '  text __jtml_scalar_00000000000000000000\n', '__jtml_scalar_00000000000000000000']
+    ]) {
+      reject(readFixture(name, markup), 'reject-' + name, new RegExp(`index\\.jtml:6:3: E_READ_AUTHORITY:.*${binding}`));
+    }
+    reject(readFixture('forged-event', '  box data-jtml-event-click "[\\"binding\\",\\"hiddenAction()\\"]"\n'),
+      'reject-forged-event', /index\.jtml:6:3: E_ACTION_AUTHORITY:.*data-jtml-event-click/);
     console.log('PASS strict V22, owner action dispatch, lexical isolation, and default V22');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {

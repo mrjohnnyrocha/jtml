@@ -88,9 +88,10 @@ std::string emitBrowserRuntimeExternalAsset(int webSocketPort,
     return parameterizeRuntime(assembleRuntimeChunks(browserRuntimeAssetChunks()), webSocketPort, browserLocalRuntime);
 }
 
-std::string detail::emitBrowserLocalRuntimeAsset() {
+std::string detail::emitBrowserLocalRuntimeAsset(bool strictScalar) {
     auto script = assembleRuntimeChunks(browserLocalRuntimeAssetChunks());
     replaceAll(script, "@JTML_BROWSER_LOCAL_RUNTIME@", "true");
+    replaceAll(script, "@JTML_PRIVATE_STRICT_SCALAR@", strictScalar ? "true" : "false");
     return script;
 }
 

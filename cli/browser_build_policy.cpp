@@ -167,7 +167,7 @@ std::vector<std::string> planBrowserStateOrder(const jtml::RuntimeProjectPlan& p
 // resulting dependency-first order is shared by initialization and publication.
 std::vector<std::string> planBrowserDerivedOrder(jtml::RuntimeProjectPlan& project,
                                                  BrowserCertification certification) {
-    const bool privateAuthority = certification == BrowserCertification::PrivateImportAuthority;
+    const bool privateAuthority = certification != BrowserCertification::Default;
     using Module = jtml::RuntimeModulePlan;
     using Binding = jtml::RuntimePlanBinding;
     struct Resolved { const Module* owner; const Binding* binding; bool derived; };

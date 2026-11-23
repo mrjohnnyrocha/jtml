@@ -6,8 +6,8 @@
 
 namespace jtml::detail {
 
-// The split browser-only variant is currently exercised by the test driver.
+// The split browser-only variants are internal test assets.
 BrowserRuntimeAssetChunks browserLocalRuntimeAssetChunks();
-std::string emitBrowserLocalRuntimeAsset();
+std::string emitBrowserLocalRuntimeAsset(bool strictScalar = false);
 
 } // namespace jtml::detail

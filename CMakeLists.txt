@@ -187,6 +187,7 @@ add_library(jtml_browser_build_lib STATIC
     cli/static_build.cpp
     cli/browser_build_assets.cpp
     cli/browser_build_policy.cpp
+    cli/browser_strict_scalar.cpp
     cli/browser_build_schema.cpp
 )
 target_link_libraries(jtml_browser_build_lib PUBLIC

@@ -42,4 +42,7 @@ for suite in strict_csp root_effects component_action_freshness root_conditional
 done
 JTML_PRIVATE_COMPILER="$(dirname "$JTML_REAL_BIN")/jtml_browser_private_compiler" \
   node "$root/tests/browser/private_import_authority.cjs"
+export JTML_CORE_PRIVATE_COMPILER="$(dirname "$JTML_REAL_BIN")/jtml_browser_private_compiler"
+node "$root/tests/browser/private_strict_scalar.cjs"
+JTML_CORE_OUT="${JTML_CORE_OUT:-$root/dist/private-strict-core-v1}" node "$root/tests/browser/browser_core_v1.cjs"
 "$root/scripts/test_releasedesk.sh"

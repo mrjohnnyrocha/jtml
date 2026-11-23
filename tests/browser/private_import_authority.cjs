@@ -37,18 +37,19 @@ function fixture(name, files) {
 
 function compile(dir, dest, strict) {
   return spawnSync(strict ? strictCompiler : publicCompiler,
-    strict ? ['index.jtml', dest] : ['build', 'index.jtml', '--target', 'browser', '--out', dest],
+    strict ? ['index.jtml', dest, '--authority-only'] : ['build', 'index.jtml', '--target', 'browser', '--out', dest],
     {cwd: dir, encoding: 'utf8', timeout: 30000});
 }
 
-function accept(dir, name, strict, ordinary, experimentalRuntime = strict) {
+function accept(dir, name, strict, ordinary) {
   const dest = path.join(work, name);
   const result = compile(dir, dest, strict);
   assert.equal(result.status, 0, result.stdout + result.stderr);
-  if (ordinary) for (const asset of assets)
+  if (ordinary) for (const asset of assets.filter(name => name !== 'jtml-runtime.js'))
     assert.deepEqual(fs.readFileSync(path.join(dest, asset)), fs.readFileSync(path.join(ordinary, asset)));
-  if (experimentalRuntime)
-    fs.copyFileSync(process.env.JTML_TEST_RUNTIME_ASSET, path.join(dest, 'jtml-runtime.js'));
+  if (strict)
+    assert.deepEqual(fs.readFileSync(path.join(dest, 'jtml-runtime.js')),
+      fs.readFileSync(process.env.JTML_TEST_RUNTIME_ASSET));
   return dest;
 }
 
@@ -117,9 +118,8 @@ async function checkOriginalVector(browser, id, buttons) {
   const vector = vectors.find(vector => vector.id === id);
   const dir = fixture(id, vector.files);
   const full = accept(dir, id + '-default', false);
-  const strict = accept(dir, id + '-strict', true, full, false);
-  const combined = accept(dir, id + '-combined', true, full);
-  for (const dest of [full, strict, combined]) {
+  const strict = accept(dir, id + '-authority', true, full);
+  for (const dest of [full, strict]) {
     await open(browser, dest, async (page, shows) => {
       const snapshot = async expected => {
         const dom = (await page.locator('.out').allTextContents()).map(text => text.trim());
@@ -142,10 +142,10 @@ async function checkOriginalVector(browser, id, buttons) {
         await snapshot(expected);
       }
       const life = await page.evaluate(() => window.__jtml_test_failure?.().status);
-      assert.equal(life, dest === combined ? 'ACTIVE' : undefined);
+      assert.equal(life, dest === strict ? 'ACTIVE' : undefined);
     });
   }
-  console.log(id + ' passes default, private certification, and combined execution');
+  console.log(id + ' passes default and private authority-only execution');
 }
 
 (async () => {

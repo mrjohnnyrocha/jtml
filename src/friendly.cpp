@@ -3141,6 +3141,10 @@ std::vector<std::string> splitFriendlyWords(const std::string& source) {
     return splitTokens(source);
 }
 
+bool isFriendlyEventWord(const std::string& word) {
+    return eventNames().count(word) != 0;
+}
+
 std::vector<FriendlyElementRole> classifyFriendlyElement(
         const std::vector<std::string>& tokens,
         const std::map<std::string, std::string>& bindings) {

@@ -209,6 +209,13 @@ if(JTML_BUILD_TESTS)
         jtml_browser_production
     )
 
+    add_executable(jtml_browser_private_compiler
+        tests/browser_private_compiler.cpp
+    )
+    target_link_libraries(jtml_browser_private_compiler PRIVATE
+        jtml_browser_build_lib
+    )
+
     add_executable(jtml_browser_build_linkcheck
         tests/browser_build_linkcheck.cpp
     )
